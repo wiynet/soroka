@@ -744,3 +744,49 @@ revoke all on function public.set_name_color(integer) from public, anon;
 revoke all on function public.send_gift(uuid, text, text) from public, anon;
 grant execute on function public.mark_read(uuid, bigint), public.buy_premium(),
   public.set_name_color(integer), public.send_gift(uuid, text, text) to authenticated;
+
+-- ======================================================================
+-- Главные администраторы: только они выдают и снимают админку
+-- ======================================================================
+alter table private.admins
+  add column is_chief boolean not null default false,
+  add column revoked_at timestamptz,
+  add column granted_by uuid;
+-- Назначить главных: подставьте почты и раскомментируйте.
+-- update private.admins a set is_chief = true from auth.users u
+--  where u.id = a.user_id and lower(u.email) in ('ПОЧТА_1', 'ПОЧТА_2');
+
+alter table public.profiles add column is_chief boolean not null default false; -- только для значка
+update public.profiles p set is_chief = true from private.admins a where a.user_id = p.id and a.is_chief;
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.admins where user_id = (select auth.uid()) and revoked_at is null);
+$$;
+
+create function public.is_chief_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.admins where user_id = (select auth.uid()) and revoked_at is null and is_chief);
+$$;
+
+create function public.admin_set_admin(p_user uuid, p_on boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_chief_admin() then raise exception 'not allowed'; end if;
+  if not exists (select 1 from public.profiles where id = p_user) then raise exception 'user not found'; end if;
+  if exists (select 1 from private.admins where user_id = p_user and is_chief) then raise exception 'chief is fixed'; end if;
+  if p_on then
+    if exists (select 1 from public.profiles where id = p_user and banned_at is not null) then raise exception 'user is banned'; end if;
+    insert into private.admins (user_id, granted_by) values (p_user, auth.uid())
+    on conflict (user_id) do update set revoked_at = null, granted_by = excluded.granted_by, added_at = now();
+  else
+    update private.admins set revoked_at = now(), granted_by = auth.uid() where user_id = p_user and not is_chief;
+  end if;
+  update public.profiles set is_admin = coalesce(p_on, false) where id = p_user;
+end;
+$$;
+-- в рабочей базе admin_set_ban дополнительно не даёт банить действующих администраторов (revoked_at is null).
+
+revoke all on function public.is_chief_admin() from public, anon;
+revoke all on function public.admin_set_admin(uuid, boolean) from public, anon;
+grant execute on function public.is_chief_admin(), public.admin_set_admin(uuid, boolean) to authenticated;
