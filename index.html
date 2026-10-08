@@ -450,6 +450,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 }
 </style>
 <script>
+/* По обычному http браузер пишет «Небезопасно»: сразу уводим на защищённый адрес. */
+if (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+}
+</script>
+<script>
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
   var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round" };
