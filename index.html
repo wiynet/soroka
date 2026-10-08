@@ -816,7 +816,8 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     <div data-pane="users" style="display:grid;gap:10px" hidden>
       <input class="input" id="adUserSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
       <div class="hint">Откройте профиль человека, чтобы забанить, разбанить или выдать галочку.</div>
-      <div class="scroll" id="adUsers"></div>
+      <div class="set-label" id="adUsersLabel">Все пользователи</div>
+      <div class="scroll" id="adUsers" style="max-height:300px"></div>
       <div id="adSupport" style="display:grid;gap:8px" hidden>
         <div class="set-label">Аккаунты поддержки</div>
         <div class="hint" id="adSupportNow"></div>
@@ -2154,17 +2155,31 @@ function showAdminTab(name) {
   for (const b of $("adTabs").children) b.setAttribute("aria-checked", String(b.dataset.tab === name));
   for (const pane of $("dlgAdmin").querySelectorAll("[data-pane]")) pane.hidden = pane.dataset.pane !== name;
   if (name === "stats") loadStats();
-  if (name === "users") { loadSupportAdmin(); loadAdmins(); loadBanned(); }
+  if (name === "users") { loadSupportAdmin(); loadAllUsers(); loadAdmins(); loadBanned(); }
   if (name === "nft") loadCollectibles();
 }
 $("adTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) showAdminTab(b.dataset.tab); });
-$("adUserSearch").addEventListener("input", debounce(async () => {
-  const q = $("adUserSearch").value;
-  const found = await searchPeople(q);
-  if ($("adUserSearch").value !== q) return;
-  $("adUsers").replaceChildren(...(found.length ? found.map((p) => personRow(p, () => showUser(p)))
-    : [h("div", { class: "empty-note" }, q.trim().length < 2 ? "Начните вводить имя или юзернейм." : "Никого не нашли.")]));
-}, 250));
+// полный список аккаунтов для администраторов: юзернейм, имя, роль и когда был в сети
+let allUsers = [];
+function adminUserRow(p) {
+  const row = personRow(p, () => showUser(p));
+  row.querySelector(".sub span").textContent += " · " + fmtSeen(p);
+  return row;
+}
+function paintAdminUsers() {
+  const q = $("adUserSearch").value.trim().replace(/^@/, "").toLowerCase();
+  const list = q ? allUsers.filter((p) => p.username.includes(q) || p.display_name.toLowerCase().includes(q) || nfts(p).some((u) => u.includes(q))) : allUsers;
+  $("adUsersLabel").textContent = q ? "Найдено: " + list.length + " из " + allUsers.length : "Все пользователи: " + allUsers.length;
+  $("adUsers").replaceChildren(...(list.length ? list.map(adminUserRow) : [h("div", { class: "empty-note" }, "Никого не нашли.")]));
+}
+async function loadAllUsers() {
+  if (!state.isAdmin) return;
+  const { data, error } = await sb.from("profiles").select(PF).order("created_at", { ascending: false }).limit(1000);
+  if (error) { $("adUsers").replaceChildren(h("div", { class: "empty-note" }, "Не удалось загрузить список.")); return; }
+  allUsers = data || [];
+  paintAdminUsers();
+}
+$("adUserSearch").addEventListener("input", debounce(paintAdminUsers, 150));
 
 // сорочки: своя валюта мессенджера. Баланс видит владелец, выдают и списывают администраторы.
 const nf = new Intl.NumberFormat("ru");
@@ -2587,6 +2602,7 @@ async function refreshViewed() {
   loadChats();
   loadBanned();
   loadAdmins();
+  if ($("dlgAdmin").open) loadAllUsers();
 }
 function paintUser(p) {
   const av = avatar(p.display_name, p.id, "lg", p.avatar_path);
