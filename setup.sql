@@ -527,3 +527,52 @@ grant execute on function public.touch_presence(), public.edit_message(bigint, t
   public.create_channel(text, text), public.join_channel(uuid), public.search_channels(text),
   public.admin_set_ban(uuid, boolean, text), public.admin_set_verified(uuid, boolean), public.admin_stats()
   to authenticated;
+
+-- ======================================================================
+-- Сорочки: валюта мессенджера. Баланс видят владелец и администраторы.
+-- ======================================================================
+create table public.wallets (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  balance bigint not null default 0 check (balance >= 0),
+  updated_at timestamptz not null default now()
+);
+create table public.coin_ledger (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  amount bigint not null check (amount <> 0),
+  balance_after bigint not null,
+  reason text check (reason is null or char_length(reason) <= 200),
+  granted_by uuid,
+  created_at timestamptz not null default now()
+);
+create index coin_ledger_user_idx on public.coin_ledger (user_id, id desc);
+
+alter table public.wallets enable row level security;
+alter table public.coin_ledger enable row level security;
+create policy wallets_select on public.wallets for select to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_admin()));
+create policy ledger_select on public.coin_ledger for select to authenticated
+  using (user_id = (select auth.uid()) or (select public.is_admin()));
+revoke all on public.wallets, public.coin_ledger from anon, authenticated;
+grant select on public.wallets, public.coin_ledger to authenticated;
+
+-- выдать (плюс) или списать (минус) сорочки; возвращает новый баланс
+create function public.admin_grant_coins(p_user uuid, p_amount bigint, p_reason text) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare nb bigint;
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if p_amount is null or p_amount = 0 or abs(p_amount) > 1000000000 then raise exception 'bad amount'; end if;
+  if not exists (select 1 from public.profiles where id = p_user) then raise exception 'user not found'; end if;
+  insert into public.wallets (user_id) values (p_user) on conflict (user_id) do nothing;
+  select balance + p_amount into nb from public.wallets where user_id = p_user for update;
+  if nb < 0 then raise exception 'insufficient'; end if;
+  update public.wallets set balance = nb, updated_at = now() where user_id = p_user;
+  insert into public.coin_ledger (user_id, amount, balance_after, reason, granted_by)
+  values (p_user, p_amount, nb, nullif(left(btrim(coalesce(p_reason, '')), 200), ''), auth.uid());
+  return nb;
+end;
+$$;
+revoke all on function public.admin_grant_coins(uuid, bigint, text) from public, anon;
+grant execute on function public.admin_grant_coins(uuid, bigint, text) to authenticated;
+-- в рабочей базе admin_stats дополнительно возвращает 'coins': сумму всех балансов.

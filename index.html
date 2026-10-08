@@ -24,6 +24,7 @@
   --theirs: #ffffff;
   --danger: #b3261e;
   --verify: #1d7fd6;
+  --coin: #b97a00;
   --online: #1f9d57;
   --font: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: "Unbounded", "Golos Text", system-ui, sans-serif;
@@ -35,7 +36,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --online: #4cd184;
     color-scheme: dark;
   }
 }
@@ -43,7 +44,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --online: #4cd184;
     color-scheme: dark;
 }
 :root[data-size="s"] { --fs: 14px; }
@@ -161,6 +162,17 @@ button { cursor: pointer; }
     radial-gradient(22% 18% at 52% 92%, color-mix(in srgb, var(--w1) 30%, transparent), transparent 72%),
     radial-gradient(24% 20% at 94% 84%, color-mix(in srgb, var(--w3) 32%, transparent), transparent 72%);
 }
+.coin-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--coin) 40%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--coin) 20%, transparent), color-mix(in srgb, var(--coin) 5%, transparent)); }
+.coin { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 600 20px/1 var(--display); color: var(--panel); background: var(--coin); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--panel) 35%, transparent); }
+.coin.sm { width: 20px; height: 20px; font-size: 10px; box-shadow: none; display: inline-grid; vertical-align: -4px; margin-right: 4px; }
+.coin-card b { display: block; font: 600 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.coin-log { display: grid; gap: 2px; max-height: 150px; overflow-y: auto; }
+.coin-row { display: flex; gap: 10px; align-items: baseline; padding: 5px 2px; font-size: 14px; }
+.coin-row .amt { min-width: 64px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.coin-row .amt.plus { color: var(--online); }
+.coin-row .amt.minus { color: var(--danger); }
+.coin-row .why { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.coin-admin { display: grid; gap: 8px; }
 .walls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .walls button { height: 58px; border: 2px solid var(--line); border-radius: 12px; background-color: var(--bg); color: var(--ink); font-weight: 500; font-size: 13px; padding: 4px; }
 .walls button[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -317,6 +329,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   #editChip:not([hidden]), .chan-note:not([hidden]) { animation: rise .2s var(--ease) both; }
   .walls button { transition: border-color .18s, box-shadow .18s, transform .12s var(--ease); }
   .walls button:hover { transform: translateY(-2px); }
+  @keyframes coin-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+  .coin-card .coin { animation: coin-spin .9s var(--ease) both; }
+  .coin-row { animation: rise .22s var(--ease) both; }
+  .coin-card b.bump { animation: pop-in .3s var(--ease) both; }
   .nft::after { content: ""; position: absolute; inset: 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent); animation: shimmer 3.2s ease-in-out infinite; }
   .nft { animation: pop-in .3s var(--ease) both; }
   .nft .gem, .user-card .gem { animation: twinkle 2.6s ease-in-out infinite; }
@@ -502,6 +518,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
         <div><button class="btn ghost" type="button" id="avMake">Сделать аватаркой</button></div>
       </div>
     </div>
+
+    <div class="set-label">Сорочки</div>
+    <div class="coin-card">
+      <span class="coin" aria-hidden="true">С</span>
+      <div><b id="coinBal">0</b><span class="small muted" id="coinWord">сорочек</span></div>
+    </div>
+    <div class="coin-log" id="coinLog"></div>
 
     <div class="set-label">Профиль</div>
     <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
@@ -701,6 +724,17 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     <div class="banned-note" id="uBanned" hidden></div>
     <div class="u-admin" id="uAdmin" hidden>
       <div class="set-label" style="margin:0">Действия администратора</div>
+      <div class="coin-admin">
+        <div id="uCoins"></div>
+        <div class="ad-grid">
+          <input class="input" id="uCoinAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="Сколько сорочек">
+          <input class="input" id="uCoinWhy" maxlength="200" placeholder="За что (необязательно)">
+        </div>
+        <div class="actions">
+          <button class="btn ghost" type="button" id="uCoinGive">Выдать</button>
+          <button class="btn ghost" type="button" id="uCoinTake">Списать</button>
+        </div>
+      </div>
       <input class="input" id="uBanReason" maxlength="200" placeholder="Причина бана (необязательно)" hidden>
       <div class="actions">
         <button class="btn ghost" type="button" id="uVerify"></button>
@@ -810,11 +844,12 @@ function fmtSeen(p) {
   if (!p) return "";
   if (p.banned_at) return "аккаунт заблокирован";
   if (isOnline(p)) return "в сети";
-  if (!p.last_seen_at) return "давно не в сети";
+  if (!p.last_seen_at) return "не в сети";
   const d = new Date(p.last_seen_at), n = daysAgo(d);
+  if (n > 30) return "давно не в сети";   // больше месяца
   if (n === 0) return "в сети сегодня в " + tFmt.format(d);
   if (n === 1) return "в сети вчера в " + tFmt.format(d);
-  return "в сети " + (d.getFullYear() === new Date().getFullYear() ? dFmt.format(d) : dyFmt.format(d));
+  return "в сети " + dFmt.format(d) + " в " + tFmt.format(d);
 }
 function nftChips(p) {
   return nfts(p).map((u) => { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft", title: "NFT-юзернейм" }, g, "@" + u); });
@@ -1542,7 +1577,7 @@ async function checkAdmin() {
   $("btnAdmin").hidden = !state.isAdmin;
   if (state.isAdmin && state.activeId) renderMsgs();
 }
-const STAT_LABELS = [["users", "аккаунтов"], ["online", "в сети"], ["banned", "в бане"], ["messages", "сообщений"], ["groups", "групп"], ["channels", "каналов"]];
+const STAT_LABELS = [["users", "аккаунтов"], ["online", "в сети"], ["banned", "в бане"], ["messages", "сообщений"], ["groups", "групп"], ["channels", "каналов"], ["coins", "сорочек на руках"]];
 async function loadStats() {
   const { data, error } = await sb.rpc("admin_stats");
   $("adStats").replaceChildren(...(error || !data ? [h("div", { class: "empty-note" }, "Не удалось загрузить сводку.")]
@@ -1570,6 +1605,55 @@ $("adUserSearch").addEventListener("input", debounce(async () => {
   $("adUsers").replaceChildren(...(found.length ? found.map((p) => personRow(p, () => showUser(p)))
     : [h("div", { class: "empty-note" }, q.trim().length < 2 ? "Начните вводить имя или юзернейм." : "Никого не нашли.")]));
 }, 250));
+
+// сорочки: своя валюта мессенджера. Баланс видит владелец, выдают и списывают администраторы.
+const nf = new Intl.NumberFormat("ru");
+function coins(n) { return nf.format(n) + " " + plural(Math.abs(n) % 100, "сорочка", "сорочки", "сорочек"); }
+function coinMark() { return h("span", { class: "coin sm", "aria-hidden": "true" }, "С"); }
+async function loadWallet() {
+  const [w, log] = await Promise.all([
+    sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle(),
+    sb.from("coin_ledger").select("amount,reason,created_at").eq("user_id", state.me.id).order("id", { ascending: false }).limit(20),
+  ]);
+  const bal = w.data ? Number(w.data.balance) : 0;
+  $("coinBal").textContent = nf.format(bal);
+  flash($("coinBal"), 320, "bump");
+  $("coinWord").textContent = plural(bal % 100, "сорочка", "сорочки", "сорочек");
+  const rows = log.data || [];
+  $("coinLog").replaceChildren(...(rows.length ? rows.map((r, i) => {
+    const a = Number(r.amount);
+    const el = h("div", { class: "coin-row" },
+      h("span", { class: "amt " + (a > 0 ? "plus" : "minus") }, (a > 0 ? "+" : "−") + nf.format(Math.abs(a))),
+      h("span", { class: "why" }, r.reason || (a > 0 ? "Начисление" : "Списание")),
+      h("span", { class: "small muted" }, sFmt.format(new Date(r.created_at))));
+    el.style.animationDelay = Math.min(i, 8) * 30 + "ms";
+    return el;
+  }) : [h("div", { class: "small muted" }, "Операций пока нет. Сорочки выдаёт администратор.")]));
+}
+async function loadUserCoins(id) {
+  $("uCoins").replaceChildren(coinMark(), "Сорочки: …");
+  const { data } = await sb.from("wallets").select("balance").eq("user_id", id).maybeSingle();
+  if (viewed && viewed.id === id) $("uCoins").replaceChildren(coinMark(), "На счёте: " + coins(data ? Number(data.balance) : 0));
+}
+async function moveCoins(sign) {
+  if (!viewed) return;
+  const amt = Math.floor(Number($("uCoinAmt").value));
+  if (!(amt > 0)) { toast("Введите, сколько сорочек: целое число больше нуля"); return; }
+  const id = viewed.id;
+  $("uCoinGive").disabled = $("uCoinTake").disabled = true;
+  const { data, error } = await sb.rpc("admin_grant_coins", { p_user: id, p_amount: sign * amt, p_reason: $("uCoinWhy").value });
+  $("uCoinGive").disabled = $("uCoinTake").disabled = false;
+  if (error) {
+    const m = error.message || "";
+    toast(/insufficient/.test(m) ? "У человека меньше сорочек, чем вы списываете" : /bad amount/.test(m) ? "Слишком большое число" : "Не удалось изменить баланс");
+    return;
+  }
+  $("uCoinAmt").value = ""; $("uCoinWhy").value = "";
+  toast((sign > 0 ? "Выдано: " : "Списано: ") + coins(amt));
+  if (viewed && viewed.id === id) $("uCoins").replaceChildren(coinMark(), "На счёте: " + coins(Number(data) || 0));
+}
+$("uCoinGive").addEventListener("click", () => moveCoins(1));
+$("uCoinTake").addEventListener("click", () => moveCoins(-1));
 
 // действия с сообщением: изменить, скопировать, удалить
 let actMsg = null, delArmed = false;
@@ -1710,7 +1794,9 @@ function paintUser(p) {
   $("uSeen").classList.toggle("on", isOnline(p));
   $("uBanned").hidden = !p.banned_at;
   $("uBanned").textContent = p.banned_at ? "Аккаунт заблокирован" + (state.isAdmin && p.ban_reason ? ": " + p.ban_reason : "") : "";
-  $("uAdmin").hidden = !(state.isAdmin && p.id !== state.me.id);
+  $("uAdmin").hidden = !state.isAdmin;
+  $("uBan").hidden = $("uVerify").hidden = p.id === state.me.id;
+  if (state.isAdmin) loadUserCoins(p.id);
   $("uBan").textContent = p.banned_at ? "Разбанить" : "Забанить";
   $("uVerify").textContent = p.verified ? "Снять галочку" : "Выдать галочку";
   $("uBanReason").hidden = true;
@@ -1883,6 +1969,7 @@ $("btnProfile").addEventListener("click", () => {
   $("pfUserHint").textContent = "";
   renderSettings();
   refreshMe();
+  loadWallet();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
   drawBadge();
