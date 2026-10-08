@@ -8,7 +8,9 @@ create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null unique check (username ~ '^[a-z][a-z0-9_]{3,31}$'),
   display_name text not null check (char_length(display_name) between 1 and 64),
-  created_at timestamptz not null default now()
+  avatar_path text, -- путь к аватарке в хранилище avatars
+  created_at timestamptz not null default now(),
+  constraint profiles_avatar_own check (avatar_path is null or avatar_path like id::text || '/%')
 );
 
 create table public.chats (
@@ -180,7 +182,7 @@ create policy messages_insert on public.messages for insert to authenticated
 revoke all on public.profiles, public.chats, public.chat_members, public.messages from anon, authenticated;
 grant select on public.profiles, public.chats, public.chat_members, public.messages to authenticated;
 grant insert (id, username, display_name) on public.profiles to authenticated;
-grant update (username, display_name) on public.profiles to authenticated;
+grant update (username, display_name, avatar_path) on public.profiles to authenticated;
 grant insert (chat_id, sender_id, body, file_path, file_name, file_type, file_size) on public.messages to authenticated;
 
 grant usage on schema private to authenticated;
@@ -208,3 +210,10 @@ create policy attachments_read on storage.objects for select to authenticated
   using (bucket_id = 'attachments' and private.is_chat_member(((storage.foldername(name))[1])::uuid));
 create policy attachments_upload on storage.objects for insert to authenticated
   with check (bucket_id = 'attachments' and private.is_chat_member(((storage.foldername(name))[1])::uuid));
+
+-- ---------- аватарки (видны всем по ссылке, загружать можно только в свою папку) ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 1048576, array['image/webp', 'image/jpeg', 'image/png']);
+
+create policy avatars_upload on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);

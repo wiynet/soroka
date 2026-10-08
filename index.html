@@ -109,6 +109,14 @@ button { cursor: pointer; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
 .avatar { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: 16px; }
 .avatar.sm { width: 36px; height: 36px; font-size: 13px; }
+.avatar.lg { width: 76px; height: 76px; font-size: 26px; }
+.avatar { position: relative; overflow: hidden; }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.av-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.av-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.av-make { display: flex; gap: 14px; align-items: flex-start; padding: 12px; border: 1px dashed var(--line); border-radius: 14px; }
+.av-make canvas { width: 76px; height: 76px; flex: none; border-radius: 50%; }
+.av-make-body { flex: 1; min-width: 0; display: grid; gap: 10px; }
 .empty-note { padding: 28px 18px; color: var(--muted); text-align: center; }
 
 /* ---------- conversation ---------- */
@@ -213,6 +221,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   #toast:not([hidden]) { animation: toast-in .25s var(--ease) both; }
   .placeholder:not([hidden]) { animation: fade-in .3s both; }
   .chip { animation: pop-in .18s var(--ease) both; }
+  .avatar img { animation: fade-in .35s both; }
+  .avatar.lg { animation: pop-in .3s var(--ease) both; }
+  .av-make canvas { transition: transform .2s var(--ease); }
+  .av-make canvas.bump { transform: scale(1.08); }
+  .row .avatar { transition: transform .2s var(--ease); }
+  .row:hover .avatar { transform: scale(1.06); }
   @media (max-width: 760px) {
     #app.chat-open .pane { animation: slide-in .26s var(--ease) both; }
     #app.back .sidebar { animation: slide-back .22s var(--ease) both; }
@@ -352,6 +366,24 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <form class="dlg" id="profileForm" novalidate>
     <h2>Настройки</h2>
 
+    <div class="set-label">Аватарка</div>
+    <div class="av-row">
+      <span id="pfAvatar"></span>
+      <div class="av-actions">
+        <input type="file" id="avFile" accept="image/*" hidden>
+        <button class="btn ghost" type="button" id="avUpload">Загрузить фото</button>
+        <button class="btn ghost" type="button" id="avRemove">Убрать</button>
+      </div>
+    </div>
+    <div class="av-make">
+      <canvas id="avCanvas" width="256" height="256" role="img" aria-label="Предпросмотр значка"></canvas>
+      <div class="av-make-body">
+        <label class="field"><span>Свой значок: эмодзи или 1–2 буквы</span><input class="input" id="avText" maxlength="12" autocomplete="off"></label>
+        <div class="swatches" id="avHues" role="radiogroup" aria-label="Фон значка"></div>
+        <div><button class="btn ghost" type="button" id="avMake">Сделать аватаркой</button></div>
+      </div>
+    </div>
+
     <div class="set-label">Профиль</div>
     <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
     <label class="field"><span>Юзернейм</span>
@@ -486,12 +518,21 @@ function icon(name) {
   s.innerHTML = ICONS[name];
   return s;
 }
-function avatar(name, seed, small) {
+function avatarUrl(path) {
+  return SUPABASE_URL + "/storage/v1/object/public/avatars/" + path.split("/").map(encodeURIComponent).join("/");
+}
+function avatar(name, seed, small, path) {
   let n = 0;
   for (const ch of String(seed || name)) n = (n * 31 + ch.codePointAt(0)) % 360;
   const letters = String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] || "").join("").toUpperCase();
-  const el = h("span", { class: "avatar" + (small ? " sm" : ""), "aria-hidden": "true" }, letters || "?");
+  const el = h("span", { class: "avatar" + (small === "lg" ? " lg" : small ? " sm" : ""), "aria-hidden": "true" }, letters || "?");
   el.style.background = "hsl(" + n + " 42% 42%)";
+  if (path) {
+    const img = h("img", { alt: "" });
+    img.addEventListener("error", () => img.remove());
+    img.src = avatarUrl(path);
+    el.append(img);
+  }
   return el;
 }
 let toastTimer;
@@ -725,8 +766,7 @@ async function startApp() {
   state.started = true;
   $("auth").hidden = true;
   $("app").hidden = false;
-  const pb = $("btnProfile");
-  pb.replaceChildren(avatar(state.profile.display_name, state.profile.id, true));
+  refreshMe();
   await loadChats();
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   flash($("chatList"), 900);
@@ -753,7 +793,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name))")
+    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name,avatar_path))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -783,14 +823,14 @@ function chatRow(c) {
   if (c.last_text && c.last_sender === state.me.id) preview = "Вы: " + preview;
   else if (c.last_text && c.is_group) preview = memberName(c, c.last_sender) + ": " + preview;
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
-    avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id),
+    avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? null : (other(c) || state.profile).avatar_path),
     h("span", { class: "txt" },
       h("span", { class: "top" }, h("span", { class: "name" }, chatTitle(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
 }
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
-    avatar(p.display_name, p.id, true),
+    avatar(p.display_name, p.id, true, p.avatar_path),
     h("span", { class: "txt" }, h("span", { class: "name" }, p.display_name), h("span", { class: "sub" }, h("span", {}, "@" + p.username))),
     picked != null && h("span", { class: "check" }));
 }
@@ -823,7 +863,7 @@ async function renderList() {
 async function searchPeople(q) {
   const s = q.replace(/^@/, "").replace(/[^\p{L}\p{N}_ ]/gu, "").trim();
   if (s.length < 2) return [];
-  const { data, error } = await sb.from("profiles").select("id,username,display_name")
+  const { data, error } = await sb.from("profiles").select("id,username,display_name,avatar_path")
     .or('username.ilike."' + s + '%",display_name.ilike."%' + s + '%"')
     .neq("id", state.me.id).limit(20);
   return error ? [] : data;
@@ -843,7 +883,7 @@ function renderHead() {
   const c = state.chats.get(state.activeId);
   if (!c) return;
   const o = other(c);
-  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true));
+  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? null : (o || state.profile).avatar_path));
   $("convName").textContent = chatTitle(c);
   const n = c.members.length;
   $("convSub").textContent = c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? "@" + o.username : "заметки для себя");
@@ -1059,6 +1099,89 @@ for (const d of document.querySelectorAll("dialog")) {
   d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 }
 
+// аватарка: фото или свой значок
+function refreshMe() {
+  const p = state.profile;
+  $("btnProfile").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
+  $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
+  $("avRemove").hidden = !p.avatar_path;
+}
+const AV_HUES = [190, 215, 262, 335, 18, 45, 145];
+const avDraft = { hue: 190 };
+function graphemes(t) {
+  const list = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter().segment(t)].map((x) => x.segment) : Array.from(t);
+  return list.filter((g) => g.trim()).slice(0, 2);
+}
+function drawBadge() {
+  const c = $("avCanvas"), g = c.getContext("2d");
+  const parts = graphemes($("avText").value);
+  const text = parts.join("").toUpperCase() || "?";
+  g.fillStyle = "hsl(" + avDraft.hue + " 55% 45%)";
+  g.fillRect(0, 0, 256, 256);
+  g.fillStyle = "#fff";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.font = "600 " + (parts.length > 1 ? 104 : 140) + 'px "Golos Text", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+  g.fillText(text, 128, 138);
+  for (const b of $("avHues").children) b.setAttribute("aria-checked", String(Number(b.dataset.avh) === avDraft.hue));
+  flash(c, 180, "bump");
+}
+$("avHues").append(...AV_HUES.map((v) => {
+  const b = h("button", { type: "button", role: "radio", "data-avh": v, "aria-label": "Фон " + v });
+  b.style.background = "hsl(" + v + " 55% 45%)";
+  b.addEventListener("click", () => { avDraft.hue = v; drawBadge(); });
+  return b;
+}));
+$("avText").addEventListener("input", drawBadge);
+function canvasBlob(canvas) {
+  return new Promise((res) => canvas.toBlob(res, "image/webp", 0.86));
+}
+async function setAvatarPath(path) {
+  const { data, error } = await sb.from("profiles").update({ avatar_path: path }).eq("id", state.me.id).select().single();
+  if (error) { toast("Не удалось сохранить аватарку"); return; }
+  state.profile = data;
+  refreshMe();
+  loadChats();
+  toast(path ? "Аватарка обновлена" : "Аватарка убрана");
+}
+async function saveAvatar(canvas, btn) {
+  btn.disabled = true;
+  try {
+    const blob = await canvasBlob(canvas);
+    if (!blob) { toast("Не удалось подготовить картинку"); return; }
+    const ext = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+    const path = state.me.id + "/" + Date.now() + "." + ext;
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: blob.type, cacheControl: "31536000" });
+    if (up.error) { toast("Не удалось загрузить аватарку"); return; }
+    await setAvatarPath(path);
+  } finally { btn.disabled = false; }
+}
+$("avUpload").addEventListener("click", () => $("avFile").click());
+$("avFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    // вырезаем квадрат по центру и уменьшаем до 256 пикселей
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+    await saveAvatar(c, $("avUpload"));
+  } catch (err) {
+    toast("Этот файл не получилось открыть как картинку");
+  } finally { URL.revokeObjectURL(url); }
+});
+$("avMake").addEventListener("click", () => {
+  if (!graphemes($("avText").value).length) { toast("Введите эмодзи или буквы для значка"); return; }
+  saveAvatar($("avCanvas"), $("avMake"));
+});
+$("avRemove").addEventListener("click", () => setAvatarPath(null));
+
 // настройки: профиль и оформление
 function renderSettings() {
   for (const group of document.querySelectorAll("#dlgProfile [data-key]")) {
@@ -1089,7 +1212,10 @@ $("btnProfile").addEventListener("click", () => {
   $("profileErr").textContent = "";
   $("pfUserHint").textContent = "";
   renderSettings();
+  refreshMe();
+  $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
+  drawBadge();
 });
 watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile.username);
 $("profileForm").addEventListener("submit", (e) => {
@@ -1101,7 +1227,7 @@ $("profileForm").addEventListener("submit", (e) => {
     const { data, error } = await sb.from("profiles").update({ display_name: name, username }).eq("id", state.me.id).select().single();
     if (error) { err.textContent = error.code === "23505" ? "Юзернейм @" + username + " уже занят." : "Не удалось сохранить."; return; }
     state.profile = data;
-    $("btnProfile").replaceChildren(avatar(data.display_name, data.id, true));
+    refreshMe();
     $("pfUserHint").textContent = "";
     toast("Профиль сохранён");
     loadChats();
