@@ -837,3 +837,5 @@ end;
 $$;
 revoke all on function public.sell_gift(bigint) from public, anon;
 grant execute on function public.sell_gift(bigint) to authenticated;
+
+-- В рабочей базе set_name_color разрешён не только с премиумом, но и администраторам (public.is_admin()).

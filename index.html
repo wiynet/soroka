@@ -609,7 +609,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     </div>
     <ul class="perks">
       <li>Фиолетовая галочка премиума рядом с именем</li>
-      <li>Свой цвет имени в чатах и профиле</li>
+      <li>Свой цвет имени в чатах и профиле (у администраторов он есть и без премиума)</li>
       <li>Скидка 20 % на все подарки</li>
       <li>Описание профиля до 500 символов вместо 200</li>
       <li>Два особых фона: «Космос» и «Неон»</li>
@@ -978,9 +978,9 @@ function badge(name, cls, label) {
   t.prepend(title);
   return t;
 }
-// премиум может выбрать цвет имени
+// цвет имени выбирают премиум-пользователи и администраторы
 function tint(el, p) {
-  if (p && isPremium(p) && p.name_hue != null) { el.classList.add("hued"); el.style.setProperty("--nh", p.name_hue); }
+  if (p && (isPremium(p) || p.is_admin) && p.name_hue != null) { el.classList.add("hued"); el.style.setProperty("--nh", p.name_hue); }
   else el.classList.remove("hued");
   return el;
 }
@@ -2296,13 +2296,14 @@ function renderPremium() {
   premArmed = false;
   $("premBuy").textContent = on ? "Продлить на 30 дней за 150 сорочек" : "Купить за 150 сорочек";
   $("pfBio").maxLength = on ? 500 : 200;
-  $("nameHues").classList.toggle("off", !on);
+  const canColor = on || !!p.is_admin;
+  $("nameHues").classList.toggle("off", !canColor);
   $("nameHues").replaceChildren(...[null, 0, 25, 45, 145, 190, 215, 262, 310, 335].map((v) => {
     const b = h("button", { type: "button", role: "radio", class: v == null ? "none" : "", "aria-checked": String((p.name_hue == null ? null : Number(p.name_hue)) === v),
       title: v == null ? "Обычный цвет" : "Цвет имени", "aria-label": v == null ? "Обычный цвет" : "Цвет " + v }, v == null ? "×" : "");
     if (v != null) b.style.background = "hsl(" + v + " 75% 48%)";
     b.addEventListener("click", async () => {
-      if (!isPremium(state.profile)) { toast("Цвет имени доступен с премиумом"); return; }
+      if (!(isPremium(state.profile) || state.profile.is_admin)) { toast("Цвет имени доступен с премиумом"); return; }
       const { error } = await sb.rpc("set_name_color", { p_hue: v });
       if (error) { toast("Не удалось сменить цвет имени"); return; }
       state.profile.name_hue = v;
