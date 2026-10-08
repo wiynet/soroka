@@ -905,3 +905,21 @@ end;
 $$;
 revoke all on function public.admin_set_support(text) from public, anon;
 grant execute on function public.admin_set_support(text) to authenticated;
+
+-- Несколько аккаунтов поддержки: ключ support_users хранит JSON-массив id, человек выбирает, кому написать.
+create function public.admin_set_support_team(p_usernames text[]) returns void
+language plpgsql security definer set search_path = '' as $$
+declare ids uuid[]; want int := coalesce(array_length(p_usernames, 1), 0);
+begin
+  if not public.is_chief_admin() then raise exception 'not allowed'; end if;
+  if want < 1 or want > 5 then raise exception 'bad count'; end if;
+  select array_agg(p.id order by t.ord) into ids
+    from unnest(p_usernames) with ordinality as t(name, ord)
+    join public.profiles p on p.username = lower(btrim(t.name)) and p.banned_at is null;
+  if coalesce(array_length(ids, 1), 0) <> want then raise exception 'user not found'; end if;
+  insert into public.app_settings (key, value) values ('support_users', to_json(ids)::text)
+  on conflict (key) do update set value = excluded.value, updated_at = now();
+end;
+$$;
+revoke all on function public.admin_set_support_team(text[]) from public, anon;
+grant execute on function public.admin_set_support_team(text[]) to authenticated;

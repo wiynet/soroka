@@ -773,11 +773,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <div class="hint">Откройте профиль человека, чтобы забанить, разбанить или выдать галочку.</div>
       <div class="scroll" id="adUsers"></div>
       <div id="adSupport" style="display:grid;gap:8px" hidden>
-        <div class="set-label">Аккаунт поддержки</div>
+        <div class="set-label">Аккаунты поддержки</div>
         <div class="hint" id="adSupportNow"></div>
         <div style="display:flex;gap:8px">
-          <div class="at-wrap" style="flex:1"><input class="input" id="adSupportUser" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="юзернейм"></div>
-          <button class="btn ghost" type="button" id="adSupportSet">Назначить</button>
+          <div class="at-wrap" style="flex:1"><input class="input" id="adSupportUser" maxlength="170" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="user, boss"></div>
+          <button class="btn ghost" type="button" id="adSupportSet">Сохранить</button>
         </div>
       </div>
       <div class="set-label">Администраторы</div>
@@ -805,6 +805,16 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     </form>
 
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+
+<!-- поддержка: выбор, кому написать -->
+<dialog id="dlgSupport">
+  <div class="dlg">
+    <h2>Поддержка</h2>
+    <div class="muted">Выберите, кому написать. Здесь помогут с вопросами и пополнением сорочек.</div>
+    <div id="supportList"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button></div>
   </div>
 </dialog>
 
@@ -2125,35 +2135,60 @@ $("maDel").addEventListener("click", async () => {
   reloadSoon();
 });
 
-// поддержка: кнопка открывает личный чат с аккаунтом поддержки
-async function supportId() {
-  const { data } = await sb.from("app_settings").select("value").eq("key", "support_user").maybeSingle();
-  return data && data.value ? data.value : null;
+// поддержка: один аккаунт открывается сразу, из нескольких человек выбирает сам
+async function supportIds() {
+  const { data } = await sb.from("app_settings").select("key,value").in("key", ["support_users", "support_user"]);
+  const rows = data || [];
+  const team = rows.find((r) => r.key === "support_users"), one = rows.find((r) => r.key === "support_user");
+  let ids = [];
+  try { ids = team && team.value ? JSON.parse(team.value) : []; } catch (e) { ids = []; }
+  if (!Array.isArray(ids) || !ids.length) ids = one && one.value ? [one.value] : [];
+  return ids.filter((x) => typeof x === "string");
+}
+async function supportPeople() {
+  const ids = await supportIds();
+  if (!ids.length) return [];
+  const { data } = await sb.from("profiles").select(PF).in("id", ids);
+  const byId = new Map((data || []).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p) => p && !p.banned_at);
 }
 async function openSupport() {
-  const id = await supportId();
-  if (!id) { toast("Аккаунт поддержки пока не назначен"); return; }
-  if (id === state.me.id) { toast("Аккаунт поддержки — это вы. Сменить его можно в админке, на вкладке «Люди»."); return; }
+  const all = await supportPeople();
+  if (!all.length) { toast("Аккаунты поддержки пока не назначены"); return; }
+  const team = all.filter((p) => p.id !== state.me.id);
+  if (!team.length) { toast("Поддержка — это вы. Изменить состав можно в админке, на вкладке «Люди»."); return; }
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
-  startDirect(id);
+  if (team.length === 1) { startDirect(team[0].id); return; }
+  $("supportList").replaceChildren(...team.map((p, i) => {
+    const av = avatar(p.display_name, p.id, false, p.avatar_path);
+    if (isOnline(p)) av.classList.add("online");
+    const row = h("button", { class: "row", type: "button", onclick: () => { $("dlgSupport").close(); startDirect(p.id); } },
+      av,
+      h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p),
+        h("span", { class: "sub" }, h("span", {}, "@" + p.username + " · " + fmtSeen(p)))));
+    row.style.animation = "none";
+    return row;
+  }));
+  $("dlgSupport").showModal();
 }
 $("btnSupport").addEventListener("click", openSupport);
 $("coinBuy").addEventListener("click", openSupport);
 async function loadSupportAdmin() {
   $("adSupport").hidden = !state.isChief;
   if (!state.isChief) return;
-  const id = await supportId();
-  const { data } = id ? await sb.from("profiles").select("username,display_name").eq("id", id).maybeSingle() : { data: null };
-  $("adSupportNow").textContent = data ? "Сейчас кнопка «Поддержка» ведёт к: " + data.display_name + " (@" + data.username + ")." : "Аккаунт поддержки не назначен.";
+  const team = await supportPeople();
+  $("adSupportNow").textContent = team.length
+    ? "Сейчас в поддержке: " + team.map((p) => p.display_name + " (@" + p.username + ")").join(", ") + ". Впишите юзернеймы через запятую, от одного до пяти, в нужном порядке."
+    : "Поддержка не назначена. Впишите юзернеймы через запятую, от одного до пяти.";
+  if (!$("adSupportUser").value) $("adSupportUser").value = team.map((p) => p.username).join(", ");
 }
-$("adSupportUser").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
 $("adSupportSet").addEventListener("click", async () => {
-  const u = $("adSupportUser").value;
-  if (!u) { toast("Введите юзернейм аккаунта поддержки"); return; }
-  const { error } = await sb.rpc("admin_set_support", { p_username: u });
-  if (error) { toast(/user not found/.test(error.message || "") ? "Пользователь @" + u + " не найден" : "Не удалось назначить поддержку"); return; }
+  const names = [...new Set($("adSupportUser").value.toLowerCase().split(/[\s,]+/).map((x) => x.replace(/^@+/, "")).filter(Boolean))];
+  if (!names.length || names.length > 5) { toast("Укажите от одного до пяти юзернеймов через запятую"); return; }
+  const { error } = await sb.rpc("admin_set_support_team", { p_usernames: names });
+  if (error) { toast(/user not found/.test(error.message || "") ? "Кого-то из списка нет или он заблокирован. Проверьте юзернеймы." : "Не удалось сохранить поддержку"); return; }
   $("adSupportUser").value = "";
-  toast("Поддержка теперь ведёт к @" + u);
+  toast("Состав поддержки сохранён");
   loadSupportAdmin();
 });
 
