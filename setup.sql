@@ -839,3 +839,69 @@ revoke all on function public.sell_gift(bigint) from public, anon;
 grant execute on function public.sell_gift(bigint) to authenticated;
 
 -- В рабочей базе set_name_color разрешён не только с премиумом, но и администраторам (public.is_admin()).
+
+-- ======================================================================
+-- Реакции: одна на человека на сообщение; снятая реакция хранится как пустая
+-- ======================================================================
+create table public.message_reactions (
+  message_id bigint not null references public.messages(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  chat_id uuid not null references public.chats(id) on delete cascade,
+  emoji text,
+  updated_at timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+create index message_reactions_chat_idx on public.message_reactions (chat_id);
+
+alter table public.message_reactions enable row level security;
+create policy reactions_select on public.message_reactions for select to authenticated
+  using (private.is_chat_member(chat_id));
+revoke all on public.message_reactions from anon, authenticated;
+grant select on public.message_reactions to authenticated;
+
+create function public.set_reaction(p_message bigint, p_emoji text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  cid uuid;
+begin
+  select chat_id into cid from public.messages where id = p_message and deleted_at is null;
+  if cid is null or me is null or not private.is_chat_member(cid) then raise exception 'not allowed'; end if;
+  if p_emoji is not null and p_emoji not in ('👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👎') then
+    raise exception 'bad emoji';
+  end if;
+  insert into public.message_reactions (message_id, user_id, chat_id, emoji) values (p_message, me, cid, p_emoji)
+  on conflict (message_id, user_id) do update set emoji = excluded.emoji, updated_at = now();
+end;
+$$;
+revoke all on function public.set_reaction(bigint, text) from public, anon;
+grant execute on function public.set_reaction(bigint, text) to authenticated;
+
+alter publication supabase_realtime add table public.message_reactions;
+
+-- ======================================================================
+-- Аккаунт поддержки: к нему ведёт кнопка «Поддержка»
+-- ======================================================================
+create table public.app_settings (
+  key text primary key,
+  value text,
+  updated_at timestamptz not null default now()
+);
+alter table public.app_settings enable row level security;
+create policy app_settings_select on public.app_settings for select to authenticated using (true);
+revoke all on public.app_settings from anon, authenticated;
+grant select on public.app_settings to authenticated;
+
+create function public.admin_set_support(p_username text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid;
+begin
+  if not public.is_chief_admin() then raise exception 'not allowed'; end if;
+  select id into uid from public.profiles where username = lower(btrim(coalesce(p_username, ''))) and banned_at is null;
+  if uid is null then raise exception 'user not found'; end if;
+  insert into public.app_settings (key, value) values ('support_user', uid::text)
+  on conflict (key) do update set value = excluded.value, updated_at = now();
+end;
+$$;
+revoke all on function public.admin_set_support(text) from public, anon;
+grant execute on function public.admin_set_support(text) to authenticated;

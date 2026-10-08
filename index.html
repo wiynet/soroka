@@ -177,6 +177,20 @@ button { cursor: pointer; }
 .msg.swiping { transition: none; }
 #swipeHint { position: fixed; z-index: 5; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); pointer-events: none; opacity: 0; }
 #swipeHint svg { width: 18px; height: 18px; }
+.support { display: flex; align-items: center; gap: 12px; margin: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--coin) 12%, transparent)); color: var(--ink); text-align: left; }
+.support .ico { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.support .ico svg { width: 20px; height: 20px; }
+.support b { display: block; font-weight: 600; }
+.sidebar .list { padding-bottom: 4px; }
+.reacts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.msg.giftm .reacts { justify-content: center; }
+.react { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px 1px 6px; background: color-mix(in srgb, var(--panel) 75%, transparent); color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 1.5; }
+.react .e { font-size: 15px; }
+.react.mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent); font-weight: 600; }
+.react-row { display: flex; justify-content: space-between; gap: 2px; padding-bottom: 4px; }
+.react-row button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; font-size: 24px; line-height: 1; padding: 0; }
+.react-row button:hover, .react-row button[aria-pressed="true"] { background: var(--panel-2); }
+.react-row button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
 .quote { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 3px 8px; margin: 2px 0 5px; font-size: 13px; color: inherit; cursor: pointer; }
 .quote b { display: block; color: var(--accent); font-weight: 600; }
 .quote span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42ch; }
@@ -382,6 +396,19 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .walls button { transition: border-color .18s, box-shadow .18s, transform .12s var(--ease); }
   .walls button:hover { transform: translateY(-2px); }
   .msg { transition: transform .22s var(--ease); }
+  .support { transition: transform .15s var(--ease), box-shadow .2s; animation: rise .4s var(--ease) both; }
+  .support:hover { transform: translateY(-2px); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .support:active { transform: scale(.98); }
+  @keyframes react-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); } 100% { transform: none; opacity: 1; } }
+  .react { transition: background-color .18s, border-color .18s, transform .12s var(--ease); }
+  .react:active { transform: scale(.9); }
+  .react.pop { animation: react-pop .35s var(--ease) both; }
+  .react-row button { transition: transform .15s var(--ease), background-color .18s; animation: react-pop .3s var(--ease) both; }
+  .react-row button:hover { transform: scale(1.25) translateY(-2px); }
+  .react-row button:nth-child(2) { animation-delay: 25ms; } .react-row button:nth-child(3) { animation-delay: 50ms; }
+  .react-row button:nth-child(4) { animation-delay: 75ms; } .react-row button:nth-child(5) { animation-delay: 100ms; }
+  .react-row button:nth-child(6) { animation-delay: 125ms; } .react-row button:nth-child(7) { animation-delay: 150ms; }
+  .react-row button:nth-child(8) { animation-delay: 175ms; }
   @keyframes hit { 0%, 100% { outline-color: transparent; } 30%, 70% { outline-color: var(--accent); } }
   .msg.hit { animation: hit 1.2s ease both; }
   .gift { animation: pop-in .28s var(--ease) both; transition: border-color .18s, box-shadow .18s, transform .12s var(--ease), background-color .18s; }
@@ -532,6 +559,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     </div>
     <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
     <div class="list" id="chatList"></div>
+    <button class="support" id="btnSupport" type="button">
+      <span class="ico" id="icoSupport"></span>
+      <span><b>Поддержка</b><span class="small muted">Вопросы и пополнение сорочек</span></span>
+    </button>
   </aside>
 
   <main class="pane">
@@ -603,6 +634,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <div><b id="coinBal">0</b><span class="small muted" id="coinWord">сорочек</span></div>
     </div>
     <div class="coin-log" id="coinLog"></div>
+    <div class="actions"><button class="btn ghost" type="button" id="coinBuy">Пополнить сорочки</button></div>
 
     <div class="set-label">Мои подарки</div>
     <div class="gift-grid" id="myGifts"></div>
@@ -740,6 +772,14 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <input class="input" id="adUserSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
       <div class="hint">Откройте профиль человека, чтобы забанить, разбанить или выдать галочку.</div>
       <div class="scroll" id="adUsers"></div>
+      <div id="adSupport" style="display:grid;gap:8px" hidden>
+        <div class="set-label">Аккаунт поддержки</div>
+        <div class="hint" id="adSupportNow"></div>
+        <div style="display:flex;gap:8px">
+          <div class="at-wrap" style="flex:1"><input class="input" id="adSupportUser" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="юзернейм"></div>
+          <button class="btn ghost" type="button" id="adSupportSet">Назначить</button>
+        </div>
+      </div>
       <div class="set-label">Администраторы</div>
       <div class="scroll" id="adAdmins"></div>
       <div class="hint" id="adChiefHint"></div>
@@ -837,6 +877,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 <!-- действия с сообщением -->
 <dialog id="dlgMsg">
   <div class="dlg sheet">
+    <div class="react-row" id="maReacts" role="group" aria-label="Реакция"></div>
     <button class="btn ghost" type="button" id="maReply">Ответить</button>
     <button class="btn ghost" type="button" id="maEdit">Изменить</button>
     <button class="btn ghost" type="button" id="maCopy">Скопировать текст</button>
@@ -918,7 +959,7 @@ if (!window.supabase) {
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const state = {
-  me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), giftTypes: null, balance: 0,
+  me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
   unread: new Set(), pendingFile: null, channel: null, urls: new Map(),
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
@@ -951,6 +992,7 @@ const ICONS = {
   crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-1.800 10H4.800z" fill="currentColor"/><path d="M5 20.500h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   check1: '<path d="M5 12.5l4.500 4.500L19 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   check2: '<path d="M1.500 12.500l4.500 4.500L15.500 7.500M10.500 15.500l1.500 1.500L22 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
+  help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   horn: '<path d="M4 10v4h3l7 4V6l-7 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17.5 9.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
@@ -1292,6 +1334,7 @@ async function startApp() {
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (p) => onIncoming(p.new))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (p) => onChanged(p.new))
     .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, (p) => onMember(p))
+    .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, (p) => onReact(p.new))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -1481,6 +1524,8 @@ async function openChat(id) {
   cancelEdit();
   cancelReply();
   state.replies.clear();
+  state.reacts.clear();
+  state.reactsLoaded.clear();
   $("placeholder").hidden = true;
   $("conv").hidden = false;
   $("app").classList.add("chat-open");
@@ -1576,6 +1621,8 @@ function msgNode(m) {
         m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»"),
         m.gift_id && h("button", { class: "view", type: "button", onclick: () => openGiftView(m.gift_id) }, "Открыть")));
   } else if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
+  const rr = reactRow(m);
+  if (rr) el.append(rr);
   let ticks = null;
   if (mine && c) {
     const read = m.id <= readUpTo(c);
@@ -1621,6 +1668,7 @@ function addMsg(m) {
   state.msgs.sort((a, b) => a.id - b.id);
   renderMsgs(m.id);
   if (stick) scrollDown();
+  state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
   if (m.reply_to || m.gift_id) ensureReplies();
   markReadSoon();
 }
@@ -1658,6 +1706,54 @@ const markReadSoon = debounce(() => {
   sb.rpc("mark_read", { p_chat: c.id, p_message: last }).then(() => {});
 }, 400);
 // сообщения, на которые отвечают, могут быть не загружены: дотягиваем их отдельно
+// реакции: одна на человека на сообщение
+const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"];
+function setReact(msgId, userId, emoji) {
+  let map = state.reacts.get(msgId);
+  if (!map) { map = new Map(); state.reacts.set(msgId, map); }
+  if (emoji) map.set(userId, emoji); else map.delete(userId);
+}
+function repaintMsgs() { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
+async function ensureReacts() {
+  const need = state.msgs.map((m) => m.id).filter((id) => !state.reactsLoaded.has(id));
+  if (!need.length) return;
+  for (const id of need) state.reactsLoaded.add(id);
+  const chat = state.activeId;
+  const { data } = await sb.from("message_reactions").select("message_id,user_id,emoji").in("message_id", need);
+  if (state.activeId !== chat || !data || !data.length) return;
+  for (const r of data) setReact(r.message_id, r.user_id, r.emoji);
+  repaintMsgs();
+}
+function onReact(r) {
+  if (!r || !state.started || r.chat_id !== state.activeId) return;
+  const cur = (state.reacts.get(r.message_id) || new Map()).get(r.user_id) || null;
+  if (cur === (r.emoji || null)) return;
+  setReact(r.message_id, r.user_id, r.emoji);
+  if (r.emoji) state.reactPop = r.message_id + "|" + r.emoji;
+  repaintMsgs();
+  state.reactPop = null;
+}
+async function toggleReact(m, emoji) {
+  const mine = (state.reacts.get(m.id) || new Map()).get(state.me.id) || null;
+  const next = mine === emoji ? null : emoji;
+  setReact(m.id, state.me.id, next);
+  if (next) state.reactPop = m.id + "|" + next;
+  repaintMsgs();
+  state.reactPop = null;
+  const { error } = await sb.rpc("set_reaction", { p_message: m.id, p_emoji: next });
+  if (error) { setReact(m.id, state.me.id, mine); repaintMsgs(); toast("Не удалось поставить реакцию"); }
+}
+function reactRow(m) {
+  const map = state.reacts.get(m.id);
+  if (!map || !map.size) return null;
+  const counts = new Map();
+  for (const e of map.values()) counts.set(e, (counts.get(e) || 0) + 1);
+  const mine = map.get(state.me.id);
+  return h("div", { class: "reacts" }, REACTIONS.filter((e) => counts.has(e)).map((e) =>
+    h("button", { class: "react" + (e === mine ? " mine" : "") + (state.reactPop === m.id + "|" + e ? " pop" : ""), type: "button",
+      title: e === mine ? "Убрать реакцию" : "Поставить такую же", onclick: () => toggleReact(m, e) },
+      h("span", { class: "e" }, e), String(counts.get(e)))));
+}
 // цены и статус подарков для карточек в переписке
 async function ensureGifts() {
   const need = [...new Set(state.msgs.map((m) => m.gift_id).filter((id) => id && !state.giftInfo.has(id)))];
@@ -1669,6 +1765,7 @@ async function ensureGifts() {
 }
 async function ensureReplies() {
   ensureGifts();
+  ensureReacts();
   const have = new Set(state.msgs.map((m) => m.id));
   const need = [...new Set(state.msgs.map((m) => m.reply_to).filter((id) => id && !have.has(id) && !state.replies.has(id)))];
   if (!need.length) return;
@@ -1928,7 +2025,7 @@ function showAdminTab(name) {
   for (const b of $("adTabs").children) b.setAttribute("aria-checked", String(b.dataset.tab === name));
   for (const pane of $("dlgAdmin").querySelectorAll("[data-pane]")) pane.hidden = pane.dataset.pane !== name;
   if (name === "stats") loadStats();
-  if (name === "users") { loadAdmins(); loadBanned(); }
+  if (name === "users") { loadSupportAdmin(); loadAdmins(); loadBanned(); }
   if (name === "nft") loadCollectibles();
 }
 $("adTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) showAdminTab(b.dataset.tab); });
@@ -1997,6 +2094,9 @@ function openMsgMenu(m) {
   delArmed = false;
   $("maDel").textContent = "Удалить";
   const c = state.chats.get(m.chat_id);
+  const myReact = (state.reacts.get(m.id) || new Map()).get(state.me.id);
+  $("maReacts").replaceChildren(...REACTIONS.map((e) =>
+    h("button", { type: "button", "aria-pressed": String(e === myReact), "aria-label": "Реакция " + e, onclick: () => { $("dlgMsg").close(); toggleReact(m, e); } }, e)));
   $("maReply").hidden = $("composer").hidden;
   $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type;
   $("maCopy").hidden = !m.body || !!m.gift_type;
@@ -2023,6 +2123,38 @@ $("maDel").addEventListener("click", async () => {
   renderMsgs();
   $("msgs").scrollTop = keep;
   reloadSoon();
+});
+
+// поддержка: кнопка открывает личный чат с аккаунтом поддержки
+async function supportId() {
+  const { data } = await sb.from("app_settings").select("value").eq("key", "support_user").maybeSingle();
+  return data && data.value ? data.value : null;
+}
+async function openSupport() {
+  const id = await supportId();
+  if (!id) { toast("Аккаунт поддержки пока не назначен"); return; }
+  if (id === state.me.id) { toast("Аккаунт поддержки — это вы. Сменить его можно в админке, на вкладке «Люди»."); return; }
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  startDirect(id);
+}
+$("btnSupport").addEventListener("click", openSupport);
+$("coinBuy").addEventListener("click", openSupport);
+async function loadSupportAdmin() {
+  $("adSupport").hidden = !state.isChief;
+  if (!state.isChief) return;
+  const id = await supportId();
+  const { data } = id ? await sb.from("profiles").select("username,display_name").eq("id", id).maybeSingle() : { data: null };
+  $("adSupportNow").textContent = data ? "Сейчас кнопка «Поддержка» ведёт к: " + data.display_name + " (@" + data.username + ")." : "Аккаунт поддержки не назначен.";
+}
+$("adSupportUser").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
+$("adSupportSet").addEventListener("click", async () => {
+  const u = $("adSupportUser").value;
+  if (!u) { toast("Введите юзернейм аккаунта поддержки"); return; }
+  const { error } = await sb.rpc("admin_set_support", { p_username: u });
+  if (error) { toast(/user not found/.test(error.message || "") ? "Пользователь @" + u + " не найден" : "Не удалось назначить поддержку"); return; }
+  $("adSupportUser").value = "";
+  toast("Поддержка теперь ведёт к @" + u);
+  loadSupportAdmin();
 });
 
 // создание: группа или канал
@@ -2641,6 +2773,7 @@ $("btnNewGroup").append(icon("plus"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));
+$("icoSupport").append(icon("help"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));
