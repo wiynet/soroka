@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сорока</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@600&display=swap">
+<style>
+/* Layout: list of chats on the left, conversation on the right; on phones one pane at a time. */
+:root {
+  --bg: #f3f5f6;          /* cool paper */
+  --panel: #ffffff;
+  --panel-2: #e9eef0;     /* inputs, hover */
+  --line: #d6dee2;
+  --ink: #131c22;         /* magpie black with a blue cast */
+  --muted: #5d6b74;
+  --accent: #0b6f86;      /* the blue-green sheen of a magpie wing */
+  --accent-ink: #ffffff;
+  --mine: #d3ecf0;        /* my message bubble */
+  --theirs: #ffffff;
+  --danger: #b3261e;
+  --font: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1317;
+    --panel: #131c22;
+    --panel-2: #1c2830;
+    --line: #26343d;
+    --ink: #e7eef1;
+    --muted: #8c9ba5;
+    --accent: #3fb6cf;
+    --accent-ink: #06181d;
+    --mine: #164652;
+    --theirs: #1c2830;
+    --danger: #ff8a80;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); overflow: hidden; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wordmark { font: 600 20px/1 var(--display); letter-spacing: -0.02em; }
+.wordmark i { font-style: normal; color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* ---------- buttons, fields ---------- */
+.btn { border: 0; border-radius: 10px; padding: 11px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.ghost { background: var(--panel-2); color: var(--ink); font-weight: 500; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); font-weight: 500; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 500; }
+.icon-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--muted); }
+.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+.icon-btn svg { width: 22px; height: 22px; }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 13px; color: var(--muted); }
+.input { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.hint { font-size: 13px; min-height: 18px; color: var(--muted); }
+.hint.bad { color: var(--danger); }
+.hint.ok { color: var(--accent); }
+.error { color: var(--danger); font-size: 14px; min-height: 20px; }
+
+/* ---------- auth ---------- */
+#auth { height: 100%; overflow: auto; display: grid; place-items: center; padding: 24px 16px; }
+.auth-card { width: min(400px, 100%); display: grid; gap: 20px; }
+.auth-card .wordmark { font-size: 30px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel-2); border-radius: 12px; padding: 4px; }
+.tabs button { border: 0; background: transparent; border-radius: 9px; padding: 9px; font-weight: 500; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); }
+.auth-card form { display: grid; gap: 14px; }
+.at-wrap { position: relative; }
+.at-wrap::before { content: "@"; position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.at-wrap .input { padding-left: 30px; }
+
+/* ---------- app shell ---------- */
+#app { height: 100%; display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); }
+.sidebar { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
+.side-head { display: flex; align-items: center; gap: 4px; padding: 12px 10px 8px 16px; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+.side-head .wordmark { flex: 1; }
+.search { padding: 4px 12px 10px; }
+.search .input { border-radius: 999px; background: var(--panel-2); border-color: transparent; padding: 9px 16px; }
+.list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.list-label { padding: 12px 10px 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 10px; border: 0; border-radius: 12px; background: transparent; text-align: left; }
+.row:hover { background: var(--panel-2); }
+.row.active { background: var(--mine); }
+.row .txt { flex: 1; min-width: 0; }
+.row .top { display: flex; gap: 8px; align-items: baseline; }
+.row .name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .time { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .sub { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; }
+.row .sub span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+.avatar { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: 16px; }
+.avatar.sm { width: 36px; height: 36px; font-size: 13px; }
+.empty-note { padding: 28px 18px; color: var(--muted); text-align: center; }
+
+/* ---------- conversation ---------- */
+.pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.placeholder { margin: auto; padding: 24px; text-align: center; color: var(--muted); max-width: 320px; }
+#conv { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.conv-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.conv-head .who { flex: 1; min-width: 0; border: 0; background: none; text-align: left; padding: 2px 0; }
+.conv-head .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#back { display: none; }
+#msgs { flex: 1; min-height: 0; overflow-y: auto; padding: 14px max(16px, calc((100% - 760px) / 2)); display: flex; flex-direction: column; gap: 4px; }
+.day { align-self: center; margin: 10px 0 6px; padding: 3px 12px; border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: 12px; }
+.msg { max-width: min(78%, 520px); padding: 7px 11px 6px; border-radius: 16px; background: var(--theirs); align-self: flex-start; border-bottom-left-radius: 5px; overflow-wrap: anywhere; }
+.msg.mine { background: var(--mine); align-self: flex-end; border-bottom-left-radius: 16px; border-bottom-right-radius: 5px; }
+.msg .author { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 1px; }
+.msg .body { white-space: pre-wrap; }
+.msg .body a { color: var(--accent); }
+.msg .meta { display: block; text-align: right; margin-top: 1px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.msg img.photo { display: block; max-width: 100%; max-height: 340px; min-height: 120px; min-width: 160px; border-radius: 10px; margin: 2px 0 5px; background: var(--panel-2); object-fit: cover; cursor: zoom-in; }
+.file { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; padding: 0; border: 0; background: none; text-align: left; max-width: 100%; }
+.file .ico { width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.file .ico svg { width: 20px; height: 20px; }
+.file .fn { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.more { align-self: center; margin-bottom: 6px; }
+.composer { display: flex; align-items: flex-end; gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--panel); border-top: 1px solid var(--line); }
+.composer textarea { flex: 1; min-width: 0; resize: none; max-height: 160px; padding: 9px 14px; border: 1px solid transparent; border-radius: 20px; background: var(--panel-2); }
+.composer textarea:focus { outline: none; border-color: var(--accent); }
+.composer .send { background: var(--accent); color: var(--accent-ink); }
+.composer .send:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.08); }
+.attach-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--panel); border-top: 1px solid var(--line); font-size: 14px; }
+.attach-chip span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- dialogs ---------- */
+dialog { width: min(420px, calc(100% - 32px)); max-height: calc(100% - 48px); border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--panel); color: var(--ink); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+.dlg { display: flex; flex-direction: column; gap: 14px; padding: 20px; max-height: inherit; }
+.dlg h2 { margin: 0; font: 600 18px/1.2 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+.dlg .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.dlg .scroll { overflow-y: auto; max-height: 260px; margin: 0 -8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--mine); font-size: 13px; }
+.check { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--line); }
+.row.picked .check { border-color: var(--accent); background: var(--accent); }
+#toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--bg); z-index: 50; }
+#viewer { width: auto; max-width: calc(100% - 24px); background: transparent; border: 0; }
+#viewer img { display: block; max-width: 100%; max-height: calc(100vh - 48px); border-radius: 8px; }
+
+@media (max-width: 760px) {
+  #app { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { border-right: 0; }
+  #app:not(.chat-open) .pane { display: none; }
+  #app.chat-open .sidebar { display: none; }
+  #back { display: grid; }
+  .msg { max-width: 86%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .row, .icon-btn, .btn { transition: background-color .12s; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ вход и регистрация ============ -->
+<section id="auth" hidden>
+  <div class="auth-card">
+    <div>
+      <div class="wordmark">Сорок<i>а</i></div>
+      <div class="muted" style="margin-top:8px">Личные чаты, группы, фото и файлы.</div>
+    </div>
+
+    <div id="authTabs" class="tabs" role="tablist">
+      <button type="button" role="tab" data-view="login" aria-selected="true">Вход</button>
+      <button type="button" role="tab" data-view="signup" aria-selected="false">Регистрация</button>
+    </div>
+
+    <form id="loginForm" data-view="login" novalidate>
+      <label class="field"><span>Почта</span><input class="input" id="loginEmail" type="email" autocomplete="email" required></label>
+      <label class="field"><span>Пароль</span><input class="input" id="loginPass" type="password" autocomplete="current-password" required></label>
+      <div class="error" id="loginErr"></div>
+      <button class="btn" type="submit">Войти</button>
+      <button class="link" type="button" data-go="reset">Забыли пароль?</button>
+    </form>
+
+    <form id="signupForm" data-view="signup" novalidate hidden>
+      <label class="field"><span>Имя</span><input class="input" id="suName" maxlength="64" autocomplete="name" required></label>
+      <label class="field"><span>Юзернейм</span>
+        <div class="at-wrap"><input class="input" id="suUser" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+        <div class="hint" id="suUserHint">Латинские буквы, цифры и _, от 4 символов</div>
+      </label>
+      <label class="field"><span>Почта</span><input class="input" id="suEmail" type="email" autocomplete="email" required></label>
+      <label class="field"><span>Пароль</span><input class="input" id="suPass" type="password" autocomplete="new-password" minlength="8" required>
+        <div class="hint">Не короче 8 символов</div></label>
+      <div class="error" id="signupErr"></div>
+      <button class="btn" type="submit">Создать аккаунт</button>
+    </form>
+
+    <form id="resetForm" data-view="reset" novalidate hidden>
+      <div>Укажите почту аккаунта. Мы отправим ссылку, по которой можно задать новый пароль.</div>
+      <label class="field"><span>Почта</span><input class="input" id="resetEmail" type="email" autocomplete="email" required></label>
+      <div class="error" id="resetErr"></div>
+      <button class="btn" type="submit">Отправить ссылку</button>
+      <button class="link" type="button" data-go="login">Назад ко входу</button>
+    </form>
+
+    <form id="newPassForm" data-view="newpass" novalidate hidden>
+      <div>Придумайте новый пароль.</div>
+      <label class="field"><span>Новый пароль</span><input class="input" id="newPass" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div class="error" id="newPassErr"></div>
+      <button class="btn" type="submit">Сохранить пароль</button>
+    </form>
+
+    <form id="usernameForm" data-view="username" novalidate hidden>
+      <div>Остался один шаг: выберите имя и юзернейм. По юзернейму вас будут находить другие.</div>
+      <label class="field"><span>Имя</span><input class="input" id="unName" maxlength="64" required></label>
+      <label class="field"><span>Юзернейм</span>
+        <div class="at-wrap"><input class="input" id="unUser" maxlength="32" autocapitalize="none" spellcheck="false" required></div>
+        <div class="hint" id="unUserHint">Латинские буквы, цифры и _, от 4 символов</div>
+      </label>
+      <div class="error" id="usernameErr"></div>
+      <button class="btn" type="submit">Продолжить</button>
+      <button class="link" type="button" id="unLogout">Выйти из аккаунта</button>
+    </form>
+
+    <div data-view="confirm" hidden>
+      <p style="margin:0 0 12px">Мы отправили письмо на <b id="confirmEmail"></b>. Откройте ссылку из письма, чтобы подтвердить почту, и затем войдите.</p>
+      <button class="btn ghost" type="button" data-go="login">Ко входу</button>
+    </div>
+    <div data-view="resetsent" hidden>
+      <p style="margin:0 0 12px">Ссылка для смены пароля отправлена. Проверьте почту.</p>
+      <button class="btn ghost" type="button" data-go="login">Ко входу</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ мессенджер ============ -->
+<div id="app" hidden>
+  <aside class="sidebar">
+    <div class="side-head">
+      <div class="wordmark">Сорок<i>а</i></div>
+      <button class="icon-btn" id="btnNewGroup" type="button" title="Новая группа" aria-label="Новая группа"></button>
+      <button class="icon-btn" id="btnProfile" type="button" title="Профиль" aria-label="Профиль"></button>
+    </div>
+    <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
+    <div class="list" id="chatList"></div>
+  </aside>
+
+  <main class="pane">
+    <div class="placeholder" id="placeholder">Выберите чат слева или найдите человека по юзернейму, чтобы написать ему.</div>
+    <div id="conv" hidden>
+      <header class="conv-head">
+        <button class="icon-btn" id="back" type="button" aria-label="К списку чатов"></button>
+        <span id="convAvatar"></span>
+        <button class="who" id="convWho" type="button">
+          <div class="name" id="convName"></div>
+          <div class="small muted" id="convSub"></div>
+        </button>
+      </header>
+      <div id="msgs"></div>
+      <div class="attach-chip" id="attachChip" hidden>
+        <span id="attachName"></span>
+        <button class="link" id="attachRemove" type="button">Убрать</button>
+      </div>
+      <form class="composer" id="composer">
+        <input type="file" id="fileInput" hidden>
+        <button class="icon-btn" id="btnAttach" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить фото или файл"></button>
+        <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
+        <button class="icon-btn send" id="btnSend" type="submit" title="Отправить" aria-label="Отправить"></button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<!-- профиль -->
+<dialog id="dlgProfile">
+  <form class="dlg" id="profileForm" novalidate>
+    <h2>Профиль</h2>
+    <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
+    <label class="field"><span>Юзернейм</span>
+      <div class="at-wrap"><input class="input" id="pfUser" maxlength="32" autocapitalize="none" spellcheck="false" required></div>
+    </label>
+    <div class="small muted" id="pfEmail"></div>
+    <div class="error" id="profileErr"></div>
+    <div class="actions">
+      <button class="btn danger" type="button" id="btnLogout" style="margin-right:auto">Выйти</button>
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
+      <button class="btn" type="submit">Сохранить</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- новая группа / добавление участников -->
+<dialog id="dlgPicker">
+  <form class="dlg" id="pickerForm" novalidate>
+    <h2 id="pickerTitle">Новая группа</h2>
+    <label class="field" id="pickerNameField"><span>Название</span><input class="input" id="pickerName" maxlength="64"></label>
+    <label class="field"><span>Участники</span><input class="input" id="pickerSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off"></label>
+    <div class="chips" id="pickerChips"></div>
+    <div class="scroll" id="pickerList"></div>
+    <div class="error" id="pickerErr"></div>
+    <div class="actions">
+      <button class="btn ghost" type="button" data-close>Отмена</button>
+      <button class="btn" type="submit" id="pickerSubmit">Создать группу</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- о группе -->
+<dialog id="dlgInfo">
+  <div class="dlg">
+    <h2 id="infoTitle"></h2>
+    <div class="small muted" id="infoCount"></div>
+    <div class="scroll" id="infoList"></div>
+    <div class="actions">
+      <button class="btn danger" type="button" id="btnLeave" style="margin-right:auto">Покинуть группу</button>
+      <button class="btn ghost" type="button" id="btnAddMembers">Добавить участников</button>
+      <button class="btn" type="button" data-close>Закрыть</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="viewer"><img id="viewerImg" alt=""></dialog>
+<div id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+"use strict";
+/* ---------- настройки ---------- */
+const SUPABASE_URL = "https://zgjptlyhflfwbnmzpdsa.supabase.co";
+// Публичный ключ: его можно держать в коде сайта, доступ к данным ограничивают правила в базе.
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnanB0bHloZmxmd2JubXpwZHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NjM3NjcsImV4cCI6MjEwNzAzOTc2N30.HfSRmQ6Cxcs7i8lrPXWixxB08z8cs_Z2mwOD7G0EeiM";
+const APP_NAME = "Сорока";
+const MAX_FILE = 20 * 1024 * 1024;
+const PAGE = 50;
+const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
+const HERE = location.origin + location.pathname;
+
+const $ = (id) => document.getElementById(id);
+if (!window.supabase) {
+  document.body.textContent = "Не удалось загрузить библиотеку. Проверьте интернет и обновите страницу.";
+  throw new Error("supabase-js not loaded");
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const state = {
+  me: null, profile: null, recovering: false, started: false,
+  chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
+  unread: new Set(), pendingFile: null, channel: null, urls: new Map(),
+  picker: { mode: "create", selected: new Map(), exclude: new Set() },
+};
+
+/* ---------- мелкие помощники ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null || kid === false) continue;
+    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+const ICONS = {
+  send: '<path d="M4 12l16-8-6 16-3-7-7-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  clip: '<path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.600-8.6a3.300 3.300 0 014.700 4.700l-8.500 8.500a1.700 1.700 0 01-2.400-2.400l7.800-7.800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  back: '<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  group: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c.6-3.200 3-5 6-5s5.400 1.800 6 5"/><path d="M18.500 6.500v6M15.500 9.500h6"/></g>',
+  file: '<path d="M7 3h7l4 4v14H7z M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+};
+function icon(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24");
+  s.setAttribute("aria-hidden", "true");
+  s.innerHTML = ICONS[name];
+  return s;
+}
+function avatar(name, seed, small) {
+  let n = 0;
+  for (const ch of String(seed || name)) n = (n * 31 + ch.codePointAt(0)) % 360;
+  const letters = String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] || "").join("").toUpperCase();
+  const el = h("span", { class: "avatar" + (small ? " sm" : ""), "aria-hidden": "true" }, letters || "?");
+  el.style.background = "hsl(" + n + " 42% 42%)";
+  return el;
+}
+let toastTimer;
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+function fmtSize(n) {
+  if (n < 1024) return n + " Б";
+  if (n < 1048576) return (n / 1024).toFixed(0) + " КБ";
+  return (n / 1048576).toFixed(1).replace(".", ",") + " МБ";
+}
+const tFmt = new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" });
+const dFmt = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
+const dyFmt = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
+const wFmt = new Intl.DateTimeFormat("ru", { weekday: "short" });
+const sFmt = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit", year: "2-digit" });
+function dayKey(d) { return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); }
+function daysAgo(d) {
+  const a = new Date(); a.setHours(0, 0, 0, 0);
+  const b = new Date(d); b.setHours(0, 0, 0, 0);
+  return Math.round((a - b) / 86400000);
+}
+function dayLabel(d) {
+  const n = daysAgo(d);
+  if (n === 0) return "Сегодня";
+  if (n === 1) return "Вчера";
+  return d.getFullYear() === new Date().getFullYear() ? dFmt.format(d) : dyFmt.format(d);
+}
+function listTime(iso) {
+  const d = new Date(iso), n = daysAgo(d);
+  if (n === 0) return tFmt.format(d);
+  if (n < 7) return wFmt.format(d);
+  return sFmt.format(d);
+}
+function plural(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return one;
+  if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
+  return many;
+}
+function authError(e) {
+  const m = (e && e.message) || "";
+  if (/Invalid login credentials/i.test(m)) return "Неверная почта или пароль.";
+  if (/Email not confirmed/i.test(m)) return "Почта ещё не подтверждена. Откройте ссылку из письма.";
+  if (/already registered/i.test(m)) return "Эта почта уже зарегистрирована. Войдите или восстановите пароль.";
+  if (/rate limit|too many|security purposes/i.test(m)) return "Слишком много попыток. Подождите немного и попробуйте снова.";
+  if (/password/i.test(m) && /least|short|weak/i.test(m)) return "Пароль слишком простой или короткий.";
+  if (/valid email|invalid.*email/i.test(m)) return "Проверьте адрес почты.";
+  if (/fetch|network/i.test(m)) return "Нет связи с сервером. Проверьте интернет.";
+  return "Не получилось: " + (m || "неизвестная ошибка");
+}
+async function busy(form, fn) {
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = true;
+  try { await fn(); } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---------- экраны входа ---------- */
+function showAuth(view) {
+  $("app").hidden = true;
+  $("auth").hidden = false;
+  for (const el of $("auth").querySelectorAll("[data-view]")) {
+    if (el.parentElement.id === "authTabs") el.setAttribute("aria-selected", String(el.dataset.view === view));
+    else el.hidden = el.dataset.view !== view;
+  }
+  $("authTabs").hidden = !(view === "login" || view === "signup");
+  for (const e of $("auth").querySelectorAll(".error")) e.textContent = "";
+}
+$("authTabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-view]");
+  if (b) showAuth(b.dataset.view);
+});
+$("auth").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-go]");
+  if (b) showAuth(b.dataset.go);
+});
+
+function watchUsername(input, hint, currentFn) {
+  const check = debounce(async () => {
+    const u = input.value;
+    if (!u) { hint.className = "hint"; hint.textContent = "Латинские буквы, цифры и _, от 4 символов"; return; }
+    if (!USERNAME_RE.test(u)) {
+      hint.className = "hint bad";
+      hint.textContent = "От 4 до 32 символов: латинские буквы, цифры и _, первой идёт буква";
+      return;
+    }
+    if (currentFn && currentFn() === u) { hint.className = "hint"; hint.textContent = ""; return; }
+    const { data, error } = await sb.rpc("username_available", { u });
+    if (input.value !== u || error) return;
+    hint.className = "hint " + (data ? "ok" : "bad");
+    hint.textContent = data ? "@" + u + " свободен" : "@" + u + " уже занят";
+  }, 300);
+  input.addEventListener("input", () => {
+    input.value = input.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, "");
+    check();
+  });
+}
+watchUsername($("suUser"), $("suUserHint"));
+watchUsername($("unUser"), $("unUserHint"));
+
+$("loginForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  busy(e.target, async () => {
+    const { error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPass").value });
+    if (error) $("loginErr").textContent = authError(error);
+  });
+});
+
+$("signupForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const err = $("signupErr");
+  const name = $("suName").value.trim(), username = $("suUser").value, email = $("suEmail").value.trim(), password = $("suPass").value;
+  if (!name) { err.textContent = "Укажите имя."; return; }
+  if (!USERNAME_RE.test(username)) { err.textContent = "Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква."; return; }
+  if (!email) { err.textContent = "Укажите почту."; return; }
+  if (password.length < 8) { err.textContent = "Пароль должен быть не короче 8 символов."; return; }
+  err.textContent = "";
+  busy(e.target, async () => {
+    const free = await sb.rpc("username_available", { u: username });
+    if (free.error) { err.textContent = authError(free.error); return; }
+    if (!free.data) { err.textContent = "Юзернейм @" + username + " уже занят."; return; }
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: { data: { username, display_name: name }, emailRedirectTo: HERE },
+    });
+    if (error) { err.textContent = authError(error); return; }
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      err.textContent = "Эта почта уже зарегистрирована. Войдите или восстановите пароль.";
+      return;
+    }
+    if (!data.session) { $("confirmEmail").textContent = email; showAuth("confirm"); }
+  });
+});
+
+$("resetForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  busy(e.target, async () => {
+    const { error } = await sb.auth.resetPasswordForEmail($("resetEmail").value.trim(), { redirectTo: HERE });
+    if (error) $("resetErr").textContent = authError(error); else showAuth("resetsent");
+  });
+});
+
+$("newPassForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = $("newPass").value;
+  if (p.length < 8) { $("newPassErr").textContent = "Пароль должен быть не короче 8 символов."; return; }
+  busy(e.target, async () => {
+    const { error } = await sb.auth.updateUser({ password: p });
+    if (error) { $("newPassErr").textContent = authError(error); return; }
+    state.recovering = false;
+    toast("Пароль изменён");
+    enter();
+  });
+});
+
+$("usernameForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("unName").value.trim(), username = $("unUser").value, err = $("usernameErr");
+  if (!name) { err.textContent = "Укажите имя."; return; }
+  if (!USERNAME_RE.test(username)) { err.textContent = "Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква."; return; }
+  busy(e.target, async () => {
+    const res = await createProfile(username, name);
+    if (res === "taken") err.textContent = "Юзернейм @" + username + " уже занят.";
+    else if (res !== "ok") err.textContent = "Не получилось сохранить профиль. Попробуйте ещё раз.";
+    else startApp();
+  });
+});
+$("unLogout").addEventListener("click", () => sb.auth.signOut());
+
+/* ---------- сессия ---------- */
+sb.auth.onAuthStateChange((event, session) => {
+  // Запросы к Supabase внутри этого обработчика делать нельзя, поэтому откладываем.
+  setTimeout(() => onAuth(event, session), 0);
+});
+function onAuth(event, session) {
+  if (event === "PASSWORD_RECOVERY") {
+    state.recovering = true;
+    state.me = session ? session.user : null;
+    stopApp();
+    showAuth("newpass");
+    return;
+  }
+  if (!session) {
+    state.me = null; state.profile = null; state.recovering = false;
+    stopApp();
+    showAuth("login");
+    return;
+  }
+  if (state.recovering) return;
+  if (state.me && state.me.id === session.user.id && (state.started || !$("auth").hidden)) { state.me = session.user; return; }
+  state.me = session.user;
+  enter();
+}
+async function createProfile(username, name) {
+  const { data, error } = await sb.from("profiles").insert({ id: state.me.id, username, display_name: name }).select().single();
+  if (error) return error.code === "23505" ? "taken" : "error";
+  state.profile = data;
+  return "ok";
+}
+async function enter() {
+  const { data, error } = await sb.from("profiles").select("*").eq("id", state.me.id).maybeSingle();
+  if (error) { showAuth("login"); $("loginErr").textContent = "Не удалось загрузить профиль. Обновите страницу."; return; }
+  if (data) { state.profile = data; startApp(); return; }
+  const meta = state.me.user_metadata || {};
+  const name = String(meta.display_name || "").trim().slice(0, 64);
+  const username = String(meta.username || "").toLowerCase();
+  if (name && USERNAME_RE.test(username) && (await createProfile(username, name)) === "ok") { startApp(); return; }
+  $("unName").value = name;
+  $("unUser").value = "";
+  showAuth("username");
+  if (username) $("usernameErr").textContent = "Юзернейм @" + username + " успели занять. Выберите другой.";
+}
+
+/* ---------- запуск и остановка ---------- */
+async function startApp() {
+  state.started = true;
+  $("auth").hidden = true;
+  $("app").hidden = false;
+  const pb = $("btnProfile");
+  pb.replaceChildren(avatar(state.profile.display_name, state.profile.id, true));
+  await loadChats();
+  if (state.channel) sb.removeChannel(state.channel);
+  state.channel = sb.channel("inbox")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (p) => onIncoming(p.new))
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_members" }, () => reloadSoon())
+    .subscribe();
+}
+function stopApp() {
+  if (state.channel) { sb.removeChannel(state.channel); state.channel = null; }
+  state.started = false;
+  state.chats.clear(); state.unread.clear(); state.urls.clear();
+  state.activeId = null; state.msgs = [];
+  setPending(null);
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  $("app").hidden = true;
+  $("app").classList.remove("chat-open");
+  $("conv").hidden = true; $("placeholder").hidden = false;
+  $("search").value = "";
+  document.title = APP_NAME;
+}
+
+/* ---------- список чатов ---------- */
+async function loadChats() {
+  const { data, error } = await sb.from("chats")
+    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name))")
+    .order("last_message_at", { ascending: false });
+  if (error) { toast("Не удалось загрузить чаты"); return; }
+  if (!state.started) return;
+  state.chats = new Map(data.map((c) => [c.id, {
+    id: c.id, is_group: c.is_group, title: c.title,
+    last_at: c.last_message_at, last_text: c.last_message_text, last_sender: c.last_message_sender,
+    members: c.chat_members.map((m) => m.profiles).filter(Boolean),
+  }]));
+  if (state.activeId && !state.chats.has(state.activeId)) closeChat();
+  renderList();
+  if (state.activeId) renderHead();
+}
+const reloadSoon = debounce(() => { if (state.started) loadChats(); }, 400);
+
+function other(c) { return c.members.find((p) => p.id !== state.me.id); }
+function chatTitle(c) {
+  if (c.is_group) return c.title || "Группа";
+  const o = other(c);
+  return o ? o.display_name : "Избранное";
+}
+function memberName(c, id) {
+  const p = c.members.find((m) => m.id === id);
+  return p ? p.display_name : "Участник";
+}
+function chatRow(c) {
+  let preview = c.last_text || (c.is_group ? "Группа создана" : "Нет сообщений");
+  if (c.last_text && c.last_sender === state.me.id) preview = "Вы: " + preview;
+  else if (c.last_text && c.is_group) preview = memberName(c, c.last_sender) + ": " + preview;
+  return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
+    avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id),
+    h("span", { class: "txt" },
+      h("span", { class: "top" }, h("span", { class: "name" }, chatTitle(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
+}
+function personRow(p, onclick, picked) {
+  return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
+    avatar(p.display_name, p.id, true),
+    h("span", { class: "txt" }, h("span", { class: "name" }, p.display_name), h("span", { class: "sub" }, h("span", {}, "@" + p.username))),
+    picked != null && h("span", { class: "check" }));
+}
+let searchSeq = 0;
+async function renderList() {
+  const list = $("chatList"), q = $("search").value.trim();
+  const chats = [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
+  document.title = (state.unread.size ? "(" + state.unread.size + ") " : "") + APP_NAME;
+  if (!q) {
+    if (!chats.length) {
+      list.replaceChildren(h("div", { class: "empty-note" }, "Чатов пока нет. Найдите человека по юзернейму в поиске выше или создайте группу."));
+    } else list.replaceChildren(...chats.map(chatRow));
+    return;
+  }
+  const needle = q.replace(/^@/, "").toLowerCase();
+  const found = chats.filter((c) => chatTitle(c).toLowerCase().includes(needle) || (!c.is_group && other(c) && other(c).username.includes(needle)));
+  const seq = ++searchSeq;
+  const paint = (people, pending) => {
+    const kids = [];
+    if (found.length) kids.push(h("div", { class: "list-label" }, "Чаты"), ...found.map(chatRow));
+    if (people.length) kids.push(h("div", { class: "list-label" }, "Люди"), ...people.map((p) => personRow(p, () => startDirect(p.id))));
+    if (!kids.length) kids.push(h("div", { class: "empty-note" }, pending ? "Ищем…" : "Никого не нашли. Проверьте юзернейм."));
+    list.replaceChildren(...kids);
+  };
+  paint([], true);
+  const known = new Set(found.filter((c) => !c.is_group && other(c)).map((c) => other(c).id));
+  const people = (await searchPeople(q)).filter((p) => !known.has(p.id));
+  if (seq === searchSeq) paint(people, false);
+}
+async function searchPeople(q) {
+  const s = q.replace(/^@/, "").replace(/[^\p{L}\p{N}_ ]/gu, "").trim();
+  if (s.length < 2) return [];
+  const { data, error } = await sb.from("profiles").select("id,username,display_name")
+    .or('username.ilike."' + s + '%",display_name.ilike."%' + s + '%"')
+    .neq("id", state.me.id).limit(20);
+  return error ? [] : data;
+}
+$("search").addEventListener("input", debounce(renderList, 250));
+
+async function startDirect(userId) {
+  const { data, error } = await sb.rpc("open_direct_chat", { other: userId });
+  if (error) { toast("Не удалось открыть чат"); return; }
+  $("search").value = "";
+  await loadChats();
+  openChat(data);
+}
+
+/* ---------- переписка ---------- */
+function renderHead() {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const o = other(c);
+  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true));
+  $("convName").textContent = chatTitle(c);
+  const n = c.members.length;
+  $("convSub").textContent = c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? "@" + o.username : "заметки для себя");
+  $("convWho").disabled = !c.is_group;
+  $("convWho").style.cursor = c.is_group ? "pointer" : "default";
+}
+async function openChat(id) {
+  const c = state.chats.get(id);
+  if (!c) return;
+  state.activeId = id;
+  state.msgs = []; state.hasMore = false;
+  state.unread.delete(id);
+  setPending(null);
+  $("placeholder").hidden = true;
+  $("conv").hidden = false;
+  $("app").classList.add("chat-open");
+  renderHead();
+  renderList();
+  $("msgs").replaceChildren(h("div", { class: "empty-note" }, "Загружаем сообщения…"));
+  const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).order("id", { ascending: false }).limit(PAGE);
+  if (state.activeId !== id) return;
+  if (error) { $("msgs").replaceChildren(h("div", { class: "empty-note" }, "Не удалось загрузить сообщения.")); return; }
+  state.msgs = data.reverse();
+  state.hasMore = data.length === PAGE;
+  renderMsgs();
+  scrollDown();
+  if (matchMedia("(min-width: 761px)").matches) $("text").focus();
+}
+function closeChat() {
+  state.activeId = null; state.msgs = [];
+  $("conv").hidden = true; $("placeholder").hidden = false;
+  $("app").classList.remove("chat-open");
+  renderList();
+}
+$("back").addEventListener("click", closeChat);
+
+function scrollDown() { const m = $("msgs"); m.scrollTop = m.scrollHeight; }
+function nearBottom() { const m = $("msgs"); return m.scrollHeight - m.scrollTop - m.clientHeight < 120; }
+
+function linkify(text) {
+  return text.split(/(https?:\/\/[^\s<]+)/g).map((part, i) =>
+    i % 2 ? h("a", { href: part, target: "_blank", rel: "noopener noreferrer" }, part) : part);
+}
+async function signedUrl(path, downloadName) {
+  const key = path + (downloadName ? "|d" : "");
+  const hit = state.urls.get(key);
+  if (hit && hit.exp > Date.now()) return hit.url;
+  const { data, error } = await sb.storage.from("attachments").createSignedUrl(path, 3600, downloadName ? { download: downloadName } : undefined);
+  if (error) return null;
+  state.urls.set(key, { url: data.signedUrl, exp: Date.now() + 3000 * 1000 });
+  return data.signedUrl;
+}
+function msgNode(m) {
+  const c = state.chats.get(m.chat_id);
+  const mine = m.sender_id === state.me.id;
+  const el = h("div", { class: "msg" + (mine ? " mine" : "") });
+  if (c && c.is_group && !mine) el.append(h("div", { class: "author" }, memberName(c, m.sender_id)));
+  if (m.file_path) {
+    if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
+      const img = h("img", { class: "photo", alt: m.file_name || "Фото", loading: "lazy" });
+      const stick = nearBottom();
+      img.addEventListener("load", () => { img.style.minHeight = "0"; img.style.minWidth = "0"; if (stick) scrollDown(); });
+      img.addEventListener("click", () => { $("viewerImg").src = img.src; $("viewer").showModal(); });
+      signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+      el.append(img);
+    } else {
+      el.append(h("button", { class: "file", type: "button", onclick: async () => {
+          const u = await signedUrl(m.file_path, m.file_name || "file");
+          if (u) window.open(u, "_blank", "noopener"); else toast("Не удалось открыть файл");
+        } },
+        h("span", { class: "ico" }, icon("file")),
+        h("span", {}, h("div", { class: "fn" }, m.file_name || "Файл"), h("div", { class: "small muted" }, fmtSize(m.file_size || 0)))));
+    }
+  }
+  if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
+  el.append(h("span", { class: "meta" }, tFmt.format(new Date(m.created_at))));
+  return el;
+}
+function renderMsgs() {
+  const kids = [];
+  if (state.hasMore) kids.push(h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, "Показать более ранние"));
+  if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, "Здесь пока пусто. Напишите первое сообщение."));
+  let prev = "";
+  for (const m of state.msgs) {
+    const d = new Date(m.created_at), k = dayKey(d);
+    if (k !== prev) { kids.push(h("div", { class: "day" }, dayLabel(d))); prev = k; }
+    kids.push(msgNode(m));
+  }
+  $("msgs").replaceChildren(...kids);
+}
+async function loadEarlier() {
+  if (state.loadingMore || !state.msgs.length) return;
+  state.loadingMore = true;
+  const id = state.activeId, box = $("msgs"), before = box.scrollHeight;
+  const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).lt("id", state.msgs[0].id).order("id", { ascending: false }).limit(PAGE);
+  state.loadingMore = false;
+  if (error || state.activeId !== id) return;
+  state.msgs = data.reverse().concat(state.msgs);
+  state.hasMore = data.length === PAGE;
+  renderMsgs();
+  box.scrollTop = box.scrollHeight - before;
+}
+function addMsg(m) {
+  if (state.msgs.some((x) => x.id === m.id)) return;
+  const stick = nearBottom() || m.sender_id === state.me.id;
+  state.msgs.push(m);
+  state.msgs.sort((a, b) => a.id - b.id);
+  renderMsgs();
+  if (stick) scrollDown();
+}
+function touchChat(m) {
+  const c = state.chats.get(m.chat_id);
+  if (!c) return;
+  c.last_at = m.created_at;
+  c.last_text = (m.body || m.file_name || "Файл").slice(0, 140);
+  c.last_sender = m.sender_id;
+}
+function onIncoming(m) {
+  if (!state.started) return;
+  if (!state.chats.has(m.chat_id)) { state.unread.add(m.chat_id); reloadSoon(); return; }
+  touchChat(m);
+  if (m.chat_id === state.activeId) {
+    addMsg(m);
+    if (document.hidden && m.sender_id !== state.me.id) state.unread.add(m.chat_id);
+  } else if (m.sender_id !== state.me.id) state.unread.add(m.chat_id);
+  renderList();
+}
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !state.started) return;
+  // После сна телефона часть событий могла потеряться: догружаем.
+  if (state.activeId) state.unread.delete(state.activeId);
+  await loadChats();
+  const id = state.activeId;
+  if (!id || !state.msgs.length) return;
+  const { data } = await sb.from("messages").select("*").eq("chat_id", id).gt("id", state.msgs[state.msgs.length - 1].id).order("id").limit(200);
+  if (data && state.activeId === id) data.forEach(addMsg);
+});
+
+/* ---------- отправка ---------- */
+function setPending(file) {
+  state.pendingFile = file;
+  $("attachChip").hidden = !file;
+  $("attachName").textContent = file ? file.name + " · " + fmtSize(file.size) : "";
+  $("fileInput").value = "";
+}
+function pickFile(file) {
+  if (!file) return;
+  if (file.size > MAX_FILE) { toast("Файл больше 20 МБ. Выберите файл поменьше."); return; }
+  setPending(file);
+}
+$("btnAttach").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", (e) => pickFile(e.target.files[0]));
+$("attachRemove").addEventListener("click", () => setPending(null));
+$("text").addEventListener("paste", (e) => {
+  const f = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
+  if (f) { e.preventDefault(); pickFile(f); }
+});
+function fitText() {
+  const t = $("text");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight + 2, 160) + "px";
+}
+$("text").addEventListener("input", fitText);
+$("text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer: fine)").matches) {
+    e.preventDefault();
+    $("composer").requestSubmit();
+  }
+});
+let sending = false;
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const chatId = state.activeId, body = $("text").value.trim(), file = state.pendingFile;
+  if (sending || !chatId || (!body && !file)) return;
+  sending = true;
+  $("btnSend").disabled = true;
+  try {
+    const row = { chat_id: chatId, sender_id: state.me.id, body };
+    if (file) {
+      const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
+      const path = chatId + "/" + crypto.randomUUID() + (ext ? "." + ext.toLowerCase() : "");
+      const up = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
+      if (up.error) { toast("Не удалось загрузить файл. Сообщение не отправлено."); return; }
+      Object.assign(row, { file_path: path, file_name: file.name.slice(0, 255), file_type: (file.type || "application/octet-stream").slice(0, 127), file_size: file.size });
+    }
+    const { data, error } = await sb.from("messages").insert(row).select().single();
+    if (error) { toast("Сообщение не отправлено. Проверьте связь и попробуйте ещё раз."); return; }
+    $("text").value = "";
+    fitText();
+    setPending(null);
+    touchChat(data);
+    if (state.activeId === chatId) addMsg(data);
+    renderList();
+  } finally {
+    sending = false;
+    $("btnSend").disabled = false;
+  }
+});
+
+/* ---------- диалоги ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-close]");
+  if (b) b.closest("dialog").close();
+});
+for (const d of document.querySelectorAll("dialog")) {
+  d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+}
+
+// профиль
+$("btnProfile").addEventListener("click", () => {
+  $("pfName").value = state.profile.display_name;
+  $("pfUser").value = state.profile.username;
+  $("pfEmail").textContent = state.me.email || "";
+  $("profileErr").textContent = "";
+  $("dlgProfile").showModal();
+});
+$("pfUser").addEventListener("input", (e) => {
+  e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, "");
+});
+$("profileForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("pfName").value.trim(), username = $("pfUser").value, err = $("profileErr");
+  if (!name) { err.textContent = "Укажите имя."; return; }
+  if (!USERNAME_RE.test(username)) { err.textContent = "Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква."; return; }
+  busy(e.target, async () => {
+    const { data, error } = await sb.from("profiles").update({ display_name: name, username }).eq("id", state.me.id).select().single();
+    if (error) { err.textContent = error.code === "23505" ? "Юзернейм @" + username + " уже занят." : "Не удалось сохранить."; return; }
+    state.profile = data;
+    $("btnProfile").replaceChildren(avatar(data.display_name, data.id, true));
+    $("dlgProfile").close();
+    toast("Профиль сохранён");
+    loadChats();
+  });
+});
+$("btnLogout").addEventListener("click", () => sb.auth.signOut());
+
+// выбор участников: новая группа или добавление в группу
+function openPicker(mode) {
+  const p = state.picker;
+  p.mode = mode;
+  p.selected = new Map();
+  const c = state.chats.get(state.activeId);
+  p.exclude = new Set(mode === "add" && c ? c.members.map((m) => m.id) : []);
+  $("pickerTitle").textContent = mode === "add" ? "Добавить участников" : "Новая группа";
+  $("pickerSubmit").textContent = mode === "add" ? "Добавить" : "Создать группу";
+  $("pickerNameField").hidden = mode === "add";
+  $("pickerName").value = ""; $("pickerSearch").value = ""; $("pickerErr").textContent = "";
+  renderPicker([]);
+  $("dlgPicker").showModal();
+}
+let pickerFound = [];
+function renderPicker(found) {
+  pickerFound = found;
+  const p = state.picker;
+  $("pickerChips").replaceChildren(...[...p.selected.values()].map((u) =>
+    h("button", { class: "chip", type: "button", title: "Убрать", onclick: () => { p.selected.delete(u.id); renderPicker(pickerFound); } }, u.display_name + " ×")));
+  const rows = found.filter((u) => !p.exclude.has(u.id)).map((u) => personRow(u, () => {
+    if (p.selected.has(u.id)) p.selected.delete(u.id); else p.selected.set(u.id, u);
+    renderPicker(pickerFound);
+  }, p.selected.has(u.id)));
+  $("pickerList").replaceChildren(...(rows.length ? rows : [h("div", { class: "empty-note" },
+    $("pickerSearch").value.trim().length < 2 ? "Начните вводить имя или юзернейм." : "Никого не нашли.")]));
+}
+$("pickerSearch").addEventListener("input", debounce(async () => {
+  const q = $("pickerSearch").value;
+  const found = await searchPeople(q);
+  if ($("pickerSearch").value === q) renderPicker(found);
+}, 250));
+$("pickerForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = state.picker, err = $("pickerErr"), ids = [...p.selected.keys()];
+  if (p.mode === "create" && !$("pickerName").value.trim()) { err.textContent = "Придумайте название группы."; return; }
+  if (!ids.length) { err.textContent = "Выберите хотя бы одного участника."; return; }
+  busy(e.target, async () => {
+    if (p.mode === "create") {
+      const { data, error } = await sb.rpc("create_group", { p_title: $("pickerName").value.trim(), p_members: ids });
+      if (error) { err.textContent = "Не удалось создать группу."; return; }
+      $("dlgPicker").close();
+      await loadChats();
+      openChat(data);
+    } else {
+      const { error } = await sb.rpc("add_group_members", { p_chat: state.activeId, p_members: ids });
+      if (error) { err.textContent = "Не удалось добавить участников."; return; }
+      $("dlgPicker").close();
+      await loadChats();
+      toast("Участники добавлены");
+    }
+  });
+});
+$("btnNewGroup").addEventListener("click", () => openPicker("create"));
+
+// о группе
+let leaveArmed = false;
+$("convWho").addEventListener("click", () => {
+  const c = state.chats.get(state.activeId);
+  if (!c || !c.is_group) return;
+  $("infoTitle").textContent = c.title;
+  const n = c.members.length;
+  $("infoCount").textContent = n + " " + plural(n, "участник", "участника", "участников");
+  $("infoList").replaceChildren(...c.members.map((p) => personRow(p, () => { if (p.id !== state.me.id) { $("dlgInfo").close(); startDirect(p.id); } })));
+  leaveArmed = false;
+  $("btnLeave").textContent = "Покинуть группу";
+  $("dlgInfo").showModal();
+});
+$("btnAddMembers").addEventListener("click", () => { $("dlgInfo").close(); openPicker("add"); });
+$("btnLeave").addEventListener("click", async () => {
+  if (!leaveArmed) { leaveArmed = true; $("btnLeave").textContent = "Точно покинуть?"; return; }
+  const { error } = await sb.rpc("leave_group", { p_chat: state.activeId });
+  if (error) { toast("Не удалось выйти из группы"); return; }
+  $("dlgInfo").close();
+  closeChat();
+  loadChats();
+});
+
+/* ---------- иконки ---------- */
+$("btnNewGroup").append(icon("group"));
+$("btnAttach").append(icon("clip"));
+$("btnSend").append(icon("send"));
+$("back").append(icon("back"));
+</script>
+</body>
+</html>
