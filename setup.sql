@@ -790,3 +790,13 @@ $$;
 revoke all on function public.is_chief_admin() from public, anon;
 revoke all on function public.admin_set_admin(uuid, boolean) from public, anon;
 grant execute on function public.is_chief_admin(), public.admin_set_admin(uuid, boolean) to authenticated;
+
+-- ======================================================================
+-- Подарок появляется сообщением в личном чате дарителя и получателя
+-- ======================================================================
+alter table public.messages
+  add column gift_type text references public.gift_types(id),
+  add column gift_note text check (gift_note is null or char_length(gift_note) <= 120);
+-- В рабочей базе send_gift после записи подарка открывает личный чат (open_direct_chat)
+-- и добавляет туда сообщение с gift_type и gift_note; edit_message такие сообщения не меняет.
+-- Клиенту запись gift_type не разрешена, поэтому подделать сообщение-подарок нельзя.
