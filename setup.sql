@@ -576,3 +576,171 @@ $$;
 revoke all on function public.admin_grant_coins(uuid, bigint, text) from public, anon;
 grant execute on function public.admin_grant_coins(uuid, bigint, text) to authenticated;
 -- в рабочей базе admin_stats дополнительно возвращает 'coins': сумму всех балансов.
+
+-- ======================================================================
+-- Подарки, премиум, ответы на сообщения, отметки «прочитано», значок админа
+-- ======================================================================
+alter table public.profiles
+  add column premium_until timestamptz,
+  add column name_hue smallint check (name_hue is null or name_hue between 0 and 359),
+  add column is_admin boolean not null default false; -- только для значка; права проверяются по private.admins
+update public.profiles p set is_admin = true from private.admins a where a.user_id = p.id;
+
+alter table public.messages add column reply_to bigint references public.messages(id) on delete set null;
+grant insert (reply_to) on public.messages to authenticated;
+alter table public.chat_members add column last_read_id bigint not null default 0;
+
+-- описание: до 200 символов всем, до 500 с премиумом
+alter table public.profiles drop constraint profiles_bio_len;
+alter table public.profiles add constraint profiles_bio_len check (char_length(bio) <= 500);
+
+create function private.is_premium(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.profiles where id = u and premium_until > now());
+$$;
+
+create function private.check_bio() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if char_length(new.bio) > 200 and not coalesce(new.premium_until > now(), false) then
+    raise exception 'bio too long' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+create trigger profiles_bio_limit before insert or update of bio on public.profiles
+for each row execute function private.check_bio();
+
+-- ответ можно дать только на сообщение из того же чата
+create or replace function private.on_message_insert() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  new.created_at := now();
+  if new.reply_to is not null and not exists (
+       select 1 from public.messages where id = new.reply_to and chat_id = new.chat_id and deleted_at is null) then
+    new.reply_to := null;
+  end if;
+  update public.chats
+     set last_message_at = new.created_at,
+         last_message_text = left(case when new.body <> '' then new.body else coalesce(new.file_name, 'Файл') end, 140),
+         last_message_sender = new.sender_id
+   where id = new.chat_id;
+  return new;
+end;
+$$;
+
+create function public.mark_read(p_chat uuid, p_message bigint) returns void
+language sql security definer set search_path = '' as $$
+  update public.chat_members
+     set last_read_id = p_message
+   where chat_id = p_chat and user_id = (select auth.uid()) and left_at is null
+     and last_read_id < p_message
+     and not private.is_banned()
+     and exists (select 1 from public.messages where id = p_message and chat_id = p_chat);
+$$;
+
+create function private.spend(u uuid, cost bigint, why text) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare nb bigint;
+begin
+  if cost <= 0 then raise exception 'bad amount'; end if;
+  insert into public.wallets (user_id) values (u) on conflict (user_id) do nothing;
+  select balance - cost into nb from public.wallets where user_id = u for update;
+  if nb < 0 then raise exception 'insufficient'; end if;
+  update public.wallets set balance = nb, updated_at = now() where user_id = u;
+  insert into public.coin_ledger (user_id, amount, balance_after, reason) values (u, -cost, nb, left(why, 200));
+  return nb;
+end;
+$$;
+
+-- премиум: 150 сорочек за 30 дней, повторная покупка продлевает срок
+create function public.buy_premium() returns timestamptz
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); t timestamptz;
+begin
+  if me is null or private.is_banned() or not exists (select 1 from public.profiles where id = me) then
+    raise exception 'not allowed';
+  end if;
+  perform private.spend(me, 150, 'Премиум на 30 дней');
+  update public.profiles
+     set premium_until = greatest(coalesce(premium_until, now()), now()) + interval '30 days'
+   where id = me returning premium_until into t;
+  return t;
+end;
+$$;
+
+create function public.set_name_color(p_hue integer) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null or private.is_banned() then raise exception 'not allowed'; end if;
+  if p_hue is not null and (not private.is_premium(me) or p_hue < 0 or p_hue > 359) then
+    raise exception 'premium required';
+  end if;
+  update public.profiles set name_hue = p_hue where id = me;
+end;
+$$;
+
+create table public.gift_types (
+  id text primary key,
+  emoji text not null,
+  name text not null,
+  price integer not null check (price > 0),
+  sort integer not null default 0
+);
+insert into public.gift_types (id, emoji, name, price, sort) values
+  ('bear', '🧸', 'Мишка', 15, 1), ('rose', '🌹', 'Роза', 25, 2), ('cake', '🎂', 'Торт', 50, 3),
+  ('rocket', '🚀', 'Ракета', 50, 4), ('magpie', '🐦‍⬛', 'Сорока', 75, 5), ('cup', '🏆', 'Кубок', 100, 6),
+  ('gem', '💎', 'Алмаз', 150, 7), ('unicorn', '🦄', 'Единорог', 250, 8);
+
+create table public.gifts (
+  id bigint generated always as identity primary key,
+  type_id text not null references public.gift_types(id),
+  from_id uuid references public.profiles(id) on delete set null,
+  to_id uuid not null references public.profiles(id) on delete cascade,
+  note text check (note is null or char_length(note) <= 120),
+  price_paid integer not null,
+  created_at timestamptz not null default now()
+);
+create index gifts_to_idx on public.gifts (to_id, id desc);
+
+alter table public.gift_types enable row level security;
+alter table public.gifts enable row level security;
+create policy gift_types_select on public.gift_types for select to authenticated using (true);
+create policy gifts_select on public.gifts for select to authenticated using (true);
+revoke all on public.gift_types, public.gifts from anon, authenticated;
+grant select on public.gift_types, public.gifts to authenticated;
+
+-- купить подарок и подарить; с премиумом скидка 20 %
+create function public.send_gift(p_to uuid, p_type text, p_note text) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  g public.gift_types;
+  cost integer;
+  who text;
+begin
+  if me is null or private.is_banned() or not exists (select 1 from public.profiles where id = me) then
+    raise exception 'not allowed';
+  end if;
+  select * into g from public.gift_types where id = p_type;
+  if not found then raise exception 'gift not found'; end if;
+  select username into who from public.profiles where id = p_to and banned_at is null;
+  if who is null then raise exception 'user not found'; end if;
+  cost := case when private.is_premium(me) then ceil(g.price * 0.8)::integer else g.price end;
+  perform private.spend(me, cost, 'Подарок «' || g.name || '» для @' || who);
+  insert into public.gifts (type_id, from_id, to_id, note, price_paid)
+  values (g.id, me, p_to, nullif(left(btrim(coalesce(p_note, '')), 120), ''), cost);
+  return (select balance from public.wallets where user_id = me);
+end;
+$$;
+
+revoke all on function private.is_premium(uuid) from public;
+revoke all on function private.check_bio() from public;
+revoke all on function private.spend(uuid, bigint, text) from public;
+revoke all on function public.mark_read(uuid, bigint) from public, anon;
+revoke all on function public.buy_premium() from public, anon;
+revoke all on function public.set_name_color(integer) from public, anon;
+revoke all on function public.send_gift(uuid, text, text) from public, anon;
+grant execute on function public.mark_read(uuid, bigint), public.buy_premium(),
+  public.set_name_color(integer), public.send_gift(uuid, text, text) to authenticated;

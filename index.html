@@ -25,6 +25,8 @@
   --danger: #b3261e;
   --verify: #1d7fd6;
   --coin: #b97a00;
+  --premium: #7c4ddb;
+  --name-l: 38%;
   --online: #1f9d57;
   --font: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: "Unbounded", "Golos Text", system-ui, sans-serif;
@@ -36,7 +38,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --name-l: 72%; --online: #4cd184;
     color-scheme: dark;
   }
 }
@@ -44,7 +46,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --name-l: 72%; --online: #4cd184;
     color-scheme: dark;
 }
 :root[data-size="s"] { --fs: 14px; }
@@ -141,6 +143,8 @@ button { cursor: pointer; }
 :root[data-wall="sunset"], .walls [data-v="sunset"] { --w1: hsl(22 95% 58%); --w2: hsl(335 85% 60%); --w3: hsl(265 80% 64%); --w4: hsl(45 95% 58%); }
 :root[data-wall="aurora"], .walls [data-v="aurora"] { --w1: hsl(150 70% 46%); --w2: hsl(265 75% 62%); --w3: hsl(185 85% 48%); --w4: hsl(95 70% 52%); }
 :root[data-wall="ocean"], .walls [data-v="ocean"] { --w1: hsl(205 90% 55%); --w2: hsl(235 80% 64%); --w3: hsl(182 85% 48%); --w4: hsl(165 70% 48%); }
+:root[data-wall="space"], .walls [data-v="space"] { --w1: hsl(265 90% 55%); --w2: hsl(225 90% 50%); --w3: hsl(310 85% 58%); --w4: hsl(195 90% 50%); }
+:root[data-wall="neon"], .walls [data-v="neon"] { --w1: hsl(315 100% 58%); --w2: hsl(175 100% 45%); --w3: hsl(85 95% 50%); --w4: hsl(260 100% 65%); }
 :root[data-wall="candy"], .walls [data-v="candy"] { --w1: hsl(335 90% 64%); --w2: hsl(205 90% 60%); --w3: hsl(48 95% 58%); --w4: hsl(160 70% 52%); }
 :root[data-wall]:not([data-wall="none"]) .pane, .walls button:not([data-v="none"]) {
   background-image:
@@ -162,6 +166,31 @@ button { cursor: pointer; }
     radial-gradient(22% 18% at 52% 92%, color-mix(in srgb, var(--w1) 30%, transparent), transparent 72%),
     radial-gradient(24% 20% at 94% 84%, color-mix(in srgb, var(--w3) 32%, transparent), transparent 72%);
 }
+.star, .adm { display: inline-block; width: 1em; height: 1em; margin-left: 4px; vertical-align: -0.14em; flex: none; }
+.star { color: var(--premium); }
+.adm { color: var(--coin); }
+.hued { color: hsl(var(--nh) 75% var(--name-l)); }
+.walls button { position: relative; }
+.walls button.prem::after { content: "★"; position: absolute; top: 3px; right: 6px; font-size: 12px; color: var(--premium); }
+.quote { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 3px 8px; margin: 2px 0 5px; font-size: 13px; color: inherit; cursor: pointer; }
+.quote b { display: block; color: var(--accent); font-weight: 600; }
+.quote span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42ch; }
+.ticks { display: inline-block; width: 17px; height: 17px; vertical-align: -4px; margin-left: 3px; opacity: .65; }
+.ticks.read { color: var(--accent); opacity: 1; }
+.msg.hit { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.gift { display: grid; gap: 2px; justify-items: center; padding: 10px 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); color: var(--ink); text-align: center; min-width: 0; }
+.gift .em { font-size: 34px; line-height: 1.15; }
+.gift .nm { font-weight: 600; font-size: 13px; }
+.gift .sub { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.gift .old { text-decoration: line-through; opacity: .7; margin-right: 4px; }
+button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); background: var(--panel); }
+.prem-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--premium) 45%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--premium) 22%, transparent), color-mix(in srgb, var(--premium) 5%, transparent)); }
+.prem-card b { display: block; font: 600 16px/1.3 var(--display); }
+.coin.prem { background: var(--premium); }
+.perks { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.swatches button.none { background: var(--panel-2); color: var(--muted); font-size: 16px; line-height: 1; }
+.swatches.off { opacity: .45; }
 .coin-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--coin) 40%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--coin) 20%, transparent), color-mix(in srgb, var(--coin) 5%, transparent)); }
 .coin { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 600 20px/1 var(--display); color: var(--panel); background: var(--coin); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--panel) 35%, transparent); }
 .coin.sm { width: 20px; height: 20px; font-size: 10px; box-shadow: none; display: inline-grid; vertical-align: -4px; margin-right: 4px; }
@@ -329,6 +358,16 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   #editChip:not([hidden]), .chan-note:not([hidden]) { animation: rise .2s var(--ease) both; }
   .walls button { transition: border-color .18s, box-shadow .18s, transform .12s var(--ease); }
   .walls button:hover { transform: translateY(-2px); }
+  @keyframes hit { 0%, 100% { outline-color: transparent; } 30%, 70% { outline-color: var(--accent); } }
+  .msg.hit { animation: hit 1.2s ease both; }
+  .gift { animation: pop-in .28s var(--ease) both; transition: border-color .18s, box-shadow .18s, transform .12s var(--ease), background-color .18s; }
+  button.gift:hover { transform: translateY(-2px); }
+  .gift .em { transition: transform .25s var(--ease); }
+  .gift:hover .em { transform: scale(1.18) rotate(-6deg); }
+  .star { animation: twinkle 3s ease-in-out infinite; }
+  .quote { transition: background-color .18s; }
+  .ticks { transition: color .3s, opacity .3s; }
+  .prem-card .coin { animation: coin-spin .9s var(--ease) both; }
   @keyframes coin-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
   .coin-card .coin { animation: coin-spin .9s var(--ease) both; }
   .coin-row { animation: rise .22s var(--ease) both; }
@@ -359,7 +398,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round" };
   try { Object.assign(s, JSON.parse(localStorage.getItem("soroka.settings") || "{}")); } catch (e) {}
   // прежние узоры (точки, сетка, линии) заменены цветными фонами
-  if (["glow", "sunset", "aurora", "ocean", "candy", "none"].indexOf(s.wall) < 0) s.wall = "glow";
+  if (["glow", "sunset", "aurora", "ocean", "candy", "space", "neon", "none"].indexOf(s.wall) < 0) s.wall = "glow";
   window.sorokaSettings = s;
   window.applySorokaSettings = function () {
     var r = document.documentElement;
@@ -481,6 +520,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
         <span id="attachName"></span>
         <button class="link" id="attachRemove" type="button">Убрать</button>
       </div>
+      <div class="attach-chip" id="replyChip" hidden>
+        <span><b id="replyWho"></b> <span id="replyText"></span></span>
+        <button class="link" id="replyCancel" type="button">Отмена</button>
+      </div>
       <div class="attach-chip" id="editChip" hidden>
         <span><b>Изменение:</b> <span id="editText"></span></span>
         <button class="link" id="editCancel" type="button">Отмена</button>
@@ -508,6 +551,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
         <input type="file" id="avFile" accept="image/*" hidden>
         <button class="btn ghost" type="button" id="avUpload">Загрузить фото</button>
         <button class="btn ghost" type="button" id="avRemove">Убрать</button>
+        <button class="btn ghost" type="button" id="myProfile">Мой профиль</button>
       </div>
     </div>
     <div class="av-make">
@@ -525,6 +569,22 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <div><b id="coinBal">0</b><span class="small muted" id="coinWord">сорочек</span></div>
     </div>
     <div class="coin-log" id="coinLog"></div>
+
+    <div class="set-label">Премиум</div>
+    <div class="prem-card">
+      <span class="coin prem" aria-hidden="true">★</span>
+      <div><b id="premTitle"></b><span class="small muted" id="premSub"></span></div>
+    </div>
+    <ul class="perks">
+      <li>Фиолетовая галочка премиума рядом с именем</li>
+      <li>Свой цвет имени в чатах и профиле</li>
+      <li>Скидка 20 % на все подарки</li>
+      <li>Описание профиля до 500 символов вместо 200</li>
+      <li>Два особых фона: «Космос» и «Неон»</li>
+    </ul>
+    <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
+    <div class="set-label">Цвет имени</div>
+    <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
 
     <div class="set-label">Профиль</div>
     <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
@@ -571,6 +631,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <button type="button" role="radio" data-v="aurora">Сияние</button>
       <button type="button" role="radio" data-v="ocean">Океан</button>
       <button type="button" role="radio" data-v="candy">Конфетти</button>
+      <button type="button" role="radio" data-v="space" class="prem" title="Фон для премиума">Космос</button>
+      <button type="button" role="radio" data-v="neon" class="prem" title="Фон для премиума">Неон</button>
       <button type="button" role="radio" data-v="none">Без фона</button>
     </div>
 
@@ -702,9 +764,25 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   </div>
 </dialog>
 
+<!-- выбор и покупка подарка -->
+<dialog id="dlgGift">
+  <div class="dlg">
+    <h2 id="giftTitle">Подарок</h2>
+    <div class="small muted" id="giftBal"></div>
+    <div class="gift-grid" id="giftTypes" role="radiogroup" aria-label="Подарок"></div>
+    <input class="input" id="giftNote" maxlength="120" placeholder="Подпись к подарку (необязательно)">
+    <div class="error" id="giftErr"></div>
+    <div class="actions">
+      <button class="btn ghost" type="button" data-close>Отмена</button>
+      <button class="btn" type="button" id="giftSend" disabled>Выберите подарок</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- действия с сообщением -->
 <dialog id="dlgMsg">
   <div class="dlg sheet">
+    <button class="btn ghost" type="button" id="maReply">Ответить</button>
     <button class="btn ghost" type="button" id="maEdit">Изменить</button>
     <button class="btn ghost" type="button" id="maCopy">Скопировать текст</button>
     <button class="btn danger" type="button" id="maDel">Удалить</button>
@@ -719,9 +797,17 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     <h2 id="uName"></h2>
     <button type="button" id="uUser" title="Скопировать юзернейм"></button>
     <div class="small muted" id="uSeen"></div>
-    <div class="nft-list" id="uNft"></div>
-    <div id="uBio"></div>
-    <div class="banned-note" id="uBanned" hidden></div>
+    <div class="seg" id="uTabs" role="tablist" style="align-self:stretch">
+      <button type="button" role="tab" data-ut="about" aria-checked="true">О себе</button>
+      <button type="button" role="tab" data-ut="gifts" aria-checked="false" id="uTabGifts">Подарки</button>
+    </div>
+    <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
+      <div class="nft-list" id="uNft"></div>
+      <div id="uBio"></div>
+      <div class="small muted" id="uNoBio" hidden>Описание не заполнено.</div>
+      <div class="banned-note" id="uBanned" hidden></div>
+    </div>
+    <div id="uPaneGifts" style="align-self:stretch" hidden><div class="gift-grid" id="uGifts"></div></div>
     <div class="u-admin" id="uAdmin" hidden>
       <div class="set-label" style="margin:0">Действия администратора</div>
       <div class="coin-admin">
@@ -743,6 +829,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     </div>
     <div class="actions">
       <button class="btn ghost" type="button" data-close>Закрыть</button>
+      <button class="btn ghost" type="button" id="uGift">Подарить</button>
       <button class="btn" type="button" id="uWrite">Написать</button>
     </div>
   </div>
@@ -763,7 +850,7 @@ const MAX_FILE = 20 * 1024 * 1024;
 const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 const HERE = location.origin + location.pathname;
-const PF = "id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,collectible_usernames(username)";
+const PF = "id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,collectible_usernames(username)";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -774,7 +861,7 @@ if (!window.supabase) {
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const state = {
-  me: null, profile: null, recovering: false, started: false, isAdmin: false, editing: null, timer: null,
+  me: null, profile: null, recovering: false, started: false, isAdmin: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
   unread: new Set(), pendingFile: null, channel: null, urls: new Map(),
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
@@ -802,6 +889,10 @@ const ICONS = {
   group: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c.6-3.200 3-5 6-5s5.400 1.800 6 5"/><path d="M18.500 6.500v6M15.500 9.500h6"/></g>',
   gem: '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor" opacity=".28"/><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M9 3l-2 6 5 12 5-12-2-6" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linejoin="round"/>',
   shield: '<path d="M12 3l8 3v6c0 4.500-3.200 7.800-8 9-4.800-1.200-8-4.500-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M9 12l2.200 2.200L15 10" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round"/>',
+  star: '<path d="M12 2.5l2.9 6 6.6.9-4.800 4.600 1.200 6.500L12 17.400 6.100 20.500l1.200-6.500L2.500 9.400l6.600-.9z" fill="currentColor"/>',
+  adm: '<path d="M12 2l8.500 3.200v6.300c0 4.800-3.400 8.400-8.500 9.700-5.100-1.300-8.500-4.900-8.500-9.700V5.200z" fill="currentColor"/><path d="M8.300 11.800l2.600 2.600 4.900-5.200" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  check1: '<path d="M5 12.5l4.500 4.500L19 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
+  check2: '<path d="M1.500 12.500l4.500 4.500L15.500 7.500M10.500 15.500l1.500 1.500L22 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   horn: '<path d="M4 10v4h3l7 4V6l-7 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17.5 9.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   tick: '<path d="M12 2.5l2.3 1.7 2.9-.1.9 2.7 2.3 1.7-.9 2.7.9 2.7-2.3 1.7-.9 2.7-2.9-.1L12 21.5l-2.3-1.7-2.9.1-.9-2.7-2.3-1.700.9-2.7-.9-2.7 2.3-1.7.9-2.7 2.9.1z" fill="currentColor"/><path d="M8.5 12.2l2.4 2.4 4.600-4.900" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -824,8 +915,28 @@ function gem(p) {
   g.setAttribute("aria-label", "Владелец NFT-юзернейма");
   return g;
 }
+function isPremium(p) { return !!(p && p.premium_until && new Date(p.premium_until).getTime() > Date.now()); }
+function badge(name, cls, label) {
+  const t = icon(name);
+  t.classList.add(cls);
+  t.removeAttribute("aria-hidden");
+  t.setAttribute("role", "img");
+  t.setAttribute("aria-label", label);
+  const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+  title.textContent = label;
+  t.prepend(title);
+  return t;
+}
+// премиум может выбрать цвет имени
+function tint(el, p) {
+  if (p && isPremium(p) && p.name_hue != null) { el.classList.add("hued"); el.style.setProperty("--nh", p.name_hue); }
+  else el.classList.remove("hued");
+  return el;
+}
 function marks(p) {
   const out = [];
+  if (p && p.is_admin) out.push(badge("adm", "adm", "Администратор"));
+  if (p && isPremium(p)) out.push(badge("tick", "star", "Премиум"));
   if (p && p.verified) {
     const t = icon("tick");
     t.classList.add("tick");
@@ -1122,7 +1233,7 @@ async function startApp() {
   state.channel = sb.channel("inbox")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (p) => onIncoming(p.new))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (p) => onChanged(p.new))
-    .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, () => reloadSoon())
+    .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, (p) => onMember(p))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -1164,7 +1275,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -1172,6 +1283,7 @@ async function loadChats() {
     id: c.id, is_group: c.is_group, is_channel: c.is_channel, description: c.description || "", created_by: c.created_by, title: c.title,
     last_at: c.last_message_at, last_text: c.last_message_text, last_sender: c.last_message_sender,
     members: c.chat_members.map((m) => m.profiles).filter(Boolean),
+    reads: new Map(c.chat_members.map((m) => [m.user_id, Number(m.last_read_id) || 0])),
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -1199,13 +1311,13 @@ function chatRow(c) {
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
     av,
     h("span", { class: "txt" },
-      h("span", { class: "top" }, h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c))), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c))), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
 }
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
     avatar(p.display_name, p.id, true, p.avatar_path),
-    h("span", { class: "txt" }, h("span", { class: "name" }, p.display_name, marks(p)), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.banned_at ? " · заблокирован" : "")))),
+    h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.banned_at ? " · заблокирован" : "")))),
     picked != null && h("span", { class: "check" }));
 }
 let searchSeq = 0;
@@ -1289,6 +1401,7 @@ function renderHead() {
   const o = other(c);
   $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? null : (o || state.profile).avatar_path));
   $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), chatTitle(c), ...(c.is_group ? [] : marks(o)));
+  tint($("convName"), c.is_group ? null : o);
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? fmtSeen(o) : "заметки для себя");
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
@@ -1307,6 +1420,8 @@ async function openChat(id) {
   state.unread.delete(id);
   setPending(null);
   cancelEdit();
+  cancelReply();
+  state.replies.clear();
   $("placeholder").hidden = true;
   $("conv").hidden = false;
   $("app").classList.add("chat-open");
@@ -1321,6 +1436,8 @@ async function openChat(id) {
   renderMsgs();
   flash($("msgs"), 450);
   scrollDown();
+  ensureReplies();
+  markReadSoon();
   if (matchMedia("(min-width: 761px)").matches) $("text").focus();
 }
 function closeChat() {
@@ -1351,10 +1468,17 @@ async function signedUrl(path, downloadName) {
 function msgNode(m) {
   const c = state.chats.get(m.chat_id);
   const mine = m.sender_id === state.me.id;
-  const el = h("div", { class: "msg" + (mine ? " mine" : "") });
+  const el = h("div", { class: "msg" + (mine ? " mine" : ""), "data-id": m.id });
   if (c && c.is_group && !c.is_channel && !mine) {
     const who = c.members.find((p) => p.id === m.sender_id);
-    el.append(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id)));
+    el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id), marks(who)), who));
+  }
+  if (m.reply_to) {
+    const r = state.msgs.find((x) => x.id === m.reply_to) || state.replies.get(m.reply_to);
+    const gone = r === null || (r && r.deleted_at);
+    el.append(h("button", { class: "quote", type: "button", onclick: () => jumpTo(m.reply_to) },
+      h("b", {}, r && !gone ? senderName(c, r.sender_id) : "Ответ"),
+      h("span", {}, gone ? "Сообщение удалено" : r ? snippet(r) : "…")));
   }
   if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
@@ -1374,10 +1498,15 @@ function msgNode(m) {
     }
   }
   if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
-  const manage = mine || state.isAdmin || (c && c.is_group && c.created_by === state.me.id);
+  let ticks = null;
+  if (mine && c) {
+    const read = m.id <= readUpTo(c);
+    ticks = badge(read ? "check2" : "check1", "ticks", read ? "Прочитано" : "Не прочитано");
+    if (read) ticks.classList.add("read");
+  }
   el.append(h("span", { class: "meta" },
-    manage && h("button", { class: "dots", type: "button", title: "Действия с сообщением", "aria-label": "Действия с сообщением", onclick: () => openMsgMenu(m) }, "⋯"),
-    (m.edited_at ? "изменено " : "") + tFmt.format(new Date(m.created_at))));
+    h("button", { class: "dots", type: "button", title: "Действия с сообщением", "aria-label": "Действия с сообщением", onclick: () => openMsgMenu(m) }, "⋯"),
+    (m.edited_at ? "изменено " : "") + tFmt.format(new Date(m.created_at)), ticks));
   return el;
 }
 function renderMsgs(newId) {
@@ -1405,6 +1534,7 @@ async function loadEarlier() {
   state.hasMore = data.length === PAGE;
   renderMsgs();
   box.scrollTop = box.scrollHeight - before;
+  ensureReplies();
 }
 function addMsg(m) {
   if (state.msgs.some((x) => x.id === m.id)) return;
@@ -1413,6 +1543,8 @@ function addMsg(m) {
   state.msgs.sort((a, b) => a.id - b.id);
   renderMsgs(m.id);
   if (stick) scrollDown();
+  if (m.reply_to) ensureReplies();
+  markReadSoon();
 }
 function touchChat(m) {
   const c = state.chats.get(m.chat_id);
@@ -1420,6 +1552,51 @@ function touchChat(m) {
   c.last_at = m.created_at;
   c.last_text = (m.body || m.file_name || "Файл").slice(0, 140);
   c.last_sender = m.sender_id;
+}
+// до какого сообщения дочитали собеседники (в «Избранном» читать некому, считаем прочитанным)
+function readUpTo(c) {
+  let top = 0, others = 0;
+  for (const [uid, id] of c.reads) if (uid !== state.me.id) { others++; if (id > top) top = id; }
+  return others ? top : Infinity;
+}
+function onMember(p) {
+  const n = p.new, c = n && state.chats.get(n.chat_id);
+  if (p.eventType === "UPDATE" && c && !n.left_at && c.reads.has(n.user_id)) {
+    const was = c.reads.get(n.user_id), now = Number(n.last_read_id) || 0;
+    if (was !== now) {
+      c.reads.set(n.user_id, now);
+      if (n.chat_id === state.activeId && n.user_id !== state.me.id) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
+      return;
+    }
+  }
+  reloadSoon();
+}
+const markReadSoon = debounce(() => {
+  const c = state.chats.get(state.activeId);
+  if (!c || document.hidden || !state.msgs.length) return;
+  const last = state.msgs[state.msgs.length - 1].id;
+  if ((c.reads.get(state.me.id) || 0) >= last) return;
+  c.reads.set(state.me.id, last);
+  sb.rpc("mark_read", { p_chat: c.id, p_message: last }).then(() => {});
+}, 400);
+// сообщения, на которые отвечают, могут быть не загружены: дотягиваем их отдельно
+async function ensureReplies() {
+  const have = new Set(state.msgs.map((m) => m.id));
+  const need = [...new Set(state.msgs.map((m) => m.reply_to).filter((id) => id && !have.has(id) && !state.replies.has(id)))];
+  if (!need.length) return;
+  const chat = state.activeId;
+  const { data } = await sb.from("messages").select("id,sender_id,body,file_name,deleted_at").in("id", need);
+  for (const id of need) state.replies.set(id, null);
+  for (const r of (data || [])) state.replies.set(r.id, r);
+  if (state.activeId === chat) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
+}
+function snippet(m) { return (m.body || m.file_name || "Файл").replace(/\s+/g, " ").slice(0, 90); }
+function senderName(c, id) { return id === state.me.id ? "Вы" : c ? memberName(c, id) : "Участник"; }
+function jumpTo(id) {
+  const el = $("msgs").querySelector('[data-id="' + id + '"]');
+  if (!el) { toast("Это сообщение выше: нажмите «Показать более ранние»"); return; }
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  flash(el, 1300, "hit");
 }
 // сообщение изменили или удалили
 function onChanged(m) {
@@ -1451,6 +1628,7 @@ document.addEventListener("visibilitychange", async () => {
   if (document.hidden || !state.started) return;
   // После сна телефона часть событий могла потеряться: догружаем.
   if (state.activeId) state.unread.delete(state.activeId);
+  markReadSoon();
   await loadChats();
   const id = state.activeId;
   if (!id || !state.msgs.length) return;
@@ -1491,7 +1669,21 @@ $("text").addEventListener("keydown", (e) => {
     $("composer").requestSubmit();
   }
 });
+function startReply(m) {
+  cancelEdit();
+  state.replyTo = m;
+  $("replyChip").hidden = false;
+  $("replyWho").textContent = "Ответ · " + senderName(state.chats.get(m.chat_id), m.sender_id) + ":";
+  $("replyText").textContent = snippet(m);
+  $("text").focus();
+}
+function cancelReply() {
+  state.replyTo = null;
+  $("replyChip").hidden = true;
+}
+$("replyCancel").addEventListener("click", cancelReply);
 function startEdit(m) {
+  cancelReply();
   state.editing = m;
   setPending(null);
   $("editChip").hidden = false;
@@ -1539,6 +1731,7 @@ $("composer").addEventListener("submit", async (e) => {
   $("btnSend").disabled = true;
   try {
     const row = { chat_id: chatId, sender_id: state.me.id, body };
+    if (state.replyTo && state.replyTo.chat_id === chatId) row.reply_to = state.replyTo.id;
     if (file) {
       const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
       const path = chatId + "/" + crypto.randomUUID() + (ext ? "." + ext.toLowerCase() : "");
@@ -1551,6 +1744,7 @@ $("composer").addEventListener("submit", async (e) => {
     $("text").value = "";
     fitText();
     setPending(null);
+    cancelReply();
     flash($("btnSend"), 420, "fly");
     touchChat(data);
     if (state.activeId === chatId) addMsg(data);
@@ -1616,6 +1810,7 @@ async function loadWallet() {
     sb.from("coin_ledger").select("amount,reason,created_at").eq("user_id", state.me.id).order("id", { ascending: false }).limit(20),
   ]);
   const bal = w.data ? Number(w.data.balance) : 0;
+  state.balance = bal;
   $("coinBal").textContent = nf.format(bal);
   flash($("coinBal"), 320, "bump");
   $("coinWord").textContent = plural(bal % 100, "сорочка", "сорочки", "сорочек");
@@ -1661,10 +1856,14 @@ function openMsgMenu(m) {
   actMsg = m;
   delArmed = false;
   $("maDel").textContent = "Удалить";
+  const c = state.chats.get(m.chat_id);
+  $("maReply").hidden = $("composer").hidden;
   $("maEdit").hidden = m.sender_id !== state.me.id;
   $("maCopy").hidden = !m.body;
+  $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || (c && c.is_group && c.created_by === state.me.id));
   $("dlgMsg").showModal();
 }
+$("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
 $("maEdit").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startEdit(actMsg); });
 $("maCopy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(actMsg.body); toast("Текст скопирован"); } catch (e) { toast("Не удалось скопировать"); }
@@ -1790,6 +1989,9 @@ function paintUser(p) {
   }
   $("uAvatar").replaceChildren(av);
   $("uName").replaceChildren(p.display_name, ...marks(p));
+  tint($("uName"), p);
+  $("uNoBio").hidden = !!p.bio || nfts(p).length > 0 || !!p.banned_at;
+  $("uGift").hidden = !!p.banned_at;
   $("uSeen").textContent = p.banned_at ? "" : fmtSeen(p);
   $("uSeen").classList.toggle("on", isOnline(p));
   $("uBanned").hidden = !p.banned_at;
@@ -1809,9 +2011,91 @@ function paintUser(p) {
   $("uBio").hidden = !p.bio;
   $("uWrite").hidden = p.id === state.me.id;
 }
+function showUserTab(name) {
+  for (const b of $("uTabs").children) b.setAttribute("aria-checked", String(b.dataset.ut === name));
+  $("uPaneAbout").hidden = name !== "about";
+  $("uPaneGifts").hidden = name !== "gifts";
+}
+$("uTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-ut]"); if (b) showUserTab(b.dataset.ut); });
+async function giftTypes() {
+  if (!state.giftTypes) {
+    const { data } = await sb.from("gift_types").select("*").order("sort");
+    if (data && data.length) state.giftTypes = data;
+  }
+  return state.giftTypes || [];
+}
+async function loadUserGifts(id) {
+  $("uTabGifts").textContent = "Подарки";
+  $("uGifts").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
+  const [types, res] = await Promise.all([giftTypes(),
+    sb.from("gifts").select("id,type_id,note,created_at,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).order("id", { ascending: false }).limit(60)]);
+  if (!viewed || viewed.id !== id) return;
+  const rows = res.data || [];
+  $("uTabGifts").textContent = rows.length ? "Подарки · " + rows.length : "Подарки";
+  const byId = new Map(types.map((t) => [t.id, t]));
+  $("uGifts").replaceChildren(...(rows.length ? rows.map((g, i) => {
+    const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
+    const el = h("div", { class: "gift", title: g.note || "" },
+      h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
+      h("span", { class: "sub" }, g.from ? "от " + g.from.display_name : "от скрытого отправителя"),
+      g.note && h("span", { class: "sub" }, "«" + g.note + "»"));
+    el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
+    return el;
+  }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? "Не удалось загрузить подарки." : "Подарков пока нет.")]));
+}
+// покупка подарка за сорочки
+let giftPick = null;
+function giftPrice(t) { return isPremium(state.profile) ? Math.ceil(t.price * 0.8) : t.price; }
+async function openGift(p) {
+  giftPick = null;
+  $("giftTitle").textContent = "Подарок для " + p.display_name;
+  $("giftNote").value = ""; $("giftErr").textContent = "";
+  $("giftSend").disabled = true; $("giftSend").textContent = "Выберите подарок";
+  $("giftBal").textContent = "";
+  $("giftTypes").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
+  $("dlgGift").showModal();
+  const [types, w] = await Promise.all([giftTypes(), sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle()]);
+  state.balance = w.data ? Number(w.data.balance) : 0;
+  $("giftBal").replaceChildren(coinMark(), "У вас " + coins(state.balance) + (isPremium(state.profile) ? " · скидка премиума 20 %" : ""));
+  $("giftTypes").replaceChildren(...types.map((t, i) => {
+    const price = giftPrice(t);
+    const b = h("button", { class: "gift", type: "button", role: "radio", "aria-checked": "false" },
+      h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
+      h("span", { class: "sub" }, price !== t.price && h("span", { class: "old" }, String(t.price)), coins(price)));
+    b.style.animationDelay = i * 30 + "ms";
+    b.addEventListener("click", () => {
+      giftPick = t;
+      for (const x of $("giftTypes").children) x.setAttribute("aria-checked", String(x === b));
+      $("giftSend").disabled = false;
+      $("giftSend").textContent = "Подарить за " + coins(price);
+      $("giftErr").textContent = price > state.balance ? "Не хватает сорочек: нужно " + coins(price) + "." : "";
+    });
+    return b;
+  }));
+}
+$("uGift").addEventListener("click", () => { if (viewed) openGift(viewed); });
+$("giftSend").addEventListener("click", async () => {
+  if (!giftPick || !viewed) return;
+  const t = giftPick, to = viewed;
+  $("giftSend").disabled = true;
+  const { data, error } = await sb.rpc("send_gift", { p_to: to.id, p_type: t.id, p_note: $("giftNote").value });
+  $("giftSend").disabled = false;
+  if (error) {
+    const m = error.message || "";
+    $("giftErr").textContent = /insufficient/.test(m) ? "Не хватает сорочек на этот подарок." : /user not found/.test(m) ? "Этому человеку сейчас нельзя отправить подарок." : "Не удалось отправить подарок.";
+    return;
+  }
+  state.balance = Number(data) || 0;
+  $("dlgGift").close();
+  toast("Подарок отправлен: " + t.emoji + " " + t.name + ". Осталось " + coins(state.balance));
+  showUserTab("gifts");
+  loadUserGifts(to.id);
+});
 async function showUser(p) {
   viewed = p;
   paintUser(p);
+  showUserTab("about");
+  loadUserGifts(p.id);
   $("dlgUser").showModal();
   // в списках данные могли устареть: подтягиваем свежий профиль
   const { data } = await sb.from("profiles").select(PF).eq("id", p.id).maybeSingle();
@@ -1851,6 +2135,55 @@ $("uBan").addEventListener("click", async () => {
 $("uUser").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uUser").textContent); toast("Юзернейм скопирован"); } catch (e) {}
 });
+
+// премиум: 150 сорочек за 30 дней
+let premArmed = false;
+function renderPremium() {
+  const p = state.profile, on = isPremium(p);
+  $("premTitle").textContent = on ? "Премиум активен" : "Премиум";
+  $("premSub").textContent = on ? "до " + dyFmt.format(new Date(p.premium_until)) : "150 сорочек за 30 дней";
+  premArmed = false;
+  $("premBuy").textContent = on ? "Продлить на 30 дней за 150 сорочек" : "Купить за 150 сорочек";
+  $("pfBio").maxLength = on ? 500 : 200;
+  $("nameHues").classList.toggle("off", !on);
+  $("nameHues").replaceChildren(...[null, 0, 25, 45, 145, 190, 215, 262, 310, 335].map((v) => {
+    const b = h("button", { type: "button", role: "radio", class: v == null ? "none" : "", "aria-checked": String((p.name_hue == null ? null : Number(p.name_hue)) === v),
+      title: v == null ? "Обычный цвет" : "Цвет имени", "aria-label": v == null ? "Обычный цвет" : "Цвет " + v }, v == null ? "×" : "");
+    if (v != null) b.style.background = "hsl(" + v + " 75% 48%)";
+    b.addEventListener("click", async () => {
+      if (!isPremium(state.profile)) { toast("Цвет имени доступен с премиумом"); return; }
+      const { error } = await sb.rpc("set_name_color", { p_hue: v });
+      if (error) { toast("Не удалось сменить цвет имени"); return; }
+      state.profile.name_hue = v;
+      renderPremium();
+      loadChats();
+    });
+    return b;
+  }));
+  for (const b of document.querySelectorAll(".walls .prem")) b.title = on ? "" : "Фон для премиума";
+}
+async function reloadMe() {
+  const { data } = await sb.from("profiles").select("*,collectible_usernames(username)").eq("id", state.me.id).maybeSingle();
+  if (data) state.profile = data;
+  refreshMe();
+  renderPremium();
+}
+$("premBuy").addEventListener("click", async () => {
+  if (!premArmed) { premArmed = true; $("premBuy").textContent = "Подтвердить: списать 150 сорочек"; return; }
+  $("premBuy").disabled = true;
+  const { error } = await sb.rpc("buy_premium");
+  $("premBuy").disabled = false;
+  if (error) {
+    toast(/insufficient/.test(error.message || "") ? "Не хватает сорочек: премиум стоит 150" : "Не удалось купить премиум");
+    renderPremium();
+    return;
+  }
+  toast("Премиум подключён на 30 дней");
+  await reloadMe();
+  loadWallet();
+  loadChats();
+});
+$("myProfile").addEventListener("click", () => showUser(state.profile));
 
 // аватарка: фото или свой значок
 function refreshMe() {
@@ -1956,6 +2289,7 @@ $("dlgProfile").addEventListener("click", (e) => {
   const b = e.target.closest("[data-key] button");
   if (!b) return;
   const key = b.parentElement.dataset.key;
+  if (b.classList.contains("prem") && !isPremium(state.profile)) { toast("Этот фон доступен с премиумом"); return; }
   settings[key] = key === "hue" ? Number(b.dataset.v) : b.dataset.v;
   saveSettings();
 });
@@ -1969,6 +2303,7 @@ $("btnProfile").addEventListener("click", () => {
   $("pfUserHint").textContent = "";
   renderSettings();
   refreshMe();
+  renderPremium();
   loadWallet();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
@@ -1978,7 +2313,7 @@ watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile
 $("profileForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = $("pfName").value.trim(), username = $("pfUser").value, err = $("profileErr");
-  const bio = $("pfBio").value.trim().slice(0, 200);
+  const bio = $("pfBio").value.trim().slice(0, isPremium(state.profile) ? 500 : 200);
   if (!name) { err.textContent = "Укажите имя."; return; }
   if (!USERNAME_RE.test(username)) { err.textContent = "Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква."; return; }
   busy(e.target, async () => {
