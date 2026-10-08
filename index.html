@@ -568,6 +568,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <form class="dlg" id="profileForm" novalidate>
     <h2>Настройки</h2>
 
+    <button class="pick" type="button" id="myProfileRow">
+      <span id="myProfileAv"></span>
+      <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
+    </button>
+
     <div class="set-label">Аватарка</div>
     <div class="av-row">
       <span id="pfAvatar"></span>
@@ -575,7 +580,6 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
         <input type="file" id="avFile" accept="image/*" hidden>
         <button class="btn ghost" type="button" id="avUpload">Загрузить фото</button>
         <button class="btn ghost" type="button" id="avRemove">Убрать</button>
-        <button class="btn ghost" type="button" id="myProfile">Мой профиль</button>
       </div>
     </div>
     <div class="av-make">
@@ -593,6 +597,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <div><b id="coinBal">0</b><span class="small muted" id="coinWord">сорочек</span></div>
     </div>
     <div class="coin-log" id="coinLog"></div>
+
+    <div class="set-label">Мои подарки</div>
+    <div class="gift-grid" id="myGifts"></div>
+    <div class="hint" id="myGiftsHint"></div>
 
     <div class="set-label">Премиум</div>
     <div class="prem-card">
@@ -2122,7 +2130,7 @@ async function loadUserGifts(id) {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
     const el = h(id === state.me.id ? "button" : "div", { class: "gift", type: id === state.me.id ? "button" : null, title: id === state.me.id ? "Открыть подарок" : (g.note || ""), onclick: id === state.me.id ? () => openGiftView(g.id) : null },
       h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
-      h("span", { class: "sub" }, g.from ? "от " + g.from.display_name : "от скрытого отправителя"),
+      h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
       g.note && h("span", { class: "sub" }, "«" + g.note + "»"));
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
@@ -2170,7 +2178,7 @@ $("gvSell").addEventListener("click", async () => {
   toast("Получено " + coins(back) + ". На счёте " + coins(state.balance));
   if (state.activeId) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
   if (viewed && viewed.id === state.me.id && $("dlgUser").open) loadUserGifts(viewed.id);
-  if ($("dlgProfile").open) loadWallet();
+  if ($("dlgProfile").open) { loadWallet(); loadMyGifts(); }
 });
 
 // покупка подарка за сорочки
@@ -2326,7 +2334,26 @@ $("premBuy").addEventListener("click", async () => {
   loadWallet();
   loadChats();
 });
-$("myProfile").addEventListener("click", () => showUser(state.profile));
+$("myProfileRow").addEventListener("click", () => showUser(state.profile));
+// свои подарки прямо в настройках: нажатие открывает подарок, там же его можно обменять
+async function loadMyGifts() {
+  const [types, res] = await Promise.all([giftTypes(),
+    sb.from("gifts").select("id,type_id,note,price_paid,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+  const rows = res.data || [];
+  const byId = new Map(types.map((t) => [t.id, t]));
+  $("myGifts").replaceChildren(...rows.map((g, i) => {
+    const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
+    const el = h("button", { class: "gift", type: "button", title: "Открыть подарок", onclick: () => openGiftView(g.id) },
+      h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
+      h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
+      h("span", { class: "sub" }, "обмен: " + coins(Math.floor(g.price_paid * 0.9))));
+    el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
+    return el;
+  }));
+  $("myGiftsHint").textContent = res.error ? "Не удалось загрузить подарки." : rows.length
+    ? "Нажмите на подарок, чтобы открыть его или обменять на сорочки (комиссия 10 %)."
+    : "Подарков пока нет. Когда вам что-нибудь подарят, оно появится здесь и в вашем профиле.";
+}
 
 // аватарка: фото или свой значок
 function refreshMe() {
@@ -2334,6 +2361,8 @@ function refreshMe() {
   $("btnProfile").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
   $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
   $("avRemove").hidden = !p.avatar_path;
+  $("myProfileAv").replaceChildren(avatar(p.display_name, p.id, false, p.avatar_path));
+  $("myProfileName").replaceChildren(p.display_name, ...marks(p));
   $("pfNft").replaceChildren(...nftChips(p));
   $("pfNft").hidden = !nfts(p).length;
 }
@@ -2448,6 +2477,7 @@ $("btnProfile").addEventListener("click", () => {
   refreshMe();
   renderPremium();
   loadWallet();
+  loadMyGifts();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
   drawBadge();
