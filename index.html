@@ -135,10 +135,36 @@ button { cursor: pointer; }
 .u-admin { display: grid; gap: 8px; align-self: stretch; padding-top: 10px; border-top: 1px dashed var(--line); }
 .u-admin .actions { justify-content: center; }
 /* фон переписки и форма сообщений: выбираются в настройках */
-:root[data-wall="dots"] #msgs { background-image: radial-gradient(color-mix(in srgb, var(--accent) 24%, transparent) 1.2px, transparent 1.4px); background-size: 22px 22px; }
-:root[data-wall="grid"] #msgs { background-image: linear-gradient(color-mix(in srgb, var(--accent) 11%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--accent) 11%, transparent) 1px, transparent 1px); background-size: 28px 28px; }
-:root[data-wall="lines"] #msgs { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 2px, transparent 2px 16px); }
-:root[data-wall="glow"] #msgs { background-image: radial-gradient(70% 55% at 100% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%), radial-gradient(70% 55% at 0% 100%, color-mix(in srgb, hsl(calc(var(--h) + 70) 70% 50%) 20%, transparent), transparent 70%); }
+/* Цветные фоны: четыре пятна цвета, разбросанные по углам; набор цветов задаёт выбранный фон. */
+:root[data-wall="glow"], .walls [data-v="glow"] { --w1: hsl(var(--h) 85% 52%); --w2: hsl(calc(var(--h) + 70) 80% 58%); --w3: hsl(calc(var(--h) - 45) 85% 58%); --w4: hsl(calc(var(--h) + 150) 80% 60%); }
+:root[data-wall="sunset"], .walls [data-v="sunset"] { --w1: hsl(22 95% 58%); --w2: hsl(335 85% 60%); --w3: hsl(265 80% 64%); --w4: hsl(45 95% 58%); }
+:root[data-wall="aurora"], .walls [data-v="aurora"] { --w1: hsl(150 70% 46%); --w2: hsl(265 75% 62%); --w3: hsl(185 85% 48%); --w4: hsl(95 70% 52%); }
+:root[data-wall="ocean"], .walls [data-v="ocean"] { --w1: hsl(205 90% 55%); --w2: hsl(235 80% 64%); --w3: hsl(182 85% 48%); --w4: hsl(165 70% 48%); }
+:root[data-wall="candy"], .walls [data-v="candy"] { --w1: hsl(335 90% 64%); --w2: hsl(205 90% 60%); --w3: hsl(48 95% 58%); --w4: hsl(160 70% 52%); }
+:root[data-wall]:not([data-wall="none"]) .pane, .walls button:not([data-v="none"]) {
+  background-image:
+    radial-gradient(58% 46% at 100% 0%, color-mix(in srgb, var(--w1) 32%, transparent), transparent 72%),
+    radial-gradient(58% 50% at 0% 100%, color-mix(in srgb, var(--w2) 28%, transparent), transparent 72%),
+    radial-gradient(40% 34% at 14% 10%, color-mix(in srgb, var(--w3) 24%, transparent), transparent 72%),
+    radial-gradient(40% 36% at 88% 82%, color-mix(in srgb, var(--w4) 24%, transparent), transparent 72%),
+    radial-gradient(30% 26% at 52% 48%, color-mix(in srgb, var(--w2) 12%, transparent), transparent 72%);
+}
+/* «Конфетти»: много мелких пятен */
+:root[data-wall="candy"] .pane, .walls button[data-v="candy"] {
+  background-image:
+    radial-gradient(22% 18% at 12% 14%, color-mix(in srgb, var(--w1) 34%, transparent), transparent 72%),
+    radial-gradient(20% 17% at 46% 6%, color-mix(in srgb, var(--w3) 32%, transparent), transparent 72%),
+    radial-gradient(24% 20% at 88% 16%, color-mix(in srgb, var(--w2) 34%, transparent), transparent 72%),
+    radial-gradient(20% 18% at 70% 44%, color-mix(in srgb, var(--w4) 30%, transparent), transparent 72%),
+    radial-gradient(22% 19% at 26% 50%, color-mix(in srgb, var(--w2) 28%, transparent), transparent 72%),
+    radial-gradient(24% 20% at 8% 88%, color-mix(in srgb, var(--w4) 32%, transparent), transparent 72%),
+    radial-gradient(22% 18% at 52% 92%, color-mix(in srgb, var(--w1) 30%, transparent), transparent 72%),
+    radial-gradient(24% 20% at 94% 84%, color-mix(in srgb, var(--w3) 32%, transparent), transparent 72%);
+}
+.walls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.walls button { height: 58px; border: 2px solid var(--line); border-radius: 12px; background-color: var(--bg); color: var(--ink); font-weight: 500; font-size: 13px; padding: 4px; }
+.walls button[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.msg { backdrop-filter: blur(10px); }
 :root[data-bubble="sharp"] .msg, :root[data-bubble="sharp"] .msg.mine { border-radius: 6px; }
 :root[data-bubble="sharp"] .msg img.photo { border-radius: 3px; }
 .msg.mine { background: linear-gradient(135deg, var(--mine), color-mix(in srgb, var(--mine) 74%, var(--accent))); }
@@ -289,7 +315,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .sheet .btn:nth-child(2) { animation-delay: 30ms; }
   .sheet .btn:nth-child(3) { animation-delay: 60ms; }
   #editChip:not([hidden]), .chan-note:not([hidden]) { animation: rise .2s var(--ease) both; }
-  #msgs { transition: background-color .3s; }
+  .walls button { transition: border-color .18s, box-shadow .18s, transform .12s var(--ease); }
+  .walls button:hover { transform: translateY(-2px); }
   .nft::after { content: ""; position: absolute; inset: 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent); animation: shimmer 3.2s ease-in-out infinite; }
   .nft { animation: pop-in .3s var(--ease) both; }
   .nft .gem, .user-card .gem { animation: twinkle 2.6s ease-in-out infinite; }
@@ -313,15 +340,17 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 <script>
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
-  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "dots", bubble: "round" };
+  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round" };
   try { Object.assign(s, JSON.parse(localStorage.getItem("soroka.settings") || "{}")); } catch (e) {}
+  // прежние узоры (точки, сетка, линии) заменены цветными фонами
+  if (["glow", "sunset", "aurora", "ocean", "candy", "none"].indexOf(s.wall) < 0) s.wall = "glow";
   window.sorokaSettings = s;
   window.applySorokaSettings = function () {
     var r = document.documentElement;
     if (s.theme === "light" || s.theme === "dark") r.setAttribute("data-theme", s.theme); else r.removeAttribute("data-theme");
     r.style.setProperty("--h", String(Number(s.hue) || 190));
     r.setAttribute("data-size", s.size === "s" || s.size === "l" ? s.size : "m");
-    r.setAttribute("data-wall", ["dots", "grid", "lines", "glow"].indexOf(s.wall) >= 0 ? s.wall : "none");
+    r.setAttribute("data-wall", s.wall);
     r.setAttribute("data-bubble", s.bubble === "sharp" ? "sharp" : "round");
   };
   window.applySorokaSettings();
@@ -513,12 +542,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     </div>
 
     <div class="set-label">Фон переписки</div>
-    <div class="seg" data-key="wall" role="radiogroup" aria-label="Фон переписки">
-      <button type="button" role="radio" data-v="none">Нет</button>
-      <button type="button" role="radio" data-v="dots">Точки</button>
-      <button type="button" role="radio" data-v="grid">Сетка</button>
-      <button type="button" role="radio" data-v="lines">Линии</button>
+    <div class="walls" data-key="wall" role="radiogroup" aria-label="Фон переписки">
       <button type="button" role="radio" data-v="glow">Блики</button>
+      <button type="button" role="radio" data-v="sunset">Закат</button>
+      <button type="button" role="radio" data-v="aurora">Сияние</button>
+      <button type="button" role="radio" data-v="ocean">Океан</button>
+      <button type="button" role="radio" data-v="candy">Конфетти</button>
+      <button type="button" role="radio" data-v="none">Без фона</button>
     </div>
 
     <div class="set-label">Форма сообщений</div>
