@@ -1028,6 +1028,16 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
           <button class="btn ghost" type="button" id="uCoinTake">Списать</button>
         </div>
       </div>
+      <div class="coin-admin">
+        <div id="uPrem"></div>
+        <div class="seg" id="uPremDays" role="group" aria-label="Выдать премиум на срок">
+          <button type="button" data-days="1">День</button>
+          <button type="button" data-days="7">Неделя</button>
+          <button type="button" data-days="30">Месяц</button>
+          <button type="button" data-days="365">Год</button>
+        </div>
+        <div class="actions"><button class="btn ghost" type="button" id="uPremOff">Снять премиум</button></div>
+      </div>
       <input class="input" id="uBanReason" maxlength="200" placeholder="Причина бана (необязательно)" hidden>
       <div class="actions">
         <button class="btn ghost" type="button" id="uAdminToggle" hidden></button>
@@ -2622,6 +2632,8 @@ function paintUser(p) {
   $("uAdmin").hidden = !state.isAdmin;
   $("uBan").hidden = $("uVerify").hidden = p.id === state.me.id;
   if (state.isAdmin) loadUserCoins(p.id);
+  $("uPrem").textContent = isPremium(p) ? "Премиум до " + dyFmt.format(new Date(p.premium_until)) + ". Срок ниже прибавится к текущему." : "Премиума нет. Выдать на срок:";
+  $("uPremOff").hidden = !isPremium(p);
   $("uAdminToggle").hidden = !(state.isChief && p.id !== state.me.id && !p.is_chief);
   $("uAdminToggle").textContent = p.is_admin ? "Снять админку" : "Сделать админом";
   $("uBan").textContent = p.banned_at ? "Разбанить" : "Забанить";
@@ -2793,6 +2805,18 @@ $("uAdminToggle").addEventListener("click", async () => {
   toast(on ? "Админка выдана" : "Админка снята");
   refreshViewed();
 });
+// премиум от администратора: день, неделя, месяц или год; срок прибавляется к уже действующему
+const PREM_LABEL = { 1: "день", 7: "неделю", 30: "месяц", 365: "год" };
+async function grantPremium(days) {
+  if (!viewed) return;
+  const { error } = await sb.rpc("admin_grant_premium", { p_user: viewed.id, p_days: days });
+  if (error) { toast(/not allowed/.test(error.message || "") ? "Это может только администратор" : "Не удалось изменить премиум"); return; }
+  toast(days ? "Премиум выдан на " + PREM_LABEL[days] : "Премиум снят");
+  if (viewed.id === state.me.id) await reloadMe();
+  refreshViewed();
+}
+$("uPremDays").addEventListener("click", (e) => { const b = e.target.closest("[data-days]"); if (b) grantPremium(Number(b.dataset.days)); });
+$("uPremOff").addEventListener("click", () => grantPremium(0));
 $("uVerify").addEventListener("click", async () => {
   if (!viewed) return;
   const on = !viewed.verified;

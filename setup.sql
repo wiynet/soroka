@@ -935,3 +935,22 @@ grant execute on function public.admin_set_support_team(text[]) to authenticated
 -- и возвращаются при отказе, отмене, снятии лота или продаже другому; деньги за лот
 -- получает продавец, а за лоты администраторов сорочки никому не начисляются.
 -- Полный текст хранится в истории миграций проекта (Database → Migrations).
+
+-- Администратор выдаёт премиум на срок (1, 7, 30 или 365 дней) или снимает его (0).
+create function public.admin_grant_premium(p_user uuid, p_days integer) returns timestamptz
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz;
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if p_days is null or p_days not in (0, 1, 7, 30, 365) then raise exception 'bad period'; end if;
+  update public.profiles
+     set premium_until = case when p_days = 0 then null
+                              else greatest(coalesce(premium_until, now()), now()) + make_interval(days => p_days) end
+   where id = p_user
+  returning premium_until into t;
+  if not found then raise exception 'user not found'; end if;
+  return t;
+end;
+$$;
+revoke all on function public.admin_grant_premium(uuid, integer) from public, anon;
+grant execute on function public.admin_grant_premium(uuid, integer) to authenticated;
