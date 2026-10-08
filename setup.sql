@@ -963,3 +963,7 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 -- set_chat_avatar, update_chat, remove_member (владелец и администраторы; администратор
 -- не может убрать владельца и другого администратора). В канале пишут владелец и
 -- администраторы; удалять чужие сообщения в чате могут они же.
+
+-- Выдача от администратора (сорочки, премиум, NFT-юзернейм, галочка, админка) появляется
+-- карточкой в личном чате: миграция messenger_admin_grant_messages. Поля messages.event_kind,
+-- event_title, event_note заполняет только сервер (private.post_event), клиенту запись в них закрыта.

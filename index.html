@@ -1794,6 +1794,18 @@ function msgNode(m) {
         h("span", { class: "line" }, line),
         m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»"),
         m.gift_id && h("button", { class: "view", type: "button", onclick: () => openGiftView(m.gift_id) }, "Открыть")));
+  } else if (m.event_kind) {
+    // выдача от администратора: такая же карточка по центру, как у подарка
+    el.classList.add("giftm");
+    const o = c ? other(c) : null;
+    const emoji = { coins: "🪙", premium: "⭐", nft: "💎", verified: "✅", admin: "🛡️" }[m.event_kind] || "🎁";
+    el.append(
+      h("div", { class: "gift-pill" }, mine ? "Вы выдали" : "Вам выдали"),
+      h("div", { class: "gift-card" },
+        h("span", { class: "em" }, emoji),
+        h("b", {}, m.event_title || "Выдача"),
+        h("span", { class: "line" }, mine ? "Получатель: " + (o ? o.display_name : "собеседник") : "Выдал администратор: " + (o ? o.display_name : "администратор")),
+        m.event_note && h("span", { class: "note" }, m.event_note)));
   } else if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
   const rr = reactRow(m);
   if (rr) el.append(rr);
@@ -2298,8 +2310,8 @@ function openMsgMenu(m) {
   $("maReacts").replaceChildren(...REACTIONS.map((e) =>
     h("button", { type: "button", "aria-pressed": String(e === myReact), "aria-label": "Реакция " + e, onclick: () => { $("dlgMsg").close(); toggleReact(m, e); } }, e)));
   $("maReply").hidden = $("composer").hidden;
-  $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type;
-  $("maCopy").hidden = !m.body || !!m.gift_type;
+  $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type || !!m.event_kind;
+  $("maCopy").hidden = !m.body || !!m.gift_type || !!m.event_kind;
   $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
   $("dlgMsg").showModal();
 }
