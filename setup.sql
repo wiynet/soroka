@@ -923,3 +923,15 @@ end;
 $$;
 revoke all on function public.admin_set_support_team(text[]) from public, anon;
 grant execute on function public.admin_set_support_team(text[]) to authenticated;
+
+-- ======================================================================
+-- Маркет NFT-юзернеймов (миграция messenger_nft_market в проекте Supabase)
+-- ======================================================================
+-- Таблицы: nft_listings (лоты: username, seller_id, by_admin, price, status open/sold/cancelled)
+--          nft_offers   (предложения цены: listing_id, bidder_id, amount, status)
+-- Функции для сайта: admin_list_username, list_my_username, cancel_listing, buy_listing,
+--                    make_offer, cancel_offer, answer_offer.
+-- Правила: предложение всегда ниже цены лота; сорочки за предложение списываются сразу
+-- и возвращаются при отказе, отмене, снятии лота или продаже другому; деньги за лот
+-- получает продавец, а за лоты администраторов сорочки никому не начисляются.
+-- Полный текст хранится в истории миграций проекта (Database → Migrations).

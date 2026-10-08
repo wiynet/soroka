@@ -182,6 +182,25 @@ button { cursor: pointer; }
 .support .ico svg { width: 20px; height: 20px; }
 .support b { display: block; font-weight: 600; }
 .sidebar .list { padding-bottom: 4px; }
+.side-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.side-foot .support { margin: 0; padding: 9px 10px; gap: 9px; min-width: 0; }
+.side-foot .support .ico { width: 34px; height: 34px; }
+.side-foot .support span:last-child { min-width: 0; }
+.side-foot .support .small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.support.market { border-color: color-mix(in srgb, var(--coin) 45%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--coin) 20%, transparent), color-mix(in srgb, var(--premium) 12%, transparent)); }
+.support.market .ico { background: var(--coin); color: var(--panel); }
+#dlgMarket { width: min(540px, calc(100% - 24px)); }
+.lot { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: transparent; color: var(--ink); text-align: left; }
+.lot:hover { background: var(--panel-2); }
+.lot .txt { flex: 1; min-width: 0; }
+.lot .price { font: 600 15px/1.2 var(--display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lots { display: grid; gap: 8px; }
+.mine-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mine-row .input { width: 120px; padding: 7px 10px; }
+.mine-row .btn { padding: 7px 12px; font-size: 13px; }
+.offer-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; flex-wrap: wrap; }
+.offer-row .txt { flex: 1; min-width: 120px; }
+.offer-row .btn { padding: 6px 12px; font-size: 13px; }
 .reacts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .msg.giftm .reacts { justify-content: center; }
 .react { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px 1px 6px; background: color-mix(in srgb, var(--panel) 75%, transparent); color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 1.5; }
@@ -399,6 +418,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .support { transition: transform .15s var(--ease), box-shadow .2s; animation: rise .4s var(--ease) both; }
   .support:hover { transform: translateY(-2px); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 22%, transparent); }
   .support:active { transform: scale(.98); }
+  .lot { transition: background-color .18s, transform .12s var(--ease); animation: rise .28s var(--ease) both; }
+  .lot:active { transform: scale(.985); }
+  .offer-row, .mine-row { animation: rise .22s var(--ease) both; }
   @keyframes react-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); } 100% { transform: none; opacity: 1; } }
   .react { transition: background-color .18s, border-color .18s, transform .12s var(--ease); }
   .react:active { transform: scale(.9); }
@@ -569,10 +591,16 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     </div>
     <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
     <div class="list" id="chatList"></div>
-    <button class="support" id="btnSupport" type="button">
-      <span class="ico" id="icoSupport"></span>
-      <span><b>Поддержка</b><span class="small muted">Вопросы и пополнение сорочек</span></span>
-    </button>
+    <div class="side-foot">
+      <button class="support market" id="btnMarket" type="button">
+        <span class="ico" id="icoMarket"></span>
+        <span><b>Маркет</b><span class="small muted">Подарки и NFT</span></span>
+      </button>
+      <button class="support" id="btnSupport" type="button">
+        <span class="ico" id="icoSupport"></span>
+        <span><b>Поддержка</b><span class="small muted">Вопросы, сорочки</span></span>
+      </button>
+    </div>
   </aside>
 
   <main class="pane">
@@ -818,6 +846,61 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
   </div>
 </dialog>
 
+<!-- маркет: NFT-юзернеймы и подарки -->
+<dialog id="dlgMarket">
+  <div class="dlg">
+    <h2>Маркет</h2>
+    <div class="small muted" id="mkBal"></div>
+    <div class="seg" id="mkTabs" role="tablist">
+      <button type="button" role="tab" data-mk="nft" aria-checked="true">NFT-юзернеймы</button>
+      <button type="button" role="tab" data-mk="gifts" aria-checked="false">Подарки</button>
+    </div>
+
+    <div data-mkpane="nft" style="display:grid;gap:14px">
+      <div class="hint">Юзернейм можно купить сразу по цене продавца или предложить свою цену ниже. Сорочки за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете.</div>
+      <div class="lots" id="mkLots"></div>
+      <div class="set-label">Мои NFT-юзернеймы</div>
+      <div id="mkMine" style="display:grid;gap:8px"></div>
+      <div id="mkAdmin" style="display:grid;gap:8px" hidden>
+        <div class="set-label">Выставить новый юзернейм (админ)</div>
+        <div class="ad-grid">
+          <div class="at-wrap"><input class="input" id="mkNewName" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="юзернейм"></div>
+          <input class="input" id="mkNewPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Цена в сорочках">
+        </div>
+        <div class="actions"><button class="btn" type="button" id="mkNewAdd">Выставить на продажу</button></div>
+      </div>
+    </div>
+
+    <div data-mkpane="gifts" style="display:grid;gap:10px" hidden>
+      <div class="hint">Выберите, кому подарить. Подарок появится у человека в профиле и в вашем личном чате.</div>
+      <input class="input" id="mkGiftSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
+      <div class="scroll" id="mkGiftPeople" style="max-height:320px"></div>
+    </div>
+
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+
+<!-- лот: покупка и предложения -->
+<dialog id="dlgLot">
+  <div class="dlg">
+    <h2 id="lotName"></h2>
+    <div id="lotFacts" class="small"></div>
+    <div class="actions" style="justify-content:flex-start">
+      <button class="btn" type="button" id="lotBuy"></button>
+      <button class="btn danger" type="button" id="lotCancel" hidden>Снять с продажи</button>
+    </div>
+    <div id="lotOfferBox" style="display:flex;gap:8px">
+      <input class="input" id="lotOfferAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="Своя цена, ниже цены лота" style="flex:1">
+      <button class="btn ghost" type="button" id="lotOffer">Предложить</button>
+    </div>
+    <div class="error" id="lotErr"></div>
+    <div class="set-label">Предложения</div>
+    <div id="lotOffers"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+
 <!-- поддержка: выбор, кому написать -->
 <dialog id="dlgSupport">
   <div class="dlg">
@@ -1012,6 +1095,7 @@ const ICONS = {
   crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-1.800 10H4.800z" fill="currentColor"/><path d="M5 20.500h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   check1: '<path d="M5 12.5l4.500 4.500L19 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   check2: '<path d="M1.500 12.500l4.500 4.500L15.500 7.500M10.500 15.500l1.500 1.500L22 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
+  shop: '<path d="M5 8h14l-1.200 11.500H6.200z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M8.500 8V7a3.500 3.500 0 017 0v1" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>',
   help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -2151,6 +2235,186 @@ $("maDel").addEventListener("click", async () => {
   reloadSoon();
 });
 
+// маркет: NFT-юзернеймы (лоты, покупка, предложения цены) и подарки
+function marketError(e) {
+  const m = (e && e.message) || "";
+  return /insufficient/.test(m) ? "Не хватает сорочек."
+    : /use buy/.test(m) ? "Предложение должно быть ниже цены лота. За эту сумму юзернейм можно просто купить."
+    : /not open/.test(m) ? "Этот лот уже закрыт."
+    : /stale listing/.test(m) ? "Юзернейм больше не принадлежит продавцу, лот недействителен."
+    : /name owned/.test(m) ? "У этого юзернейма уже есть владелец."
+    : /name in use/.test(m) ? "Такой юзернейм занят как обычный."
+    : /already listed/.test(m) ? "Этот юзернейм уже выставлен на продажу."
+    : /own listing/.test(m) ? "Это ваш собственный лот."
+    : /bad price|bad amount/.test(m) ? "Введите целое число больше нуля."
+    : /bad name/.test(m) ? "Недопустимый юзернейм: латинские буквы, цифры и _."
+    : /not owner/.test(m) ? "Этот юзернейм вам не принадлежит."
+    : "Не получилось. Попробуйте ещё раз.";
+}
+function nftChip(u) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft" }, g, "@" + u); }
+async function loadMarketBalance() {
+  const { data } = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
+  state.balance = data ? Number(data.balance) : 0;
+  $("mkBal").replaceChildren(coinMark(), "У вас " + coins(state.balance));
+}
+function showMarketTab(name) {
+  for (const b of $("mkTabs").children) b.setAttribute("aria-checked", String(b.dataset.mk === name));
+  for (const pane of $("dlgMarket").querySelectorAll("[data-mkpane]")) pane.hidden = pane.dataset.mkpane !== name;
+  if (name === "nft") loadLots();
+  if (name === "gifts") paintGiftPeople("");
+}
+$("mkTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-mk]"); if (b) showMarketTab(b.dataset.mk); });
+let lots = [];
+async function loadLots() {
+  $("mkAdmin").hidden = !state.isAdmin;
+  const { data, error } = await sb.from("nft_listings")
+    .select("id,username,price,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
+    .eq("status", "open").order("id", { ascending: false }).limit(100);
+  lots = error || !data ? [] : data;
+  $("mkLots").replaceChildren(...(lots.length ? lots.map((l, i) => {
+    const pend = (l.nft_offers || []).filter((o) => o.status === "pending");
+    const top = pend.reduce((a, o) => Math.max(a, Number(o.amount)), 0);
+    const mine = pend.find((o) => o.bidder_id === state.me.id);
+    const el = h("button", { class: "lot", type: "button", onclick: () => openLot(l.id) },
+      nftChip(l.username),
+      h("span", { class: "txt small muted" },
+        (l.by_admin ? "Продаёт «Сорока»" : "Продаёт " + (l.seller ? l.seller.display_name : "владелец")) +
+        (top ? " · лучшее предложение " + nf.format(top) : " · предложений нет") + (mine ? " · ваше: " + nf.format(Number(mine.amount)) : "")),
+      h("span", { class: "price" }, coins(Number(l.price))));
+    el.style.animationDelay = Math.min(i, 10) * 30 + "ms";
+    return el;
+  }) : [h("div", { class: "empty-note" }, error ? "Не удалось загрузить лоты." : "Сейчас ничего не продаётся.")]));
+  paintMyNames();
+}
+function paintMyNames() {
+  const mine = nfts(state.profile);
+  const listed = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [l.username, l]));
+  $("mkMine").replaceChildren(...(mine.length ? mine.map((u) => {
+    const l = listed.get(u);
+    if (l) return h("div", { class: "mine-row" }, nftChip(u), h("span", { class: "small muted", style: "flex:1" }, "на продаже за " + coins(Number(l.price))),
+      h("button", { class: "btn ghost", type: "button", onclick: () => openLot(l.id) }, "Открыть лот"));
+    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: "Цена", "aria-label": "Цена для @" + u });
+    return h("div", { class: "mine-row" }, nftChip(u), h("span", { style: "flex:1" }), price,
+      h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
+        const p = Math.floor(Number(price.value));
+        if (!(p > 0)) { toast("Введите цену: целое число больше нуля"); return; }
+        e.target.disabled = true;
+        const { error } = await sb.rpc("list_my_username", { p_name: u, p_price: p });
+        e.target.disabled = false;
+        if (error) { toast(marketError(error)); return; }
+        toast("@" + u + " выставлен за " + coins(p));
+        loadLots();
+      } }, "Продать"));
+  }) : [h("div", { class: "small muted" }, "У вас пока нет NFT-юзернеймов. Их можно купить здесь или получить от администратора.")]));
+}
+$("mkNewName").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
+$("mkNewAdd").addEventListener("click", async () => {
+  const name = $("mkNewName").value, price = Math.floor(Number($("mkNewPrice").value));
+  if (!name) { toast("Введите юзернейм"); return; }
+  if (!(price > 0)) { toast("Введите цену: целое число больше нуля"); return; }
+  $("mkNewAdd").disabled = true;
+  const { error } = await sb.rpc("admin_list_username", { p_name: name, p_price: price });
+  $("mkNewAdd").disabled = false;
+  if (error) { toast(marketError(error)); return; }
+  $("mkNewName").value = ""; $("mkNewPrice").value = "";
+  toast("@" + name + " выставлен за " + coins(price));
+  loadLots();
+});
+let lot = null, buyArmed = false;
+function lotManaged(l) { return l.by_admin ? state.isAdmin : l.seller_id === state.me.id; }
+async function openLot(id) {
+  const l = lots.find((x) => x.id === id);
+  if (!l) return;
+  lot = l; buyArmed = false;
+  const own = !l.by_admin && l.seller_id === state.me.id;
+  $("lotName").replaceChildren(nftChip(l.username));
+  $("lotFacts").textContent = "Цена: " + coins(Number(l.price)) + " · " + (l.by_admin ? "продаёт «Сорока»" : "продаёт " + (l.seller ? l.seller.display_name + " (@" + l.seller.username + ")" : "владелец"));
+  $("lotBuy").hidden = own;
+  $("lotBuy").textContent = "Купить за " + coins(Number(l.price));
+  $("lotOfferBox").hidden = own;
+  $("lotCancel").hidden = !lotManaged(l);
+  $("lotOfferAmt").value = ""; $("lotErr").textContent = "";
+  $("lotOffers").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
+  if (!$("dlgLot").open) $("dlgLot").showModal();
+  const { data } = await sb.from("nft_offers")
+    .select("id,amount,bidder_id,bidder:profiles!nft_offers_bidder_id_fkey(id,username,display_name)")
+    .eq("listing_id", id).eq("status", "pending").order("amount", { ascending: false }).limit(50);
+  if (!lot || lot.id !== id) return;
+  const rows = data || [];
+  $("lotOffers").replaceChildren(...(rows.length ? rows.map((o) => {
+    const mineOffer = o.bidder_id === state.me.id;
+    return h("div", { class: "offer-row" },
+      h("b", {}, coins(Number(o.amount))),
+      h("span", { class: "txt small muted" }, mineOffer ? "ваше предложение" : o.bidder ? o.bidder.display_name + " · @" + o.bidder.username : "покупатель"),
+      lotManaged(l) && !mineOffer && h("button", { class: "btn", type: "button", onclick: () => answerOffer(o, true) }, "Принять"),
+      lotManaged(l) && !mineOffer && h("button", { class: "btn ghost", type: "button", onclick: () => answerOffer(o, false) }, "Отклонить"),
+      mineOffer && h("button", { class: "btn ghost", type: "button", onclick: () => cancelOffer(o) }, "Отменить"));
+  }) : [h("div", { class: "small muted" }, "Пока никто не предложил свою цену.")]));
+}
+async function afterTrade(msg, close) {
+  toast(msg);
+  if (close) $("dlgLot").close();
+  await Promise.all([loadMarketBalance(), reloadMe()]);
+  await loadLots();
+  if (!close && lot) { if (lots.some((x) => x.id === lot.id)) openLot(lot.id); else $("dlgLot").close(); }
+  loadChats();
+}
+async function answerOffer(o, accept) {
+  const { error } = await sb.rpc("answer_offer", { p_offer: o.id, p_accept: accept });
+  if (error) { $("lotErr").textContent = marketError(error); return; }
+  afterTrade(accept ? "Предложение принято, юзернейм продан за " + coins(Number(o.amount)) : "Предложение отклонено, сорочки возвращены покупателю", accept);
+}
+async function cancelOffer(o) {
+  const { error } = await sb.rpc("cancel_offer", { p_offer: o.id });
+  if (error) { $("lotErr").textContent = marketError(error); return; }
+  afterTrade("Предложение отменено, " + coins(Number(o.amount)) + " вернулись на счёт", false);
+}
+$("lotBuy").addEventListener("click", async () => {
+  if (!lot) return;
+  if (!buyArmed) { buyArmed = true; $("lotBuy").textContent = "Подтвердить: списать " + coins(Number(lot.price)); return; }
+  $("lotBuy").disabled = true;
+  const { error } = await sb.rpc("buy_listing", { p_listing: lot.id });
+  $("lotBuy").disabled = false;
+  if (error) { $("lotErr").textContent = marketError(error); buyArmed = false; $("lotBuy").textContent = "Купить за " + coins(Number(lot.price)); return; }
+  afterTrade("@" + lot.username + " теперь ваш", true);
+});
+$("lotOffer").addEventListener("click", async () => {
+  if (!lot) return;
+  const amt = Math.floor(Number($("lotOfferAmt").value));
+  if (!(amt > 0)) { $("lotErr").textContent = "Введите свою цену: целое число больше нуля."; return; }
+  $("lotOffer").disabled = true;
+  const { error } = await sb.rpc("make_offer", { p_listing: lot.id, p_amount: amt });
+  $("lotOffer").disabled = false;
+  if (error) { $("lotErr").textContent = marketError(error); return; }
+  afterTrade("Предложение отправлено: " + coins(amt) + " заморожены до ответа продавца", false);
+});
+$("lotCancel").addEventListener("click", async () => {
+  if (!lot) return;
+  const { error } = await sb.rpc("cancel_listing", { p_listing: lot.id });
+  if (error) { $("lotErr").textContent = marketError(error); return; }
+  afterTrade("Лот снят с продажи, предложения возвращены", true);
+});
+// подарки из маркета: сначала выбираем получателя
+async function paintGiftPeople(q) {
+  let people;
+  if (q.trim().length >= 2) people = await searchPeople(q);
+  else {
+    const seen = new Map();
+    for (const c of state.chats.values()) if (!c.is_group) { const o = other(c); if (o && !o.banned_at) seen.set(o.id, o); }
+    people = [...seen.values()];
+  }
+  if ($("mkGiftSearch").value !== q) return;
+  $("mkGiftPeople").replaceChildren(...(people.length ? people.map((p) => personRow(p, () => openGift(p)))
+    : [h("div", { class: "empty-note" }, q.trim().length >= 2 ? "Никого не нашли." : "Начните вводить имя или юзернейм того, кому хотите сделать подарок.")]));
+}
+$("mkGiftSearch").addEventListener("input", debounce(() => paintGiftPeople($("mkGiftSearch").value), 250));
+$("btnMarket").addEventListener("click", () => {
+  $("mkGiftSearch").value = "";
+  $("dlgMarket").showModal();
+  loadMarketBalance();
+  showMarketTab("nft");
+});
+
 // поддержка: один аккаунт открывается сразу, из нескольких человек выбирает сам
 async function supportIds() {
   const { data } = await sb.from("app_settings").select("key,value").in("key", ["support_users", "support_user"]);
@@ -2415,10 +2679,11 @@ $("gvSell").addEventListener("click", async () => {
 });
 
 // покупка подарка за сорочки
-let giftPick = null;
+let giftPick = null, giftTo = null;
 function giftPrice(t) { return isPremium(state.profile) ? Math.ceil(t.price * 0.8) : t.price; }
 async function openGift(p) {
   giftPick = null;
+  giftTo = p;
   $("giftTitle").textContent = "Подарок для " + p.display_name;
   $("giftNote").value = ""; $("giftErr").textContent = "";
   $("giftSend").disabled = true; $("giftSend").textContent = "Выберите подарок";
@@ -2446,8 +2711,8 @@ async function openGift(p) {
 }
 $("uGift").addEventListener("click", () => { if (viewed) openGift(viewed); });
 $("giftSend").addEventListener("click", async () => {
-  if (!giftPick || !viewed) return;
-  const t = giftPick, to = viewed;
+  if (!giftPick || !giftTo) return;
+  const t = giftPick, to = giftTo;
   $("giftSend").disabled = true;
   const { data, error } = await sb.rpc("send_gift", { p_to: to.id, p_type: t.id, p_note: $("giftNote").value });
   $("giftSend").disabled = false;
@@ -2459,8 +2724,8 @@ $("giftSend").addEventListener("click", async () => {
   state.balance = Number(data) || 0;
   $("dlgGift").close();
   toast("Подарок отправлен: " + t.emoji + " " + t.name + ". Осталось " + coins(state.balance));
-  showUserTab("gifts");
-  loadUserGifts(to.id);
+  if ($("dlgUser").open && viewed && viewed.id === to.id) { showUserTab("gifts"); loadUserGifts(to.id); }
+  if ($("dlgMarket").open) loadMarketBalance();
   reloadSoon();
 });
 async function showUser(p) {
@@ -2825,6 +3090,7 @@ $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));
 $("icoSupport").append(icon("help"));
+$("icoMarket").append(icon("shop"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));
