@@ -988,14 +988,13 @@ function badge(name, cls, label) {
 }
 // цвет имени выбирают премиум-пользователи и администраторы
 function tint(el, p) {
-  if (p && (isPremium(p) || p.is_admin) && p.name_hue != null) { el.classList.add("hued"); el.style.setProperty("--nh", p.name_hue); }
+  const hue = p && (isPremium(p) || p.is_admin) && p.name_hue != null ? p.name_hue : p && p.is_admin ? 4 : null;   // 4 = красный: цвет администраторов
+  if (hue != null) { el.classList.add("hued"); el.style.setProperty("--nh", hue); }
   else el.classList.remove("hued");
   return el;
 }
 function marks(p) {
   const out = [];
-  if (p && p.is_chief) out.push(badge("crown", "adm", "Главный администратор"));
-  if (p && p.is_admin) out.push(badge("tick", "adm", p.is_chief ? "Главный администратор" : "Администратор"));
   if (p && isPremium(p)) out.push(badge("tick", "star", "Премиум"));
   if (p && p.verified) {
     const t = icon("tick");
@@ -1377,7 +1376,7 @@ function chatRow(c) {
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
     avatar(p.display_name, p.id, true, p.avatar_path),
-    h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.banned_at ? " · заблокирован" : "")))),
+    h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.is_chief ? " · главный админ" : p.is_admin ? " · админ" : "") + (p.banned_at ? " · заблокирован" : "")))),
     picked != null && h("span", { class: "check" }));
 }
 let searchSeq = 0;
@@ -1916,7 +1915,7 @@ async function loadAdmins() {
   $("adAdmins").replaceChildren(...(data || []).map((p) => personRow(p, () => showUser(p))));
   $("adChiefHint").textContent = state.isChief
     ? "Вы главный администратор: в профиле человека можно выдать или снять админку. Главных снять нельзя."
-    : "Выдавать и снимать админку могут только главные администраторы (с короной).";
+    : "Выдавать и снимать админку могут только главные администраторы.";
 }
 async function loadBanned() {
   if (!state.isAdmin) return;
@@ -2351,7 +2350,7 @@ function renderPremium() {
   $("nameHues").classList.toggle("off", !canColor);
   $("nameHues").replaceChildren(...[null, 0, 25, 45, 145, 190, 215, 262, 310, 335].map((v) => {
     const b = h("button", { type: "button", role: "radio", class: v == null ? "none" : "", "aria-checked": String((p.name_hue == null ? null : Number(p.name_hue)) === v),
-      title: v == null ? "Обычный цвет" : "Цвет имени", "aria-label": v == null ? "Обычный цвет" : "Цвет " + v }, v == null ? "×" : "");
+      title: v == null ? (p.is_admin ? "Красный цвет администратора" : "Обычный цвет") : "Цвет имени", "aria-label": v == null ? "Обычный цвет" : "Цвет " + v }, v == null ? "×" : "");
     if (v != null) b.style.background = "hsl(" + v + " 75% 48%)";
     b.addEventListener("click", async () => {
       if (!(isPremium(state.profile) || state.profile.is_admin)) { toast("Цвет имени доступен с премиумом"); return; }
