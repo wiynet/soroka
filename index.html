@@ -450,9 +450,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 }
 </style>
 <script>
-/* По обычному http браузер пишет «Небезопасно»: сразу уводим на защищённый адрес. */
+/* На защищённый адрес переходим, только убедившись, что он открывается:
+   пока сертификат домена не готов, принудительный переход оставил бы людей с ошибкой браузера. */
 if (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-  location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+  var secure = "https://" + location.host;
+  fetch(secure + "/CNAME", { cache: "no-store", mode: "cors" })
+    .then(function (r) { if (r.ok) location.replace(secure + location.pathname + location.search + location.hash); })
+    .catch(function () {});
 }
 </script>
 <script>
@@ -1111,6 +1115,12 @@ function flash(el, ms, cls) {
   void el.offsetWidth;
   el.classList.add(cls);
   setTimeout(() => el.classList.remove(cls), ms);
+}
+function randomId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  const b = new Uint8Array(16);
+  (window.crypto || window.msCrypto).getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 function debounce(fn, ms) {
   let t;
@@ -1978,7 +1988,7 @@ $("composer").addEventListener("submit", async (e) => {
     if (state.replyTo && state.replyTo.chat_id === chatId) row.reply_to = state.replyTo.id;
     if (file) {
       const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
-      const path = chatId + "/" + crypto.randomUUID() + (ext ? "." + ext.toLowerCase() : "");
+      const path = chatId + "/" + randomId() + (ext ? "." + ext.toLowerCase() : "");
       const up = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
       if (up.error) { toast("Не удалось загрузить файл. Сообщение не отправлено."); return; }
       Object.assign(row, { file_path: path, file_name: file.name.slice(0, 255), file_type: (file.type || "application/octet-stream").slice(0, 127), file_size: file.size });
