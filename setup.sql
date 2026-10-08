@@ -297,3 +297,233 @@ revoke all on function public.admin_grant_username(text, text) from public, anon
 revoke all on function public.admin_revoke_username(text) from public, anon;
 grant execute on function public.is_admin(), public.admin_grant_username(text, text),
   public.admin_revoke_username(text) to authenticated;
+
+-- ======================================================================
+-- Баны, галочки, «был в сети», изменение и удаление сообщений, каналы
+-- ======================================================================
+alter table public.profiles
+  add column last_seen_at timestamptz,
+  add column banned_at timestamptz,
+  add column ban_reason text check (ban_reason is null or char_length(ban_reason) <= 200),
+  add column verified boolean not null default false;
+
+alter table public.messages
+  add column edited_at timestamptz,
+  add column deleted_at timestamptz;
+
+alter table public.chats
+  add column is_channel boolean not null default false,
+  add column description text not null default '' check (char_length(description) <= 300);
+create index chats_channel_idx on public.chats (is_channel) where is_channel;
+
+-- удалённое сообщение остаётся пустой строкой с отметкой deleted_at
+alter table public.messages drop constraint messages_not_empty;
+alter table public.messages add constraint messages_not_empty
+  check (body <> '' or file_path is not null or deleted_at is not null);
+
+create function private.is_banned() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.profiles where id = (select auth.uid()) and banned_at is not null);
+$$;
+
+-- забаненный перестаёт быть участником любых чатов
+create or replace function private.is_chat_member(c uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.chat_members
+    where chat_id = c and user_id = (select auth.uid()) and left_at is null
+  ) and not private.is_banned();
+$$;
+
+-- в канале пишет только его автор
+create function private.can_post(c uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select not is_channel or created_by = (select auth.uid()) from public.chats where id = c), false);
+$$;
+
+alter policy messages_insert on public.messages
+  with check (sender_id = (select auth.uid()) and private.is_chat_member(chat_id) and private.can_post(chat_id));
+
+alter policy profiles_update on public.profiles
+  using (id = (select auth.uid()) and banned_at is null)
+  with check (id = (select auth.uid()) and banned_at is null);
+
+create function public.touch_presence() returns void
+language sql security definer set search_path = '' as $$
+  update public.profiles set last_seen_at = now() where id = (select auth.uid()) and banned_at is null;
+$$;
+
+create function private.refresh_chat_preview(c uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare m record;
+begin
+  select body, file_name, sender_id into m from public.messages
+   where chat_id = c and deleted_at is null order by id desc limit 1;
+  if found then
+    update public.chats set last_message_text = left(case when m.body <> '' then m.body else coalesce(m.file_name, 'Файл') end, 140),
+           last_message_sender = m.sender_id where id = c;
+  else
+    update public.chats set last_message_text = null, last_message_sender = null where id = c;
+  end if;
+end;
+$$;
+
+create function public.edit_message(p_id bigint, p_body text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  m public.messages;
+  b text := btrim(coalesce(p_body, ''));
+begin
+  select * into m from public.messages where id = p_id;
+  if not found or m.sender_id <> auth.uid() or m.deleted_at is not null
+     or not private.is_chat_member(m.chat_id) then
+    raise exception 'not allowed';
+  end if;
+  if char_length(b) > 4000 or (b = '' and m.file_path is null) then raise exception 'bad body'; end if;
+  update public.messages set body = b, edited_at = now() where id = p_id;
+  perform private.refresh_chat_preview(m.chat_id);
+end;
+$$;
+
+-- удалить может автор сообщения, создатель группы или канала и администратор
+create function public.delete_message(p_id bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+declare m public.messages;
+begin
+  select * into m from public.messages where id = p_id;
+  if not found or m.deleted_at is not null or not private.is_chat_member(m.chat_id) then
+    raise exception 'not allowed';
+  end if;
+  if m.sender_id <> auth.uid() and not public.is_admin()
+     and not exists (select 1 from public.chats where id = m.chat_id and is_group and created_by = auth.uid()) then
+    raise exception 'not allowed';
+  end if;
+  update public.messages
+     set deleted_at = now(), body = '', file_path = null, file_name = null, file_type = null, file_size = null
+   where id = p_id;
+  perform private.refresh_chat_preview(m.chat_id);
+end;
+$$;
+
+create function public.create_channel(p_title text, p_description text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  cid uuid;
+  t text := btrim(coalesce(p_title, ''));
+  d text := btrim(coalesce(p_description, ''));
+begin
+  if me is null or private.is_banned() or not exists (select 1 from public.profiles where id = me) then
+    raise exception 'not allowed';
+  end if;
+  if char_length(t) < 1 or char_length(t) > 64 then raise exception 'bad title'; end if;
+  if char_length(d) > 300 then raise exception 'bad description'; end if;
+  insert into public.chats (is_group, is_channel, title, description, created_by)
+  values (true, true, t, d, me) returning id into cid;
+  insert into public.chat_members (chat_id, user_id) values (cid, me);
+  return cid;
+end;
+$$;
+
+create function public.join_channel(p_chat uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null or private.is_banned() or not exists (select 1 from public.profiles where id = me)
+     or not exists (select 1 from public.chats where id = p_chat and is_channel) then
+    raise exception 'not allowed';
+  end if;
+  insert into public.chat_members (chat_id, user_id) values (p_chat, me)
+  on conflict (chat_id, user_id) do update set left_at = null, joined_at = now()
+  where public.chat_members.left_at is not null;
+end;
+$$;
+
+create function public.search_channels(q text)
+returns table (id uuid, title text, description text, members bigint, joined boolean)
+language sql stable security definer set search_path = '' as $$
+  select c.id, c.title, c.description,
+         (select count(*) from public.chat_members m where m.chat_id = c.id and m.left_at is null),
+         exists (select 1 from public.chat_members m where m.chat_id = c.id and m.user_id = (select auth.uid()) and m.left_at is null)
+    from public.chats c
+   where c.is_channel and (select auth.uid()) is not null and not private.is_banned()
+     and char_length(btrim(coalesce(q, ''))) >= 2
+     and position(lower(btrim(q)) in lower(c.title)) > 0
+   order by 4 desc
+   limit 20;
+$$;
+
+-- в канал добавлять людей может только автор
+create or replace function public.add_group_members(p_chat uuid, p_members uuid[]) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_chat_member(p_chat)
+     or not exists (select 1 from public.chats where id = p_chat and is_group
+                    and (not is_channel or created_by = auth.uid())) then
+    raise exception 'not allowed';
+  end if;
+  if coalesce(array_length(p_members, 1), 0) > 200 then raise exception 'too many members'; end if;
+  insert into public.chat_members (chat_id, user_id)
+  select p_chat, p.id from public.profiles p where p.id = any (coalesce(p_members, '{}'::uuid[]))
+  on conflict (chat_id, user_id) do update set left_at = null, joined_at = now()
+  where public.chat_members.left_at is not null;
+end;
+$$;
+
+-- open_direct_chat и create_group в рабочей базе дополнительно отклоняют забаненных:
+-- в начало каждой добавлена проверка private.is_banned().
+
+create function public.admin_set_ban(p_user uuid, p_banned boolean, p_reason text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if exists (select 1 from private.admins where user_id = p_user) then raise exception 'cannot ban admin'; end if;
+  update public.profiles
+     set banned_at = case when p_banned then now() else null end,
+         ban_reason = case when p_banned then nullif(left(btrim(coalesce(p_reason, '')), 200), '') else null end
+   where id = p_user;
+  if not found then raise exception 'user not found'; end if;
+end;
+$$;
+
+create function public.admin_set_verified(p_user uuid, p_on boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  update public.profiles set verified = coalesce(p_on, false) where id = p_user;
+  if not found then raise exception 'user not found'; end if;
+end;
+$$;
+
+create function public.admin_stats() returns json
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  return json_build_object(
+    'users', (select count(*) from public.profiles),
+    'banned', (select count(*) from public.profiles where banned_at is not null),
+    'online', (select count(*) from public.profiles where last_seen_at > now() - interval '2 minutes'),
+    'messages', (select count(*) from public.messages where deleted_at is null),
+    'groups', (select count(*) from public.chats where is_group and not is_channel),
+    'channels', (select count(*) from public.chats where is_channel));
+end;
+$$;
+
+revoke all on function private.is_banned() from public;
+revoke all on function private.can_post(uuid) from public;
+revoke all on function private.refresh_chat_preview(uuid) from public;
+grant execute on function private.is_banned(), private.can_post(uuid) to authenticated;
+
+revoke all on function public.touch_presence() from public, anon;
+revoke all on function public.edit_message(bigint, text) from public, anon;
+revoke all on function public.delete_message(bigint) from public, anon;
+revoke all on function public.create_channel(text, text) from public, anon;
+revoke all on function public.join_channel(uuid) from public, anon;
+revoke all on function public.search_channels(text) from public, anon;
+revoke all on function public.admin_set_ban(uuid, boolean, text) from public, anon;
+revoke all on function public.admin_set_verified(uuid, boolean) from public, anon;
+revoke all on function public.admin_stats() from public, anon;
+grant execute on function public.touch_presence(), public.edit_message(bigint, text), public.delete_message(bigint),
+  public.create_channel(text, text), public.join_channel(uuid), public.search_channels(text),
+  public.admin_set_ban(uuid, boolean, text), public.admin_set_verified(uuid, boolean), public.admin_stats()
+  to authenticated;
