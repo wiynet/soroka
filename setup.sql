@@ -27,6 +27,7 @@ create table public.chat_members (
   chat_id uuid not null references public.chats(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   joined_at timestamptz not null default now(),
+  left_at timestamptz, -- заполнено, если человек вышел из группы
   primary key (chat_id, user_id)
 );
 create index chat_members_user_idx on public.chat_members(user_id);
@@ -51,7 +52,7 @@ create function private.is_chat_member(c uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.chat_members
-    where chat_id = c and user_id = (select auth.uid())
+    where chat_id = c and user_id = (select auth.uid()) and left_at is null
   );
 $$;
 
@@ -138,7 +139,8 @@ begin
   if coalesce(array_length(p_members, 1), 0) > 200 then raise exception 'too many members'; end if;
   insert into public.chat_members (chat_id, user_id)
   select p_chat, p.id from public.profiles p where p.id = any (coalesce(p_members, '{}'::uuid[]))
-  on conflict do nothing;
+  on conflict (chat_id, user_id) do update set left_at = null, joined_at = now()
+  where public.chat_members.left_at is not null;
 end;
 $$;
 
@@ -148,10 +150,9 @@ begin
   if not exists (select 1 from public.chats where id = p_chat and is_group) then
     raise exception 'not allowed';
   end if;
-  delete from public.chat_members where chat_id = p_chat and user_id = auth.uid();
-  if not exists (select 1 from public.chat_members where chat_id = p_chat) then
-    delete from public.chats where id = p_chat;
-  end if;
+  -- строка не удаляется: вышедший помечается и перестаёт видеть группу
+  update public.chat_members set left_at = now()
+   where chat_id = p_chat and user_id = auth.uid() and left_at is null;
 end;
 $$;
 
@@ -169,7 +170,8 @@ create policy profiles_update on public.profiles for update to authenticated
 
 -- чаты, участников и сообщения видят только участники чата
 create policy chats_select on public.chats for select to authenticated using (private.is_chat_member(id));
-create policy members_select on public.chat_members for select to authenticated using (private.is_chat_member(chat_id));
+create policy members_select on public.chat_members for select to authenticated
+  using (private.is_chat_member(chat_id) and left_at is null);
 create policy messages_select on public.messages for select to authenticated using (private.is_chat_member(chat_id));
 create policy messages_insert on public.messages for insert to authenticated
   with check (sender_id = (select auth.uid()) and private.is_chat_member(chat_id));
