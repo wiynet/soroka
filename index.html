@@ -112,6 +112,17 @@ button { cursor: pointer; }
 .avatar.lg { width: 76px; height: 76px; font-size: 26px; }
 .avatar { position: relative; overflow: hidden; }
 .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gem { display: inline-block; width: .95em; height: .95em; margin-left: 5px; vertical-align: -0.12em; color: var(--accent); flex: none; }
+.nft-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.nft-list.left { justify-content: flex-start; }
+.nft { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 2px; padding: 4px 11px 4px 6px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
+.nft .gem { margin: 0 4px 0 2px; }
+.ad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ad-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; }
+.ad-row:hover { background: var(--panel-2); }
+.ad-row .txt { flex: 1; min-width: 0; }
+.ad-row .btn { padding: 6px 12px; font-size: 13px; }
+@media (max-width: 460px) { .ad-grid { grid-template-columns: 1fr; } }
 .user-card { align-items: center; text-align: center; }
 .user-card h2 { overflow-wrap: anywhere; }
 .user-card .avatar.lg { width: 104px; height: 104px; font-size: 36px; }
@@ -204,6 +215,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 @keyframes slide-back { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes dot-in { from { transform: scale(0); } 60% { transform: scale(1.35); } to { transform: scale(1); } }
+@keyframes shimmer { from { transform: translateX(-120%); } 60%, to { transform: translateX(220%); } }
+@keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.18) rotate(8deg); } }
 @keyframes fly { 45% { transform: translate(7px, -7px) scale(.8); opacity: 0; } 46% { transform: translate(-7px, 7px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
   body, .sidebar, .conv-head, .composer, .attach-chip, .seg, .tabs, dialog { transition: background-color .25s, border-color .25s, color .25s; }
@@ -233,6 +246,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .placeholder:not([hidden]) { animation: fade-in .3s both; }
   .chip { animation: pop-in .18s var(--ease) both; }
   .avatar img { animation: fade-in .35s both; }
+  .nft::after { content: ""; position: absolute; inset: 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent); animation: shimmer 3.2s ease-in-out infinite; }
+  .nft { animation: pop-in .3s var(--ease) both; }
+  .nft .gem, .user-card .gem { animation: twinkle 2.6s ease-in-out infinite; }
+  .ad-row { animation: rise .25s var(--ease) both; transition: background-color .18s; }
   .user-card > * { animation: rise .3s var(--ease) both; }
   .user-card > :nth-child(2) { animation-delay: 40ms; }
   .user-card > :nth-child(3) { animation-delay: 80ms; }
@@ -344,6 +361,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <aside class="sidebar">
     <div class="side-head">
       <div class="wordmark">Сорок<i>а</i></div>
+      <button class="icon-btn" id="btnAdmin" type="button" title="Админка" aria-label="Админка" hidden></button>
       <button class="icon-btn" id="btnNewGroup" type="button" title="Новая группа" aria-label="Новая группа"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Настройки" aria-label="Настройки"></button>
     </div>
@@ -409,6 +427,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     <label class="field"><span>О себе</span>
       <textarea class="input" id="pfBio" maxlength="200" rows="3" placeholder="Пара слов о себе: увидят все, кто откроет ваш профиль"></textarea>
     </label>
+    <div class="nft-list left" id="pfNft"></div>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
     <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
@@ -477,12 +496,35 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   </div>
 </dialog>
 
+<!-- админка: коллекционные юзернеймы -->
+<dialog id="dlgAdmin">
+  <form class="dlg" id="adminForm" novalidate>
+    <h2>Админка</h2>
+    <div class="set-label">Выдать NFT-юзернейм</div>
+    <div class="ad-grid">
+      <label class="field"><span>NFT-юзернейм</span>
+        <div class="at-wrap"><input class="input" id="adName" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" required></div>
+      </label>
+      <label class="field"><span>Кому (обычный юзернейм)</span>
+        <div class="at-wrap"><input class="input" id="adOwner" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" required></div>
+      </label>
+    </div>
+    <div class="hint">От 1 до 32 символов: латинские буквы, цифры и _. Если юзернейм уже выдан, он перейдёт новому владельцу.</div>
+    <div class="error" id="adminErr"></div>
+    <div class="actions"><button class="btn" type="submit">Выдать</button></div>
+    <div class="set-label">Все NFT-юзернеймы</div>
+    <div class="scroll" id="adList"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </form>
+</dialog>
+
 <!-- профиль другого человека -->
 <dialog id="dlgUser">
   <div class="dlg user-card">
     <span id="uAvatar"></span>
     <h2 id="uName"></h2>
     <button type="button" id="uUser" title="Скопировать юзернейм"></button>
+    <div class="nft-list" id="uNft"></div>
     <div id="uBio"></div>
     <div class="actions">
       <button class="btn ghost" type="button" data-close>Закрыть</button>
@@ -506,6 +548,7 @@ const MAX_FILE = 20 * 1024 * 1024;
 const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 const HERE = location.origin + location.pathname;
+const PF = "id,username,display_name,avatar_path,bio,collectible_usernames(username)";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -542,6 +585,8 @@ const ICONS = {
   clip: '<path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.600-8.6a3.300 3.300 0 014.700 4.700l-8.500 8.500a1.700 1.700 0 01-2.400-2.400l7.800-7.800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   back: '<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   group: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c.6-3.200 3-5 6-5s5.400 1.800 6 5"/><path d="M18.500 6.500v6M15.500 9.500h6"/></g>',
+  gem: '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor" opacity=".28"/><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M9 3l-2 6 5 12 5-12-2-6" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linejoin="round"/>',
+  shield: '<path d="M12 3l8 3v6c0 4.500-3.200 7.800-8 9-4.800-1.200-8-4.500-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M9 12l2.200 2.200L15 10" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round"/>',
   file: '<path d="M7 3h7l4 4v14H7z M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
 };
 function icon(name) {
@@ -550,6 +595,19 @@ function icon(name) {
   s.setAttribute("aria-hidden", "true");
   s.innerHTML = ICONS[name];
   return s;
+}
+function nfts(p) { return ((p && p.collectible_usernames) || []).map((x) => x.username); }
+function gem(p) {
+  if (!nfts(p).length) return null;
+  const g = icon("gem");
+  g.classList.add("gem");
+  g.removeAttribute("aria-hidden");
+  g.setAttribute("role", "img");
+  g.setAttribute("aria-label", "Владелец NFT-юзернейма");
+  return g;
+}
+function nftChips(p) {
+  return nfts(p).map((u) => { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft", title: "NFT-юзернейм" }, g, "@" + u); });
 }
 function avatarUrl(path) {
   return SUPABASE_URL + "/storage/v1/object/public/avatars/" + path.split("/").map(encodeURIComponent).join("/");
@@ -781,7 +839,7 @@ async function createProfile(username, name) {
   return "ok";
 }
 async function enter() {
-  const { data, error } = await sb.from("profiles").select("*").eq("id", state.me.id).maybeSingle();
+  const { data, error } = await sb.from("profiles").select("*,collectible_usernames(username)").eq("id", state.me.id).maybeSingle();
   if (error) { showAuth("login"); $("loginErr").textContent = "Не удалось загрузить профиль. Обновите страницу."; return; }
   if (data) { state.profile = data; startApp(); return; }
   const meta = state.me.user_metadata || {};
@@ -800,6 +858,7 @@ async function startApp() {
   $("auth").hidden = true;
   $("app").hidden = false;
   refreshMe();
+  checkAdmin();
   await loadChats();
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   flash($("chatList"), 900);
@@ -812,6 +871,7 @@ async function startApp() {
 function stopApp() {
   if (state.channel) { sb.removeChannel(state.channel); state.channel = null; }
   state.started = false;
+  $("btnAdmin").hidden = true;
   state.chats.clear(); state.unread.clear(); state.urls.clear();
   state.activeId = null; state.msgs = [];
   setPending(null);
@@ -826,7 +886,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name,avatar_path,bio))")
+    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -858,13 +918,13 @@ function chatRow(c) {
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
     avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? null : (other(c) || state.profile).avatar_path),
     h("span", { class: "txt" },
-      h("span", { class: "top" }, h("span", { class: "name" }, chatTitle(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "top" }, h("span", { class: "name" }, chatTitle(c), !c.is_group && gem(other(c))), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
 }
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
     avatar(p.display_name, p.id, true, p.avatar_path),
-    h("span", { class: "txt" }, h("span", { class: "name" }, p.display_name), h("span", { class: "sub" }, h("span", {}, "@" + p.username))),
+    h("span", { class: "txt" }, h("span", { class: "name" }, p.display_name, gem(p)), h("span", { class: "sub" }, h("span", {}, "@" + p.username))),
     picked != null && h("span", { class: "check" }));
 }
 let searchSeq = 0;
@@ -896,10 +956,17 @@ async function renderList() {
 async function searchPeople(q) {
   const s = q.replace(/^@/, "").replace(/[^\p{L}\p{N}_ ]/gu, "").trim();
   if (s.length < 2) return [];
-  const { data, error } = await sb.from("profiles").select("id,username,display_name,avatar_path,bio")
-    .or('username.ilike."' + s + '%",display_name.ilike."%' + s + '%"')
-    .neq("id", state.me.id).limit(20);
-  return error ? [] : data;
+  const [byName, byNft] = await Promise.all([
+    sb.from("profiles").select(PF)
+      .or('username.ilike."' + s + '%",display_name.ilike."%' + s + '%"')
+      .neq("id", state.me.id).limit(20),
+    sb.from("collectible_usernames").select("username,profiles(" + PF + ")")
+      .ilike("username", s.replace(/ /g, "") + "%").not("owner_id", "is", null).limit(10),
+  ]);
+  const out = new Map();
+  for (const row of (byNft.data || [])) if (row.profiles && row.profiles.id !== state.me.id) out.set(row.profiles.id, row.profiles);
+  for (const p of (byName.data || [])) if (!out.has(p.id)) out.set(p.id, p);
+  return [...out.values()];
 }
 $("search").addEventListener("input", debounce(renderList, 250));
 
@@ -917,7 +984,7 @@ function renderHead() {
   if (!c) return;
   const o = other(c);
   $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? null : (o || state.profile).avatar_path));
-  $("convName").textContent = chatTitle(c);
+  $("convName").replaceChildren(chatTitle(c), ...(!c.is_group && gem(o) ? [gem(o)] : []));
   const n = c.members.length;
   $("convSub").textContent = c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? "@" + o.username : "заметки для себя");
   $("convWho").disabled = !c.is_group && !o;
@@ -1136,6 +1203,67 @@ for (const d of document.querySelectorAll("dialog")) {
   d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 }
 
+// админка: выдача коллекционных (NFT) юзернеймов. Права проверяет база, кнопка лишь показывает панель.
+async function checkAdmin() {
+  const { data } = await sb.rpc("is_admin");
+  $("btnAdmin").hidden = data !== true;
+}
+async function loadCollectibles() {
+  const list = $("adList");
+  const { data, error } = await sb.from("collectible_usernames")
+    .select("username,owner_id,granted_at,profiles(username,display_name)")
+    .order("granted_at", { ascending: false }).limit(300);
+  if (error) { list.replaceChildren(h("div", { class: "empty-note" }, "Не удалось загрузить список.")); return; }
+  if (!data.length) { list.replaceChildren(h("div", { class: "empty-note" }, "Пока ни одного NFT-юзернейма не выдано.")); return; }
+  list.replaceChildren(...data.map((row, i) => {
+    const g = icon("gem"); g.classList.add("gem");
+    const el = h("div", { class: "ad-row" },
+      h("span", { class: "nft" }, g, "@" + row.username),
+      h("span", { class: "txt small" + (row.profiles ? "" : " muted") },
+        row.profiles ? row.profiles.display_name + " · @" + row.profiles.username : "свободен, никому не выдан"),
+      row.profiles && h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
+        e.target.disabled = true;
+        const res = await sb.rpc("admin_revoke_username", { p_name: row.username });
+        if (res.error) { toast("Не удалось забрать юзернейм"); e.target.disabled = false; return; }
+        toast("@" + row.username + " забран");
+        loadCollectibles(); loadChats();
+      } }, "Забрать"));
+    el.style.animationDelay = Math.min(i, 10) * 30 + "ms";
+    return el;
+  }));
+}
+for (const id of ["adName", "adOwner"]) {
+  $(id).addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
+}
+$("btnAdmin").addEventListener("click", () => {
+  $("adminErr").textContent = "";
+  $("adList").replaceChildren(h("div", { class: "empty-note" }, "Загружаем…"));
+  $("dlgAdmin").showModal();
+  loadCollectibles();
+});
+$("adminForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("adName").value, owner = $("adOwner").value, err = $("adminErr");
+  if (!name) { err.textContent = "Введите NFT-юзернейм."; return; }
+  if (!owner) { err.textContent = "Укажите, кому выдать: обычный юзернейм человека."; return; }
+  err.textContent = "";
+  busy(e.target, async () => {
+    const { error } = await sb.rpc("admin_grant_username", { p_name: name, p_owner: owner });
+    if (error) {
+      const m = error.message || "";
+      err.textContent = /user not found/.test(m) ? "Пользователь @" + owner + " не найден."
+        : /name in use/.test(m) ? "@" + name + " уже занят как обычный юзернейм."
+        : /bad name/.test(m) ? "Недопустимый юзернейм: только латинские буквы, цифры и _."
+        : /not allowed/.test(m) ? "У этого аккаунта нет прав администратора."
+        : "Не удалось выдать юзернейм.";
+      return;
+    }
+    $("adName").value = "";
+    toast("@" + name + " выдан пользователю @" + owner);
+    loadCollectibles(); loadChats();
+  });
+});
+
 // профиль другого человека
 let viewed = null;
 function paintUser(p) {
@@ -1145,7 +1273,9 @@ function paintUser(p) {
     av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(p.avatar_path); $("viewer").showModal(); });
   }
   $("uAvatar").replaceChildren(av);
-  $("uName").textContent = p.display_name;
+  $("uName").replaceChildren(p.display_name, ...(gem(p) ? [gem(p)] : []));
+  $("uNft").replaceChildren(...nftChips(p));
+  $("uNft").hidden = !nfts(p).length;
   $("uUser").textContent = "@" + p.username;
   $("uBio").textContent = p.bio || "";
   $("uBio").hidden = !p.bio;
@@ -1156,8 +1286,8 @@ async function showUser(p) {
   paintUser(p);
   $("dlgUser").showModal();
   // в списках данные могли устареть: подтягиваем свежий профиль
-  const { data } = await sb.from("profiles").select("id,username,display_name,avatar_path,bio").eq("id", p.id).maybeSingle();
-  if (data && viewed && viewed.id === data.id && (data.bio !== p.bio || data.avatar_path !== p.avatar_path || data.display_name !== p.display_name || data.username !== p.username)) {
+  const { data } = await sb.from("profiles").select(PF).eq("id", p.id).maybeSingle();
+  if (data && viewed && viewed.id === data.id && (nfts(data).join() !== nfts(p).join() || data.bio !== p.bio || data.avatar_path !== p.avatar_path || data.display_name !== p.display_name || data.username !== p.username)) {
     viewed = data;
     paintUser(data);
   }
@@ -1177,6 +1307,8 @@ function refreshMe() {
   $("btnProfile").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
   $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
   $("avRemove").hidden = !p.avatar_path;
+  $("pfNft").replaceChildren(...nftChips(p));
+  $("pfNft").hidden = !nfts(p).length;
 }
 const AV_HUES = [190, 215, 262, 335, 18, 45, 145];
 const avDraft = { hue: 190 };
@@ -1211,7 +1343,7 @@ function canvasBlob(canvas) {
 async function setAvatarPath(path) {
   const { data, error } = await sb.from("profiles").update({ avatar_path: path }).eq("id", state.me.id).select().single();
   if (error) { toast("Не удалось сохранить аватарку"); return; }
-  state.profile = data;
+  state.profile = Object.assign({}, state.profile, data);
   refreshMe();
   loadChats();
   toast(path ? "Аватарка обновлена" : "Аватарка убрана");
@@ -1300,7 +1432,7 @@ $("profileForm").addEventListener("submit", (e) => {
   busy(e.target, async () => {
     const { data, error } = await sb.from("profiles").update({ display_name: name, username, bio }).eq("id", state.me.id).select().single();
     if (error) { err.textContent = error.code === "23505" ? "Юзернейм @" + username + " уже занят." : "Не удалось сохранить."; return; }
-    state.profile = data;
+    state.profile = Object.assign({}, state.profile, data);
     refreshMe();
     $("pfUserHint").textContent = "";
     toast("Профиль сохранён");
@@ -1390,6 +1522,7 @@ $("btnLeave").addEventListener("click", async () => {
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("group"));
+$("btnAdmin").append(icon("shield"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));

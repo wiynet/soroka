@@ -218,3 +218,82 @@ values ('avatars', 'avatars', true, 1048576, array['image/webp', 'image/jpeg', '
 
 create policy avatars_upload on storage.objects for insert to authenticated
   with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ---------- администраторы и коллекционные (NFT) юзернеймы ----------
+create table private.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  added_at timestamptz not null default now()
+);
+-- Назначить администратора: подставьте почту его аккаунта и раскомментируйте.
+-- insert into private.admins (user_id) select id from auth.users where lower(email) = 'ПОЧТА_АДМИНА';
+
+create function public.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.admins where user_id = (select auth.uid()));
+$$;
+
+create table public.collectible_usernames (
+  username text primary key check (username ~ '^[a-z0-9_]{1,32}$'),
+  owner_id uuid references public.profiles(id) on delete set null,
+  granted_by uuid,
+  granted_at timestamptz not null default now()
+);
+create index collectible_usernames_owner_idx on public.collectible_usernames(owner_id);
+alter table public.collectible_usernames enable row level security;
+create policy collectibles_select on public.collectible_usernames for select to authenticated using (true);
+revoke all on public.collectible_usernames from anon, authenticated;
+grant select on public.collectible_usernames to authenticated;
+
+-- обычный юзернейм не может совпадать с коллекционным
+create function private.check_username_free() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if exists (select 1 from public.collectible_usernames where username = new.username) then
+    raise exception 'username is reserved' using errcode = '23505';
+  end if;
+  return new;
+end;
+$$;
+create trigger profiles_username_free before insert or update of username on public.profiles
+for each row execute function private.check_username_free();
+
+create or replace function public.username_available(u text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select not exists (select 1 from public.profiles where username = lower(u))
+     and not exists (select 1 from public.collectible_usernames where username = lower(u));
+$$;
+
+create function public.admin_grant_username(p_name text, p_owner text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  n text := lower(btrim(coalesce(p_name, '')));
+  o uuid;
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if n !~ '^[a-z0-9_]{1,32}$' then raise exception 'bad name'; end if;
+  select id into o from public.profiles where username = lower(btrim(coalesce(p_owner, '')));
+  if o is null then raise exception 'user not found'; end if;
+  if exists (select 1 from public.profiles where username = n) then raise exception 'name in use'; end if;
+  insert into public.collectible_usernames (username, owner_id, granted_by)
+  values (n, o, auth.uid())
+  on conflict (username) do update
+    set owner_id = excluded.owner_id, granted_by = excluded.granted_by, granted_at = now();
+end;
+$$;
+
+-- «Забрать»: юзернейм остаётся в списке без владельца
+create function public.admin_revoke_username(p_name text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  update public.collectible_usernames set owner_id = null, granted_by = auth.uid(), granted_at = now()
+   where username = lower(btrim(coalesce(p_name, '')));
+end;
+$$;
+
+revoke all on function private.check_username_free() from public;
+revoke all on function public.is_admin() from public, anon;
+revoke all on function public.admin_grant_username(text, text) from public, anon;
+revoke all on function public.admin_revoke_username(text) from public, anon;
+grant execute on function public.is_admin(), public.admin_grant_username(text, text),
+  public.admin_revoke_username(text) to authenticated;
