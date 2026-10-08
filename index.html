@@ -178,10 +178,24 @@ button { cursor: pointer; }
 .ticks { display: inline-block; width: 17px; height: 17px; vertical-align: -4px; margin-left: 3px; opacity: .65; }
 .ticks.read { color: var(--accent); opacity: 1; }
 .msg.hit { outline: 2px solid var(--accent); outline-offset: 2px; }
-.gift-msg { display: grid; justify-items: center; gap: 2px; padding: 8px 18px 4px; text-align: center; min-width: 170px; }
-.gift-msg .em { font-size: 58px; line-height: 1.1; }
-.gift-msg b { font-weight: 600; }
-.gift-msg .note { font-size: 14px; overflow-wrap: anywhere; }
+/* подарок в чате: служебная карточка по центру, как отдельное событие, а не обычное сообщение */
+.msg.giftm, .msg.giftm.mine { align-self: center; max-width: min(88%, 290px); padding: 0; background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; display: grid; justify-items: center; gap: 6px; }
+.gift-pill, .gift-card { --gc: hsl(var(--h) 42% 22% / .9); background: var(--gc); color: #fff; backdrop-filter: blur(10px); }
+.gift-pill { padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; text-align: center; }
+.gift-card { display: grid; justify-items: center; gap: 4px; width: 100%; padding: 14px 18px 16px; border-radius: 22px; text-align: center; }
+.gift-card .em { font-size: 84px; line-height: 1.1; }
+.gift-card b { font-weight: 600; font-size: 15px; }
+.gift-card .line { font-size: 13px; opacity: .92; text-wrap: balance; }
+.gift-card .note { font-size: 14px; overflow-wrap: anywhere; }
+.gift-card .view { margin-top: 8px; border: 0; border-radius: 999px; padding: 7px 22px; background: rgb(255 255 255 / .22); color: #fff; font-weight: 600; }
+.gift-card .view:hover { background: rgb(255 255 255 / .34); }
+.msg.giftm .meta { color: var(--muted); }
+.gv { align-items: center; text-align: center; }
+.gv .em { font-size: 96px; line-height: 1.1; }
+.gv dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; align-self: stretch; text-align: left; font-size: 14px; }
+.gv dt { color: var(--muted); }
+.gv dd { margin: 0; overflow-wrap: anywhere; }
+button.gift { cursor: pointer; font: inherit; }
 .gift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .gift { display: grid; gap: 2px; justify-items: center; padding: 10px 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); color: var(--ink); text-align: center; min-width: 0; }
 .gift .em { font-size: 34px; line-height: 1.15; }
@@ -367,9 +381,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .gift { animation: pop-in .28s var(--ease) both; transition: border-color .18s, box-shadow .18s, transform .12s var(--ease), background-color .18s; }
   button.gift:hover { transform: translateY(-2px); }
   @keyframes gift-drop { 0% { transform: translateY(-18px) scale(.6) rotate(-14deg); opacity: 0; } 60% { transform: translateY(3px) scale(1.12) rotate(6deg); opacity: 1; } 100% { transform: none; } }
-  .msg.new .gift-msg .em, #msgs.fresh .gift-msg .em { animation: gift-drop .7s var(--ease) both; }
-  .gift-msg .em { transition: transform .25s var(--ease); }
-  .gift-msg:hover .em { transform: scale(1.12) rotate(-6deg); }
+  .msg.new .gift-card .em, #msgs.fresh .gift-card .em, .gv .em { animation: gift-drop .7s var(--ease) both; }
+  .gift-card .em { transition: transform .25s var(--ease); }
+  .gift-card:hover .em { transform: scale(1.1) rotate(-6deg); }
+  .gift-card .view { transition: background-color .18s, transform .12s var(--ease); }
+  .gift-card .view:active { transform: scale(.95); }
   .gift .em { transition: transform .25s var(--ease); }
   .gift:hover .em { transform: scale(1.18) rotate(-6deg); }
   .star { animation: twinkle 3s ease-in-out infinite; }
@@ -790,6 +806,20 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   </div>
 </dialog>
 
+<!-- подарок: подробности и продажа -->
+<dialog id="dlgGiftView">
+  <div class="dlg gv">
+    <span class="em" id="gvEmoji"></span>
+    <h2 id="gvName"></h2>
+    <dl id="gvFacts"></dl>
+    <div class="hint" id="gvHint"></div>
+    <div class="actions" style="align-self:stretch;justify-content:center">
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
+      <button class="btn" type="button" id="gvSell" hidden></button>
+    </div>
+  </div>
+</dialog>
+
 <!-- действия с сообщением -->
 <dialog id="dlgMsg">
   <div class="dlg sheet">
@@ -873,7 +903,7 @@ if (!window.supabase) {
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const state = {
-  me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftTypes: null, balance: 0,
+  me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
   unread: new Set(), pendingFile: null, channel: null, urls: new Map(),
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
@@ -1512,12 +1542,24 @@ function msgNode(m) {
     }
   }
   if (m.gift_type) {
+    el.classList.add("giftm");
     const t = (state.giftTypes || []).find((x) => x.id === m.gift_type) || { emoji: "🎁", name: "Подарок" };
-    el.append(h("div", { class: "gift-msg" },
-      h("span", { class: "em" }, t.emoji),
-      h("span", { class: "small muted" }, mine ? "Вы подарили" : "Вам подарили"),
-      h("b", {}, t.name),
-      m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»")));
+    const info = m.gift_id ? state.giftInfo.get(m.gift_id) : null;
+    const o = c ? other(c) : null;
+    const back = info ? Math.floor(info.price_paid * 0.9) : null;
+    const swap = back ? " или обменять на " + coins(back) : "";
+    const line = info && info.sold_at ? "Подарок обменян на " + coins(info.sold_for) + "."
+      : mine ? (o ? o.display_name : "Получатель") + " может показать подарок в профиле" + swap + "."
+      : "Можно показать подарок в профиле" + swap + ".";
+    el.append(
+      h("div", { class: "gift-pill" }, mine ? "Вы отправили подарок" + (info ? " за " + coins(info.price_paid) : "") : "Вам отправили подарок"),
+      h("div", { class: "gift-card" },
+        h("span", { class: "em" }, t.emoji),
+        h("b", {}, "Подарок: " + t.name),
+        h("span", { class: "line" }, "Отправитель: " + (mine ? "вы" : (o ? o.display_name : "собеседник"))),
+        h("span", { class: "line" }, line),
+        m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»"),
+        m.gift_id && h("button", { class: "view", type: "button", onclick: () => openGiftView(m.gift_id) }, "Открыть")));
   } else if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
   let ticks = null;
   if (mine && c) {
@@ -1564,7 +1606,7 @@ function addMsg(m) {
   state.msgs.sort((a, b) => a.id - b.id);
   renderMsgs(m.id);
   if (stick) scrollDown();
-  if (m.reply_to) ensureReplies();
+  if (m.reply_to || m.gift_id) ensureReplies();
   markReadSoon();
 }
 function touchChat(m) {
@@ -1601,7 +1643,17 @@ const markReadSoon = debounce(() => {
   sb.rpc("mark_read", { p_chat: c.id, p_message: last }).then(() => {});
 }, 400);
 // сообщения, на которые отвечают, могут быть не загружены: дотягиваем их отдельно
+// цены и статус подарков для карточек в переписке
+async function ensureGifts() {
+  const need = [...new Set(state.msgs.map((m) => m.gift_id).filter((id) => id && !state.giftInfo.has(id)))];
+  if (!need.length) return;
+  const chat = state.activeId;
+  const { data } = await sb.from("gifts").select("id,price_paid,sold_at,sold_for,to_id").in("id", need);
+  for (const g of (data || [])) state.giftInfo.set(g.id, g);
+  if (data && data.length && state.activeId === chat) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
+}
 async function ensureReplies() {
+  ensureGifts();
   const have = new Set(state.msgs.map((m) => m.id));
   const need = [...new Set(state.msgs.map((m) => m.reply_to).filter((id) => id && !have.has(id) && !state.replies.has(id)))];
   if (!need.length) return;
@@ -2061,14 +2113,14 @@ async function loadUserGifts(id) {
   $("uTabGifts").textContent = "Подарки";
   $("uGifts").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,created_at,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,created_at,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   if (!viewed || viewed.id !== id) return;
   const rows = res.data || [];
   $("uTabGifts").textContent = rows.length ? "Подарки · " + rows.length : "Подарки";
   const byId = new Map(types.map((t) => [t.id, t]));
   $("uGifts").replaceChildren(...(rows.length ? rows.map((g, i) => {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
-    const el = h("div", { class: "gift", title: g.note || "" },
+    const el = h(id === state.me.id ? "button" : "div", { class: "gift", type: id === state.me.id ? "button" : null, title: id === state.me.id ? "Открыть подарок" : (g.note || ""), onclick: id === state.me.id ? () => openGiftView(g.id) : null },
       h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
       h("span", { class: "sub" }, g.from ? "от " + g.from.display_name : "от скрытого отправителя"),
       g.note && h("span", { class: "sub" }, "«" + g.note + "»"));
@@ -2076,6 +2128,51 @@ async function loadUserGifts(id) {
     return el;
   }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? "Не удалось загрузить подарки." : "Подарков пока нет.")]));
 }
+// подробности подарка; получатель может обменять его на сорочки за вычетом комиссии 10 %
+let gvGift = null, sellArmed = false;
+async function openGiftView(id) {
+  gvGift = null; sellArmed = false;
+  $("gvEmoji").textContent = "🎁"; $("gvName").textContent = "Подарок"; $("gvFacts").replaceChildren(); $("gvHint").textContent = "Загружаем…"; $("gvSell").hidden = true;
+  $("dlgGiftView").showModal();
+  const [types, res] = await Promise.all([giftTypes(),
+    sb.from("gifts").select("id,type_id,note,created_at,price_paid,sold_at,sold_for,to_id,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("id", id).maybeSingle()]);
+  const g = res.data;
+  if (!g) { $("gvHint").textContent = "Не удалось загрузить подарок."; return; }
+  gvGift = g;
+  const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: "Подарок" };
+  const mineToSell = g.to_id === state.me.id && !g.sold_at;
+  const back = Math.floor(g.price_paid * 0.9);
+  $("gvEmoji").textContent = t.emoji;
+  $("gvName").textContent = t.name;
+  const fact = (k, v) => [h("dt", {}, k), h("dd", {}, v)];
+  $("gvFacts").replaceChildren(
+    ...fact("От кого", g.from ? g.from.display_name + " · @" + g.from.username : "отправитель скрыт"),
+    ...fact("Когда", dyFmt.format(new Date(g.created_at))),
+    ...fact("Стоимость", coins(g.price_paid)),
+    ...(g.note ? fact("Подпись", "«" + g.note + "»") : []),
+    ...(g.sold_at ? fact("Статус", "обменян на " + coins(g.sold_for)) : []));
+  $("gvHint").textContent = mineToSell ? "Подарок показан в вашем профиле. Его можно обменять на сорочки: вернётся " + coins(back) + ", комиссия 10 %. После обмена подарок исчезнет из профиля." : "";
+  $("gvSell").hidden = !mineToSell;
+  $("gvSell").textContent = "Обменять на " + coins(back);
+}
+$("gvSell").addEventListener("click", async () => {
+  if (!gvGift) return;
+  if (!sellArmed) { sellArmed = true; $("gvSell").textContent = "Точно обменять? Вернуть подарок будет нельзя"; return; }
+  const g = gvGift;
+  $("gvSell").disabled = true;
+  const { data, error } = await sb.rpc("sell_gift", { p_gift: g.id });
+  $("gvSell").disabled = false;
+  if (error) { toast(/already sold/.test(error.message || "") ? "Этот подарок уже обменян" : "Не удалось обменять подарок"); return; }
+  const back = Math.floor(g.price_paid * 0.9);
+  state.balance = Number(data) || 0;
+  state.giftInfo.set(g.id, { id: g.id, price_paid: g.price_paid, sold_at: new Date().toISOString(), sold_for: back, to_id: g.to_id });
+  $("dlgGiftView").close();
+  toast("Получено " + coins(back) + ". На счёте " + coins(state.balance));
+  if (state.activeId) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
+  if (viewed && viewed.id === state.me.id && $("dlgUser").open) loadUserGifts(viewed.id);
+  if ($("dlgProfile").open) loadWallet();
+});
+
 // покупка подарка за сорочки
 let giftPick = null;
 function giftPrice(t) { return isPremium(state.profile) ? Math.ceil(t.price * 0.8) : t.price; }

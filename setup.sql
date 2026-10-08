@@ -800,3 +800,40 @@ alter table public.messages
 -- В рабочей базе send_gift после записи подарка открывает личный чат (open_direct_chat)
 -- и добавляет туда сообщение с gift_type и gift_note; edit_message такие сообщения не меняет.
 -- Клиенту запись gift_type не разрешена, поэтому подделать сообщение-подарок нельзя.
+
+-- ======================================================================
+-- Обмен подарка на сорочки: возвращается 90 % уплаченного, 10 % — комиссия
+-- ======================================================================
+alter table public.gifts
+  add column sold_at timestamptz,
+  add column sold_for integer;
+alter table public.messages add column gift_id bigint references public.gifts(id) on delete set null;
+-- send_gift в рабочей базе записывает gift_id в сообщение-подарок.
+
+create function public.sell_gift(p_gift bigint) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  g public.gifts;
+  nm text;
+  gain integer;
+  nb bigint;
+begin
+  if me is null or private.is_banned() then raise exception 'not allowed'; end if;
+  select * into g from public.gifts where id = p_gift for update;
+  if not found or g.to_id <> me then raise exception 'not allowed'; end if;
+  if g.sold_at is not null then raise exception 'already sold'; end if;
+  gain := floor(g.price_paid * 0.9)::integer;
+  if gain < 1 then raise exception 'nothing to gain'; end if;
+  select name into nm from public.gift_types where id = g.type_id;
+  update public.gifts set sold_at = now(), sold_for = gain where id = p_gift;
+  insert into public.wallets (user_id) values (me) on conflict (user_id) do nothing;
+  select balance + gain into nb from public.wallets where user_id = me for update;
+  update public.wallets set balance = nb, updated_at = now() where user_id = me;
+  insert into public.coin_ledger (user_id, amount, balance_after, reason)
+  values (me, gain, nb, 'Продажа подарка «' || coalesce(nm, 'Подарок') || '» (комиссия 10 %)');
+  return nb;
+end;
+$$;
+revoke all on function public.sell_gift(bigint) from public, anon;
+grant execute on function public.sell_gift(bigint) to authenticated;
