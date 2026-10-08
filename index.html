@@ -211,6 +211,15 @@ button { cursor: pointer; }
 .react-row button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; font-size: 24px; line-height: 1; padding: 0; }
 .react-row button:hover, .react-row button[aria-pressed="true"] { background: var(--panel-2); }
 .react-row button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+.mem-row { display: grid; gap: 2px; }
+.mem-row .row { min-width: 0; }
+.mem-acts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px 58px; }
+#infoList { margin: 0; }
+.mem-row .btn { padding: 6px 10px; font-size: 13px; }
+.role-tag { margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--muted); background: var(--panel-2); vertical-align: 1px; }
+.info-top { display: flex; align-items: center; gap: 14px; }
+.info-top .avatar.lg { flex: none; }
+.info-manage { display: grid; gap: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 14px; }
 .mrow { display: flex; align-items: flex-end; gap: 8px; align-self: flex-start; max-width: min(84%, 570px); }
 .mrow .msg { max-width: 100%; min-width: 0; }
 .mrow .avatar { width: 34px; height: 34px; font-size: 12px; cursor: pointer; }
@@ -641,7 +650,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
         <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
         <button class="icon-btn send" id="btnSend" type="submit" title="Отправить" aria-label="Отправить"></button>
       </form>
-      <div class="chan-note" id="chanNote" hidden>В канале пишет только его автор.</div>
+      <div class="chan-note" id="chanNote" hidden>В канале пишут только владелец и администраторы.</div>
     </div>
   </main>
 </div>
@@ -787,10 +796,26 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
 <!-- о группе -->
 <dialog id="dlgInfo">
   <div class="dlg">
-    <h2 id="infoTitle"></h2>
-    <div class="small muted" id="infoCount"></div>
+    <div class="info-top">
+      <span id="infoAvatar"></span>
+      <div style="min-width:0">
+        <h2 id="infoTitle" style="overflow-wrap:anywhere"></h2>
+        <div class="small muted" id="infoCount"></div>
+      </div>
+    </div>
     <div id="infoDesc" style="white-space:pre-wrap;overflow-wrap:anywhere"></div>
-    <div class="scroll" id="infoList"></div>
+    <div class="info-manage" id="infoManage" hidden>
+      <div class="set-label" style="margin:0">Управление</div>
+      <div class="av-actions">
+        <input type="file" id="infoAvFile" accept="image/*" hidden>
+        <button class="btn ghost" type="button" id="infoAvSet">Сменить аватарку</button>
+        <button class="btn ghost" type="button" id="infoAvDel">Убрать аватарку</button>
+      </div>
+      <label class="field"><span>Название</span><input class="input" id="infoEditTitle" maxlength="64"></label>
+      <label class="field"><span>Описание</span><textarea class="input" id="infoEditDesc" maxlength="300" rows="2"></textarea></label>
+      <div class="actions"><button class="btn" type="button" id="infoSave">Сохранить</button></div>
+    </div>
+    <div class="scroll" id="infoList" style="max-height:300px"></div>
     <div class="actions">
       <button class="btn danger" type="button" id="btnLeave" style="margin-right:auto">Покинуть группу</button>
       <button class="btn ghost" type="button" id="btnAddMembers">Добавить участников</button>
@@ -1518,7 +1543,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -1527,6 +1552,8 @@ async function loadChats() {
     last_at: c.last_message_at, last_text: c.last_message_text, last_sender: c.last_message_sender,
     members: c.chat_members.map((m) => m.profiles).filter(Boolean),
     reads: new Map(c.chat_members.map((m) => [m.user_id, Number(m.last_read_id) || 0])),
+    avatar_path: c.avatar_path || null,
+    admins: new Set(c.chat_members.filter((m) => m.is_admin).map((m) => m.user_id)),
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -1534,6 +1561,12 @@ async function loadChats() {
 }
 const reloadSoon = debounce(() => { if (state.started) loadChats(); }, 400);
 
+// моя роль в группе или канале: владелец, администратор или обычный участник
+function myRole(c) { return !c || !c.is_group ? null : c.created_by === state.me.id ? "owner" : c.admins.has(state.me.id) ? "admin" : null; }
+function roleTag(c, userId) {
+  const t = c.created_by === userId ? "владелец" : c.admins.has(userId) ? "админ" : "";
+  return t ? h("span", { class: "role-tag" }, t) : null;
+}
 function other(c) { return c.members.find((p) => p.id !== state.me.id); }
 function chatTitle(c) {
   if (c.is_group) return c.title || "Группа";
@@ -1549,7 +1582,7 @@ function chatRow(c) {
   if (c.is_channel) { /* в канале автор один, имя не подписываем */ }
   else if (c.last_text && c.last_sender === state.me.id) preview = "Вы: " + preview;
   else if (c.last_text && c.is_group) preview = memberName(c, c.last_sender) + ": " + preview;
-  const av = avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? null : (other(c) || state.profile).avatar_path);
+  const av = avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? c.avatar_path : (other(c) || state.profile).avatar_path);
   if (!c.is_group && isOnline(other(c))) av.classList.add("online");
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
     av,
@@ -1642,13 +1675,13 @@ function renderHead() {
   const c = state.chats.get(state.activeId);
   if (!c) return;
   const o = other(c);
-  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? null : (o || state.profile).avatar_path));
+  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path));
   $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), chatTitle(c), ...(c.is_group ? [] : marks(o)));
   tint($("convName"), c.is_group ? null : o);
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? fmtSeen(o) : "заметки для себя");
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
-  const canPost = !c.is_channel || c.created_by === state.me.id;
+  const canPost = !c.is_channel || !!myRole(c);
   $("composer").hidden = !canPost;
   $("chanNote").hidden = canPost;
   $("convWho").disabled = !c.is_group && !o;
@@ -1716,7 +1749,7 @@ function msgNode(m) {
   const el = h("div", { class: "msg" + (mine ? " mine" : ""), "data-id": m.id });
   if (c && c.is_group && !c.is_channel && !mine) {
     const who = c.members.find((p) => p.id === m.sender_id);
-    el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id), marks(who)), who));
+    el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id), marks(who), roleTag(c, m.sender_id)), who));
   }
   if (m.reply_to) {
     const r = state.msgs.find((x) => x.id === m.reply_to) || state.replies.get(m.reply_to);
@@ -2267,7 +2300,7 @@ function openMsgMenu(m) {
   $("maReply").hidden = $("composer").hidden;
   $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type;
   $("maCopy").hidden = !m.body || !!m.gift_type;
-  $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || (c && c.is_group && c.created_by === state.me.id));
+  $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
   $("dlgMsg").showModal();
 }
 $("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
@@ -3129,24 +3162,118 @@ $("pickerForm").addEventListener("submit", (e) => {
 });
 // о группе
 let leaveArmed = false;
+function paintInfo() {
+  const c = state.chats.get(state.activeId);
+  if (!c || !c.is_group) { $("dlgInfo").close(); return; }
+  const role = myRole(c), me = state.me.id;
+  const av = avatar(c.title, c.id, "lg", c.avatar_path);
+  if (c.avatar_path) {
+    av.style.cursor = "zoom-in";
+    av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(c.avatar_path); $("viewer").showModal(); });
+  }
+  $("infoAvatar").replaceChildren(av);
+  $("infoTitle").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), c.title);
+  const n = c.members.length;
+  $("infoCount").textContent = (c.is_channel ? subsText(n) : n + " " + plural(n, "участник", "участника", "участников")) +
+    (role === "owner" ? " · вы владелец" : role === "admin" ? " · вы администратор" : "");
+  $("infoDesc").textContent = c.description || "";
+  $("infoDesc").hidden = !c.description;
+  $("infoManage").hidden = !role;
+  $("infoAvDel").hidden = !c.avatar_path;
+  if (document.activeElement !== $("infoEditTitle")) $("infoEditTitle").value = c.title || "";
+  if (document.activeElement !== $("infoEditDesc")) $("infoEditDesc").value = c.description || "";
+  const showList = !c.is_channel || !!role;
+  $("infoList").hidden = !showList;
+  const order = (p) => (p.id === c.created_by ? 0 : c.admins.has(p.id) ? 1 : 2);
+  $("infoList").replaceChildren(...(showList ? [...c.members].sort((a, b) => order(a) - order(b)).map((p) => {
+    const isOwner = p.id === c.created_by, isAdm = c.admins.has(p.id);
+    const row = personRow(p, () => { $("dlgInfo").close(); showUser(p); });
+    const tag = roleTag(c, p.id);
+    if (tag) row.querySelector(".name").append(tag);
+    row.querySelector(".sub span").textContent = "@" + p.username;   // здесь важна роль в группе, а не в мессенджере
+    const acts = [];
+    if (role === "owner" && !isOwner && p.id !== me) acts.push(h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
+      e.target.disabled = true;
+      const { error } = await sb.rpc("set_chat_admin", { p_chat: c.id, p_user: p.id, p_on: !isAdm });
+      if (error) { toast("Не удалось изменить роль"); e.target.disabled = false; return; }
+      toast(isAdm ? p.display_name + " больше не администратор" : p.display_name + " теперь администратор");
+      await loadChats(); paintInfo();
+    } }, isAdm ? "Снять админа" : "Сделать админом"));
+    if (role && !isOwner && p.id !== me && (role === "owner" || !isAdm)) {
+      let armed = false;
+      acts.push(h("button", { class: "btn danger", type: "button", onclick: async (e) => {
+        if (!armed) { armed = true; e.target.textContent = "Точно убрать?"; return; }
+        e.target.disabled = true;
+        const { error } = await sb.rpc("remove_member", { p_chat: c.id, p_user: p.id });
+        if (error) { toast("Не удалось убрать участника"); e.target.disabled = false; return; }
+        toast(p.display_name + " убран из " + (c.is_channel ? "канала" : "группы"));
+        await loadChats(); paintInfo();
+      } }, "Убрать"));
+    }
+    return h("div", { class: "mem-row" }, row, acts.length ? h("div", { class: "mem-acts" }, ...acts) : null);
+  }) : []));
+  $("btnAddMembers").hidden = c.is_channel && !role;
+  $("btnLeave").hidden = role === "owner";
+  leaveArmed = false;
+  $("btnLeave").textContent = c.is_channel ? "Отписаться" : "Покинуть группу";
+}
 $("convWho").addEventListener("click", () => {
   const c = state.chats.get(state.activeId);
   if (!c) return;
   if (!c.is_group) { const o = other(c); if (o) showUser(o); return; }
-  const owner = c.created_by === state.me.id;
-  $("infoTitle").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), c.title);
-  const n = c.members.length;
-  $("infoCount").textContent = c.is_channel ? subsText(n) : n + " " + plural(n, "участник", "участника", "участников");
-  $("infoDesc").textContent = c.description || "";
-  $("infoDesc").hidden = !c.description;
-  const showList = !c.is_channel || owner;
-  $("infoList").hidden = !showList;
-  $("infoList").replaceChildren(...(showList ? c.members.map((p) => personRow(p, () => { $("dlgInfo").close(); showUser(p); })) : []));
-  $("btnAddMembers").hidden = c.is_channel && !owner;
-  $("btnLeave").hidden = c.is_channel && owner;
-  leaveArmed = false;
-  $("btnLeave").textContent = c.is_channel ? "Отписаться" : "Покинуть группу";
+  paintInfo();
   $("dlgInfo").showModal();
+});
+// картинка обрезается до квадрата и уменьшается до 256 пикселей, затем загружается в хранилище
+async function imageToAvatarPath(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 256;
+    cv.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+    const blob = await canvasBlob(cv);
+    if (!blob) return null;
+    const ext = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+    const path = state.me.id + "/chat-" + Date.now() + "." + ext;
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: blob.type, cacheControl: "31536000" });
+    return up.error ? null : path;
+  } catch (e) { return null; } finally { URL.revokeObjectURL(url); }
+}
+async function setChatAvatar(path) {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const { error } = await sb.rpc("set_chat_avatar", { p_chat: c.id, p_path: path });
+  if (error) { toast("Не удалось сохранить аватарку"); return; }
+  toast(path ? "Аватарка обновлена" : "Аватарка убрана");
+  await loadChats(); paintInfo();
+}
+$("infoAvSet").addEventListener("click", () => $("infoAvFile").click());
+$("infoAvFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  $("infoAvSet").disabled = true;
+  const path = await imageToAvatarPath(file);
+  $("infoAvSet").disabled = false;
+  if (!path) { toast("Не получилось загрузить эту картинку"); return; }
+  setChatAvatar(path);
+});
+$("infoAvDel").addEventListener("click", () => setChatAvatar(null));
+$("infoSave").addEventListener("click", async () => {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const title = $("infoEditTitle").value.trim();
+  if (!title) { toast("Название не может быть пустым"); return; }
+  $("infoSave").disabled = true;
+  const { error } = await sb.rpc("update_chat", { p_chat: c.id, p_title: title, p_description: $("infoEditDesc").value.trim() });
+  $("infoSave").disabled = false;
+  if (error) { toast("Не удалось сохранить"); return; }
+  toast("Сохранено");
+  await loadChats(); paintInfo();
 });
 $("btnAddMembers").addEventListener("click", () => { $("dlgInfo").close(); openPicker("add"); });
 $("btnLeave").addEventListener("click", async () => {

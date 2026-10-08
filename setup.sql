@@ -954,3 +954,12 @@ end;
 $$;
 revoke all on function public.admin_grant_premium(uuid, integer) from public, anon;
 grant execute on function public.admin_grant_premium(uuid, integer) to authenticated;
+
+-- ======================================================================
+-- Аватарки групп и каналов, владелец и администраторы группы
+-- (миграция messenger_group_roles_and_avatars в проекте Supabase)
+-- ======================================================================
+-- chats.avatar_path, chat_members.is_admin; функции set_chat_admin (только владелец),
+-- set_chat_avatar, update_chat, remove_member (владелец и администраторы; администратор
+-- не может убрать владельца и другого администратора). В канале пишут владелец и
+-- администраторы; удалять чужие сообщения в чате могут они же.
