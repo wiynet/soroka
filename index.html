@@ -26,6 +26,7 @@
   --verify: #1d7fd6;
   --coin: #b97a00;
   --premium: #7c4ddb;
+  --admin: #d92d20;
   --name-l: 38%;
   --online: #1f9d57;
   --font: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -38,7 +39,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --name-l: 72%; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --admin: #ff5a4d; --name-l: 72%; --online: #4cd184;
     color-scheme: dark;
   }
 }
@@ -46,7 +47,7 @@
     --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
     --ink: #e7eef1; --muted: #8c9ba5;
     --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
-    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --name-l: 72%; --online: #4cd184;
+    --mine: hsl(var(--h) 50% 21%); --theirs: #1c2830; --danger: #ff8a80; --verify: #5bb2ff; --coin: #f2c14e; --premium: #b79bff; --admin: #ff5a4d; --name-l: 72%; --online: #4cd184;
     color-scheme: dark;
 }
 :root[data-size="s"] { --fs: 14px; }
@@ -168,10 +169,14 @@ button { cursor: pointer; }
 }
 .star, .adm { display: inline-block; width: 1em; height: 1em; margin-left: 4px; vertical-align: -0.14em; flex: none; }
 .star { color: var(--premium); }
-.adm { color: var(--coin); }
+.adm { color: var(--admin); }
 .hued { color: hsl(var(--nh) 75% var(--name-l)); }
 .walls button { position: relative; }
 .walls button.prem::after { content: "★"; position: absolute; top: 3px; right: 6px; font-size: 12px; color: var(--premium); }
+.msg { touch-action: pan-y; }
+.msg.swiping { transition: none; }
+#swipeHint { position: fixed; z-index: 5; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); pointer-events: none; opacity: 0; }
+#swipeHint svg { width: 18px; height: 18px; }
 .quote { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 3px 8px; margin: 2px 0 5px; font-size: 13px; color: inherit; cursor: pointer; }
 .quote b { display: block; color: var(--accent); font-weight: 600; }
 .quote span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42ch; }
@@ -376,6 +381,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   #editChip:not([hidden]), .chan-note:not([hidden]) { animation: rise .2s var(--ease) both; }
   .walls button { transition: border-color .18s, box-shadow .18s, transform .12s var(--ease); }
   .walls button:hover { transform: translateY(-2px); }
+  .msg { transition: transform .22s var(--ease); }
   @keyframes hit { 0%, 100% { outline-color: transparent; } 30%, 70% { outline-color: var(--accent); } }
   .msg.hit { animation: hit 1.2s ease both; }
   .gift { animation: pop-in .28s var(--ease) both; transition: border-color .18s, box-shadow .18s, transform .12s var(--ease), background-color .18s; }
@@ -886,6 +892,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 </dialog>
 
 <dialog id="viewer"><img id="viewerImg" alt=""></dialog>
+<div id="swipeHint" aria-hidden="true"></div>
 <div id="toast" role="status" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -944,6 +951,7 @@ const ICONS = {
   crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-1.800 10H4.800z" fill="currentColor"/><path d="M5 20.500h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   check1: '<path d="M5 12.5l4.500 4.500L19 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   check2: '<path d="M1.500 12.500l4.500 4.500L15.500 7.500M10.500 15.500l1.500 1.500L22 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
+  reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   horn: '<path d="M4 10v4h3l7 4V6l-7 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17.5 9.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   tick: '<path d="M12 2.5l2.3 1.7 2.9-.1.9 2.7 2.3 1.7-.9 2.7.9 2.7-2.3 1.7-.9 2.7-2.9-.1L12 21.5l-2.3-1.7-2.9.1-.9-2.7-2.3-1.700.9-2.7-.9-2.7 2.3-1.7.9-2.7 2.9.1z" fill="currentColor"/><path d="M8.5 12.2l2.4 2.4 4.600-4.900" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -987,7 +995,7 @@ function tint(el, p) {
 function marks(p) {
   const out = [];
   if (p && p.is_chief) out.push(badge("crown", "adm", "Главный администратор"));
-  else if (p && p.is_admin) out.push(badge("adm", "adm", "Администратор"));
+  if (p && p.is_admin) out.push(badge("tick", "adm", p.is_chief ? "Главный администратор" : "Администратор"));
   if (p && isPremium(p)) out.push(badge("tick", "star", "Премиум"));
   if (p && p.verified) {
     const t = icon("tick");
@@ -1763,6 +1771,49 @@ function cancelReply() {
   $("replyChip").hidden = true;
 }
 $("replyCancel").addEventListener("click", cancelReply);
+// ответ свайпом: сообщение тянут влево (на компьютере — двойной щелчок)
+(function () {
+  const box = $("msgs"), hint = $("swipeHint");
+  hint.append(icon("reply"));
+  let el = null, x0 = 0, y0 = 0, dx = 0, active = false;
+  const msgOf = (node) => { const id = Number(node.dataset.id); return state.msgs.find((m) => m.id === id); };
+  const reset = () => { if (el) { el.classList.remove("swiping"); el.style.transform = ""; } hint.style.opacity = "0"; el = null; active = false; dx = 0; };
+  box.addEventListener("touchstart", (e) => {
+    const t = e.target.closest(".msg");
+    if (!t || e.touches.length !== 1 || $("composer").hidden) return;
+    el = t; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; active = false;
+  }, { passive: true });
+  box.addEventListener("touchmove", (e) => {
+    if (!el) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!active) {
+      if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)) { reset(); return; }   // это прокрутка
+      if (mx < -10 && Math.abs(mx) > Math.abs(my) * 1.5) { active = true; el.classList.add("swiping"); }
+      else return;
+    }
+    dx = Math.max(-84, Math.min(0, mx));
+    el.style.transform = "translateX(" + dx + "px)";
+    const r = el.getBoundingClientRect();
+    hint.style.left = Math.min(innerWidth - 44, r.right + 8) + "px";
+    hint.style.top = r.top + r.height / 2 - 17 + "px";
+    hint.style.opacity = String(Math.min(1, -dx / 56));
+    hint.style.transform = "scale(" + (dx <= -56 ? 1.15 : 0.85) + ")";
+  }, { passive: true });
+  const end = () => {
+    if (!el) return;
+    const m = active && dx <= -56 ? msgOf(el) : null;
+    reset();
+    if (m) { if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} } startReply(m); }
+  };
+  box.addEventListener("touchend", end);
+  box.addEventListener("touchcancel", reset);
+  box.addEventListener("dblclick", (e) => {
+    const t = e.target.closest(".msg");
+    if (!t || $("composer").hidden || e.target.closest("button, a, img")) return;
+    const m = msgOf(t);
+    if (m) { getSelection().removeAllRanges(); startReply(m); }
+  });
+})();
 function startEdit(m) {
   cancelReply();
   state.editing = m;
