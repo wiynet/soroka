@@ -2632,7 +2632,7 @@ function paintUser(p) {
   $("uAdmin").hidden = !state.isAdmin;
   $("uBan").hidden = $("uVerify").hidden = p.id === state.me.id;
   if (state.isAdmin) loadUserCoins(p.id);
-  $("uPrem").textContent = isPremium(p) ? "Премиум до " + dyFmt.format(new Date(p.premium_until)) + ". Срок ниже прибавится к текущему." : "Премиума нет. Выдать на срок:";
+  $("uPrem").textContent = isPremium(p) ? "Премиум до " + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "") + ". Новый срок прибавится к текущему." : "Премиума нет. Выдать на срок:";
   $("uPremOff").hidden = !isPremium(p);
   $("uAdminToggle").hidden = !(state.isChief && p.id !== state.me.id && !p.is_chief);
   $("uAdminToggle").textContent = p.is_admin ? "Снять админку" : "Сделать админом";
