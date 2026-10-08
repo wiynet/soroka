@@ -9,6 +9,7 @@ create table public.profiles (
   username text not null unique check (username ~ '^[a-z][a-z0-9_]{3,31}$'),
   display_name text not null check (char_length(display_name) between 1 and 64),
   avatar_path text, -- путь к аватарке в хранилище avatars
+  bio text not null default '' constraint profiles_bio_len check (char_length(bio) <= 200), -- «О себе»
   created_at timestamptz not null default now(),
   constraint profiles_avatar_own check (avatar_path is null or avatar_path like id::text || '/%')
 );
@@ -182,7 +183,7 @@ create policy messages_insert on public.messages for insert to authenticated
 revoke all on public.profiles, public.chats, public.chat_members, public.messages from anon, authenticated;
 grant select on public.profiles, public.chats, public.chat_members, public.messages to authenticated;
 grant insert (id, username, display_name) on public.profiles to authenticated;
-grant update (username, display_name, avatar_path) on public.profiles to authenticated;
+grant update (username, display_name, avatar_path, bio) on public.profiles to authenticated;
 grant insert (chat_id, sender_id, body, file_path, file_name, file_type, file_size) on public.messages to authenticated;
 
 grant usage on schema private to authenticated;

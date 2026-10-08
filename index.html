@@ -112,6 +112,17 @@ button { cursor: pointer; }
 .avatar.lg { width: 76px; height: 76px; font-size: 26px; }
 .avatar { position: relative; overflow: hidden; }
 .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.user-card { align-items: center; text-align: center; }
+.user-card h2 { overflow-wrap: anywhere; }
+.user-card .avatar.lg { width: 104px; height: 104px; font-size: 36px; }
+.user-card .avatar.zoom { cursor: zoom-in; }
+#uUser { border: 0; background: none; padding: 2px 8px; border-radius: 8px; color: var(--accent); font-weight: 500; }
+#uUser:hover { background: var(--panel-2); }
+#uBio { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.dlg.user-card .actions { align-self: stretch; justify-content: center; }
+textarea.input { resize: vertical; min-height: 72px; }
+.msg .author { border: 0; background: none; padding: 0; display: block; cursor: pointer; }
+.msg .author:hover { text-decoration: underline; }
 .av-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .av-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .av-make { display: flex; gap: 14px; align-items: flex-start; padding: 12px; border: 1px dashed var(--line); border-radius: 14px; }
@@ -222,6 +233,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .placeholder:not([hidden]) { animation: fade-in .3s both; }
   .chip { animation: pop-in .18s var(--ease) both; }
   .avatar img { animation: fade-in .35s both; }
+  .user-card > * { animation: rise .3s var(--ease) both; }
+  .user-card > :nth-child(2) { animation-delay: 40ms; }
+  .user-card > :nth-child(3) { animation-delay: 80ms; }
+  .user-card > :nth-child(4) { animation-delay: 120ms; }
+  .user-card > :nth-child(5) { animation-delay: 160ms; }
   .avatar.lg { animation: pop-in .3s var(--ease) both; }
   .av-make canvas { transition: transform .2s var(--ease); }
   .av-make canvas.bump { transform: scale(1.08); }
@@ -390,6 +406,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <div class="at-wrap"><input class="input" id="pfUser" maxlength="32" autocapitalize="none" spellcheck="false" required></div>
       <div class="hint" id="pfUserHint"></div>
     </label>
+    <label class="field"><span>О себе</span>
+      <textarea class="input" id="pfBio" maxlength="200" rows="3" placeholder="Пара слов о себе: увидят все, кто откроет ваш профиль"></textarea>
+    </label>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
     <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
@@ -454,6 +473,20 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       <button class="btn danger" type="button" id="btnLeave" style="margin-right:auto">Покинуть группу</button>
       <button class="btn ghost" type="button" id="btnAddMembers">Добавить участников</button>
       <button class="btn" type="button" data-close>Закрыть</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- профиль другого человека -->
+<dialog id="dlgUser">
+  <div class="dlg user-card">
+    <span id="uAvatar"></span>
+    <h2 id="uName"></h2>
+    <button type="button" id="uUser" title="Скопировать юзернейм"></button>
+    <div id="uBio"></div>
+    <div class="actions">
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
+      <button class="btn" type="button" id="uWrite">Написать</button>
     </div>
   </div>
 </dialog>
@@ -793,7 +826,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name,avatar_path))")
+    .select("id,is_group,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,profiles(id,username,display_name,avatar_path,bio))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -851,7 +884,7 @@ async function renderList() {
   const paint = (people, pending) => {
     const kids = [];
     if (found.length) kids.push(h("div", { class: "list-label" }, "Чаты"), ...found.map(chatRow));
-    if (people.length) kids.push(h("div", { class: "list-label" }, "Люди"), ...people.map((p) => personRow(p, () => startDirect(p.id))));
+    if (people.length) kids.push(h("div", { class: "list-label" }, "Люди"), ...people.map((p) => personRow(p, () => showUser(p))));
     if (!kids.length) kids.push(h("div", { class: "empty-note" }, pending ? "Ищем…" : "Никого не нашли. Проверьте юзернейм."));
     list.replaceChildren(...kids);
   };
@@ -863,7 +896,7 @@ async function renderList() {
 async function searchPeople(q) {
   const s = q.replace(/^@/, "").replace(/[^\p{L}\p{N}_ ]/gu, "").trim();
   if (s.length < 2) return [];
-  const { data, error } = await sb.from("profiles").select("id,username,display_name,avatar_path")
+  const { data, error } = await sb.from("profiles").select("id,username,display_name,avatar_path,bio")
     .or('username.ilike."' + s + '%",display_name.ilike."%' + s + '%"')
     .neq("id", state.me.id).limit(20);
   return error ? [] : data;
@@ -887,8 +920,9 @@ function renderHead() {
   $("convName").textContent = chatTitle(c);
   const n = c.members.length;
   $("convSub").textContent = c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? "@" + o.username : "заметки для себя");
-  $("convWho").disabled = !c.is_group;
-  $("convWho").style.cursor = c.is_group ? "pointer" : "default";
+  $("convWho").disabled = !c.is_group && !o;
+  $("convWho").style.cursor = c.is_group || o ? "pointer" : "default";
+  $("convWho").title = c.is_group ? "Участники группы" : o ? "Открыть профиль" : "";
 }
 async function openChat(id) {
   const c = state.chats.get(id);
@@ -942,7 +976,10 @@ function msgNode(m) {
   const c = state.chats.get(m.chat_id);
   const mine = m.sender_id === state.me.id;
   const el = h("div", { class: "msg" + (mine ? " mine" : "") });
-  if (c && c.is_group && !mine) el.append(h("div", { class: "author" }, memberName(c, m.sender_id)));
+  if (c && c.is_group && !mine) {
+    const who = c.members.find((p) => p.id === m.sender_id);
+    el.append(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id)));
+  }
   if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
       const img = h("img", { class: "photo", alt: m.file_name || "Фото", loading: "lazy" });
@@ -1099,6 +1136,41 @@ for (const d of document.querySelectorAll("dialog")) {
   d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 }
 
+// профиль другого человека
+let viewed = null;
+function paintUser(p) {
+  const av = avatar(p.display_name, p.id, "lg", p.avatar_path);
+  if (p.avatar_path) {
+    av.classList.add("zoom");
+    av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(p.avatar_path); $("viewer").showModal(); });
+  }
+  $("uAvatar").replaceChildren(av);
+  $("uName").textContent = p.display_name;
+  $("uUser").textContent = "@" + p.username;
+  $("uBio").textContent = p.bio || "";
+  $("uBio").hidden = !p.bio;
+  $("uWrite").hidden = p.id === state.me.id;
+}
+async function showUser(p) {
+  viewed = p;
+  paintUser(p);
+  $("dlgUser").showModal();
+  // в списках данные могли устареть: подтягиваем свежий профиль
+  const { data } = await sb.from("profiles").select("id,username,display_name,avatar_path,bio").eq("id", p.id).maybeSingle();
+  if (data && viewed && viewed.id === data.id && (data.bio !== p.bio || data.avatar_path !== p.avatar_path || data.display_name !== p.display_name || data.username !== p.username)) {
+    viewed = data;
+    paintUser(data);
+  }
+}
+$("uWrite").addEventListener("click", () => {
+  if (!viewed) return;
+  $("dlgUser").close();
+  startDirect(viewed.id);
+});
+$("uUser").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("uUser").textContent); toast("Юзернейм скопирован"); } catch (e) {}
+});
+
 // аватарка: фото или свой значок
 function refreshMe() {
   const p = state.profile;
@@ -1208,6 +1280,7 @@ $("setEnter").addEventListener("change", (e) => { settings.enterSends = e.target
 $("btnProfile").addEventListener("click", () => {
   $("pfName").value = state.profile.display_name;
   $("pfUser").value = state.profile.username;
+  $("pfBio").value = state.profile.bio || "";
   $("pfEmail").textContent = state.me.email ? "Почта: " + state.me.email : "";
   $("profileErr").textContent = "";
   $("pfUserHint").textContent = "";
@@ -1221,10 +1294,11 @@ watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile
 $("profileForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = $("pfName").value.trim(), username = $("pfUser").value, err = $("profileErr");
+  const bio = $("pfBio").value.trim().slice(0, 200);
   if (!name) { err.textContent = "Укажите имя."; return; }
   if (!USERNAME_RE.test(username)) { err.textContent = "Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква."; return; }
   busy(e.target, async () => {
-    const { data, error } = await sb.from("profiles").update({ display_name: name, username }).eq("id", state.me.id).select().single();
+    const { data, error } = await sb.from("profiles").update({ display_name: name, username, bio }).eq("id", state.me.id).select().single();
     if (error) { err.textContent = error.code === "23505" ? "Юзернейм @" + username + " уже занят." : "Не удалось сохранить."; return; }
     state.profile = data;
     refreshMe();
@@ -1294,11 +1368,12 @@ $("btnNewGroup").addEventListener("click", () => openPicker("create"));
 let leaveArmed = false;
 $("convWho").addEventListener("click", () => {
   const c = state.chats.get(state.activeId);
-  if (!c || !c.is_group) return;
+  if (!c) return;
+  if (!c.is_group) { const o = other(c); if (o) showUser(o); return; }
   $("infoTitle").textContent = c.title;
   const n = c.members.length;
   $("infoCount").textContent = n + " " + plural(n, "участник", "участника", "участников");
-  $("infoList").replaceChildren(...c.members.map((p) => personRow(p, () => { if (p.id !== state.me.id) { $("dlgInfo").close(); startDirect(p.id); } })));
+  $("infoList").replaceChildren(...c.members.map((p) => personRow(p, () => { $("dlgInfo").close(); showUser(p); })));
   leaveArmed = false;
   $("btnLeave").textContent = "Покинуть группу";
   $("dlgInfo").showModal();
