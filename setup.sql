@@ -1039,3 +1039,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 -- create_ticket(p_body) — не больше пяти открытых запросов на человека; answer_ticket(p_id, p_answer) — только
 -- администраторы, пустой ответ закрывает запрос; support_seen() отмечает ответы прочитанными. Свои запросы видит
 -- автор, все запросы видят администраторы.
+
+-- Комментарии канала можно выключить: миграция messenger_channel_comments_toggle
+-- (chats.comments_off, set_chat_comments(p_chat, p_on) для владельца и админов; add_comment отклоняет запись).

@@ -470,6 +470,14 @@ textarea.input { resize: vertical; min-height: 72px; }
 /* ---------- dialogs ---------- */
 dialog { width: min(420px, calc(100% - 32px)); max-height: calc(100% - 48px); border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--panel); color: var(--ink); }
 dialog::backdrop { background: rgb(0 0 0 / .45); }
+/* окно на весь экран: комментарии к посту */
+dialog.full { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; background: var(--bg); }
+@media (min-width: 761px) { dialog.full { width: min(760px, calc(100% - 48px)); height: calc(100% - 48px); margin: auto; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; } }
+.thread-win { display: flex; flex-direction: column; height: 100%; }
+.thread-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+.thread-win .thread-post { max-height: none; background: var(--panel); border-radius: 12px; padding: 10px 12px; border-left: 3px solid var(--accent); white-space: pre-wrap; }
+.thread-win .thread-list { min-height: 0; }
+.thread-win .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; border-radius: 18px; padding: 9px 14px; background: var(--panel-2); color: var(--ink); font: inherit; max-height: 140px; }
 .dlg { display: flex; flex-direction: column; gap: 14px; padding: 20px; max-height: inherit; overflow-y: auto; }
 .dlg .error:empty { display: none; }
 .dlg h2 { margin: 0; font: 600 18px/1.2 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
@@ -1013,6 +1021,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
         </label>
         <div class="actions"><button class="btn" type="button" id="infoAccessSave">Сохранить доступ</button></div>
       </div>
+      <label class="toggle" id="infoCmtWrap" hidden><input type="checkbox" id="infoCmt"><span>Комментарии под постами <span class="muted">(если выключить, писать их нельзя и кнопка под постами пропадёт)</span></span></label>
       <div class="set-label" style="margin:0">Ссылка-приглашение</div>
       <input class="input" id="infoInvite" readonly aria-label="Ссылка-приглашение">
       <div class="actions">
@@ -1269,16 +1278,24 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 </dialog>
 
 <!-- комментарии к посту канала -->
-<dialog id="dlgThread">
-  <div class="dlg">
-    <h2>Комментарии</h2>
-    <div class="thread-post" id="thPost"></div>
-    <div class="scroll thread-list" id="thList" style="max-height:44vh"></div>
-    <form class="thread-form" id="thForm">
-      <input class="input" id="thText" maxlength="2000" placeholder="Ваш комментарий" autocomplete="off" aria-label="Ваш комментарий">
-      <button class="btn" type="submit">Отправить</button>
+<dialog id="dlgThread" class="full">
+  <div class="thread-win">
+    <header class="conv-head">
+      <button class="icon-btn" type="button" id="thBack" data-close aria-label="Назад к каналу"></button>
+      <div class="who" style="cursor:default">
+        <div class="name">Комментарии</div>
+        <div class="small muted" id="thCount"></div>
+      </div>
+    </header>
+    <div class="thread-body" id="thBody">
+      <div class="thread-post" id="thPost"></div>
+      <div class="thread-list" id="thList"></div>
+    </div>
+    <div class="chan-note" id="thOff" hidden>Комментарии в этом канале выключены.</div>
+    <form class="composer thread-form" id="thForm">
+      <textarea id="thText" rows="1" maxlength="2000" placeholder="Ваш комментарий" aria-label="Ваш комментарий"></textarea>
+      <button class="icon-btn send" type="submit" title="Отправить" aria-label="Отправить" id="thSend"></button>
     </form>
-    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
 
@@ -1900,7 +1917,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   const counts = await sb.rpc("unread_counts");
@@ -1917,7 +1934,7 @@ async function loadChats() {
     avatar_path: c.avatar_path || null,
     admins: new Set(c.chat_members.filter((m) => m.is_admin).map((m) => m.user_id)),
     muted: !!(c.chat_members.find((m) => m.user_id === state.me.id) || {}).muted,
-    pinned: c.pinned_message || null, username: c.username || null, is_private: !!c.is_private,
+    pinned: c.pinned_message || null, username: c.username || null, is_private: !!c.is_private, comments_off: !!c.comments_off,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -2309,7 +2326,7 @@ function msgNode(m, group) {
   const rr = reactRow(m);
   if (rr) el.append(rr);
   const st = c && c.is_channel && !m.gift_type && !m.event_kind ? (state.stats.get(m.id) || {}) : null;
-  if (st) el.append(h("button", { class: "cmt-btn", type: "button", onclick: () => openThread(m) }, st.comments ? "Комментарии · " + st.comments : "Комментировать"));
+  if (st && !c.comments_off) el.append(h("button", { class: "cmt-btn", type: "button", onclick: () => openThread(m) }, st.comments ? "Комментарии · " + st.comments : "Комментировать"));
   let ticks = null;
   if (mine && c) {
     const read = m.id <= readUpTo(c);
@@ -2508,7 +2525,7 @@ async function loadThread() {
     .eq("message_id", id).is("deleted_at", null).order("id").limit(300);
   if (!thread || thread.id !== id) return;
   const rows = (Array.isArray(data) ? data : []).filter((r) => r && r.body);
-  const box = $("thList"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  const box = $("thList"), sc = $("thBody"), stick = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
   box.replaceChildren(...(rows.length ? rows.map((r) => {
     const u = r.user || { id: r.user_id, display_name: "Участник" };
     const canDel = r.user_id === state.me.id || state.isAdmin || !!myRole(c);
@@ -2522,14 +2539,18 @@ async function loadThread() {
         } }, "✕")),
       h("div", { class: "tx" }, linkify(r.body)));
   }) : [h("div", { class: "empty-note" }, error ? "Не удалось загрузить комментарии." : "Комментариев пока нет. Напишите первый.")]));
-  if (stick) box.scrollTop = box.scrollHeight;
+  if (stick) sc.scrollTop = sc.scrollHeight;
+  $("thCount").textContent = rows.length ? rows.length + " " + plural(rows.length, "комментарий", "комментария", "комментариев") : "пока нет";
+  const off = !!(c && c.comments_off);
+  $("thForm").hidden = off; $("thOff").hidden = !off;
   const st = state.stats.get(id) || {};
   if (st.comments !== rows.length) { state.stats.set(id, { ...st, comments: rows.length }); if (state.activeId === thread.chat_id) repaintMsgs(); }
 }
 function openThread(m) {
   thread = m;
-  $("thPost").textContent = snippet(m).slice(0, 200) || "Пост";
-  $("thText").value = "";
+  $("thPost").textContent = m.body || snippet(m) || "Пост";
+  $("thText").value = ""; $("thText").style.height = "auto";
+  $("thCount").textContent = "";
   $("thList").replaceChildren(h("div", { class: "empty-note" }, "Загружаем…"));
   $("dlgThread").showModal();
   loadThread();
@@ -2539,14 +2560,19 @@ $("thForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = $("thText").value.trim();
   if (!thread || !body) return;
-  const btn = e.target.querySelector("button");
+  const btn = $("thSend");
   btn.disabled = true;
   const { error } = await sb.rpc("add_comment", { p_message: thread.id, p_body: body });
   btn.disabled = false;
-  if (error) { toast("Не удалось отправить комментарий"); return; }
-  $("thText").value = "";
-  $("thList").scrollTop = $("thList").scrollHeight;
-  loadThread();
+  if (error) { toast(/comments off/.test(error.message || "") ? "Комментарии в этом канале выключены" : "Не удалось отправить комментарий"); return; }
+  $("thText").value = ""; $("thText").style.height = "auto";
+  await loadThread();
+  $("thBody").scrollTop = $("thBody").scrollHeight;
+});
+$("thText").addEventListener("input", (e) => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight + 2, 140) + "px"; });
+$("thText").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.isComposing) return;
+  if ((settings.enterSends && !e.shiftKey && matchMedia("(pointer: fine)").matches) || e.ctrlKey || e.metaKey) { e.preventDefault(); $("thForm").requestSubmit(); }
 });
 function onComment(row) {
   if (!row || !state.started) return;
@@ -2644,6 +2670,7 @@ $("pinOff").addEventListener("click", () => { if (state.activeId) setPin(state.a
 function onChatRow(row) {
   const c = row && state.chats.get(row.id);
   if (!c) return;
+  if (typeof row.comments_off === "boolean" && c.comments_off !== row.comments_off) { c.comments_off = row.comments_off; if (state.activeId === c.id) repaintMsgs(); }
   const pin = row.pinned_message || null;
   if (c.pinned !== pin) { c.pinned = pin; if (state.activeId === c.id) paintPin(); }
 }
@@ -4573,6 +4600,17 @@ $("infoAccessSave").addEventListener("click", async () => {
   infoFor = null;
   await loadChats(); paintInfo();
 });
+$("infoCmt").addEventListener("change", async (e) => {
+  const c = state.chats.get(state.activeId), on = e.target.checked;
+  if (!c) return;
+  e.target.disabled = true;
+  const { error } = await sb.rpc("set_chat_comments", { p_chat: c.id, p_on: on });
+  e.target.disabled = false;
+  if (error) { e.target.checked = !on; toast("Не удалось изменить настройку"); return; }
+  c.comments_off = !on;
+  toast(on ? "Комментарии включены" : "Комментарии выключены");
+  repaintMsgs();
+});
 $("infoLink").addEventListener("click", () => { const c = state.chats.get(state.activeId); if (c && c.username) copyText(SITE + "#@" + c.username, "Ссылка скопирована"); });
 $("infoInviteCopy").addEventListener("click", () => { if ($("infoInvite").value) copyText($("infoInvite").value, "Ссылка-приглашение скопирована"); });
 $("infoInviteNew").addEventListener("click", async () => {
@@ -4605,6 +4643,8 @@ function paintInfo() {
   $("infoLink").textContent = c.username ? "@" + c.username + " · скопировать ссылку" : "";
   $("infoCount").textContent += c.is_private ? " · частн" + (c.is_channel ? "ый канал" : "ая группа") : " · открыт" + (c.is_channel ? "ый канал" : "ая группа");
   $("infoAccess").hidden = role !== "owner";
+  $("infoCmtWrap").hidden = !c.is_channel;
+  $("infoCmt").checked = !c.comments_off;
   if (infoFor !== c.id) {   // поля доступа заполняем один раз на открытие, чтобы не сбивать ввод
     infoFor = c.id; infoPriv = c.is_private;
     $("infoUser").value = c.username || "";
@@ -4722,6 +4762,8 @@ $("btnLeave").addEventListener("click", async () => {
 $("btnNewGroup").append(icon("plus"));
 $("btnSettings").append(icon("gear"));
 $("btnMic").append(icon("mic"));
+$("thBack").append(icon("back"));
+$("thSend").append(icon("send"));
 $("btnFind").append(icon("find"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
