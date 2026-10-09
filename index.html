@@ -143,6 +143,11 @@ button { cursor: pointer; }
 .sheet .btn { text-align: left; }
 .pick { display: flex; gap: 12px; align-items: center; width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: transparent; text-align: left; }
 .pick:hover { background: var(--panel-2); }
+.acc-list { display: grid; gap: 8px; }
+.acc-list .pick { padding: 8px 12px; }
+.acc-list .pick[aria-current="true"] { border-color: var(--accent); background: var(--mine); }
+.acc-list .pick .now { margin-left: auto; font-size: 12px; color: var(--accent); font-weight: 600; flex: none; }
+.acc-list .pick > span:nth-child(2) { min-width: 0; overflow: hidden; }
 .pick .ico { width: 42px; height: 42px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--mine); color: var(--accent); }
 .pick .ico svg { width: 22px; height: 22px; }
 .pick b { display: block; }
@@ -548,6 +553,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <div class="muted" style="margin-top:8px">Личные чаты, группы, фото и файлы.</div>
     </div>
 
+    <button class="btn ghost" type="button" id="authBack" hidden></button>
+
     <div id="authTabs" class="tabs" role="tablist">
       <button type="button" role="tab" data-view="login" aria-selected="true">Вход</button>
       <button type="button" role="tab" data-view="signup" aria-selected="false">Регистрация</button>
@@ -685,6 +692,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <span id="myProfileAv"></span>
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
     </button>
+
+    <div class="set-label">Аккаунты</div>
+    <div id="accList" class="acc-list"></div>
+    <div class="hint" id="accHint"></div>
 
     <div class="set-label">Аватарка</div>
     <div class="av-row">
@@ -1481,13 +1492,26 @@ function onAuth(event, session) {
     return;
   }
   if (!session) {
+    if (state.switching) return;   // идёт переключение аккаунта, сессию сейчас подставим
+    // этот аккаунт вышел или его вход устарел: убираем его из списка и открываем следующий
+    if (state.me) dropAccount(state.me.id);
     state.me = null; state.profile = null; state.recovering = false;
     stopApp();
+    const next = accounts()[0];
+    if (next) { switchTo(next); return; }
     showAuth("login");
     return;
   }
   if (state.recovering) return;
-  if (state.me && state.me.id === session.user.id && (state.started || !$("auth").hidden)) { state.me = session.user; return; }
+  keepTokens(session);
+  if (state.me && state.me.id === session.user.id && (state.started || !$("auth").hidden)) {
+    state.me = session.user;
+    if (state.adding && state.started) { cancelAdding(); toast("Этот аккаунт уже открыт"); }
+    return;
+  }
+  if (state.started) stopApp();   // вошли под другим аккаунтом: закрываем прежний
+  state.adding = false; $("authBack").hidden = true;
+  state.profile = null;
   state.me = session.user;
   enter();
 }
@@ -1525,6 +1549,7 @@ async function enter() {
 /* ---------- запуск и остановка ---------- */
 async function startApp() {
   state.started = true;
+  state.adding = false; $("authBack").hidden = true;
   $("auth").hidden = true;
   $("app").hidden = false;
   refreshMe();
@@ -3021,6 +3046,7 @@ async function loadMyGifts() {
 // аватарка: фото или свой значок
 function refreshMe() {
   const p = state.profile;
+  keepProfile(p);
   $("btnProfile").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
   $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
   $("avRemove").hidden = !p.avatar_path;
@@ -3142,6 +3168,7 @@ $("btnProfile").addEventListener("click", () => {
   loadWallet();
   loadMyGifts();
   paintNotify();
+  renderAccounts();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
   drawBadge();
@@ -3431,11 +3458,91 @@ $("notifyYes").addEventListener("click", async () => {
 $("notifyLater").addEventListener("click", () => {
   settings.notifyAsked = Date.now(); saveSettings(); $("dlgNotify").close();
 });
+/* ---------- несколько аккаунтов на одном устройстве ----------
+   Для каждого аккаунта храним его вход (как это делает и сам Supabase) и переключаемся без пароля.
+   Без премиума можно держать 2 аккаунта, с премиумом на любом из них 4. */
+const ACC_KEY = "soroka.accounts";
+function accounts() {
+  try { const a = JSON.parse(localStorage.getItem(ACC_KEY) || "[]"); return Array.isArray(a) ? a.filter((x) => x && x.id && x.rt) : []; }
+  catch (e) { return []; }
+}
+function saveAccounts(list) { try { localStorage.setItem(ACC_KEY, JSON.stringify(list)); } catch (e) {} }
+function dropAccount(id) { saveAccounts(accounts().filter((a) => a.id !== id)); }
+function keepTokens(session) {
+  const list = accounts(), i = list.findIndex((a) => a.id === session.user.id);
+  const rec = { ...(i >= 0 ? list[i] : { id: session.user.id }), at: session.access_token, rt: session.refresh_token };
+  if (i >= 0) list[i] = rec; else list.push(rec);
+  saveAccounts(list);
+}
+function keepProfile(p) {
+  const list = accounts(), a = list.find((x) => x.id === p.id);
+  if (!a) return;
+  Object.assign(a, { name: p.display_name, username: p.username, avatar: p.avatar_path || null, premium: p.premium_until || null });
+  saveAccounts(list);
+}
+function accountLimit() {
+  const now = Date.now();
+  return isPremium(state.profile) || accounts().some((a) => a.premium && new Date(a.premium).getTime() > now) ? 4 : 2;
+}
+function renderAccounts() {
+  const list = accounts(), max = accountLimit(), box = $("accList");
+  box.replaceChildren(...list.map((a) => {
+    const cur = state.me && a.id === state.me.id;
+    const b = h("button", { class: "pick", type: "button", "aria-current": String(!!cur) },
+      avatar(a.name || a.username || "?", a.id, false, a.avatar),
+      h("span", {}, h("b", {}, a.name || "Аккаунт"), h("span", { class: "small muted" }, a.username ? "@" + a.username : "")),
+      cur ? h("span", { class: "now" }, "сейчас") : "");
+    if (!cur) b.addEventListener("click", async () => { b.disabled = true; $("dlgProfile").close(); await switchTo(a); });
+    return b;
+  }));
+  if (list.length < max) {
+    const add = h("button", { class: "pick", type: "button" }, h("span", { class: "ico" }, icon("plus")), h("span", {}, h("b", {}, "Добавить аккаунт"), h("span", { class: "small muted" }, "Войти в другой или создать новый")));
+    add.addEventListener("click", startAdding);
+    box.append(add);
+  }
+  $("accHint").textContent = max === 4 ? "С премиумом можно держать до 4 аккаунтов на устройстве."
+    : list.length >= max ? "Без премиума можно держать 2 аккаунта. С премиумом до 4." : "Без премиума до 2 аккаунтов, с премиумом до 4.";
+}
+function startAdding() {
+  if (accounts().length >= accountLimit()) { toast("Достигнут предел аккаунтов"); return; }
+  state.adding = true;
+  $("dlgProfile").close();
+  for (const f of [$("loginForm"), $("signupForm")]) f.reset();
+  showAuth("login");
+  $("authBack").textContent = "← Вернуться к @" + state.profile.username;
+  $("authBack").hidden = false;
+}
+function cancelAdding() {
+  state.adding = false;
+  $("authBack").hidden = true;
+  $("auth").hidden = true;
+  $("app").hidden = false;
+}
+$("authBack").addEventListener("click", cancelAdding);
+async function switchTo(acc) {
+  const prev = state.me ? accounts().find((a) => a.id === state.me.id) : null;
+  state.switching = true;
+  let error;
+  try { ({ error } = await sb.auth.setSession({ access_token: acc.at, refresh_token: acc.rt })); } catch (e) { error = e; }
+  if (!error) { state.switching = false; return true; }
+  // сохранённый вход больше не действует (например, сменили пароль): убираем и возвращаемся
+  dropAccount(acc.id);
+  toast("Вход в " + (acc.username ? "@" + acc.username : "аккаунт") + " устарел. Войдите в него заново.");
+  const { data } = await sb.auth.getSession().catch(() => ({ data: {} }));
+  if (data && data.session) { state.switching = false; return false; }
+  const back = prev && prev.id !== acc.id && accounts().find((a) => a.id === prev.id) || accounts()[0];
+  state.switching = false;
+  if (back) return switchTo(back);
+  state.me = null; state.profile = null;
+  stopApp(); showAuth("login");
+  return false;
+}
 async function logout() {
   // уведомления для этого аккаунта на этом устройстве прекращаются; разрешение браузера остаётся
   const sub = await pushSub().catch(() => null);
   if (sub) await savePush(sub, false).catch(() => {});
-  sb.auth.signOut();
+  state.adding = false; $("authBack").hidden = true;
+  sb.auth.signOut({ scope: "local" });   // выходим только на этом устройстве
 }
 $("btnMute").addEventListener("click", async () => {
   const c = state.chats.get(state.activeId);
