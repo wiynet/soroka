@@ -1013,3 +1013,7 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   chats.pinned_message + public.pin_message(p_chat, p_message): в личном чате закрепляет любой, в группе владелец и админы.
 --   public.unread_counts() — число непрочитанных по моим чатам. Таблица chats добавлена в публикацию supabase_realtime.
 --   «Печатает…» идёт через Realtime Broadcast (канал typing:<id чата>) и в базе не хранится.
+
+-- Автоподписка на канал новостей «Soroka updates»: миграция messenger_auto_subscribe_updates_channel.
+--   private.updates_channel() хранит id канала; триггер profiles_subscribe_updates подписывает каждый новый профиль,
+--   существующие аккаунты подписаны разово. Отписаться человек может сам, повторно его не подписывает.
