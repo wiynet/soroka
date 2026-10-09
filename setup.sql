@@ -1046,3 +1046,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 -- Чёрный список: миграция messenger_user_blocks. public.user_blocks (свои записи видит только заблокировавший),
 -- block_user(p_user, p_on). Заблокированный не может писать в личный чат (private.can_post), дарить и передавать
 -- подарки (send_gift, transfer_gift отвечают «user not found»). В группах и каналах блокировка не действует.
+
+-- Закреплённые NFT-подарки: миграция messenger_pinned_gifts. gifts.pinned_at + pin_gift(p_gift, p_on), не больше шести;
+-- закреп снимается при передаче, продаже с аукциона, скрытии и удалении.
