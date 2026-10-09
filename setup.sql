@@ -999,3 +999,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   bid_gift_auction(p_auction, p_amount) (шаг 5 %, ставка замораживается, перебитая возвращается, ставка в последние
 --   2 минуты продлевает торги), cancel_gift_auction (пока нет ставок). Итоги подводит private.settle_gift_auction:
 --   подарок уходит победителю, продавец получает 90 %. Запуск: pg_cron раз в минуту и public.settle_gift_auctions() с клиента.
+
+-- Старые обычные подарки (Мишка, Роза, Торт, Ракета, Сорока, Кубок, Алмаз, Единорог) без тиража и без улучшения:
+-- миграция messenger_classic_gifts_unlimited.
