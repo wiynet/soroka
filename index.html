@@ -242,7 +242,24 @@ button { cursor: pointer; }
 .support .ico svg { width: 20px; height: 20px; }
 .support b { display: block; font-weight: 600; }
 .sidebar .list { padding-bottom: 4px; }
-.side-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.side-foot { display: flex; gap: 2px; padding: 2px 8px calc(4px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.icon-btn { position: relative; }
+.pip { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--panel); }
+.sup-chat { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; min-height: 140px; overflow-y: auto; padding: 4px 2px; }
+.sup-chat .b { max-width: 86%; padding: 7px 11px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+.sup-chat .b.bot { align-self: flex-start; background: var(--theirs); border-bottom-left-radius: 5px; }
+.sup-chat .b.me { align-self: flex-end; background: var(--mine); border-bottom-right-radius: 5px; }
+.sup-chat .b small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+.sup-chat .b b { display: block; font-size: 12px; color: var(--accent); }
+.sup-head { display: flex; align-items: center; gap: 12px; }
+.sup-head .ico { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.sup-head .ico svg { width: 24px; height: 24px; }
+.sup-head h2 { margin: 0; }
+.ticket { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; }
+.ticket .who { display: flex; gap: 8px; align-items: baseline; }
+.ticket .who .when { margin-left: auto; font-size: 12px; color: var(--muted); flex: none; }
+.ticket .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+#adSupport { display: none !important; }
 .side-foot .support { margin: 0; padding: 9px 10px; gap: 9px; min-width: 0; }
 .side-foot .support .ico { width: 34px; height: 34px; }
 .side-foot .support span:last-child { min-width: 0; }
@@ -718,7 +735,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   <aside class="sidebar">
     <div class="side-head">
       <div class="wordmark">Сорок<i>а</i></div>
-      <button class="icon-btn" id="btnAdmin" type="button" title="Админка" aria-label="Админка" hidden></button>
+      <button class="icon-btn" id="btnAdmin" type="button" title="Админка" aria-label="Админка" hidden><span class="pip" id="adPip" hidden></span></button>
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
       <button class="icon-btn" id="btnSettings" type="button" title="Настройки" aria-label="Настройки"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
@@ -726,14 +743,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
     <div class="list" id="chatList"></div>
     <div class="side-foot">
-      <button class="support market" id="btnMarket" type="button">
-        <span class="ico" id="icoMarket"></span>
-        <span><b>Маркет</b><span class="small muted">Подарки и NFT</span></span>
-      </button>
-      <button class="support" id="btnSupport" type="button">
-        <span class="ico" id="icoSupport"></span>
-        <span><b>Поддержка</b><span class="small muted">Вопросы, сорочки</span></span>
-      </button>
+      <button class="icon-btn" id="btnMarket" type="button" title="Маркет: подарки, NFT, аукцион" aria-label="Маркет"></button>
+      <button class="icon-btn" id="btnSupport" type="button" title="Поддержка" aria-label="Поддержка"><span class="pip" id="supPip" hidden></span></button>
     </div>
   </aside>
 
@@ -1026,6 +1037,12 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <button type="button" role="tab" data-tab="stats" aria-checked="true">Сводка</button>
       <button type="button" role="tab" data-tab="users" aria-checked="false">Люди</button>
       <button type="button" role="tab" data-tab="nft" aria-checked="false">NFT</button>
+      <button type="button" role="tab" data-tab="tickets" aria-checked="false" id="adTabTickets">Запросы</button>
+    </div>
+
+    <div data-pane="tickets" style="display:grid;gap:10px" hidden>
+      <div class="hint">Запросы из бота поддержки. Ответ человек увидит в окне поддержки, на её кнопке у него появится красная точка.</div>
+      <div class="scroll" id="adTickets" style="max-height:420px;display:grid;gap:10px"></div>
     </div>
 
     <div data-pane="stats" style="display:grid;gap:14px">
@@ -1138,10 +1155,16 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 <!-- поддержка: выбор, кому написать -->
 <dialog id="dlgSupport">
   <div class="dlg">
-    <h2>Поддержка</h2>
-    <div class="muted">Выберите, кому написать. Здесь помогут с вопросами и пополнением сорочек.</div>
-    <div id="supportList"></div>
-    <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button></div>
+    <div class="sup-head">
+      <span class="ico" id="supIco"></span>
+      <div><h2>Бот поддержки</h2><div class="small muted">Отвечают администраторы Сороки</div></div>
+    </div>
+    <div class="sup-chat" id="supChat"></div>
+    <form class="thread-form" id="supForm">
+      <input class="input" id="supText" maxlength="2000" placeholder="Опишите вопрос или проблему" autocomplete="off" aria-label="Ваш запрос">
+      <button class="btn" type="submit">Отправить</button>
+    </form>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
 
@@ -1830,6 +1853,7 @@ async function startApp() {
     .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, (p) => onReact(p.new))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, (p) => onChatRow(p.new))
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments" }, (p) => onComment(p.new))
+    .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, (p) => onTicket(p))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -3016,6 +3040,7 @@ async function checkAdmin() {
   state.isAdmin = data === true;
   $("btnAdmin").hidden = !state.isAdmin;
   if (state.isAdmin) { const c = await sb.rpc("is_chief_admin"); state.isChief = c.data === true; }
+  loadSupportPips();
   if (state.isAdmin && state.activeId) renderMsgs();
 }
 const STAT_LABELS = [["users", "аккаунтов"], ["online", "в сети"], ["banned", "в бане"], ["messages", "сообщений"], ["groups", "групп"], ["channels", "каналов"], ["coins", "сорочек на руках"]];
@@ -3045,6 +3070,7 @@ function showAdminTab(name) {
   if (name === "stats") loadStats();
   if (name === "users") { loadSupportAdmin(); loadAllUsers(); loadAdmins(); loadBanned(); }
   if (name === "nft") loadCollectibles();
+  if (name === "tickets") loadTickets();
 }
 $("adTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) showAdminTab(b.dataset.tab); });
 // полный список аккаунтов для администраторов: юзернейм, имя, роль и когда был в сети
@@ -3443,24 +3469,95 @@ async function supportPeople() {
   const byId = new Map((data || []).map((p) => [p.id, p]));
   return ids.map((id) => byId.get(id)).filter((p) => p && !p.banned_at);
 }
+// бот поддержки: человек оставляет запрос, администраторы отвечают в админке, ответ приходит сюда же
+async function loadSupport() {
+  const box = $("supChat");
+  const { data, error } = await sb.from("support_tickets").select("id,body,status,answer,answered_at,created_at").eq("user_id", state.me.id).order("id", { ascending: false }).limit(30);
+  const rows = (Array.isArray(data) ? data : []).filter((t) => t && t.body).reverse();
+  const when = (d) => dFmt.format(new Date(d)) + ", " + tFmt.format(new Date(d));
+  const kids = [h("div", { class: "b bot" }, h("b", {}, "Бот поддержки"),
+    "Здравствуйте! Опишите вопрос или проблему одним сообщением: что случилось и что вы уже пробовали. Запрос увидят администраторы и ответят здесь. Сюда же можно написать, если хотите пополнить сорочки.")];
+  for (const t of rows) {
+    kids.push(h("div", { class: "b me" }, t.body, h("small", {}, "Запрос №" + t.id + " · " + when(t.created_at))));
+    kids.push(h("div", { class: "b bot" }, h("b", {}, t.status === "answered" ? "Поддержка" : "Бот поддержки"),
+      t.status === "answered" ? t.answer : t.status === "closed" ? "Запрос №" + t.id + " закрыт администратором." : "Запрос №" + t.id + " принят. Ответ придёт сюда, а на кнопке поддержки появится красная точка.",
+      t.answered_at && h("small", {}, when(t.answered_at))));
+  }
+  if (error) kids.push(h("div", { class: "b bot" }, "Не удалось загрузить ваши запросы."));
+  box.replaceChildren(...kids);
+  box.scrollTop = box.scrollHeight;
+  if (rows.some((t) => t.status !== "open")) { sb.rpc("support_seen").then(() => {}); }
+  $("supPip").hidden = true;
+}
 async function openSupport() {
-  const all = await supportPeople();
-  if (!all.length) { toast("Аккаунты поддержки пока не назначены"); return; }
-  const team = all.filter((p) => p.id !== state.me.id);
-  if (!team.length) { toast("Поддержка — это вы. Изменить состав можно в админке, на вкладке «Люди»."); return; }
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
-  if (team.length === 1) { startDirect(team[0].id); return; }
-  $("supportList").replaceChildren(...team.map((p, i) => {
-    const av = avatar(p.display_name, p.id, false, p.avatar_path);
-    if (isOnline(p)) av.classList.add("online");
-    const row = h("button", { class: "row", type: "button", onclick: () => { $("dlgSupport").close(); startDirect(p.id); } },
-      av,
-      h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p),
-        h("span", { class: "sub" }, h("span", {}, "@" + p.username + " · " + fmtSeen(p)))));
-    row.style.animation = "none";
-    return row;
-  }));
+  $("supChat").replaceChildren(h("div", { class: "b bot" }, "Загружаем…"));
   $("dlgSupport").showModal();
+  await loadSupport();
+  if (matchMedia("(min-width: 761px)").matches) $("supText").focus();
+}
+$("supForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = $("supText").value.trim();
+  if (!body) return;
+  const btn = e.target.querySelector("button");
+  btn.disabled = true;
+  const { error } = await sb.rpc("create_ticket", { p_body: body });
+  btn.disabled = false;
+  if (error) { toast(/too many/.test(error.message || "") ? "У вас уже пять запросов без ответа. Дождитесь ответа на них" : "Не удалось отправить запрос"); return; }
+  $("supText").value = "";
+  loadSupport();
+});
+// красная точка: у человека на кнопке поддержки (пришёл ответ), у администратора на кнопке админки (есть запросы)
+async function loadSupportPips() {
+  const mine = await sb.from("support_tickets").select("id", { count: "exact", head: true }).eq("user_id", state.me.id).neq("status", "open").is("seen_at", null);
+  $("supPip").hidden = !(Number(mine.count) > 0);
+  if (state.isAdmin) {
+    const open = await sb.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open");
+    state.openTickets = Number(open.count) || 0;
+    paintTicketCount();
+  }
+}
+function paintTicketCount() {
+  const n = state.openTickets || 0;
+  $("adPip").hidden = !n;
+  $("adTabTickets").textContent = n ? "Запросы · " + n : "Запросы";
+}
+function onTicket(p) {
+  const t = p.new;
+  if (!t || !state.started) return;
+  if (state.isAdmin && (p.eventType === "INSERT" || p.eventType === "UPDATE")) {
+    loadSupportPips();
+    if ($("dlgAdmin").open && !$("adTickets").closest("[data-pane]").hidden) loadTickets();
+  }
+  if (t.user_id === state.me.id && p.eventType === "UPDATE" && t.status !== "open" && !t.seen_at) {
+    if ($("dlgSupport").open) loadSupport();
+    else { $("supPip").hidden = false; toast(t.status === "answered" ? "Поддержка ответила на ваш запрос №" + t.id : "Запрос №" + t.id + " закрыт"); }
+  }
+}
+// админка: запросы без ответа
+async function loadTickets() {
+  const box = $("adTickets");
+  const { data, error } = await sb.from("support_tickets").select("id,user_id,body,created_at,user:profiles!support_tickets_user_id_fkey(" + PF + ")").eq("status", "open").order("id").limit(50);
+  const rows = (Array.isArray(data) ? data : []).filter((t) => t && t.body);
+  state.openTickets = rows.length; paintTicketCount();
+  box.replaceChildren(...(rows.length ? rows.map((t) => {
+    const u = t.user || { id: t.user_id, display_name: "Пользователь", username: "" };
+    const ta = h("textarea", { class: "input", rows: "2", maxlength: "2000", placeholder: "Ответ пользователю", "aria-label": "Ответ на запрос №" + t.id });
+    const send = async (answer) => {
+      const { error: err } = await sb.rpc("answer_ticket", { p_id: t.id, p_answer: answer });
+      if (err) { toast(/not found/.test(err.message || "") ? "На этот запрос уже ответили" : "Не удалось сохранить ответ"); }
+      else toast(answer ? "Ответ отправлен" : "Запрос закрыт");
+      loadTickets();
+    };
+    return h("div", { class: "ticket" },
+      h("div", { class: "who" }, h("button", { class: "link", type: "button", onclick: () => { if (u.username) { $("dlgAdmin").close(); showUser(u); } } }, u.display_name + (u.username ? " · @" + u.username : "")),
+        h("span", { class: "when" }, "№" + t.id + " · " + dFmt.format(new Date(t.created_at)) + ", " + tFmt.format(new Date(t.created_at)))),
+      h("div", { class: "tx" }, t.body), ta,
+      h("div", { class: "actions" },
+        h("button", { class: "btn ghost", type: "button", onclick: () => send(null) }, "Закрыть без ответа"),
+        h("button", { class: "btn", type: "button", onclick: () => { const a = ta.value.trim(); if (!a) { toast("Напишите ответ"); return; } send(a); } }, "Ответить")));
+  }) : [h("div", { class: "empty-note" }, error ? "Не удалось загрузить запросы." : "Запросов без ответа нет.")]));
 }
 $("btnSupport").addEventListener("click", openSupport);
 $("coinBuy").addEventListener("click", openSupport);
@@ -4629,8 +4726,9 @@ $("btnFind").append(icon("find"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));
-$("icoSupport").append(icon("help"));
-$("icoMarket").append(icon("shop"));
+$("btnSupport").prepend(icon("help"));
+$("btnMarket").prepend(icon("shop"));
+$("supIco").append(icon("help"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));

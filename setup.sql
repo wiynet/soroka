@@ -1034,3 +1034,8 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- VPN для премиума: миграция messenger_premium_vpn. Ссылка лежит в private.vpn_config (в репозитории её нет),
 -- отдаёт её public.premium_vpn() только при действующем премиуме; меняет главный админ через public.admin_set_vpn(p_link).
+
+-- Бот поддержки: миграция messenger_support_bot. public.support_tickets (запрос, статус open/answered/closed, ответ),
+-- create_ticket(p_body) — не больше пяти открытых запросов на человека; answer_ticket(p_id, p_answer) — только
+-- администраторы, пустой ответ закрывает запрос; support_seen() отмечает ответы прочитанными. Свои запросы видит
+-- автор, все запросы видят администраторы.
