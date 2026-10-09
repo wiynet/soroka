@@ -1,25 +1,31 @@
-/* Сервис-воркер нужен только для того, чтобы «Сороку» можно было установить как приложение.
-   Он НЕ кэширует страницу и запросы к серверу: всё берётся из сети, чтобы обновления
-   приходили сразу и не повторилась проблема со «старой версией». Кэшируются лишь иконки. */
-const ICONS = "soroka-icons-v1";
-const ASSETS = ["./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./apple-touch-icon.png"];
+/* Сорока: сервис-воркер нужен, чтобы сайт ставился как приложение и открывался без сети.
+   Страницу всегда сначала берём из сети, поэтому обновления приходят сразу;
+   запросы к базе и библиотекам сюда не попадают вовсе. */
+const CACHE = "soroka-v1";
+const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
   self.skipWaiting();
-  e.waitUntil(caches.open(ICONS).then((c) => c.addAll(ASSETS)).catch(() => {}));
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== ICONS).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+  self.clients.claim();
 });
 
 self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
-  // только свои иконки отдаём из кэша; всё остальное — всегда из сети
-  if (e.request.method === "GET" && url.origin === location.origin && /\/(icon-\d|icon-512-maskable|apple-touch-icon)/.test(url.pathname)) {
-    e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
-  }
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  e.respondWith(
+    fetch(req).then((res) => {
+      if (res.ok && (req.mode === "navigate" || /\.(png|webmanifest)$/.test(url.pathname))) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req.mode === "navigate" ? "/" : req, copy));
+      }
+      return res;
+    }).catch(() => caches.match(req.mode === "navigate" ? "/" : req).then((hit) => hit || caches.match("/")))
+  );
 });
