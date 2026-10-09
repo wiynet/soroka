@@ -856,6 +856,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <li>NFT-подарок можно надеть на профиль: его фон и значок увидят все</li>
       <li>Раз в 30 дней: 50 сорочек и случайный подарок из тиража, который можно улучшить</li>
       <li>Можно скрыть время, когда вы были в сети</li>
+      <li>Своя VPN-подписка: ссылка для подключения ниже</li>
     </ul>
     <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
     <div class="bonus-row">
@@ -863,6 +864,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <button class="btn ghost" type="button" id="bonusGift"></button>
     </div>
     <div class="hint" id="bonusHint"></div>
+    <div class="set-label">VPN для премиума</div>
+    <div class="hint">1. Скачайте приложение Happ. 2. Нажмите кнопку ниже: ссылка скопируется в буфер обмена. 3. Откройте Happ и добавьте подписку из буфера обмена.</div>
+    <input class="input" id="vpnLink" readonly hidden aria-label="Ссылка VPN">
+    <div class="actions"><button class="btn ghost" type="button" id="vpnCopy">Скопировать ссылку VPN</button></div>
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
 
@@ -1854,6 +1859,7 @@ function stopApp() {
   $("editChip").hidden = true;
   $("btnAdmin").hidden = true;
   state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear();
+  vpnLink = null; $("vpnLink").value = ""; $("vpnLink").hidden = true;
   if (recorder) stopRecording(false);
   leaveTyping();
   voiceStop();
@@ -4133,6 +4139,20 @@ $("bonusGift").addEventListener("click", async () => {
   renderPremium(); loadMyGifts();
   if (Number(data)) openGiftView(Number(data), true);
 });
+let vpnLink = null;
+$("vpnCopy").addEventListener("click", async () => {
+  if (!isPremium(state.profile)) { toast("VPN-подписка доступна только с премиумом"); return; }
+  if (!vpnLink) {
+    $("vpnCopy").disabled = true;
+    const { data, error } = await sb.rpc("premium_vpn");
+    $("vpnCopy").disabled = false;
+    if (error || typeof data !== "string" || !data) { toast(error && /premium/.test(error.message || "") ? "VPN-подписка доступна только с премиумом" : "Не удалось получить ссылку VPN"); return; }
+    vpnLink = data;
+  }
+  $("vpnLink").value = vpnLink; $("vpnLink").hidden = false;
+  copyText(vpnLink, "Ссылка VPN скопирована. Откройте Happ и добавьте её из буфера обмена");
+});
+$("vpnLink").addEventListener("focus", (e) => e.target.select());
 function renderPremium() {
   const p = state.profile, on = isPremium(p);
   $("premTitle").textContent = on ? "Премиум активен" : "Премиум";
@@ -4145,6 +4165,8 @@ function renderPremium() {
   const wc = waitDays(p.bonus_coins_at), wg = waitDays(p.bonus_gift_at);
   $("bonusCoins").disabled = !on || wc > 0;
   $("bonusCoins").textContent = wc ? "50 сорочек: через " + wc + " дн." : "Получить 50 сорочек";
+  $("vpnCopy").textContent = on ? "Скопировать ссылку VPN" : "Ссылка VPN: нужен премиум";
+  if (!on) { vpnLink = null; $("vpnLink").hidden = true; $("vpnLink").value = ""; }
   $("bonusGift").disabled = !on || wg > 0;
   $("bonusGift").textContent = wg ? "Подарок: через " + wg + " дн." : "Получить подарок";
   $("bonusHint").textContent = on ? "Бонусы премиума можно забирать раз в 30 дней. Подарок случайный, из тех, что выпускаются тиражом; его можно улучшить, но нельзя обменять на сорочки."

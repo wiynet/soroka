@@ -1031,3 +1031,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   join_channel пускает только в открытые чаты.
 --   Каналы: public.post_comments + add_comment / delete_comment; post_stats(ids) — комментарии и просмотры
 --   (просмотр = подписчик, дочитавший до поста).
+
+-- VPN для премиума: миграция messenger_premium_vpn. Ссылка лежит в private.vpn_config (в репозитории её нет),
+-- отдаёт её public.premium_vpn() только при действующем премиуме; меняет главный админ через public.admin_set_vpn(p_link).
