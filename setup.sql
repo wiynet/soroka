@@ -1049,3 +1049,8 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- Закреплённые NFT-подарки: миграция messenger_pinned_gifts. gifts.pinned_at + pin_gift(p_gift, p_on), не больше шести;
 -- закреп снимается при передаче, продаже с аукциона, скрытии и удалении.
+
+-- Рейтинг и номера аккаунтов: миграции messenger_rating_and_user_ids, messenger_profiles_num_seq_grant.
+--   profiles.num — номер аккаунта (ID) по порядку регистрации с 1001, выдаёт счётчик profiles_num_seq.
+--   profiles.rating_points — потраченные сорочки; пополняет триггер coin_ledger_rating (возвраты вычитаются,
+--   операции администратора не считаются). Уровень на клиенте: floor(sqrt(очки / 25)).
