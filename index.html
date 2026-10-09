@@ -262,6 +262,20 @@ button { cursor: pointer; }
 .gift-card .view { margin-top: 8px; border: 0; border-radius: 999px; padding: 7px 22px; background: rgb(255 255 255 / .22); color: #fff; font-weight: 600; }
 .gift-card .view:hover { background: rgb(255 255 255 / .34); }
 .msg.giftm .meta { color: var(--muted); }
+/* NFT-подарок: свой фон из двух цветов и узор из модели */
+.nftg { --c1: #888888; --c2: #333333; position: relative; overflow: hidden; background: radial-gradient(circle at 50% 34%, var(--c1), var(--c2) 82%) !important; color: #fff !important; border-color: transparent !important; }
+.nftg > * { position: relative; }
+.nftg .pat { position: absolute; inset: -12%; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px 4px; place-items: center; font-size: 15px; line-height: 1; opacity: .2; filter: grayscale(1) brightness(1.9); transform: rotate(-12deg); pointer-events: none; }
+.nftg .em { filter: drop-shadow(0 6px 12px rgb(0 0 0 / .35)); }
+.gift.nftg .sub { color: rgb(255 255 255 / .86); }
+.gift.nftg .pat { font-size: 11px; gap: 8px 2px; }
+.gv-top { display: grid; justify-items: center; gap: 4px; align-self: stretch; }
+.gv-top.nftg { padding: 22px 14px 18px; border-radius: 20px; }
+.gv-top h2 { margin: 0; }
+.gv-top .num { font-size: 14px; font-weight: 500; opacity: .9; }
+.gv dd .pct { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--mine); color: var(--accent); font-size: 12px; font-weight: 600; }
+.gift.out { opacity: .55; }
+.gift .left { font-size: 11px; font-weight: 600; color: var(--accent); }
 .gv { align-items: center; text-align: center; }
 .gv .em { font-size: 96px; line-height: 1.1; }
 .gv dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; align-self: stretch; text-align: left; font-size: 14px; }
@@ -631,7 +645,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <div class="wordmark">Сорок<i>а</i></div>
       <button class="icon-btn" id="btnAdmin" type="button" title="Админка" aria-label="Админка" hidden></button>
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
-      <button class="icon-btn" id="btnProfile" type="button" title="Настройки" aria-label="Настройки"></button>
+      <button class="icon-btn" id="btnSettings" type="button" title="Настройки" aria-label="Настройки"></button>
+      <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
     </div>
     <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
     <div class="list" id="chatList"></div>
@@ -683,19 +698,15 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   </main>
 </div>
 
-<!-- настройки -->
+<!-- профиль: имя, аватарка, сорочки, подарки, премиум -->
 <dialog id="dlgProfile">
   <form class="dlg" id="profileForm" novalidate>
-    <h2>Настройки</h2>
+    <h2>Профиль</h2>
 
     <button class="pick" type="button" id="myProfileRow">
       <span id="myProfileAv"></span>
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
     </button>
-
-    <div class="set-label">Аккаунты</div>
-    <div id="accList" class="acc-list"></div>
-    <div class="hint" id="accHint"></div>
 
     <div class="set-label">Аватарка</div>
     <div class="av-row">
@@ -714,6 +725,20 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
         <div><button class="btn ghost" type="button" id="avMake">Сделать аватаркой</button></div>
       </div>
     </div>
+
+    <div class="set-label">Профиль</div>
+    <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
+    <label class="field"><span>Юзернейм</span>
+      <div class="at-wrap"><input class="input" id="pfUser" maxlength="32" autocapitalize="none" spellcheck="false" required></div>
+      <div class="hint" id="pfUserHint"></div>
+    </label>
+    <label class="field"><span>О себе</span>
+      <textarea class="input" id="pfBio" maxlength="200" rows="3" placeholder="Пара слов о себе: увидят все, кто откроет ваш профиль"></textarea>
+    </label>
+    <div class="nft-list left" id="pfNft"></div>
+    <div class="small muted" id="pfEmail"></div>
+    <div class="error" id="profileErr"></div>
+    <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
 
     <div class="set-label">Сорочки</div>
     <div class="coin-card">
@@ -743,19 +768,16 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
 
-    <div class="set-label">Профиль</div>
-    <label class="field"><span>Имя</span><input class="input" id="pfName" maxlength="64" required></label>
-    <label class="field"><span>Юзернейм</span>
-      <div class="at-wrap"><input class="input" id="pfUser" maxlength="32" autocapitalize="none" spellcheck="false" required></div>
-      <div class="hint" id="pfUserHint"></div>
-    </label>
-    <label class="field"><span>О себе</span>
-      <textarea class="input" id="pfBio" maxlength="200" rows="3" placeholder="Пара слов о себе: увидят все, кто откроет ваш профиль"></textarea>
-    </label>
-    <div class="nft-list left" id="pfNft"></div>
-    <div class="small muted" id="pfEmail"></div>
-    <div class="error" id="profileErr"></div>
-    <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
+    <div class="actions" style="margin-top:6px">
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- настройки: оформление, чаты, уведомления, аккаунты -->
+<dialog id="dlgSettings">
+  <div class="dlg">
+    <h2>Настройки</h2>
 
     <div class="set-label">Уведомления</div>
     <label class="toggle"><input type="checkbox" id="setNotify"><span>Уведомления о новых сообщениях на этом устройстве</span></label>
@@ -806,11 +828,16 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="set-label">Сообщения</div>
     <label class="toggle"><input type="checkbox" id="setEnter"><span>Отправлять по Enter <span class="muted">(иначе по Ctrl+Enter)</span></span></label>
 
+
+    <div class="set-label">Аккаунты</div>
+    <div id="accList" class="acc-list"></div>
+    <div class="hint" id="accHint"></div>
+
     <div class="actions" style="margin-top:6px">
       <button class="btn danger" type="button" id="btnLogout" style="margin-right:auto">Выйти из аккаунта</button>
       <button class="btn ghost" type="button" data-close>Закрыть</button>
     </div>
-  </form>
+  </div>
 </dialog>
 
 <!-- новая группа / добавление участников -->
@@ -1045,13 +1072,13 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 <!-- подарок: подробности и продажа -->
 <dialog id="dlgGiftView">
   <div class="dlg gv">
-    <span class="em" id="gvEmoji"></span>
-    <h2 id="gvName"></h2>
+    <div class="gv-top" id="gvTop"></div>
     <dl id="gvFacts"></dl>
     <div class="hint" id="gvHint"></div>
     <div class="actions" style="align-self:stretch;justify-content:center">
       <button class="btn ghost" type="button" data-close>Закрыть</button>
       <button class="btn" type="button" id="gvSell" hidden></button>
+      <button class="btn" type="button" id="gvUp" hidden></button>
     </div>
   </div>
 </dialog>
@@ -1096,6 +1123,16 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
           <button type="button" data-days="365">Год</button>
         </div>
         <div class="actions"><button class="btn ghost" type="button" id="uPremOff">Снять премиум</button></div>
+      </div>
+      <div class="set-label">NFT-подарок</div>
+      <div class="coin-admin">
+        <div class="small muted">Сразу коллекционный: со своим номером, моделью и фоном. В тираж для покупки не входит.</div>
+        <select class="input" id="uNftType" aria-label="Подарок"></select>
+        <div class="ad-grid">
+          <select class="input" id="uNftModel" aria-label="Модель"></select>
+          <select class="input" id="uNftBack" aria-label="Фон"></select>
+        </div>
+        <div class="actions"><button class="btn ghost" type="button" id="uNftGive">Выдать NFT-подарок</button></div>
       </div>
       <div class="set-label">Права и доступ</div>
       <input class="input" id="uBanReason" maxlength="200" placeholder="Причина бана (необязательно)" hidden>
@@ -1191,6 +1228,7 @@ const ICONS = {
   back: '<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   group: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c.6-3.200 3-5 6-5s5.400 1.800 6 5"/><path d="M18.500 6.500v6M15.500 9.500h6"/></g>',
   gem: '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor" opacity=".28"/><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M9 3l-2 6 5 12 5-12-2-6" fill="none" stroke="currentColor" stroke-width="1.700" stroke-linejoin="round"/>',
+  gear: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 14.6a1.6 1.6 0 00.3 1.800l.1.1a2 2 0 11-2.800 2.800l-.1-.1a1.600 1.600 0 00-2.700 1.100V20.500a2 2 0 11-4 0v-.1a1.600 1.600 0 00-2.700-1.100l-.1.1a2 2 0 11-2.800-2.800l.1-.1a1.600 1.600 0 00-1.100-2.700H3.500a2 2 0 110-4h.1a1.600 1.600 0 001.100-2.700l-.1-.1a2 2 0 112.800-2.800l.1.1a1.600 1.600 0 002.700-1.100V3.500a2 2 0 114 0v.1a1.600 1.600 0 002.700 1.100l.1-.1a2 2 0 112.800 2.800l-.1.1a1.600 1.600 0 001.100 2.700h.1a2 2 0 110 4h-.1a1.600 1.600 0 00-1.400.9z"/></g>',
   shield: '<path d="M12 3l8 3v6c0 4.500-3.200 7.800-8 9-4.800-1.200-8-4.500-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M9 12l2.200 2.200L15 10" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round"/>',
   star: '<path d="M12 2.5l2.9 6 6.6.9-4.800 4.600 1.200 6.500L12 17.400 6.100 20.500l1.200-6.500L2.500 9.400l6.600-.9z" fill="currentColor"/>',
   adm: '<path d="M12 2l8.500 3.200v6.300c0 4.800-3.400 8.400-8.500 9.700-5.100-1.300-8.500-4.900-8.500-9.700V5.200z" fill="currentColor"/><path d="M8.300 11.800l2.600 2.600 4.900-5.200" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -1850,20 +1888,27 @@ function msgNode(m) {
     const t = (state.giftTypes || []).find((x) => x.id === m.gift_type) || { emoji: "🎁", name: "Подарок" };
     const info = m.gift_id ? state.giftInfo.get(m.gift_id) : null;
     const o = c ? other(c) : null;
-    const back = info ? Math.floor(info.price_paid * 0.9) : null;
+    const look = giftLook(info, t);
+    const back = info && !look ? Math.floor(info.price_paid * 0.9) : null;
     const swap = back ? " или обменять на " + coins(back) : "";
+    const up = !look && canUpgrade(t) ? " Его можно улучшить." : "";
     const line = info && info.sold_at ? "Подарок обменян на " + coins(info.sold_for) + "."
+      : look ? "Коллекционный №" + info.nft_number + " · " + look.m.name + " · " + look.b.name
       : mine ? (o ? o.display_name : "Получатель") + " может показать подарок в профиле" + swap + "."
-      : "Можно показать подарок в профиле" + swap + ".";
+      : "Можно показать подарок в профиле" + swap + "." + up;
+    const granted = info && info.granted;
+    const card = h("div", { class: "gift-card" },
+      h("span", { class: "em" }, look ? look.m.emoji : t.emoji),
+      h("b", {}, (look ? "NFT-подарок: " : "Подарок: ") + t.name),
+      h("span", { class: "line" }, (granted ? "Выдал: " : "Отправитель: ") + (mine ? "вы" : (o ? o.display_name : "собеседник"))),
+      h("span", { class: "line" }, line),
+      m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»"),
+      m.gift_id && h("button", { class: "view", type: "button", onclick: () => openGiftView(m.gift_id) }, "Открыть"));
+    if (look) paintNft(card, look);
     el.append(
-      h("div", { class: "gift-pill" }, mine ? "Вы отправили подарок" + (info ? " за " + coins(info.price_paid) : "") : "Вам отправили подарок"),
-      h("div", { class: "gift-card" },
-        h("span", { class: "em" }, t.emoji),
-        h("b", {}, "Подарок: " + t.name),
-        h("span", { class: "line" }, "Отправитель: " + (mine ? "вы" : (o ? o.display_name : "собеседник"))),
-        h("span", { class: "line" }, line),
-        m.gift_note && h("span", { class: "note" }, "«" + m.gift_note + "»"),
-        m.gift_id && h("button", { class: "view", type: "button", onclick: () => openGiftView(m.gift_id) }, "Открыть")));
+      h("div", { class: "gift-pill" }, granted ? (mine ? "Вы выдали NFT-подарок" : "Вам выдали NFT-подарок")
+        : mine ? "Вы отправили подарок" + (info && info.price_paid ? " за " + coins(info.price_paid) : "") : "Вам отправили подарок"),
+      card);
   } else if (m.event_kind) {
     // выдача от администратора: такая же карточка по центру, как у подарка
     el.classList.add("giftm");
@@ -2027,7 +2072,7 @@ async function ensureGifts() {
   const need = [...new Set(state.msgs.map((m) => m.gift_id).filter((id) => id && !state.giftInfo.has(id)))];
   if (!need.length) return;
   const chat = state.activeId;
-  const { data } = await sb.from("gifts").select("id,price_paid,sold_at,sold_for,to_id").in("id", need);
+  const { data } = await sb.from("gifts").select("id,type_id,price_paid,sold_at,sold_for,to_id,granted,nft_number,nft_model,nft_backdrop").in("id", need);
   for (const g of (data || [])) state.giftInfo.set(g.id, g);
   if (data && data.length && state.activeId === chat) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
 }
@@ -2785,24 +2830,61 @@ function showUserTab(name) {
 $("uTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-ut]"); if (b) showUserTab(b.dataset.ut); });
 async function giftTypes() {
   if (!state.giftTypes) {
-    const { data } = await sb.from("gift_types").select("*").order("sort");
-    if (data && data.length) state.giftTypes = data;
+    const [t, m, b] = await Promise.all([
+      sb.from("gift_types").select("*").order("sort"),
+      sb.from("gift_models").select("*").order("weight", { ascending: false }),
+      sb.from("gift_backdrops").select("*").order("weight", { ascending: false })]);
+    if (t.data && t.data.length) {
+      state.giftTypes = t.data;
+      state.giftModels = (m.data || []).filter((x) => x && x.type_id && x.emoji);
+      state.giftBackdrops = (b.data || []).filter((x) => x && x.c1 && x.c2);
+    }
   }
   return state.giftTypes || [];
+}
+async function giftStats() {
+  const { data } = await sb.rpc("gift_stats");
+  return new Map((Array.isArray(data) ? data : []).map((r) => [r.type_id, r]));
+}
+function modelsOf(typeId) { return (state.giftModels || []).filter((m) => m.type_id === typeId); }
+function canUpgrade(t) { return !!(t && t.upgrade_price && modelsOf(t.id).length); }
+// внешний вид улучшенного подарка: модель, фон и их редкость; null, если подарок обычный
+function giftLook(g, t) {
+  if (!g || g.nft_number == null) return null;
+  const models = modelsOf(g.type_id), bds = state.giftBackdrops || [];
+  const m = models.find((x) => x.id === g.nft_model) || { name: "Модель", emoji: (t && t.emoji) || "🎁", weight: 0 };
+  const b = bds.find((x) => x.id === g.nft_backdrop) || { name: "Фон", c1: "#888888", c2: "#333333", weight: 0 };
+  const pct = (w, arr) => { const sum = arr.reduce((a, x) => a + x.weight, 0); return sum && w ? String(Math.round(w / sum * 1000) / 10).replace(".", ",") + " %" : ""; };
+  return { m, b, mp: pct(m.weight, models), bp: pct(b.weight, bds) };
+}
+function paintNft(el, look) {
+  el.classList.add("nftg");
+  el.style.setProperty("--c1", look.b.c1);
+  el.style.setProperty("--c2", look.b.c2);
+  el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, look.m.emoji))));
+  return el;
+}
+function giftTile(g, t, tag, attrs, ...subs) {
+  const look = giftLook(g, t);
+  const el = h(tag, { class: "gift", ...attrs },
+    h("span", { class: "em" }, look ? look.m.emoji : t.emoji),
+    h("span", { class: "nm" }, look ? t.name + " №" + g.nft_number : t.name), ...subs);
+  return look ? paintNft(el, look) : el;
 }
 async function loadUserGifts(id) {
   $("uTabGifts").textContent = "Подарки";
   $("uGifts").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,created_at,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,created_at,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   if (!viewed || viewed.id !== id) return;
   const rows = res.data || [];
   $("uTabGifts").textContent = rows.length ? "Подарки · " + rows.length : "Подарки";
   const byId = new Map(types.map((t) => [t.id, t]));
   $("uGifts").replaceChildren(...(rows.length ? rows.map((g, i) => {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
-    const el = h(id === state.me.id ? "button" : "div", { class: "gift", type: id === state.me.id ? "button" : null, title: id === state.me.id ? "Открыть подарок" : (g.note || ""), onclick: id === state.me.id ? () => openGiftView(g.id) : null },
-      h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
+    // свой подарок открывается всегда, чужой: только NFT (его может рассмотреть любой)
+    const open = id === state.me.id || g.nft_number != null;
+    const el = giftTile(g, t, open ? "button" : "div", { type: open ? "button" : null, title: open ? "Открыть подарок" : (g.note || ""), onclick: open ? () => openGiftView(g.id) : null },
       h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
       g.note && h("span", { class: "sub" }, "«" + g.note + "»"));
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
@@ -2811,31 +2893,71 @@ async function loadUserGifts(id) {
 }
 // подробности подарка; получатель может обменять его на сорочки за вычетом комиссии 10 %
 let gvGift = null, sellArmed = false;
-async function openGiftView(id) {
+async function openGiftView(id, fresh) {
   gvGift = null; sellArmed = false;
-  $("gvEmoji").textContent = "🎁"; $("gvName").textContent = "Подарок"; $("gvFacts").replaceChildren(); $("gvHint").textContent = "Загружаем…"; $("gvSell").hidden = true;
-  $("dlgGiftView").showModal();
-  const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,created_at,price_paid,sold_at,sold_for,to_id,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("id", id).maybeSingle()]);
+  $("gvTop").className = "gv-top";
+  $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, "Подарок"));
+  $("gvFacts").replaceChildren(); $("gvHint").textContent = "Загружаем…"; $("gvSell").hidden = true; $("gvUp").hidden = true;
+  if (!$("dlgGiftView").open) $("dlgGiftView").showModal();
+  const [types, res, stats] = await Promise.all([giftTypes(),
+    sb.from("gifts").select("id,type_id,note,created_at,price_paid,sold_at,sold_for,to_id,granted,nft_number,nft_model,nft_backdrop,upgraded_at,from:profiles!gifts_from_id_fkey(id,username,display_name),to:profiles!gifts_to_id_fkey(id,username,display_name)").eq("id", id).maybeSingle(),
+    giftStats()]);
   const g = res.data;
   if (!g) { $("gvHint").textContent = "Не удалось загрузить подарок."; return; }
   gvGift = g;
   const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: "Подарок" };
-  const mineToSell = g.to_id === state.me.id && !g.sold_at;
+  const look = giftLook(g, t), st = stats.get(g.type_id) || { sold: 0, nfts: 0 };
+  const mine = g.to_id === state.me.id && !g.sold_at;
+  const mineToSell = mine && !look && g.price_paid > 0;
+  const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
-  $("gvEmoji").textContent = t.emoji;
-  $("gvName").textContent = t.name;
-  const fact = (k, v) => [h("dt", {}, k), h("dd", {}, v)];
+  const top = $("gvTop");
+  top.replaceChildren(h("span", { class: "em" }, look ? look.m.emoji : t.emoji), h("h2", {}, t.name),
+    ...(look ? [h("span", { class: "num" }, "Коллекционный №" + g.nft_number)] : []));
+  if (look) paintNft(top, look);
+  if (fresh) flash(top, 900);
+  const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
+  const who = (p) => p ? p.display_name + " · @" + p.username : "скрыт";
   $("gvFacts").replaceChildren(
-    ...fact("От кого", g.from ? g.from.display_name + " · @" + g.from.username : "отправитель скрыт"),
+    ...(look ? [
+      ...fact("Владелец", who(g.to)),
+      ...fact("Модель", look.m.name, look.mp && h("span", { class: "pct" }, look.mp)),
+      ...fact("Фон", look.b.name, look.bp && h("span", { class: "pct" }, look.bp)),
+      ...fact("Выпущено", String(st.nfts || g.nft_number) + " шт." + (t.supply ? " · тираж подарка " + t.supply : ""))] : []),
+    ...fact(g.granted ? "Выдал" : "От кого", g.from ? who(g.from) : "отправитель скрыт"),
     ...fact("Когда", dyFmt.format(new Date(g.created_at))),
-    ...fact("Стоимость", coins(g.price_paid)),
+    ...(g.price_paid > 0 ? fact("Стоимость", coins(g.price_paid)) : []),
+    ...(!look && t.supply ? fact("Тираж", "куплено " + Math.min(st.sold, t.supply) + " из " + t.supply) : []),
     ...(g.note ? fact("Подпись", "«" + g.note + "»") : []),
     ...(g.sold_at ? fact("Статус", "обменян на " + coins(g.sold_for)) : []));
-  $("gvHint").textContent = mineToSell ? "Подарок показан в вашем профиле. Его можно обменять на сорочки: вернётся " + coins(back) + ", комиссия 10 %. После обмена подарок исчезнет из профиля." : "";
+  $("gvHint").textContent = look ? (mine ? "Это коллекционный подарок: у него свой номер, модель и фон. Он показан в вашем профиле, обменять его на сорочки нельзя." : "")
+    : mineToUp ? "Улучшение за " + coins(t.upgrade_price) + " даёт подарку свой номер, случайную модель и фон. После улучшения его нельзя обменять на сорочки." + (mineToSell ? " Без улучшения можно обменять: вернётся " + coins(back) + "." : "")
+    : mineToSell ? "Подарок показан в вашем профиле. Его можно обменять на сорочки: вернётся " + coins(back) + ", комиссия 10 %. После обмена подарок исчезнет из профиля." : "";
   $("gvSell").hidden = !mineToSell;
+  $("gvSell").className = mineToUp ? "btn ghost" : "btn";
   $("gvSell").textContent = "Обменять на " + coins(back);
+  $("gvUp").hidden = !mineToUp;
+  $("gvUp").textContent = mineToUp ? "Улучшить за " + coins(t.upgrade_price) : "";
 }
+$("gvUp").addEventListener("click", async () => {
+  if (!gvGift) return;
+  const g = gvGift;
+  $("gvUp").disabled = true;
+  const { data, error } = await sb.rpc("upgrade_gift", { p_gift: g.id });
+  $("gvUp").disabled = false;
+  if (error) {
+    const m = error.message || "";
+    toast(/insufficient/.test(m) ? "Не хватает сорочек на улучшение" : /already upgraded/.test(m) ? "Этот подарок уже улучшен" : "Не удалось улучшить подарок");
+    return;
+  }
+  state.balance = Number(data) || 0;
+  state.giftInfo.delete(g.id);
+  toast("Подарок улучшен. На счёте " + coins(state.balance));
+  await openGiftView(g.id, true);
+  if (state.activeId) ensureGifts();
+  if (viewed && viewed.id === state.me.id && $("dlgUser").open) loadUserGifts(viewed.id);
+  if ($("dlgProfile").open) { loadWallet(); loadMyGifts(); }
+});
 $("gvSell").addEventListener("click", async () => {
   if (!gvGift) return;
   if (!sellArmed) { sellArmed = true; $("gvSell").textContent = "Точно обменять? Вернуть подарок будет нельзя"; return; }
@@ -2866,14 +2988,17 @@ async function openGift(p) {
   $("giftBal").textContent = "";
   $("giftTypes").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
   $("dlgGift").showModal();
-  const [types, w] = await Promise.all([giftTypes(), sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle()]);
+  const [types, w, stats] = await Promise.all([giftTypes(), sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle(), giftStats()]);
   state.balance = w.data ? Number(w.data.balance) : 0;
   $("giftBal").replaceChildren(coinMark(), "У вас " + coins(state.balance) + (isPremium(state.profile) ? " · скидка премиума 20 %" : ""));
   $("giftTypes").replaceChildren(...types.map((t, i) => {
     const price = giftPrice(t);
-    const b = h("button", { class: "gift", type: "button", role: "radio", "aria-checked": "false" },
+    const left = t.supply ? Math.max(0, t.supply - Number((stats.get(t.id) || {}).sold || 0)) : null;
+    const b = h("button", { class: "gift" + (left === 0 ? " out" : ""), type: "button", role: "radio", "aria-checked": "false", disabled: left === 0 },
       h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
-      h("span", { class: "sub" }, price !== t.price && h("span", { class: "old" }, String(t.price)), coins(price)));
+      h("span", { class: "sub" }, price !== t.price && h("span", { class: "old" }, String(t.price)), coins(price)),
+      left != null && h("span", { class: "left" }, left ? "осталось " + left + " из " + t.supply : "раскуплено"),
+      canUpgrade(t) && h("span", { class: "sub" }, "можно улучшить"));
     b.style.animationDelay = i * 30 + "ms";
     b.addEventListener("click", () => {
       giftPick = t;
@@ -2894,7 +3019,7 @@ $("giftSend").addEventListener("click", async () => {
   $("giftSend").disabled = false;
   if (error) {
     const m = error.message || "";
-    $("giftErr").textContent = /insufficient/.test(m) ? "Не хватает сорочек на этот подарок." : /user not found/.test(m) ? "Этому человеку сейчас нельзя отправить подарок." : "Не удалось отправить подарок.";
+    $("giftErr").textContent = /sold out/.test(m) ? "Этот подарок уже раскупили." : /insufficient/.test(m) ? "Не хватает сорочек на этот подарок." : /user not found/.test(m) ? "Этому человеку сейчас нельзя отправить подарок." : "Не удалось отправить подарок.";
     return;
   }
   state.balance = Number(data) || 0;
@@ -2946,7 +3071,32 @@ async function grantPremium(days) {
 }
 $("uPremDays").addEventListener("click", (e) => { const b = e.target.closest("[data-days]"); if (b) grantPremium(Number(b.dataset.days)); });
 $("uPremOff").addEventListener("click", () => grantPremium(0));
-$("uAdminOpen").addEventListener("click", () => { if (viewed) $("dlgAdminUser").showModal(); });
+function fillNftModels() {
+  const pct = (w, arr) => String(Math.round(w / arr.reduce((a, x) => a + x.weight, 0) * 1000) / 10).replace(".", ",") + " %";
+  const ms = modelsOf($("uNftType").value), bs = state.giftBackdrops || [];
+  $("uNftModel").replaceChildren(h("option", { value: "" }, "Модель: случайная"), ...ms.map((m) => h("option", { value: m.id }, m.emoji + " " + m.name + " · " + pct(m.weight, ms))));
+  $("uNftBack").replaceChildren(h("option", { value: "" }, "Фон: случайный"), ...bs.map((b) => h("option", { value: b.id }, b.name + " · " + pct(b.weight, bs))));
+}
+async function fillNftAdmin() {
+  const types = (await giftTypes()).filter((t) => modelsOf(t.id).length);
+  $("uNftType").replaceChildren(...types.map((t) => h("option", { value: t.id }, t.emoji + " " + t.name)));
+  $("uNftGive").disabled = !types.length;
+  fillNftModels();
+}
+$("uNftType").addEventListener("change", fillNftModels);
+$("uNftGive").addEventListener("click", async () => {
+  if (!viewed || !$("uNftType").value) return;
+  const to = viewed;
+  $("uNftGive").disabled = true;
+  const { data, error } = await sb.rpc("admin_grant_nft_gift", { p_user: to.id, p_type: $("uNftType").value, p_model: $("uNftModel").value || null, p_backdrop: $("uNftBack").value || null });
+  $("uNftGive").disabled = false;
+  if (error) { toast("Не удалось выдать NFT-подарок"); return; }
+  toast("NFT-подарок выдан: " + to.display_name);
+  if ($("dlgUser").open && viewed && viewed.id === to.id) loadUserGifts(to.id);
+  reloadSoon();
+  if (Number(data)) openGiftView(Number(data), true);
+});
+$("uAdminOpen").addEventListener("click", () => { if (viewed) { fillNftAdmin(); $("dlgAdminUser").showModal(); } });
 $("uVerify").addEventListener("click", async () => {
   if (!viewed) return;
   const on = !viewed.verified;
@@ -3026,20 +3176,19 @@ $("myProfileRow").addEventListener("click", () => showUser(state.profile));
 // свои подарки прямо в настройках: нажатие открывает подарок, там же его можно обменять
 async function loadMyGifts() {
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,price_paid,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,price_paid,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   const rows = res.data || [];
   const byId = new Map(types.map((t) => [t.id, t]));
   $("myGifts").replaceChildren(...rows.map((g, i) => {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
-    const el = h("button", { class: "gift", type: "button", title: "Открыть подарок", onclick: () => openGiftView(g.id) },
-      h("span", { class: "em" }, t.emoji), h("span", { class: "nm" }, t.name),
+    const el = giftTile(g, t, "button", { type: "button", title: "Открыть подарок", onclick: () => openGiftView(g.id) },
       h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
-      h("span", { class: "sub" }, "обмен: " + coins(Math.floor(g.price_paid * 0.9))));
+      h("span", { class: "sub" }, g.nft_number != null ? "коллекционный" : canUpgrade(t) ? "можно улучшить" : "обмен: " + coins(Math.floor(g.price_paid * 0.9))));
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
   }));
   $("myGiftsHint").textContent = res.error ? "Не удалось загрузить подарки." : rows.length
-    ? "Нажмите на подарок, чтобы открыть его или обменять на сорочки (комиссия 10 %)."
+    ? "Нажмите на подарок, чтобы открыть его, улучшить или обменять на сорочки (комиссия 10 %)."
     : "Подарков пока нет. Когда вам что-нибудь подарят, оно появится здесь и в вашем профиле.";
 }
 
@@ -3133,7 +3282,7 @@ $("avRemove").addEventListener("click", () => setAvatarPath(null));
 
 // настройки: профиль и оформление
 function renderSettings() {
-  for (const group of document.querySelectorAll("#dlgProfile [data-key]")) {
+  for (const group of document.querySelectorAll("#dlgSettings [data-key]")) {
     for (const b of group.querySelectorAll("button")) {
       b.setAttribute("aria-checked", String(String(settings[group.dataset.key]) === b.dataset.v));
       if (group.dataset.key === "hue") b.style.background = "hsl(" + b.dataset.v + " 70% 45%)";
@@ -3146,7 +3295,7 @@ function saveSettings() {
   window.applySorokaSettings();
   renderSettings();
 }
-$("dlgProfile").addEventListener("click", (e) => {
+$("dlgSettings").addEventListener("click", (e) => {
   const b = e.target.closest("[data-key] button");
   if (!b) return;
   const key = b.parentElement.dataset.key;
@@ -3162,16 +3311,19 @@ $("btnProfile").addEventListener("click", () => {
   $("pfEmail").textContent = state.me.email ? "Почта: " + state.me.email : "";
   $("profileErr").textContent = "";
   $("pfUserHint").textContent = "";
-  renderSettings();
   refreshMe();
   renderPremium();
   loadWallet();
   loadMyGifts();
-  paintNotify();
-  renderAccounts();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
   drawBadge();
+});
+$("btnSettings").addEventListener("click", () => {
+  renderSettings();
+  paintNotify();
+  renderAccounts();
+  $("dlgSettings").showModal();
 });
 watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile.username);
 $("profileForm").addEventListener("submit", (e) => {
@@ -3372,6 +3524,7 @@ $("btnLeave").addEventListener("click", async () => {
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
+$("btnSettings").append(icon("gear"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));
@@ -3492,7 +3645,7 @@ function renderAccounts() {
       avatar(a.name || a.username || "?", a.id, false, a.avatar),
       h("span", {}, h("b", {}, a.name || "Аккаунт"), h("span", { class: "small muted" }, a.username ? "@" + a.username : "")),
       cur ? h("span", { class: "now" }, "сейчас") : "");
-    if (!cur) b.addEventListener("click", async () => { b.disabled = true; $("dlgProfile").close(); await switchTo(a); });
+    if (!cur) b.addEventListener("click", async () => { b.disabled = true; $("dlgSettings").close(); await switchTo(a); });
     return b;
   }));
   if (list.length < max) {
@@ -3506,7 +3659,7 @@ function renderAccounts() {
 function startAdding() {
   if (accounts().length >= accountLimit()) { toast("Достигнут предел аккаунтов"); return; }
   state.adding = true;
-  $("dlgProfile").close();
+  $("dlgSettings").close();
   for (const f of [$("loginForm"), $("signupForm")]) f.reset();
   showAuth("login");
   $("authBack").textContent = "← Вернуться к @" + state.profile.username;

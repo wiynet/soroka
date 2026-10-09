@@ -976,3 +976,13 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   Триггер messages_push после вставки сообщения вызывает через pg_net функцию
 --   supabase/functions/push (заголовок x-hook-secret); она шлёт уведомления всем участникам,
 --   кроме отправителя и тех, у кого чат заглушён.
+
+-- Улучшаемые и NFT-подарки: миграция messenger_nft_gifts.
+--   gift_types.supply — тираж (сколько штук можно купить всего), gift_types.upgrade_price — цена улучшения.
+--   public.gift_models (модели вида подарка, weight = шанс) и public.gift_backdrops (фоны из двух цветов).
+--   gifts.nft_number / nft_model / nft_backdrop / upgraded_at заполняются при улучшении; gifts.granted — выдан
+--   администратором и в тираж не входит.
+--   public.upgrade_gift(p_gift) — владелец платит upgrade_price, подарок получает следующий номер, случайные модель и фон.
+--   public.admin_grant_nft_gift(p_user, p_type, p_model, p_backdrop) — выдача готового NFT-подарка (только администраторы).
+--   public.gift_stats() — сколько куплено и улучшено по видам. send_gift проверяет тираж, sell_gift не принимает NFT.
+--   Первый такой подарок: «Золото» (id gold), 100 сорочек, тираж 20, улучшение 25, пять моделей.
