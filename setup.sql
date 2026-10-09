@@ -986,3 +986,8 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   public.admin_grant_nft_gift(p_user, p_type, p_model, p_backdrop) — выдача готового NFT-подарка (только администраторы).
 --   public.gift_stats() — сколько куплено и улучшено по видам. send_gift проверяет тираж, sell_gift не принимает NFT.
 --   Первый такой подарок: «Золото» (id gold), 100 сорочек, тираж 20, улучшение 25, пять моделей.
+
+-- Ещё 20 улучшаемых подарков и надетый NFT: миграция messenger_more_gifts_and_worn_nft.
+--   20 видов подарков (по 4 модели, улучшение 25); у «Космоса», «Дракона» и «Короны» тираж 40, 30 и 15.
+--   profiles.worn_gift / worn_type / worn_model / worn_backdrop / worn_number — надетый NFT-подарок;
+--   пишет их только public.wear_gift(p_gift) (null снимает), клиенту доступно чтение.
