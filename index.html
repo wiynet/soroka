@@ -680,10 +680,6 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   <form class="dlg" id="profileForm" novalidate>
     <h2>Настройки</h2>
 
-    <button class="pick" type="button" id="installRow" hidden>
-      <span class="ico" id="icoInstall"></span>
-      <span><b>Установить приложение</b><span class="small muted">Сорока появится на экране телефона или компьютера отдельной иконкой</span></span>
-    </button>
     <button class="pick" type="button" id="myProfileRow">
       <span id="myProfileAv"></span>
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
@@ -3326,23 +3322,13 @@ $("btnNewGroup").append(icon("plus"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));
-$("icoInstall").append(icon("plus"));
 $("icoSupport").append(icon("help"));
 $("icoMarket").append(icon("shop"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));
-// установка как приложение: браузер сам решает, когда это можно предложить
-let installPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; $("installRow").hidden = false; });
-window.addEventListener("appinstalled", () => { installPrompt = null; $("installRow").hidden = true; toast("Сорока установлена"); });
-$("installRow").addEventListener("click", async () => {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  try { await installPrompt.userChoice; } catch (e) {}
-  installPrompt = null;
-  $("installRow").hidden = true;
-});
+// своё приглашение установить приложение браузеру показывать не даём: приложение ставится из APK
+window.addEventListener("beforeinstallprompt", (e) => e.preventDefault());
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
