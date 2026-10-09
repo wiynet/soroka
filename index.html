@@ -88,6 +88,7 @@ html, body { height: 100%; margin: 0; }
 }
 :root:is([data-font="sf"], [data-font="inter"]) .wordmark { font-weight: 700; letter-spacing: -0.03em; font-size: 22px; }
 body { -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+html.ios input, html.ios textarea, html.ios select { font-size: 16px !important; }
 body { background: var(--bg); color: var(--ink); font: var(--fs)/1.45 var(--font); overflow: hidden; }
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -839,6 +840,15 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
 }
 </script>
 <script>
+/* На айфонах Safari сам приближает страницу («лупа»), когда нажимают на поле с текстом мельче 16 пикселей.
+   Запрещаем это автоприближение и держим в полях ввода 16 пикселей; увеличение двумя пальцами остаётся. */
+(function () {
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!ios) return;
+  document.documentElement.classList.add("ios");
+  var vp = document.querySelector('meta[name="viewport"]');
+  if (vp && !/maximum-scale/.test(vp.content)) vp.content += ", maximum-scale=1";
+})();
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
   var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round", font: "wide", lang: "ru" };
