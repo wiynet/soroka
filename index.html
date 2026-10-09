@@ -970,6 +970,15 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   </div>
 </dialog>
 
+<!-- предложение включить уведомления сразу после входа -->
+<dialog id="dlgNotify">
+  <div class="dlg">
+    <h2>Включить уведомления?</h2>
+    <div class="muted">Сорока сообщит о новых сообщениях, даже когда она закрыта. Выключить можно в любой момент: для одного чата колокольчиком в его шапке или для всех в настройках.</div>
+    <div class="actions"><button class="btn ghost" type="button" id="notifyLater">Не сейчас</button><button class="btn" type="button" id="notifyYes">Включить</button></div>
+  </div>
+</dialog>
+
 <!-- создать: группа или канал -->
 <dialog id="dlgNew">
   <div class="dlg">
@@ -3401,10 +3410,27 @@ $("setNotify").addEventListener("change", async (e) => {
 });
 // при входе привязываем подписку этого устройства к тому, кто вошёл
 async function resumePush() {
-  if (!pushSupported || settings.notify === false || Notification.permission !== "granted") return;
-  const sub = await pushSub().catch(() => null);
-  if (sub) savePush(sub, true);
+  if (!pushSupported || settings.notify === false) return;
+  if (Notification.permission === "granted") {
+    // разрешение уже есть (например, дано приложению на Android): подписываемся без вопросов
+    const sub = await pushSub().catch(() => null);
+    if (sub) savePush(sub, true); else enablePush().catch(() => {});
+    return;
+  }
+  // браузеры показывают системный запрос только после нажатия, поэтому сразу после входа
+  // предлагаем включить; после «Не сейчас» спросим снова через три дня
+  if (Notification.permission === "default" && Date.now() - (settings.notifyAsked || 0) > 3 * 86400e3) {
+    setTimeout(() => { if (!document.querySelector("dialog[open]")) $("dlgNotify").showModal(); }, 1200);
+  }
 }
+$("notifyYes").addEventListener("click", async () => {
+  $("dlgNotify").close();
+  try { toast((await enablePush()) ? "Уведомления включены" : "Уведомления не включены: нет разрешения"); }
+  catch (err) { toast("Не удалось включить уведомления"); }
+});
+$("notifyLater").addEventListener("click", () => {
+  settings.notifyAsked = Date.now(); saveSettings(); $("dlgNotify").close();
+});
 async function logout() {
   // уведомления для этого аккаунта на этом устройстве прекращаются; разрешение браузера остаётся
   const sub = await pushSub().catch(() => null);
