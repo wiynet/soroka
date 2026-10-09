@@ -127,6 +127,38 @@ button { cursor: pointer; }
 .row .sub { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; }
 .row .sub span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+.count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 600; line-height: 20px; text-align: center; flex: none; font-variant-numeric: tabular-nums; }
+.count.quiet { background: var(--muted); color: var(--panel); }
+#convSub.typing { color: var(--accent); }
+#conv { position: relative; }
+.find-bar, .pin-bar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.find-bar .input { flex: 1; min-width: 0; }
+.find-list { max-height: 46%; overflow-y: auto; background: var(--panel); border-bottom: 1px solid var(--line); flex: none; }
+.find-list .hit { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 8px 14px; color: var(--ink); }
+.find-list .hit:hover { background: var(--panel-2); }
+.find-list .hit b { font-weight: 600; font-size: 13px; }
+.find-list .hit .when { float: right; font-size: 12px; color: var(--muted); }
+.find-list .hit .tx { display: block; font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin-main { flex: 1; min-width: 0; display: grid; text-align: left; border: 0; border-left: 3px solid var(--accent); background: none; padding: 1px 0 1px 8px; color: var(--ink); }
+.pin-main b { font-size: 12px; color: var(--accent); font-weight: 600; }
+.pin-main span { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #e5484d; flex: none; animation: rec-blink 1s ease-in-out infinite; }
+@keyframes rec-blink { 50% { opacity: .25; } }
+#recChip .muted { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#recChip .rec-dot { flex: 0 0 10px; width: 10px; }
+#recChip b { flex: none; font-variant-numeric: tabular-nums; }
+#btnMic.on { background: #e5484d; color: #fff; }
+.fwd { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 2px; }
+.voice { display: flex; align-items: center; gap: 10px; min-width: 190px; padding: 2px 0 3px; }
+.voice .play { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.voice .play svg { width: 18px; height: 18px; }
+.voice .track { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; cursor: pointer; padding: 0; border: 0; }
+.voice .track i { display: block; height: 100%; width: 0; background: var(--accent); }
+.voice .dur { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.album { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 2px 0 5px; border-radius: 10px; overflow: hidden; width: min(100%, 340px); }
+.album img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--panel-2); cursor: zoom-in; min-width: 0; }
+.album.odd img:first-child { grid-column: 1 / -1; aspect-ratio: 2 / 1; }
+#conv.drop::after { content: "Отпустите, чтобы прикрепить"; position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 22%, transparent); font-weight: 600; pointer-events: none; z-index: 5; }
 .avatar { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: 16px; }
 .avatar.sm { width: 36px; height: 36px; font-size: 13px; }
 .avatar.lg { width: 76px; height: 76px; font-size: 26px; }
@@ -687,9 +719,23 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
           <div class="name" id="convName"></div>
           <div class="small muted" id="convSub"></div>
         </button>
+        <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
         <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
       </header>
+      <div class="find-bar" id="findBar" hidden>
+        <input class="input" id="findText" type="search" placeholder="Поиск по сообщениям этого чата" autocomplete="off">
+        <button class="link" id="findClose" type="button">Закрыть</button>
+      </div>
+      <div class="find-list" id="findList" hidden></div>
+      <div class="pin-bar" id="pinBar" hidden>
+        <button type="button" class="pin-main" id="pinOpen"><b>Закреплено</b><span id="pinText"></span></button>
+        <button class="link" id="pinOff" type="button" title="Открепить" aria-label="Открепить">✕</button>
+      </div>
       <div id="msgs"></div>
+      <div class="attach-chip" id="recChip" hidden>
+        <span class="rec-dot" aria-hidden="true"></span><b id="recTime">0:00</b><span class="muted">Идёт запись. Нажмите «Отправить», когда закончите.</span>
+        <button class="link" id="recCancel" type="button">Отмена</button>
+      </div>
       <div class="attach-chip" id="attachChip" hidden>
         <span id="attachName"></span>
         <button class="link" id="attachRemove" type="button">Убрать</button>
@@ -703,9 +749,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
         <button class="link" id="editCancel" type="button">Отмена</button>
       </div>
       <form class="composer" id="composer">
-        <input type="file" id="fileInput" hidden>
+        <input type="file" id="fileInput" multiple hidden>
         <button class="icon-btn" id="btnAttach" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить фото или файл"></button>
         <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
+        <button class="icon-btn" id="btnMic" type="button" title="Записать голосовое сообщение" aria-label="Записать голосовое сообщение"></button>
         <button class="icon-btn send" id="btnSend" type="submit" title="Отправить" aria-label="Отправить"></button>
       </form>
       <div class="chan-note" id="chanNote" hidden>В канале пишут только владелец и администраторы.</div>
@@ -1125,6 +1172,16 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   </div>
 </dialog>
 
+<!-- куда переслать сообщение -->
+<dialog id="dlgForward">
+  <div class="dlg">
+    <h2>Переслать</h2>
+    <input class="input" id="fwSearch" type="search" placeholder="Название чата или имя" autocomplete="off">
+    <div class="scroll" id="fwChats" style="max-height:340px"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button></div>
+  </div>
+</dialog>
+
 <!-- кому передать подарок -->
 <dialog id="dlgGiveTo">
   <div class="dlg">
@@ -1144,6 +1201,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   <div class="dlg sheet">
     <div class="react-row" id="maReacts" role="group" aria-label="Реакция"></div>
     <button class="btn ghost" type="button" id="maReply">Ответить</button>
+    <button class="btn ghost" type="button" id="maFwd">Переслать</button>
+    <button class="btn ghost" type="button" id="maPin">Закрепить</button>
     <button class="btn ghost" type="button" id="maEdit">Изменить</button>
     <button class="btn ghost" type="button" id="maCopy">Скопировать текст</button>
     <button class="btn danger" type="button" id="maDel">Удалить</button>
@@ -1261,7 +1320,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const state = {
   me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
-  unread: new Set(), pendingFile: null, channel: null, urls: new Map(),
+  unread: new Map(), pendingFiles: [], channel: null, urls: new Map(), names: new Map(), pins: new Map(), typingCh: null, typing: null,
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
 };
 
@@ -1296,6 +1355,10 @@ const ICONS = {
   shop: '<path d="M5 8h14l-1.200 11.500H6.200z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M8.500 8V7a3.500 3.500 0 017 0v1" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>',
   help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
+  mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
+  find: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.500 4.500"/></g>',
+  play: '<path d="M8 5.500v13l11-6.500z" fill="currentColor"/>',
+  pause: '<path d="M7 5h3.500v14H7zM13.500 5H17v14h-3.500z" fill="currentColor"/>',
   bell: '<path d="M6 16V11a6 6 0 0112 0v5l1.500 2H4.500z M10 20.500a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round" stroke-linecap="round"/>',
   belloff: '<path d="M6 16V11a6 6 0 019.500-4.900M18 11v5l1.500 2H8 M10 20.500a2 2 0 004 0 M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round" stroke-linecap="round"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -1672,6 +1735,7 @@ async function startApp() {
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (p) => onChanged(p.new))
     .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, (p) => onMember(p))
     .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, (p) => onReact(p.new))
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, (p) => onChatRow(p.new))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -1700,7 +1764,10 @@ function stopApp() {
   state.editing = null;
   $("editChip").hidden = true;
   $("btnAdmin").hidden = true;
-  state.chats.clear(); state.unread.clear(); state.urls.clear();
+  state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear();
+  if (recorder) stopRecording(false);
+  leaveTyping();
+  if (voice.audio) { voice.audio.pause(); voice.audio = null; voice.id = null; }
   state.activeId = null; state.msgs = [];
   setPending(null);
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
@@ -1714,9 +1781,14 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
+  const counts = await sb.rpc("unread_counts");
+  if (Array.isArray(counts.data)) {
+    state.unread = new Map(counts.data.map((r) => [r.chat_id, Number(r.cnt) || 0]).filter((r) => r[1] > 0));
+    if (state.activeId && !document.hidden) state.unread.delete(state.activeId);
+  }
   if (!state.started) return;
   state.chats = new Map(data.map((c) => [c.id, {
     id: c.id, is_group: c.is_group, is_channel: c.is_channel, description: c.description || "", created_by: c.created_by, title: c.title,
@@ -1726,6 +1798,7 @@ async function loadChats() {
     avatar_path: c.avatar_path || null,
     admins: new Set(c.chat_members.filter((m) => m.is_admin).map((m) => m.user_id)),
     muted: !!(c.chat_members.find((m) => m.user_id === state.me.id) || {}).muted,
+    pinned: c.pinned_message || null,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -1739,6 +1812,7 @@ function roleTag(c, userId) {
   const t = c.created_by === userId ? "владелец" : c.admins.has(userId) ? "админ" : "";
   return t ? h("span", { class: "role-tag" }, t) : null;
 }
+function bumpUnread(id) { state.unread.set(id, (state.unread.get(id) || 0) + 1); }
 function other(c) { return c.members.find((p) => p.id !== state.me.id); }
 function chatTitle(c) {
   if (c.is_group) return c.title || "Группа";
@@ -1760,7 +1834,7 @@ function chatRow(c) {
     av,
     h("span", { class: "txt" },
       h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
-      h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
+      h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "count" + (c.muted ? " quiet" : ""), title: "Непрочитанные сообщения" }, state.unread.get(c.id) > 99 ? "99+" : String(state.unread.get(c.id))))));
 }
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
@@ -1853,6 +1927,10 @@ function renderHead() {
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? fmtSeen(o) : "заметки для себя");
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
+  const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
+  $("convSub").classList.toggle("typing", !!ty);
+  if (ty) $("convSub").textContent = c.is_group ? ty.n + " печатает…" : "печатает…";
+  paintPin();
   $("btnMute").replaceChildren(icon(c.muted ? "belloff" : "bell"));
   $("btnMute").title = c.muted ? "Уведомления выключены. Нажмите, чтобы включить" : "Выключить уведомления из этого чата";
   $("btnMute").setAttribute("aria-pressed", String(c.muted));
@@ -1875,6 +1953,9 @@ async function openChat(id) {
   state.replies.clear();
   state.reacts.clear();
   state.reactsLoaded.clear();
+  closeFind();
+  if (recorder) stopRecording(false);
+  joinTyping(id);
   $("placeholder").hidden = true;
   $("conv").hidden = false;
   $("app").classList.add("chat-open");
@@ -1887,6 +1968,7 @@ async function openChat(id) {
   state.msgs = data.reverse();
   state.hasMore = data.length === PAGE;
   renderMsgs();
+  paintPin();
   flash($("msgs"), 450);
   scrollDown();
   ensureReplies();
@@ -1894,6 +1976,9 @@ async function openChat(id) {
   if (matchMedia("(min-width: 761px)").matches) $("text").focus();
 }
 function closeChat() {
+  if (recorder) stopRecording(false);
+  leaveTyping();
+  closeFind();
   state.activeId = null; state.msgs = [];
   $("conv").hidden = true; $("placeholder").hidden = false;
   $("app").classList.remove("chat-open");
@@ -1918,13 +2003,58 @@ async function signedUrl(path, downloadName) {
   state.urls.set(key, { url: data.signedUrl, exp: Date.now() + 3000 * 1000 });
   return data.signedUrl;
 }
-function msgNode(m) {
+function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+// голосовые: один общий проигрыватель, кнопки в сообщениях только показывают его состояние
+const voice = { id: null, audio: null };
+function paintVoice() {
+  for (const v of $("msgs").querySelectorAll(".voice")) {
+    const on = voice.id === Number(v.dataset.voice) && voice.audio, total = Number(v.dataset.secs) || 0;
+    const cur = on ? voice.audio.currentTime : 0;
+    v.querySelector(".play").replaceChildren(icon(on && !voice.audio.paused ? "pause" : "play"));
+    v.querySelector(".track i").style.width = on && total ? Math.min(100, cur / total * 100) + "%" : "0";
+    v.querySelector(".dur").textContent = on && cur > 0 ? fmtDur(cur) + " / " + fmtDur(total) : fmtDur(total);
+  }
+}
+async function playVoice(m, at) {
+  if (voice.id === m.id && voice.audio) {
+    if (at != null) voice.audio.currentTime = at;
+    else if (voice.audio.paused) voice.audio.play().catch(() => {}); else voice.audio.pause();
+    paintVoice();
+    return;
+  }
+  if (voice.audio) voice.audio.pause();
+  const u = await signedUrl(m.file_path);
+  if (!u) { toast("Не удалось загрузить голосовое"); return; }
+  const a = new Audio(u);
+  voice.id = m.id; voice.audio = a;
+  a.addEventListener("timeupdate", paintVoice);
+  a.addEventListener("pause", paintVoice);
+  a.addEventListener("ended", () => { if (voice.audio === a) { voice.id = null; voice.audio = null; } paintVoice(); });
+  a.addEventListener("error", () => { if (voice.audio === a) { voice.id = null; voice.audio = null; toast("Это устройство не может проиграть запись"); paintVoice(); } });
+  if (at) a.currentTime = at;
+  a.play().catch(() => {});
+  paintVoice();
+}
+function photoNode(m) {
+  const img = h("img", { class: "photo", alt: m.file_name || "Фото", loading: "lazy" });
+  img.addEventListener("click", () => { $("viewerImg").src = img.src; $("viewer").showModal(); });
+  signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+  return img;
+}
+const isPhoto = (m) => !!m.file_path && (m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml";
+// group: несколько фото одного альбома, которые показываются одним сообщением (m — последнее из них)
+function msgNode(m, group) {
   const c = state.chats.get(m.chat_id);
   const mine = m.sender_id === state.me.id;
   const el = h("div", { class: "msg" + (mine ? " mine" : ""), "data-id": m.id });
   if (c && c.is_group && !c.is_channel && !mine) {
     const who = c.members.find((p) => p.id === m.sender_id);
     el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id), marks(who), roleTag(c, m.sender_id)), who));
+  }
+  if (m.forwarded_from) el.append(h("div", { class: "fwd" }, "Переслано от: " + (state.names.get(m.forwarded_from) || "…")));
+  if (group) {
+    const rep = group.find((x) => x.reply_to);
+    if (rep && !m.reply_to) m = { ...m, reply_to: rep.reply_to };
   }
   if (m.reply_to) {
     const r = state.msgs.find((x) => x.id === m.reply_to) || state.replies.get(m.reply_to);
@@ -1933,7 +2063,19 @@ function msgNode(m) {
       h("b", {}, r && !gone ? senderName(c, r.sender_id) : "Ответ"),
       h("span", {}, gone ? "Сообщение удалено" : r ? snippet(r) : "…")));
   }
-  if (m.file_path) {
+  if (group) {
+    const grid = h("div", { class: "album" + (group.length % 2 ? " odd" : "") }, group.map((g) => { const i = photoNode(g); i.className = ""; return i; }));
+    el.append(grid);
+  } else if (m.file_path && m.voice_secs != null) {
+    const v = h("div", { class: "voice", "data-voice": m.id, "data-secs": m.voice_secs },
+      h("button", { class: "play", type: "button", "aria-label": "Проиграть голосовое сообщение", onclick: () => playVoice(m) }, icon("play")),
+      h("button", { class: "track", type: "button", "aria-label": "Перемотать", onclick: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        playVoice(m, Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (m.voice_secs || 0));
+      } }, h("i", {})),
+      h("span", { class: "dur" }, fmtDur(m.voice_secs)));
+    el.append(v);
+  } else if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
       const img = h("img", { class: "photo", alt: m.file_name || "Фото", loading: "lazy" });
       const stick = nearBottom();
@@ -1989,7 +2131,10 @@ function msgNode(m) {
         h("b", {}, m.event_title || "Выдача"),
         h("span", { class: "line" }, mine ? "Получатель: " + (o ? o.display_name : "собеседник") : "Выдал администратор: " + (o ? o.display_name : "администратор")),
         m.event_note && h("span", { class: "note" }, m.event_note)));
-  } else if (m.body) el.append(h("div", { class: "body" }, linkify(m.body)));
+  } else {
+    const text = group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
+    if (text) el.append(h("div", { class: "body" }, linkify(text)));
+  }
   const rr = reactRow(m);
   if (rr) el.append(rr);
   let ticks = null;
@@ -1999,7 +2144,7 @@ function msgNode(m) {
     if (read) ticks.classList.add("read");
   }
   el.append(h("span", { class: "meta" },
-    h("button", { class: "dots", type: "button", title: "Действия с сообщением", "aria-label": "Действия с сообщением", onclick: () => openMsgMenu(m) }, "⋯"),
+    h("button", { class: "dots", type: "button", title: "Действия с сообщением", "aria-label": "Действия с сообщением", onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
     (m.edited_at ? "изменено " : "") + tFmt.format(new Date(m.created_at)), ticks));
   return el;
 }
@@ -2010,11 +2155,18 @@ function renderMsgs(newId) {
   let prev = "";
   const chat = state.chats.get(state.activeId);
   for (let i = 0; i < state.msgs.length; i++) {
-    const m = state.msgs[i];
+    let m = state.msgs[i];
     const d = new Date(m.created_at), k = dayKey(d);
     if (k !== prev) { kids.push(h("div", { class: "day" }, dayLabel(d))); prev = k; }
-    const node = msgNode(m);
-    if (m.id === newId) node.classList.add("new");
+    // подряд идущие фото одного альбома показываем одним сообщением
+    let group = null;
+    if (m.album_id && isPhoto(m)) {
+      let j = i;
+      while (state.msgs[j + 1] && state.msgs[j + 1].album_id === m.album_id && state.msgs[j + 1].sender_id === m.sender_id && isPhoto(state.msgs[j + 1])) j++;
+      if (j > i) { group = state.msgs.slice(i, j + 1); i = j; m = state.msgs[j]; }
+    }
+    const node = msgNode(m, group);
+    if (m.id === newId || (group && group.some((x) => x.id === newId))) node.classList.add("new");
     // в группах слева от чужих сообщений стоит аватарка автора: у последнего сообщения в серии подряд
     if (chat && chat.is_group && !chat.is_channel && m.sender_id !== state.me.id && !m.gift_type) {
       const next = state.msgs[i + 1];
@@ -2028,6 +2180,7 @@ function renderMsgs(newId) {
     } else kids.push(node);
   }
   $("msgs").replaceChildren(...kids);
+  paintVoice();
 }
 async function loadEarlier() {
   if (state.loadingMore || !state.msgs.length) return;
@@ -2050,7 +2203,7 @@ function addMsg(m) {
   renderMsgs(m.id);
   if (stick) scrollDown();
   state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
-  if (m.reply_to || m.gift_id) ensureReplies();
+  if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies();
   markReadSoon();
 }
 function touchChat(m) {
@@ -2144,9 +2297,24 @@ async function ensureGifts() {
   for (const g of (data || [])) state.giftInfo.set(g.id, g);
   if (data && data.length && state.activeId === chat) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
 }
+// имена тех, чьи сообщения переслали
+async function ensureNames() {
+  const need = [...new Set(state.msgs.map((m) => m.forwarded_from).filter((id) => id && !state.names.has(id)))];
+  if (!need.length) return;
+  const chat = state.activeId;
+  for (const c of state.chats.values()) for (const p of c.members) if (need.includes(p.id)) state.names.set(p.id, p.display_name);
+  const rest = need.filter((id) => !state.names.has(id));
+  if (rest.length) {
+    const { data } = await sb.from("profiles").select("id,display_name").in("id", rest);
+    for (const id of rest) state.names.set(id, "неизвестно");
+    for (const p of (Array.isArray(data) ? data : [])) if (p && p.id) state.names.set(p.id, p.display_name);
+  }
+  if (state.activeId === chat) repaintMsgs();
+}
 async function ensureReplies() {
   ensureGifts();
   ensureReacts();
+  ensureNames();
   const have = new Set(state.msgs.map((m) => m.id));
   const need = [...new Set(state.msgs.map((m) => m.reply_to).filter((id) => id && !have.has(id) && !state.replies.has(id)))];
   if (!need.length) return;
@@ -2156,14 +2324,108 @@ async function ensureReplies() {
   for (const r of (data || [])) state.replies.set(r.id, r);
   if (state.activeId === chat) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
 }
-function snippet(m) { return (m.body || m.file_name || "Файл").replace(/\s+/g, " ").slice(0, 90); }
+function snippet(m) { return (m.body || (m.voice_secs != null ? "Голосовое сообщение" : m.file_name) || "Файл").replace(/\s+/g, " ").slice(0, 90); }
 function senderName(c, id) { return id === state.me.id ? "Вы" : c ? memberName(c, id) : "Участник"; }
-function jumpTo(id) {
-  const el = $("msgs").querySelector('[data-id="' + id + '"]');
-  if (!el) { toast("Это сообщение выше: нажмите «Показать более ранние»"); return; }
+async function jumpTo(id) {
+  const chat = state.activeId;
+  // сообщение может быть выше загруженного: подгружаем историю, пока не дойдём до него
+  for (let n = 0; n < 40 && state.hasMore && state.msgs.length && state.msgs[0].id > id; n++) {
+    await loadEarlier();
+    if (state.activeId !== chat) return;
+  }
+  let el = $("msgs").querySelector('[data-id="' + id + '"]');
+  if (!el) {   // фото внутри альбома: сообщением считается последнее фото
+    const m = state.msgs.find((x) => x.id === id);
+    const last = m && m.album_id ? [...state.msgs].reverse().find((x) => x.album_id === m.album_id) : null;
+    if (last) el = $("msgs").querySelector('[data-id="' + last.id + '"]');
+  }
+  if (!el) { toast("Сообщение не найдено: возможно, его удалили"); return; }
   el.scrollIntoView({ block: "center", behavior: "smooth" });
   flash(el, 1300, "hit");
 }
+/* ---------- печатает… ---------- */
+function clearTyping() { clearTimeout(state.typingTimer); state.typing = null; if (state.activeId) renderHead(); }
+function joinTyping(id) {
+  leaveTyping();
+  state.typingCh = sb.channel("typing:" + id, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "typing" }, (msg) => {
+      const pl = msg && msg.payload;
+      if (!pl || pl.u === state.me.id || state.activeId !== id) return;
+      state.typing = { chat: id, u: pl.u, n: String(pl.n || "Собеседник").slice(0, 40), until: Date.now() + 4000 };
+      clearTimeout(state.typingTimer);
+      state.typingTimer = setTimeout(clearTyping, 4000);
+      renderHead();
+    }).subscribe();
+}
+function leaveTyping() {
+  if (state.typingCh) { sb.removeChannel(state.typingCh); state.typingCh = null; }
+  clearTimeout(state.typingTimer); state.typing = null;
+}
+let typedAt = 0;
+function sayTyping() {
+  if (!state.typingCh || !state.typingCh.send || Date.now() - typedAt < 2500 || !$("text").value.trim() || state.editing) return;
+  typedAt = Date.now();
+  try { state.typingCh.send({ type: "broadcast", event: "typing", payload: { u: state.me.id, n: state.profile.display_name } }); } catch (e) {}
+}
+/* ---------- закреплённое сообщение ---------- */
+function canPin(c) { return !!c && (!c.is_group || !!myRole(c)); }
+async function paintPin() {
+  const c = state.chats.get(state.activeId), bar = $("pinBar");
+  if (!c || !c.pinned) { bar.hidden = true; return; }
+  let m = state.msgs.find((x) => x.id === c.pinned) || state.pins.get(c.pinned);
+  if (m === undefined) {
+    state.pins.set(c.pinned, null);
+    const id = c.pinned;
+    sb.from("messages").select("id,chat_id,sender_id,body,file_name,voice_secs,deleted_at").eq("id", id).maybeSingle().then((r) => {
+      if (r.data && r.data.id) { state.pins.set(id, r.data); paintPin(); }
+    });
+  }
+  if (!m || m.deleted_at) { bar.hidden = true; return; }
+  bar.hidden = false;
+  $("pinText").textContent = snippet(m);
+  $("pinOff").hidden = !canPin(c);
+}
+$("pinOpen").addEventListener("click", () => { const c = state.chats.get(state.activeId); if (c && c.pinned) jumpTo(c.pinned); });
+async function setPin(chatId, msgId) {
+  const { error } = await sb.rpc("pin_message", { p_chat: chatId, p_message: msgId });
+  if (error) { toast(msgId ? "Не удалось закрепить сообщение" : "Не удалось открепить сообщение"); return; }
+  const c = state.chats.get(chatId);
+  if (c) { c.pinned = msgId; if (state.activeId === chatId) paintPin(); }
+  toast(msgId ? "Сообщение закреплено" : "Сообщение откреплено");
+}
+$("pinOff").addEventListener("click", () => { if (state.activeId) setPin(state.activeId, null); });
+function onChatRow(row) {
+  const c = row && state.chats.get(row.id);
+  if (!c) return;
+  const pin = row.pinned_message || null;
+  if (c.pinned !== pin) { c.pinned = pin; if (state.activeId === c.id) paintPin(); }
+}
+/* ---------- поиск по сообщениям чата ---------- */
+function closeFind() { $("findBar").hidden = true; $("findList").hidden = true; $("findText").value = ""; $("findList").replaceChildren(); }
+$("btnFind").addEventListener("click", () => {
+  if (!$("findBar").hidden) { closeFind(); return; }
+  $("findBar").hidden = false;
+  $("findText").focus();
+});
+$("findClose").addEventListener("click", closeFind);
+const runFind = debounce(async () => {
+  const q = $("findText").value.trim(), chat = state.activeId, box = $("findList");
+  if (q.length < 2) { box.hidden = true; box.replaceChildren(); return; }
+  const like = "%" + q.replace(/[\\%_]/g, (ch) => "\\" + ch) + "%";
+  const { data, error } = await sb.from("messages").select("id,chat_id,sender_id,body,created_at").eq("chat_id", chat).is("deleted_at", null).ilike("body", like).order("id", { ascending: false }).limit(50);
+  if (state.activeId !== chat || $("findText").value.trim() !== q) return;
+  const rows = (Array.isArray(data) ? data : []).filter((m) => m && m.body);
+  const c = state.chats.get(chat);
+  box.hidden = false;
+  box.replaceChildren(...(rows.length ? rows.map((m) =>
+    h("button", { class: "hit", type: "button", onclick: () => { box.hidden = true; jumpTo(m.id); } },
+      h("span", { class: "when" }, dFmt.format(new Date(m.created_at)) + ", " + tFmt.format(new Date(m.created_at))),
+      h("b", {}, senderName(c, m.sender_id)),
+      h("span", { class: "tx" }, m.body.replace(/\s+/g, " ").slice(0, 160))))
+    : [h("div", { class: "empty-note" }, error ? "Не удалось выполнить поиск." : "Ничего не найдено.")]));
+}, 300);
+$("findText").addEventListener("input", runFind);
+$("findText").addEventListener("focus", () => { if ($("findList").children.length) $("findList").hidden = false; });
 // сообщение изменили или удалили
 function onChanged(m) {
   if (!state.started) return;
@@ -2172,6 +2434,8 @@ function onChanged(m) {
   const i = state.msgs.findIndex((x) => x.id === m.id);
   if (i < 0) return;
   if (m.deleted_at) {
+    const pc = state.chats.get(m.chat_id);
+    if (pc && pc.pinned === m.id) { pc.pinned = null; paintPin(); }
     state.msgs.splice(i, 1);
     if (state.editing && state.editing.id === m.id) cancelEdit();
   } else state.msgs[i] = m;
@@ -2182,12 +2446,13 @@ function onChanged(m) {
 function onIncoming(m) {
   if (!state.started) return;
   if (m.deleted_at) return;
-  if (!state.chats.has(m.chat_id)) { state.unread.add(m.chat_id); reloadSoon(); return; }
+  if (!state.chats.has(m.chat_id)) { bumpUnread(m.chat_id); reloadSoon(); return; }
+  if (state.typing && state.typing.chat === m.chat_id && state.typing.u === m.sender_id) clearTyping();
   touchChat(m);
   if (m.chat_id === state.activeId) {
     addMsg(m);
-    if (document.hidden && m.sender_id !== state.me.id) state.unread.add(m.chat_id);
-  } else if (m.sender_id !== state.me.id) state.unread.add(m.chat_id);
+    if (document.hidden && m.sender_id !== state.me.id) bumpUnread(m.chat_id);
+  } else if (m.sender_id !== state.me.id) bumpUnread(m.chat_id);
   renderList();
 }
 document.addEventListener("visibilitychange", async () => {
@@ -2203,30 +2468,108 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ---------- отправка ---------- */
-function setPending(file) {
-  state.pendingFile = file;
-  $("attachChip").hidden = !file;
-  $("attachName").textContent = file ? file.name + " · " + fmtSize(file.size) : "";
+const MAX_FILES = 10;
+function setPending(files) {
+  const list = !files ? [] : Array.isArray(files) ? files : [files];
+  state.pendingFiles = list;
+  $("attachChip").hidden = !list.length;
+  $("attachName").textContent = !list.length ? "" : list.length === 1 ? list[0].name + " · " + fmtSize(list[0].size)
+    : list.length + " " + plural(list.length, "файл", "файла", "файлов") + " · " + fmtSize(list.reduce((a, f) => a + f.size, 0)) + (list.every((f) => (f.type || "").startsWith("image/")) ? " · одним сообщением" : "");
   $("fileInput").value = "";
+  syncComposer();
 }
-function pickFile(file) {
-  if (!file) return;
-  if (file.size > MAX_FILE) { toast("Файл больше 20 МБ. Выберите файл поменьше."); return; }
-  setPending(file);
+// добавляет файлы к уже выбранным (до 10 штук, каждый до 20 МБ)
+function pickFiles(files) {
+  const add = [...(files || [])].filter(Boolean);
+  if (!add.length || state.editing) return;
+  const ok = add.filter((f) => f.size <= MAX_FILE);
+  if (ok.length < add.length) toast("Файлы больше 20 МБ не прикреплены.");
+  const list = state.pendingFiles.concat(ok);
+  if (list.length > MAX_FILES) toast("За один раз можно отправить до " + MAX_FILES + " файлов.");
+  setPending(list.slice(0, MAX_FILES));
+}
+// микрофон виден, пока нечего отправлять; иначе на его месте кнопка отправки
+function syncComposer() {
+  const typing = !!$("text").value.trim() || state.pendingFiles.length > 0 || !!state.editing || !!recorder;
+  $("btnMic").hidden = typing || !micSupported;
+  $("btnSend").hidden = !typing && micSupported;
 }
 $("btnAttach").addEventListener("click", () => $("fileInput").click());
-$("fileInput").addEventListener("change", (e) => pickFile(e.target.files[0]));
+$("fileInput").addEventListener("change", (e) => pickFiles(e.target.files));
 $("attachRemove").addEventListener("click", () => setPending(null));
 $("text").addEventListener("paste", (e) => {
-  const f = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
-  if (f) { e.preventDefault(); pickFile(f); }
+  const files = e.clipboardData && e.clipboardData.files;
+  if (files && files.length) { e.preventDefault(); pickFiles(files); }
 });
+// файлы можно перетащить в окно переписки
+(function () {
+  const conv = $("conv");
+  let depth = 0;
+  const has = (e) => e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files");
+  conv.addEventListener("dragenter", (e) => { if (has(e) && !$("composer").hidden) { e.preventDefault(); depth++; conv.classList.add("drop"); } });
+  conv.addEventListener("dragover", (e) => { if (has(e) && !$("composer").hidden) e.preventDefault(); });
+  conv.addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) conv.classList.remove("drop"); });
+  conv.addEventListener("drop", (e) => {
+    depth = 0; conv.classList.remove("drop");
+    if (!has(e) || $("composer").hidden) return;
+    e.preventDefault();
+    pickFiles(e.dataTransfer.files);
+  });
+})();
+/* ---------- голосовые сообщения ---------- */
+const micSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+let recorder = null, recChunks = [], recStart = 0, recTimer = null, recSend = false;
+function recMime() {
+  // mp4 проигрывается на любых устройствах, поэтому он первый; остальное на случай, если его нет
+  for (const t of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]) if (MediaRecorder.isTypeSupported(t)) return t;
+  return "";
+}
+async function startRecording() {
+  if (recorder || !state.activeId) return;
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { toast("Нет доступа к микрофону. Разрешите его в настройках браузера."); return; }
+  const mime = recMime(), chatId = state.activeId;
+  try { recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+  catch (e) { stream.getTracks().forEach((t) => t.stop()); toast("Это устройство не умеет записывать звук."); return; }
+  recChunks = []; recStart = Date.now(); recSend = false;
+  recorder.addEventListener("dataavailable", (e) => { if (e.data && e.data.size) recChunks.push(e.data); });
+  recorder.addEventListener("stop", async () => {
+    const type = (recorder && recorder.mimeType) || mime || "audio/webm", secs = Math.round((Date.now() - recStart) / 1000);
+    const send = recSend, chunks = recChunks;
+    stream.getTracks().forEach((t) => t.stop());
+    clearInterval(recTimer); recorder = null; recChunks = [];
+    $("recChip").hidden = true; $("btnMic").classList.remove("on");
+    syncComposer();
+    if (!send) return;
+    if (secs < 1 || !chunks.length) { toast("Запись слишком короткая"); return; }
+    const clean = type.split(";")[0], ext = clean.includes("mp4") ? "m4a" : clean.includes("ogg") ? "ogg" : "webm";
+    const file = new File(chunks, "Голосовое сообщение." + ext, { type: clean });
+    if (file.size > MAX_FILE) { toast("Запись получилась слишком большой"); return; }
+    await sendFiles(chatId, [file], "", { voice_secs: Math.min(3600, secs), file_name: "Голосовое сообщение" });
+  });
+  recorder.start();
+  $("recChip").hidden = false; $("recTime").textContent = "0:00"; $("btnMic").classList.add("on");
+  recTimer = setInterval(() => {
+    const sec = (Date.now() - recStart) / 1000;
+    $("recTime").textContent = fmtDur(sec);
+    if (sec >= 300) stopRecording(true);   // не дольше пяти минут
+  }, 250);
+  syncComposer();
+}
+function stopRecording(send) {
+  if (!recorder) return;
+  recSend = !!send;
+  try { recorder.stop(); } catch (e) {}
+}
+$("btnMic").addEventListener("click", startRecording);
+$("recCancel").addEventListener("click", () => stopRecording(false));
 function fitText() {
   const t = $("text");
   t.style.height = "auto";
   t.style.height = Math.min(t.scrollHeight + 2, 160) + "px";
 }
-$("text").addEventListener("input", fitText);
+$("text").addEventListener("input", () => { fitText(); syncComposer(); sayTyping(); });
 $("text").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || e.isComposing) return;
   const quick = settings.enterSends && !e.shiftKey && matchMedia("(pointer: fine)").matches;
@@ -2300,6 +2643,7 @@ function startEdit(m) {
   $("btnAttach").disabled = true;
   $("text").value = m.body || "";
   fitText();
+  syncComposer();
   $("text").focus();
 }
 function cancelEdit() {
@@ -2309,12 +2653,60 @@ function cancelEdit() {
   $("btnAttach").disabled = false;
   $("text").value = "";
   fitText();
+  syncComposer();
 }
 $("editCancel").addEventListener("click", cancelEdit);
 let sending = false;
+// отправка текста и файлов; несколько фото уходят альбомом и показываются одним сообщением
+async function sendFiles(chatId, files, body, extra) {
+  if (sending || !chatId || (!body && !files.length)) return false;
+  sending = true;
+  $("btnSend").disabled = true;
+  try {
+    const reply = state.replyTo && state.replyTo.chat_id === chatId ? state.replyTo.id : null;
+    const album = files.filter((f) => (f.type || "").startsWith("image/")).length > 1 ? randomUuid() : null;
+    const jobs = files.length ? files : [null];
+    let sent = 0;
+    for (let i = 0; i < jobs.length; i++) {
+      const file = jobs[i], last = i === jobs.length - 1;
+      const row = { chat_id: chatId, sender_id: state.me.id, body: last ? body : "", ...(extra || {}) };
+      if (reply && i === 0) row.reply_to = reply;
+      if (file) {
+        const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
+        const path = chatId + "/" + randomId() + (ext ? "." + ext.toLowerCase() : "");
+        const up = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
+        if (up.error) { toast(sent ? "Часть файлов не загрузилась." : "Не удалось загрузить файл. Сообщение не отправлено."); break; }
+        Object.assign(row, { file_path: path, file_name: file.name.slice(0, 255), file_type: (file.type || "application/octet-stream").slice(0, 127), file_size: file.size });
+        if (album && (file.type || "").startsWith("image/")) row.album_id = album;
+      }
+      if (extra) Object.assign(row, extra);
+      const { data, error } = await sb.from("messages").insert(row).select().single();
+      if (error) { toast(sent ? "Часть сообщений не отправилась." : "Сообщение не отправлено. Проверьте связь и попробуйте ещё раз."); break; }
+      sent++;
+      touchChat(data);
+      if (state.activeId === chatId) addMsg(data);
+    }
+    if (!sent) return false;
+    flash($("btnSend"), 420, "fly");
+    renderList();
+    return true;
+  } finally {
+    sending = false;
+    $("btnSend").disabled = false;
+  }
+}
+function randomUuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+  const x = [...b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  return x.slice(0, 8) + "-" + x.slice(8, 12) + "-" + x.slice(12, 16) + "-" + x.slice(16, 20) + "-" + x.slice(20);
+}
 $("composer").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const chatId = state.activeId, body = $("text").value.trim(), file = state.pendingFile;
+  if (recorder) { stopRecording(true); return; }
+  const chatId = state.activeId, body = $("text").value.trim(), files = state.pendingFiles;
   if (state.editing) {
     const m = state.editing;
     if (sending) return;
@@ -2335,32 +2727,15 @@ $("composer").addEventListener("submit", async (e) => {
     reloadSoon();
     return;
   }
-  if (sending || !chatId || (!body && !file)) return;
-  sending = true;
-  $("btnSend").disabled = true;
-  try {
-    const row = { chat_id: chatId, sender_id: state.me.id, body };
-    if (state.replyTo && state.replyTo.chat_id === chatId) row.reply_to = state.replyTo.id;
-    if (file) {
-      const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
-      const path = chatId + "/" + randomId() + (ext ? "." + ext.toLowerCase() : "");
-      const up = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
-      if (up.error) { toast("Не удалось загрузить файл. Сообщение не отправлено."); return; }
-      Object.assign(row, { file_path: path, file_name: file.name.slice(0, 255), file_type: (file.type || "application/octet-stream").slice(0, 127), file_size: file.size });
-    }
-    const { data, error } = await sb.from("messages").insert(row).select().single();
-    if (error) { toast("Сообщение не отправлено. Проверьте связь и попробуйте ещё раз."); return; }
+  if (sending || !chatId || (!body && !files.length)) return;
+  // если не ушло ничего, текст и файлы остаются в поле, чтобы можно было повторить
+  const ok = await sendFiles(chatId, files, body);
+  if (ok) {
     $("text").value = "";
     fitText();
     setPending(null);
     cancelReply();
-    flash($("btnSend"), 420, "fly");
-    touchChat(data);
-    if (state.activeId === chatId) addMsg(data);
-    renderList();
-  } finally {
-    sending = false;
-    $("btnSend").disabled = false;
+    syncComposer();
   }
 });
 
@@ -2484,8 +2859,10 @@ $("uCoinTake").addEventListener("click", () => moveCoins(-1));
 
 // действия с сообщением: изменить, скопировать, удалить
 let actMsg = null, delArmed = false;
-function openMsgMenu(m) {
+let actGroup = null;
+function openMsgMenu(m, group) {
   actMsg = m;
+  actGroup = group || null;
   delArmed = false;
   $("maDel").textContent = "Удалить";
   const c = state.chats.get(m.chat_id);
@@ -2493,12 +2870,70 @@ function openMsgMenu(m) {
   $("maReacts").replaceChildren(...REACTIONS.map((e) =>
     h("button", { type: "button", "aria-pressed": String(e === myReact), "aria-label": "Реакция " + e, onclick: () => { $("dlgMsg").close(); toggleReact(m, e); } }, e)));
   $("maReply").hidden = $("composer").hidden;
-  $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type || !!m.event_kind;
+  const plain = !m.gift_type && !m.event_kind;
+  $("maFwd").hidden = !plain;
+  $("maPin").hidden = !plain || !canPin(c);
+  $("maPin").textContent = c && c.pinned === m.id ? "Открепить" : "Закрепить";
+  $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type || !!m.event_kind || m.voice_secs != null || !!m.forwarded_from;
   $("maCopy").hidden = !m.body || !!m.gift_type || !!m.event_kind;
   $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
   $("dlgMsg").showModal();
 }
 $("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
+$("maPin").addEventListener("click", () => {
+  $("dlgMsg").close();
+  if (!actMsg) return;
+  const c = state.chats.get(actMsg.chat_id);
+  setPin(actMsg.chat_id, c && c.pinned === actMsg.id ? null : actMsg.id);
+});
+// пересылка: выбираем чат, файл копируется в его папку
+let fwdMsgs = [];
+function paintForward() {
+  const q = $("fwSearch").value.trim().toLowerCase();
+  const chats = [...state.chats.values()].filter((c) => (!c.is_channel || !!myRole(c)) && (!q || chatTitle(c).toLowerCase().includes(q)))
+    .sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
+  $("fwChats").replaceChildren(...(chats.length ? chats.map((c) => {
+    const o = other(c);
+    return h("button", { class: "row", type: "button", onclick: () => forwardTo(c) },
+      avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path),
+      h("span", { class: "txt" }, h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c)),
+        h("span", { class: "sub" }, h("span", {}, c.is_channel ? "канал" : c.is_group ? "группа" : o ? "@" + o.username : "заметки для себя"))));
+  }) : [h("div", { class: "empty-note" }, "Чат не найден.")]));
+}
+$("fwSearch").addEventListener("input", debounce(paintForward, 150));
+$("maFwd").addEventListener("click", () => {
+  $("dlgMsg").close();
+  if (!actMsg) return;
+  fwdMsgs = actGroup ? actGroup.slice() : [actMsg];
+  $("fwSearch").value = "";
+  paintForward();
+  $("dlgForward").showModal();
+});
+let forwarding = false;
+async function forwardTo(c) {
+  if (forwarding || !fwdMsgs.length) return;
+  forwarding = true;
+  let ok = 0;
+  try {
+    for (const m of fwdMsgs) {
+      let path = null;
+      if (m.file_path) {
+        const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(m.file_path) || [])[1];
+        path = c.id + "/" + randomId() + (ext ? "." + ext : "");
+        const cp = await sb.storage.from("attachments").copy(m.file_path, path);
+        if (cp.error) break;
+      }
+      const { error } = await sb.rpc("forward_message", { p_message: m.id, p_chat: c.id, p_file_path: path });
+      if (error) break;
+      ok++;
+    }
+  } finally { forwarding = false; }
+  if (!ok) { toast("Не удалось переслать сообщение"); return; }
+  $("dlgForward").close();
+  toast(ok < fwdMsgs.length ? "Переслана только часть сообщений" : "Переслано: " + chatTitle(c));
+  fwdMsgs = [];
+  reloadSoon();
+}
 $("maEdit").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startEdit(actMsg); });
 $("maCopy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(actMsg.body); toast("Текст скопирован"); } catch (e) { toast("Не удалось скопировать"); }
@@ -2507,12 +2942,18 @@ $("maCopy").addEventListener("click", async () => {
 $("maDel").addEventListener("click", async () => {
   if (!actMsg) return;
   if (!delArmed) { delArmed = true; $("maDel").textContent = "Точно удалить? Вернуть будет нельзя"; return; }
-  const m = actMsg;
+  const m = actMsg, all = actGroup ? actGroup.slice() : [actMsg];
   $("dlgMsg").close();
-  const { error } = await sb.rpc("delete_message", { p_id: m.id });
-  if (error) { toast("Не удалось удалить сообщение"); return; }
-  const i = state.msgs.findIndex((x) => x.id === m.id);
-  if (i >= 0) state.msgs.splice(i, 1);
+  let failed = false;
+  for (const x of all) {   // альбом удаляется целиком
+    const { error } = await sb.rpc("delete_message", { p_id: x.id });
+    if (error) { failed = true; continue; }
+    const i = state.msgs.findIndex((y) => y.id === x.id);
+    if (i >= 0) state.msgs.splice(i, 1);
+    const pc = state.chats.get(x.chat_id);
+    if (pc && pc.pinned === x.id) { pc.pinned = null; paintPin(); }
+  }
+  if (failed) toast("Не удалось удалить сообщение");
   if (state.editing && state.editing.id === m.id) cancelEdit();
   const keep = $("msgs").scrollTop;
   renderMsgs();
@@ -3787,6 +4228,8 @@ $("btnLeave").addEventListener("click", async () => {
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
 $("btnSettings").append(icon("gear"));
+$("btnMic").append(icon("mic"));
+$("btnFind").append(icon("find"));
 $("icoGroup").append(icon("group"));
 $("icoChannel").append(icon("horn"));
 $("btnAdmin").append(icon("shield"));

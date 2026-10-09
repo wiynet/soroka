@@ -1005,3 +1005,11 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- Надеть NFT-подарок на профиль можно только с премиумом: миграция messenger_wear_gift_premium_only
 -- (wear_gift отклоняет запрос без премиума; клиент не показывает надетый подарок, если премиум истёк).
+
+-- Голосовые, альбомы, пересылка, закреп, счётчик непрочитанных: миграция messenger_voice_forward_pin_unread_albums.
+--   messages.voice_secs — голосовое сообщение (длительность), messages.album_id — несколько фото одним сообщением,
+--   messages.forwarded_from — чьё сообщение переслали (ставит только сервер: public.forward_message(p_message, p_chat, p_file_path),
+--   файл клиент заранее копирует в папку нового чата).
+--   chats.pinned_message + public.pin_message(p_chat, p_message): в личном чате закрепляет любой, в группе владелец и админы.
+--   public.unread_counts() — число непрочитанных по моим чатам. Таблица chats добавлена в публикацию supabase_realtime.
+--   «Печатает…» идёт через Realtime Broadcast (канал typing:<id чата>) и в базе не хранится.
