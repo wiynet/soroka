@@ -4431,7 +4431,8 @@ async function loadUserGifts(id) {
   const [types, res] = await Promise.all([giftTypes(),
     sb.from("gifts").select("id,type_id,note,created_at,hidden,nft_number,nft_model,nft_backdrop,pinned_at,from:profiles!gifts_from_id_fkey(id,username,display_name,avatar_path)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   if (!viewed || viewed.id !== id) return;
-  const rows = pinnedFirst(res.data || []);
+  // скрытые подарки видит только владелец (база и так их не отдаёт, это вторая страховка)
+  const rows = pinnedFirst((res.data || []).filter((g) => !g.hidden || id === state.me.id));
   $("uTabGifts").textContent = rows.length ? T("Подарки · ") + rows.length : T("Подарки");
   const byId = new Map(types.map((t) => [t.id, t]));
   paintOrbit(rows, byId);

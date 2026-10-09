@@ -1054,3 +1054,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   profiles.num — номер аккаунта (ID) по порядку регистрации с 1001, выдаёт счётчик profiles_num_seq.
 --   profiles.rating_points — потраченные сорочки; пополняет триггер coin_ledger_rating (возвраты вычитаются,
 --   операции администратора не считаются). Уровень на клиенте: floor(sqrt(очки / 25)).
+
+-- messenger_hidden_gifts_owner_only: скрытый подарок видит только владелец (админы больше не видят чужие скрытые)
+alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (select auth.uid())));
