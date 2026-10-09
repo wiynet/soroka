@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "lol.soroka.twa",
+        "sha256_cert_fingerprints": ["DF:E5:41:78:AD:6C:60:4C:02:E8:27:70:C9:9D:67:96:34:88:A8:4F:E2:21:4A:76:DD:49:12:53:0E:30:BD:6D"]
+      }
+    }]
