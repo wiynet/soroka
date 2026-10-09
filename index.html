@@ -778,6 +778,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <li>Скидка 20 % на все подарки</li>
       <li>Описание профиля до 500 символов вместо 200</li>
       <li>Два особых фона: «Космос» и «Неон»</li>
+      <li>NFT-подарок можно надеть на профиль: его фон и значок увидят все</li>
     </ul>
     <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
     <div class="set-label">Цвет имени</div>
@@ -1340,7 +1341,7 @@ function tint(el, p) {
 }
 // надетый NFT-подарок: модель и фон; null, если ничего не надето или виды подарков ещё не загружены
 function wornLook(p) {
-  if (!p || p.worn_number == null || !state.giftModels) return null;
+  if (!p || p.worn_number == null || !state.giftModels || !isPremium(p)) return null;
   const t = (state.giftTypes || []).find((x) => x.id === p.worn_type);
   const look = giftLook({ type_id: p.worn_type, nft_number: p.worn_number, nft_model: p.worn_model, nft_backdrop: p.worn_backdrop }, t);
   return look && { ...look, title: (t ? t.name : "Подарок") + " №" + p.worn_number };
@@ -3056,15 +3057,16 @@ async function openGiftView(id, fresh) {
   const wearing = state.profile.worn_gift === g.id;
   $("gvWear").hidden = !(mine && look);
   $("gvWear").className = wearing ? "btn ghost" : "btn";
-  $("gvWear").textContent = wearing ? "Снять с профиля" : "Надеть на профиль";
+  $("gvWear").textContent = wearing ? "Снять с профиля" : isPremium(state.profile) ? "Надеть на профиль" : "Надеть на профиль (премиум)";
 }
 $("gvWear").addEventListener("click", async () => {
   if (!gvGift) return;
   const g = gvGift, off = state.profile.worn_gift === g.id;
+  if (!off && !isPremium(state.profile)) { toast("Носить NFT-подарок на профиле можно только с премиумом"); return; }
   $("gvWear").disabled = true;
   const { error } = await sb.rpc("wear_gift", { p_gift: off ? null : g.id });
   $("gvWear").disabled = false;
-  if (error) { toast("Не удалось изменить оформление профиля"); return; }
+  if (error) { toast(/premium required/.test(error.message || "") ? "Носить NFT-подарок на профиле можно только с премиумом" : "Не удалось изменить оформление профиля"); return; }
   Object.assign(state.profile, off
     ? { worn_gift: null, worn_type: null, worn_model: null, worn_backdrop: null, worn_number: null }
     : { worn_gift: g.id, worn_type: g.type_id, worn_model: g.nft_model, worn_backdrop: g.nft_backdrop, worn_number: g.nft_number });

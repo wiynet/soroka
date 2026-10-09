@@ -1002,3 +1002,6 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- Старые обычные подарки (Мишка, Роза, Торт, Ракета, Сорока, Кубок, Алмаз, Единорог) без тиража и без улучшения:
 -- миграция messenger_classic_gifts_unlimited.
+
+-- Надеть NFT-подарок на профиль можно только с премиумом: миграция messenger_wear_gift_premium_only
+-- (wear_gift отклоняет запрос без премиума; клиент не показывает надетый подарок, если премиум истёк).
