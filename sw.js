@@ -2,7 +2,7 @@
    и показывал уведомления о новых сообщениях, даже когда вкладка или приложение закрыты.
    Страницу всегда сначала берём из сети, поэтому обновления приходят сразу;
    запросы к базе и библиотекам сюда не попадают. */
-const CACHE = "soroka-v2";
+const CACHE = "soroka-v3";
 const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -20,8 +20,10 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // страницу просим у сервера заново, минуя кэш браузера: иначе обновление доходило бы с задержкой до 10 минут
+  const ask = req.mode === "navigate" ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req);
   e.respondWith(
-    fetch(req).then((res) => {
+    ask.then((res) => {
       if (res.ok && (req.mode === "navigate" || /\.(png|webmanifest)$/.test(url.pathname))) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req.mode === "navigate" ? "/" : req, copy));
