@@ -1042,3 +1042,7 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- Комментарии канала можно выключить: миграция messenger_channel_comments_toggle
 -- (chats.comments_off, set_chat_comments(p_chat, p_on) для владельца и админов; add_comment отклоняет запись).
+
+-- Чёрный список: миграция messenger_user_blocks. public.user_blocks (свои записи видит только заблокировавший),
+-- block_user(p_user, p_on). Заблокированный не может писать в личный чат (private.can_post), дарить и передавать
+-- подарки (send_gift, transfer_gift отвечают «user not found»). В группах и каналах блокировка не действует.
