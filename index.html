@@ -242,7 +242,14 @@ button { cursor: pointer; }
 .support .ico svg { width: 20px; height: 20px; }
 .support b { display: block; font-weight: 600; }
 .sidebar .list { padding-bottom: 4px; }
-.side-foot { display: flex; gap: 2px; padding: 2px 8px calc(4px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+/* нижняя панель разделов: «Чаты» и «Настройки» */
+.tabbar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 6px 12px calc(8px + env(safe-area-inset-bottom, 0px)); padding: 4px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); }
+.tab { display: grid; justify-items: center; gap: 1px; padding: 6px 8px 5px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font-weight: 600; font-size: 12px; }
+.tab .ti { position: relative; display: grid; place-items: center; width: 30px; height: 26px; }
+.tab .ti svg { width: 26px; height: 26px; }
+.tab[aria-current="true"] { background: color-mix(in srgb, var(--ink) 11%, transparent); color: var(--accent); }
+.tab:not([aria-current="true"]):hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.tbadge { position: absolute; top: -5px; left: 58%; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e5484d; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--panel-2); white-space: nowrap; }
 .icon-btn { position: relative; }
 .pip { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--panel); }
 .sup-chat { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; min-height: 140px; overflow-y: auto; padding: 4px 2px; }
@@ -744,16 +751,23 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="side-head">
       <div class="wordmark">Сорок<i>а</i></div>
       <button class="icon-btn" id="btnAdmin" type="button" title="Админка" aria-label="Админка" hidden><span class="pip" id="adPip" hidden></span></button>
+      <button class="icon-btn" id="btnMarket" type="button" title="Маркет: подарки, NFT, аукцион" aria-label="Маркет"></button>
+      <button class="icon-btn" id="btnSupport" type="button" title="Поддержка" aria-label="Поддержка"><span class="pip" id="supPip" hidden></span></button>
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
-      <button class="icon-btn" id="btnSettings" type="button" title="Настройки" aria-label="Настройки"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
     </div>
     <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
     <div class="list" id="chatList"></div>
-    <div class="side-foot">
-      <button class="icon-btn" id="btnMarket" type="button" title="Маркет: подарки, NFT, аукцион" aria-label="Маркет"></button>
-      <button class="icon-btn" id="btnSupport" type="button" title="Поддержка" aria-label="Поддержка"><span class="pip" id="supPip" hidden></span></button>
-    </div>
+    <nav class="tabbar" aria-label="Разделы">
+      <button class="tab" id="tabChats" type="button" aria-current="true">
+        <span class="ti" id="tabChatsIco"><span class="tbadge" id="tabChatsBadge" hidden></span></span>
+        <span class="tl">Чаты</span>
+      </button>
+      <button class="tab" id="btnSettings" type="button" aria-current="false">
+        <span class="ti" id="tabSetIco"></span>
+        <span class="tl">Настройки</span>
+      </button>
+    </nav>
   </aside>
 
   <main class="pane">
@@ -1484,6 +1498,7 @@ const ICONS = {
   help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
   mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
+  chats: '<path d="M3 10.200C3 6.800 6.100 4 10 4s7 2.800 7 6.200-3.100 6.200-7 6.200c-.700 0-1.400-.100-2-.200L4.500 18l.900-3.100C3.900 13.700 3 12 3 10.200z" fill="currentColor"/><path d="M18.500 9.300c1.600 1 2.500 2.500 2.500 4.200 0 1.400-.700 2.700-1.800 3.600l.700 2.400-2.700-1.400c-.500.100-1 .200-1.600.200-2 0-3.700-.800-4.700-2.100 3.900-.300 7.100-3 7.600-6.900z" fill="currentColor" opacity=".75"/>',
   find: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.500 4.500"/></g>',
   play: '<path d="M8 5.500v13l11-6.500z" fill="currentColor"/>',
   pause: '<path d="M7 5h3.500v14H7zM13.500 5H17v14h-3.500z" fill="currentColor"/>',
@@ -1983,6 +1998,11 @@ async function renderList() {
   const list = $("chatList"), q = $("search").value.trim();
   const chats = [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
   document.title = (state.unread.size ? "(" + state.unread.size + ") " : "") + APP_NAME;
+  // общий счётчик непрочитанных на вкладке «Чаты»; чаты с выключенными уведомлениями в него не входят
+  let total = 0;
+  for (const [id, n] of state.unread) { const uc = state.chats.get(id); if (!uc || !uc.muted) total += n; }
+  $("tabChatsBadge").hidden = !total;
+  $("tabChatsBadge").textContent = total >= 1000 ? String(Math.round(total / 100) / 10).replace(".", ",") + "K" : String(total);
   if (!q) {
     if (!chats.length) {
       list.replaceChildren(h("div", { class: "empty-note" }, "Чатов пока нет. Найдите человека по юзернейму в поиске выше или создайте группу."));
@@ -4482,6 +4502,19 @@ $("btnProfile").addEventListener("click", () => {
   $("dlgProfile").showModal();
   drawBadge();
 });
+// вкладки внизу: «Настройки» подсвечены, пока открыто их окно
+function paintTabs() {
+  const set = $("dlgSettings").open;
+  $("btnSettings").setAttribute("aria-current", String(set));
+  $("tabChats").setAttribute("aria-current", String(!set));
+}
+$("dlgSettings").addEventListener("close", paintTabs);
+$("tabChats").addEventListener("click", () => {
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  if ($("search").value) { $("search").value = ""; renderList(); }
+  $("chatList").scrollTo({ top: 0, behavior: "smooth" });
+  paintTabs();
+});
 $("setHideSeen").addEventListener("change", async (e) => {
   const on = e.target.checked;
   if (on && !isPremium(state.profile)) { e.target.checked = false; toast("Скрывать время в сети можно только с премиумом"); return; }
@@ -4498,6 +4531,7 @@ $("btnSettings").addEventListener("click", () => {
   paintNotify();
   renderAccounts();
   $("dlgSettings").showModal();
+  paintTabs();
 });
 watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile.username);
 $("profileForm").addEventListener("submit", (e) => {
@@ -4760,7 +4794,8 @@ $("btnLeave").addEventListener("click", async () => {
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
-$("btnSettings").append(icon("gear"));
+$("tabSetIco").append(icon("gear"));
+$("tabChatsIco").prepend(icon("chats"));
 $("btnMic").append(icon("mic"));
 $("thBack").append(icon("back"));
 $("thSend").append(icon("send"));
