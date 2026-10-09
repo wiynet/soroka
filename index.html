@@ -5557,7 +5557,10 @@ $("homeShare").append(icon("share"));
 function offerHomeScreen() {
   const ios = document.documentElement.classList.contains("ios");
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
-  if (!ios || standalone || settings.homeNever) return;
+  if (!ios || standalone) return;
+  // номер показа: когда он меняется, окно один раз показывается заново всем, даже тем, кто его уже закрывал
+  if (settings.homeRound !== 2) { settings.homeRound = 2; settings.homeAsked = 0; settings.homeNever = false; saveSettings(); }
+  if (settings.homeNever) return;
   if (Date.now() - (settings.homeAsked || 0) < 3 * 86400e3) return;   // после «Понятно» напомним через три дня
   const ua = navigator.userAgent;
   $("homeStep0").hidden = /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS|YaBrowser|OPiOS|Telegram|Instagram|FBAN|FBAV/.test(ua);
