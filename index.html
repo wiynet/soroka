@@ -779,11 +779,11 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
 <script>
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
-  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round", font: "classic", lang: "ru" };
+  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "glow", bubble: "round", font: "wide", lang: "ru" };
   try { Object.assign(s, JSON.parse(localStorage.getItem("soroka.settings") || "{}")); } catch (e) {}
   // прежние узоры (точки, сетка, линии) заменены цветными фонами
   if (["glow", "sunset", "aurora", "ocean", "candy", "space", "neon", "none"].indexOf(s.wall) < 0) s.wall = "glow";
-  if (!s.fontPicked) s.font = "classic";   // основной шрифт прежний; другой остаётся только у тех, кто выбрал его сам
+  if (!s.fontPicked) s.font = "wide";   // основной шрифт широкий; другой остаётся только у тех, кто выбрал его сам
   window.sorokaSettings = s;
   window.SOROKA_LANG = s.lang === "en" ? "en" : "ru";
   document.documentElement.lang = window.SOROKA_LANG;
@@ -794,7 +794,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     r.setAttribute("data-size", s.size === "s" || s.size === "l" ? s.size : "m");
     r.setAttribute("data-wall", s.wall);
     r.setAttribute("data-bubble", s.bubble === "sharp" ? "sharp" : "round");
-    r.setAttribute("data-font", ["classic", "inter", "wide", "sf"].indexOf(s.font) >= 0 ? s.font : "classic");
+    r.setAttribute("data-font", ["classic", "inter", "wide", "sf"].indexOf(s.font) >= 0 ? s.font : "wide");
   };
   window.applySorokaSettings();
 })();
@@ -971,10 +971,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     
         <div class="set-label">Шрифт</div>
         <div class="seg" data-key="font" role="radiogroup" aria-label="Шрифт">
-          <button type="button" role="radio" data-v="classic" style="font-family:'Golos Text',system-ui,sans-serif">Прежний</button>
+          <button type="button" role="radio" data-v="wide" style="font-family:'Unbounded',system-ui,sans-serif;font-size:.85em">Широкий</button>
+      <button type="button" role="radio" data-v="classic" style="font-family:'Golos Text',system-ui,sans-serif">Прежний</button>
       <button type="button" role="radio" data-v="sf" style="font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif">Системный</button>
       <button type="button" role="radio" data-v="inter" style="font-family:'Inter',system-ui,sans-serif">Inter</button>
-      <button type="button" role="radio" data-v="wide" style="font-family:'Unbounded',system-ui,sans-serif;font-size:.85em">Широкий</button>
             </div>
     
         <div class="set-label">Размер текста</div>
