@@ -991,3 +991,11 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 --   20 видов подарков (по 4 модели, улучшение 25); у «Космоса», «Дракона» и «Короны» тираж 40, 30 и 15.
 --   profiles.worn_gift / worn_type / worn_model / worn_backdrop / worn_number — надетый NFT-подарок;
 --   пишет их только public.wear_gift(p_gift) (null снимает), клиенту доступно чтение.
+
+-- Передача подарков и аукцион: миграции messenger_gift_transfer_and_auction, messenger_gift_hidden_and_cron.
+--   gift_types.hidden — вид скрыт из магазина (12 из 20 новых подарков); у всех видимых подарков задан тираж supply.
+--   public.transfer_gift(p_gift, p_to) — бесплатная передача любого своего подарка; карточка в личном чате.
+--   public.gift_auctions — торги за NFT-подарки: start_gift_auction(p_gift, p_price, p_hours из 1/6/24/72),
+--   bid_gift_auction(p_auction, p_amount) (шаг 5 %, ставка замораживается, перебитая возвращается, ставка в последние
+--   2 минуты продлевает торги), cancel_gift_auction (пока нет ставок). Итоги подводит private.settle_gift_auction:
+--   подарок уходит победителю, продавец получает 90 %. Запуск: pg_cron раз в минуту и public.settle_gift_auctions() с клиента.
