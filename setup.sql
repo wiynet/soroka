@@ -1017,3 +1017,17 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 -- Автоподписка на канал новостей «Soroka updates»: миграция messenger_auto_subscribe_updates_channel.
 --   private.updates_channel() хранит id канала; триггер profiles_subscribe_updates подписывает каждый новый профиль,
 --   существующие аккаунты подписаны разово. Отписаться человек может сам, повторно его не подписывает.
+
+-- Инструменты подарков, бонусы премиума, открытые и частные чаты, комментарии и просмотры:
+-- миграция messenger_gift_tools_premium_bonuses_public_chats_comments.
+--   gifts.hidden + set_gift_hidden (скрытый подарок видит только владелец: политика gifts_select);
+--   delete_gift (помечает sold_at, sold_for = 0); cancel_gift_auction снимает лот в любой момент и возвращает ставку.
+--   Новые фоны (sun, rose, mint, sky, lava, midnight, pearl) и по две новые модели у девяти улучшаемых подарков.
+--   Премиум: profiles.bonus_coins_at / bonus_gift_at, claim_premium_coins() (50 сорочек) и claim_premium_gift()
+--   (случайный тиражный подарок, price_paid = 0) раз в 30 дней; profiles.hide_seen + set_hide_seen, touch_presence
+--   не пишет last_seen_at, пока время скрыто.
+--   Чаты: chats.username, chats.is_private (группы по умолчанию частные: триггер chats_defaults), chats.invite_code;
+--   set_chat_access (владелец), chat_invite (владелец и админы), invite_info, join_by_invite, search_public_chats;
+--   join_channel пускает только в открытые чаты.
+--   Каналы: public.post_comments + add_comment / delete_comment; post_stats(ids) — комментарии и просмотры
+--   (просмотр = подписчик, дочитавший до поста).

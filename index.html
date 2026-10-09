@@ -322,6 +322,32 @@ button { cursor: pointer; }
 .gv-top .num { font-size: 14px; font-weight: 500; opacity: .9; }
 .gv dd .pct { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--mine); color: var(--accent); font-size: 12px; font-weight: 600; }
 .gift.out { opacity: .55; }
+.gift.hid { opacity: .6; border-style: dashed; }
+.gv-more { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; align-self: stretch; font-size: 14px; }
+.gv-more .link.danger { color: #e5484d; }
+/* оформление NFT-подарка: лучи, свечение, блик и «парящая» модель */
+.nftg { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22), inset 0 -40px 60px -30px rgb(0 0 0 / .35); }
+.nftg .rays { position: absolute; left: 50%; top: 42%; width: 190%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgb(255 255 255 / .13) 0 7deg, transparent 7deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0, transparent 62%); mask: radial-gradient(circle, #000 0, transparent 62%); }
+.nftg .em { filter: drop-shadow(0 0 16px rgb(255 255 255 / .5)) drop-shadow(0 8px 14px rgb(0 0 0 / .38)); }
+.nftg::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / .28) 50%, transparent 60%); background-size: 260% 100%; background-position: 130% 0; }
+.bonus-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.bonus-row .btn { flex: 1; min-width: 150px; }
+.cmt-btn { display: block; width: 100%; margin-top: 6px; padding: 6px 0 2px; border: 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); background: none; color: var(--accent); font-weight: 600; font-size: 13px; text-align: left; }
+.msg .meta .views { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; }
+.msg .meta .views svg { width: 14px; height: 14px; }
+.thread-post { border-left: 3px solid var(--accent); padding: 4px 10px; background: var(--panel-2); border-radius: 6px; font-size: 14px; overflow-wrap: anywhere; max-height: 96px; overflow: hidden; }
+.thread-list { display: grid; gap: 10px; align-content: start; min-height: 80px; }
+.cmt { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; }
+.cmt .avatar { grid-row: span 2; }
+.cmt .hd { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.cmt .hd b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmt .hd .when { font-size: 12px; color: var(--muted); flex: none; }
+.cmt .hd .del { margin-left: auto; border: 0; background: none; color: var(--muted); padding: 0 4px; flex: none; }
+.cmt .tx { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+.thread-form { display: flex; gap: 8px; }
+.thread-form .input { flex: 1; min-width: 0; }
 .auc-form { display: grid; gap: 10px; align-self: stretch; text-align: left; }
 #gvBid { grid-template-columns: 1fr auto; }
 .gift .left { font-size: 11px; font-weight: 600; color: var(--accent); }
@@ -473,6 +499,15 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 @keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.18) rotate(8deg); } }
 @keyframes fly { 45% { transform: translate(7px, -7px) scale(.8); opacity: 0; } 46% { transform: translate(-7px, 7px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
+  .nftg .rays { animation: nft-rays 36s linear infinite; }
+  @keyframes nft-rays { to { rotate: 360deg; } }
+  .gv-top.nftg .em, .gift-card.nftg .em, .gift.nftg .em { animation: nft-float 3.8s ease-in-out infinite; }
+  @keyframes nft-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(3deg); } }
+  .nftg::after { animation: nft-shine 5.5s ease-in-out infinite; }
+  @keyframes nft-shine { 0%, 55% { background-position: 130% 0; } 85%, 100% { background-position: -40% 0; } }
+  .nftg .pat span:nth-child(3n) { animation: nft-twinkle 3.2s ease-in-out infinite; }
+  .nftg .pat span:nth-child(5n) { animation: nft-twinkle 4.4s 1s ease-in-out infinite; }
+  @keyframes nft-twinkle { 50% { opacity: .15; transform: scale(.8); } }
   body, .sidebar, .conv-head, .composer, .attach-chip, .seg, .tabs, dialog { transition: background-color .25s, border-color .25s, color .25s; }
   .btn, .icon-btn, .seg button, .tabs button, .chip, .swatches button { transition: background-color .18s, color .18s, transform .12s var(--ease), filter .18s, outline-color .18s; }
   .btn:active:not(:disabled), .icon-btn:active, .chip:active { transform: scale(.94); }
@@ -828,8 +863,15 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <li>Описание профиля до 500 символов вместо 200</li>
       <li>Два особых фона: «Космос» и «Неон»</li>
       <li>NFT-подарок можно надеть на профиль: его фон и значок увидят все</li>
+      <li>Раз в 30 дней: 50 сорочек и случайный подарок из тиража, который можно улучшить</li>
+      <li>Можно скрыть время, когда вы были в сети</li>
     </ul>
     <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
+    <div class="bonus-row">
+      <button class="btn ghost" type="button" id="bonusCoins"></button>
+      <button class="btn ghost" type="button" id="bonusGift"></button>
+    </div>
+    <div class="hint" id="bonusHint"></div>
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
 
@@ -847,6 +889,9 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="set-label">Уведомления</div>
     <label class="toggle"><input type="checkbox" id="setNotify"><span>Уведомления о новых сообщениях на этом устройстве</span></label>
     <div class="hint" id="notifyHint"></div>
+
+    <div class="set-label">Приватность</div>
+    <label class="toggle"><input type="checkbox" id="setHideSeen"><span>Скрывать время, когда я был в сети <span class="muted">(премиум)</span></span></label>
 
     <div class="set-label">Тема</div>
     <div class="seg" data-key="theme" role="radiogroup" aria-label="Тема">
@@ -929,6 +974,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <div style="min-width:0">
         <h2 id="infoTitle" style="overflow-wrap:anywhere"></h2>
         <div class="small muted" id="infoCount"></div>
+        <button class="link" type="button" id="infoLink" hidden></button>
       </div>
     </div>
     <div id="infoDesc" style="white-space:pre-wrap;overflow-wrap:anywhere"></div>
@@ -942,6 +988,24 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <label class="field"><span>Название</span><input class="input" id="infoEditTitle" maxlength="64"></label>
       <label class="field"><span>Описание</span><textarea class="input" id="infoEditDesc" maxlength="300" rows="2"></textarea></label>
       <div class="actions"><button class="btn" type="button" id="infoSave">Сохранить</button></div>
+      <div id="infoAccess" style="display:grid;gap:10px" hidden>
+        <div class="set-label" style="margin:0">Доступ</div>
+        <div class="seg" id="infoPriv" role="radiogroup" aria-label="Доступ">
+          <button type="button" role="radio" data-p="0">Открытый</button>
+          <button type="button" role="radio" data-p="1">Частный</button>
+        </div>
+        <div class="hint" id="infoPrivHint"></div>
+        <label class="field" id="infoUserWrap"><span>Юзернейм (необязательно)</span>
+          <div class="at-wrap"><input class="input" id="infoUser" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off"></div>
+        </label>
+        <div class="actions"><button class="btn" type="button" id="infoAccessSave">Сохранить доступ</button></div>
+      </div>
+      <div class="set-label" style="margin:0">Ссылка-приглашение</div>
+      <input class="input" id="infoInvite" readonly aria-label="Ссылка-приглашение">
+      <div class="actions">
+        <button class="btn ghost" type="button" id="infoInviteNew">Новая ссылка</button>
+        <button class="btn ghost" type="button" id="infoInviteCopy">Скопировать</button>
+      </div>
     </div>
     <div class="scroll" id="infoList" style="max-height:300px"></div>
     <div class="actions">
@@ -1160,7 +1224,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
         <button type="button" role="radio" data-h="24" aria-checked="true">Сутки</button>
         <button type="button" role="radio" data-h="72" aria-checked="false">3 дня</button>
       </div>
-      <div class="hint">Побеждает самая высокая ставка. Вы получите её за вычетом комиссии 10 %. Пока ставок нет, подарок можно снять с торгов.</div>
+      <div class="hint">Побеждает самая высокая ставка. Вы получите её за вычетом комиссии 10 %. Подарок можно снять с торгов в любой момент, ставка тогда вернётся участнику.</div>
       <button class="btn" type="button" id="gvAucGo">Выставить на аукцион</button>
     </div>
     <div class="actions" style="align-self:stretch;justify-content:center;flex-wrap:wrap">
@@ -1171,6 +1235,25 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <button class="btn ghost" type="button" id="gvGive" hidden>Передать</button>
       <button class="btn ghost" type="button" id="gvAuc" hidden></button>
     </div>
+    <div class="gv-more">
+      <button class="link" type="button" id="gvLink">Скопировать ссылку</button>
+      <button class="link" type="button" id="gvHide" hidden></button>
+      <button class="link danger" type="button" id="gvDel" hidden>Удалить</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- комментарии к посту канала -->
+<dialog id="dlgThread">
+  <div class="dlg">
+    <h2>Комментарии</h2>
+    <div class="thread-post" id="thPost"></div>
+    <div class="scroll thread-list" id="thList" style="max-height:44vh"></div>
+    <form class="thread-form" id="thForm">
+      <input class="input" id="thText" maxlength="2000" placeholder="Ваш комментарий" autocomplete="off" aria-label="Ваш комментарий">
+      <button class="btn" type="submit">Отправить</button>
+    </form>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
 
@@ -1309,7 +1392,7 @@ const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 const HERE = location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,collectible_usernames(username)";
+const PF = "id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,collectible_usernames(username)";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -1322,7 +1405,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const state = {
   me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
-  unread: new Map(), pendingFiles: [], channel: null, urls: new Map(), names: new Map(), pins: new Map(), typingCh: null, typing: null,
+  unread: new Map(), pendingFiles: [], channel: null, urls: new Map(), names: new Map(), pins: new Map(), stats: new Map(), typingCh: null, typing: null,
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
 };
 
@@ -1352,6 +1435,7 @@ const ICONS = {
   star: '<path d="M12 2.5l2.9 6 6.6.9-4.800 4.600 1.200 6.500L12 17.400 6.100 20.500l1.200-6.500L2.500 9.400l6.600-.9z" fill="currentColor"/>',
   adm: '<path d="M12 2l8.500 3.200v6.300c0 4.800-3.400 8.400-8.500 9.700-5.100-1.300-8.500-4.900-8.500-9.700V5.200z" fill="currentColor"/><path d="M8.300 11.800l2.600 2.600 4.900-5.200" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-1.800 10H4.800z" fill="currentColor"/><path d="M5 20.500h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  eye: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.500 12S6 5.500 12 5.500 21.500 12 21.500 12 18 18.500 12 18.500 2.500 12 2.500 12z"/><circle cx="12" cy="12" r="2.8"/></g>',
   check1: '<path d="M5 12.5l4.500 4.500L19 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   check2: '<path d="M1.500 12.500l4.500 4.500L15.500 7.500M10.500 15.500l1.500 1.500L22 7.500" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
   shop: '<path d="M5 8h14l-1.200 11.500H6.200z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M8.500 8V7a3.500 3.500 0 017 0v1" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>',
@@ -1433,6 +1517,7 @@ function fmtSeen(p) {
   if (!p) return "";
   if (p.banned_at) return "аккаунт заблокирован";
   if (isOnline(p)) return "в сети";
+  if (p.hide_seen && isPremium(p)) return "был(а) недавно";   // время в сети скрыто
   if (!p.last_seen_at) return "не в сети";
   const d = new Date(p.last_seen_at), n = daysAgo(d);
   if (n > 30) return "давно не в сети";   // больше месяца
@@ -1480,6 +1565,11 @@ function randomId() {
   const b = new Uint8Array(16);
   (window.crypto || window.msCrypto).getRandomValues(b);
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+const SITE = /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://soroka.lol/";
+async function copyText(text, ok) {
+  try { await navigator.clipboard.writeText(text); toast(ok || "Скопировано"); }
+  catch (e) { toast("Не удалось скопировать. Ссылка: " + text); }
 }
 function debounce(fn, ms) {
   let t;
@@ -1728,8 +1818,7 @@ async function startApp() {
   giftTypes().then(() => { renderList(); if (state.activeId) { renderHead(); if (state.msgs.some((m) => m.gift_type)) renderMsgs(); } });
   await loadChats();
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
-  const linked = /^#c-([0-9a-f-]{36})$/.exec(location.hash);
-  if (linked) { history.replaceState(null, "", location.pathname); openChatFromLink(linked[1]); }
+  handleLink();
   flash($("chatList"), 900);
   if (state.channel) sb.removeChannel(state.channel);
   state.channel = sb.channel("inbox")
@@ -1738,6 +1827,7 @@ async function startApp() {
     .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, (p) => onMember(p))
     .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, (p) => onReact(p.new))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, (p) => onChatRow(p.new))
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments" }, (p) => onComment(p.new))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -1783,7 +1873,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   const counts = await sb.rpc("unread_counts");
@@ -1800,7 +1890,7 @@ async function loadChats() {
     avatar_path: c.avatar_path || null,
     admins: new Set(c.chat_members.filter((m) => m.is_admin).map((m) => m.user_id)),
     muted: !!(c.chat_members.find((m) => m.user_id === state.me.id) || {}).muted,
-    pinned: c.pinned_message || null,
+    pinned: c.pinned_message || null, username: c.username || null, is_private: !!c.is_private,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -1862,11 +1952,11 @@ async function renderList() {
     const kids = [];
     if (found.length) kids.push(h("div", { class: "list-label" }, "Чаты"), ...found.map(chatRow));
     if (people.length) kids.push(h("div", { class: "list-label" }, "Люди"), ...people.map((p) => personRow(p, () => showUser(p))));
-    if (chans && chans.length) kids.push(h("div", { class: "list-label" }, "Каналы"), ...chans.map((ch) =>
+    if (chans && chans.length) kids.push(h("div", { class: "list-label" }, "Каналы и группы"), ...chans.map((ch) =>
       h("button", { class: "row", type: "button", onclick: () => showChannel(ch) },
-        avatar(ch.title, ch.id, true),
-        h("span", { class: "txt" }, h("span", { class: "name" }, kindIcon("horn"), ch.title),
-          h("span", { class: "sub" }, h("span", {}, subsText(ch.members)))))));
+        avatar(ch.title, ch.id, true, ch.avatar_path),
+        h("span", { class: "txt" }, h("span", { class: "name" }, ch.is_channel !== false && kindIcon("horn"), ch.title),
+          h("span", { class: "sub" }, h("span", {}, (ch.username ? "@" + ch.username + " · " : "") + chanCount(ch)))))));
     if (!kids.length) kids.push(h("div", { class: "empty-note" }, pending ? "Ищем…" : "Никого не нашли. Проверьте юзернейм."));
     list.replaceChildren(...kids);
   };
@@ -1895,15 +1985,22 @@ function subsText(n) { return n + " " + plural(n, "подписчик", "под�
 async function searchChannels(q) {
   const s = q.trim();
   if (s.length < 2) return [];
-  const { data, error } = await sb.rpc("search_channels", { q: s });
+  const { data, error } = await sb.rpc("search_public_chats", { q: s });
   return error || !Array.isArray(data) ? [] : data;
 }
 let viewedChan = null;
+function chanCount(ch) {
+  const n = Number(ch.members) || 0;
+  return ch.is_channel === false ? n + " " + plural(n, "участник", "участника", "участников") : subsText(n);
+}
+// ch.invite — код приглашения, если пришли по ссылке в частную группу или канал
 function showChannel(ch) {
   viewedChan = ch;
-  $("cAvatar").replaceChildren(avatar(ch.title, ch.id, "lg"));
-  $("cTitle").replaceChildren(kindIcon("horn"), ch.title);
-  $("cCount").textContent = subsText(Number(ch.members) || 0);
+  const isChan = ch.is_channel !== false;
+  $("cAvatar").replaceChildren(avatar(ch.title, ch.id, "lg", ch.avatar_path));
+  $("cTitle").replaceChildren(...(isChan ? [kindIcon("horn")] : []), ch.title);
+  $("cCount").textContent = (ch.username ? "@" + ch.username + " · " : ch.invite ? (isChan ? "частный канал · " : "частная группа · ") : "") + chanCount(ch);
+  $("cJoin").textContent = isChan ? "Подписаться" : "Вступить";
   $("cDesc").textContent = ch.description || "";
   $("cDesc").hidden = !ch.description;
   $("dlgChan").showModal();
@@ -1955,6 +2052,7 @@ async function openChat(id) {
   state.replies.clear();
   state.reacts.clear();
   state.reactsLoaded.clear();
+  state.stats.clear();
   closeFind();
   if (recorder) stopRecording(false);
   voiceStop();
@@ -2147,7 +2245,7 @@ function msgNode(m, group) {
     const back = info && !look ? Math.floor(info.price_paid * 0.9) : null;
     const swap = back ? " или обменять на " + coins(back) : "";
     const up = !look && canUpgrade(t) ? " Его можно улучшить." : "";
-    const line = info && info.sold_at ? "Подарок обменян на " + coins(info.sold_for) + "."
+    const line = info && info.sold_at ? (info.sold_for ? "Подарок обменян на " + coins(info.sold_for) + "." : "Подарок удалён.")
       : look ? "Коллекционный №" + info.nft_number + " · " + look.m.name + " · " + look.b.name
       : mine ? (o ? o.display_name : "Получатель") + " может показать подарок в профиле" + swap + "."
       : "Можно показать подарок в профиле" + swap + "." + up;
@@ -2183,6 +2281,8 @@ function msgNode(m, group) {
   }
   const rr = reactRow(m);
   if (rr) el.append(rr);
+  const st = c && c.is_channel && !m.gift_type && !m.event_kind ? (state.stats.get(m.id) || {}) : null;
+  if (st) el.append(h("button", { class: "cmt-btn", type: "button", onclick: () => openThread(m) }, st.comments ? "Комментарии · " + st.comments : "Комментировать"));
   let ticks = null;
   if (mine && c) {
     const read = m.id <= readUpTo(c);
@@ -2191,6 +2291,7 @@ function msgNode(m, group) {
   }
   el.append(h("span", { class: "meta" },
     h("button", { class: "dots", type: "button", title: "Действия с сообщением", "aria-label": "Действия с сообщением", onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
+    st && st.views != null && h("span", { class: "views", title: "Сколько подписчиков прочитали пост" }, icon("eye"), String(st.views)),
     (m.edited_at ? "изменено " : "") + tFmt.format(new Date(m.created_at)), ticks));
   return el;
 }
@@ -2250,7 +2351,7 @@ function addMsg(m) {
   renderMsgs(m.id);
   if (stick) scrollDown();
   state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
-  if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies();
+  if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies(); else ensureStats();
   markReadSoon();
 }
 function touchChat(m) {
@@ -2358,10 +2459,82 @@ async function ensureNames() {
   }
   if (state.activeId === chat) repaintMsgs();
 }
+// у постов канала: число комментариев и просмотров
+async function ensureStats(force) {
+  const c = state.chats.get(state.activeId);
+  if (!c || !c.is_channel) return;
+  const ids = state.msgs.filter((m) => !m.gift_type && !m.event_kind && (force || !state.stats.has(m.id))).map((m) => m.id).slice(-300);
+  if (!ids.length) return;
+  for (const id of ids) if (!state.stats.has(id)) state.stats.set(id, {});
+  const chat = c.id;
+  const { data } = await sb.rpc("post_stats", { p_ids: ids });
+  if (!Array.isArray(data)) return;
+  for (const r of data) state.stats.set(r.message_id, { comments: Number(r.comments) || 0, views: Number(r.views) || 0 });
+  if (state.activeId === chat) repaintMsgs();
+}
+let thread = null;
+async function loadThread() {
+  if (!thread) return;
+  const id = thread.id, c = state.chats.get(thread.chat_id);
+  const { data, error } = await sb.from("post_comments")
+    .select("id,user_id,body,created_at,user:profiles!post_comments_user_id_fkey(id,username,display_name,avatar_path,premium_until,name_hue,is_admin)")
+    .eq("message_id", id).is("deleted_at", null).order("id").limit(300);
+  if (!thread || thread.id !== id) return;
+  const rows = (Array.isArray(data) ? data : []).filter((r) => r && r.body);
+  const box = $("thList"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  box.replaceChildren(...(rows.length ? rows.map((r) => {
+    const u = r.user || { id: r.user_id, display_name: "Участник" };
+    const canDel = r.user_id === state.me.id || state.isAdmin || !!myRole(c);
+    return h("div", { class: "cmt" },
+      avatar(u.display_name, u.id, true, u.avatar_path),
+      h("div", { class: "hd" }, tint(h("b", {}, u.display_name), u), h("span", { class: "when" }, dFmt.format(new Date(r.created_at)) + ", " + tFmt.format(new Date(r.created_at))),
+        canDel && h("button", { class: "del", type: "button", title: "Удалить комментарий", "aria-label": "Удалить комментарий", onclick: async () => {
+          const res = await sb.rpc("delete_comment", { p_id: r.id });
+          if (res.error) { toast("Не удалось удалить комментарий"); return; }
+          loadThread(); ensureStats(true);
+        } }, "✕")),
+      h("div", { class: "tx" }, linkify(r.body)));
+  }) : [h("div", { class: "empty-note" }, error ? "Не удалось загрузить комментарии." : "Комментариев пока нет. Напишите первый.")]));
+  if (stick) box.scrollTop = box.scrollHeight;
+  const st = state.stats.get(id) || {};
+  if (st.comments !== rows.length) { state.stats.set(id, { ...st, comments: rows.length }); if (state.activeId === thread.chat_id) repaintMsgs(); }
+}
+function openThread(m) {
+  thread = m;
+  $("thPost").textContent = snippet(m).slice(0, 200) || "Пост";
+  $("thText").value = "";
+  $("thList").replaceChildren(h("div", { class: "empty-note" }, "Загружаем…"));
+  $("dlgThread").showModal();
+  loadThread();
+}
+$("dlgThread").addEventListener("close", () => { thread = null; });
+$("thForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = $("thText").value.trim();
+  if (!thread || !body) return;
+  const btn = e.target.querySelector("button");
+  btn.disabled = true;
+  const { error } = await sb.rpc("add_comment", { p_message: thread.id, p_body: body });
+  btn.disabled = false;
+  if (error) { toast("Не удалось отправить комментарий"); return; }
+  $("thText").value = "";
+  $("thList").scrollTop = $("thList").scrollHeight;
+  loadThread();
+});
+function onComment(row) {
+  if (!row || !state.started) return;
+  if (thread && thread.id === row.message_id) { loadThread(); return; }
+  if (row.chat_id === state.activeId && state.stats.has(row.message_id)) {
+    const st = state.stats.get(row.message_id);
+    state.stats.set(row.message_id, { ...st, comments: (st.comments || 0) + 1 });
+    repaintMsgs();
+  }
+}
 async function ensureReplies() {
   ensureGifts();
   ensureReacts();
   ensureNames();
+  ensureStats();
   const have = new Set(state.msgs.map((m) => m.id));
   const need = [...new Set(state.msgs.map((m) => m.reply_to).filter((id) => id && !have.has(id) && !state.replies.has(id)))];
   if (!need.length) return;
@@ -3331,9 +3504,9 @@ $("cJoin").addEventListener("click", async () => {
   if (!viewedChan) return;
   const id = viewedChan.id;
   $("cJoin").disabled = true;
-  const { error } = await sb.rpc("join_channel", { p_chat: id });
+  const { error } = viewedChan.invite ? await sb.rpc("join_by_invite", { p_code: viewedChan.invite }) : await sb.rpc("join_channel", { p_chat: id });
   $("cJoin").disabled = false;
-  if (error) { toast("Не удалось подписаться"); return; }
+  if (error) { toast("Не удалось вступить"); return; }
   $("dlgChan").close();
   $("search").value = "";
   await loadChats();
@@ -3416,7 +3589,7 @@ function paintUser(p) {
   tint($("uName"), p);
   // надетый NFT-подарок красит шапку профиля своим фоном и узором
   const hero = $("uHero"), worn = wornLook(p);
-  for (const old of hero.querySelectorAll(":scope > .pat")) old.remove();
+  for (const old of hero.querySelectorAll(":scope > .pat, :scope > .rays")) old.remove();
   hero.classList.remove("nftg");
   if (worn) paintNft(hero, worn);
   $("uNoBio").hidden = !!p.bio || nfts(p).length > 0 || !!p.banned_at;
@@ -3485,6 +3658,8 @@ function paintNft(el, look) {
   el.style.setProperty("--c1", look.b.c1);
   el.style.setProperty("--c2", look.b.c2);
   el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, look.m.emoji))));
+  // у крупных карточек за моделью медленно вращаются лучи
+  if (/gv-top|gift-card|u-hero/.test(el.className)) el.prepend(h("span", { class: "rays", "aria-hidden": "true" }));
   return el;
 }
 function giftTile(g, t, tag, attrs, ...subs) {
@@ -3515,17 +3690,18 @@ async function loadUserGifts(id) {
   }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? "Не удалось загрузить подарки." : "Подарков пока нет.")]));
 }
 // подробности подарка; получатель может обменять его на сорочки за вычетом комиссии 10 %
-let gvGift = null, sellArmed = false, gvAuction = null;
+let gvGift = null, sellArmed = false, gvAuction = null, delGiftArmed = false;
 async function openGiftView(id, fresh) {
   gvGift = null; sellArmed = false;
   $("gvTop").className = "gv-top";
   $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, "Подарок"));
   $("gvFacts").replaceChildren(); $("gvHint").textContent = "Загружаем…"; $("gvStage").hidden = true;
-  for (const x of ["gvSell", "gvUp", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm"]) $(x).hidden = true;
+  for (const x of ["gvSell", "gvUp", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink"]) $(x).hidden = true;
+  delGiftArmed = false; $("gvDel").textContent = "Удалить";
   gvAuction = null;
   if (!$("dlgGiftView").open) $("dlgGiftView").showModal();
   const [types, res, stats] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,created_at,price_paid,sold_at,sold_for,to_id,granted,nft_number,nft_model,nft_backdrop,upgraded_at,from:profiles!gifts_from_id_fkey(id,username,display_name),to:profiles!gifts_to_id_fkey(id,username,display_name)").eq("id", id).maybeSingle(),
+    sb.from("gifts").select("id,type_id,note,created_at,price_paid,sold_at,sold_for,to_id,granted,hidden,nft_number,nft_model,nft_backdrop,upgraded_at,from:profiles!gifts_from_id_fkey(id,username,display_name),to:profiles!gifts_to_id_fkey(id,username,display_name)").eq("id", id).maybeSingle(),
     giftStats(), sb.rpc("settle_gift_auctions")]);
   const g = res.data;
   if (!g) { $("gvHint").textContent = "Не удалось загрузить подарок."; return; }
@@ -3560,7 +3736,12 @@ async function openGiftView(id, fresh) {
     ...(g.price_paid > 0 ? fact("Стоимость", coins(g.price_paid)) : []),
     ...(!look && t.supply ? fact("Тираж", "куплено " + Math.min(st.sold, t.supply) + " из " + t.supply) : []),
     ...(g.note ? fact("Подпись", "«" + g.note + "»") : []),
-    ...(g.sold_at ? fact("Статус", "обменян на " + coins(g.sold_for)) : []));
+    ...(g.hidden && !g.sold_at ? fact("Видимость", "скрыт: виден только вам") : []),
+    ...(g.sold_at ? fact("Статус", g.sold_for ? "обменян на " + coins(g.sold_for) : "удалён") : []));
+  $("gvLink").hidden = !!g.sold_at;
+  $("gvHide").hidden = !mine || !!auc;
+  $("gvHide").textContent = g.hidden ? "Показывать в профиле" : "Скрыть из профиля";
+  $("gvDel").hidden = !mine || !!auc;
   $("gvHint").textContent = look ? (mine ? "Это коллекционный подарок: у него свой номер, модель и фон. Он показан в вашем профиле, обменять его на сорочки нельзя." : "")
     : mineToUp ? "Улучшение за " + coins(t.upgrade_price) + " даёт подарку свой номер, случайную модель и фон. После улучшения его нельзя обменять на сорочки." + (mineToSell ? " Без улучшения можно обменять: вернётся " + coins(back) + "." : "")
     : mineToSell ? "Подарок показан в вашем профиле. Его можно обменять на сорочки: вернётся " + coins(back) + ", комиссия 10 %. После обмена подарок исчезнет из профиля." : "";
@@ -3571,7 +3752,7 @@ async function openGiftView(id, fresh) {
   $("gvUp").textContent = mineToUp ? "Улучшить за " + coins(t.upgrade_price) : "";
   // передать можно любой свой подарок, на аукцион идут только коллекционные
   $("gvGive").hidden = !mine || !!auc;
-  $("gvAuc").hidden = !(mine && look) || !!(auc && auc.top_bid);
+  $("gvAuc").hidden = !(mine && look);
   $("gvAuc").textContent = auc ? "Снять с аукциона" : "На аукцион";
   if (auc) {
     const need = auc.top_bid ? auc.top_bid + Math.max(1, Math.ceil(auc.top_bid * 0.05)) : auc.start_price;
@@ -3579,7 +3760,7 @@ async function openGiftView(id, fresh) {
     $("gvBid").hidden = !canBid;
     $("gvBidAmt").value = need; $("gvBidAmt").min = need;
     $("gvHint").textContent = canBid ? "Минимальная ставка: " + coins(need) + ". Сорочки замораживаются; если вашу ставку перебьют, они сразу вернутся. Ставка в последние две минуты продлевает торги."
-      : mine ? "Подарок на аукционе. По окончании он уйдёт победителю, а вы получите ставку за вычетом комиссии 10 %." + (auc.top_bid ? "" : " Пока ставок нет, его можно снять с торгов.") : "";
+      : mine ? "Подарок на аукционе. По окончании он уйдёт победителю, а вы получите ставку за вычетом комиссии 10 %." + (auc.top_bid ? "" : " Его можно снять с торгов в любой момент: ставка вернётся участнику.") : "";
   }
   const wearing = state.profile.worn_gift === g.id;
   $("gvWear").hidden = !(mine && look);
@@ -3610,13 +3791,38 @@ function giftChanged(id) {
   if ($("dlgProfile").open) { loadWallet(); loadMyGifts(); }
   if ($("dlgMarket").open) { loadMarketBalance(); if (!$("mkAuctions").closest("[data-mkpane]").hidden) loadAuctions(); }
 }
+$("gvLink").addEventListener("click", () => { if (gvGift) copyText(SITE + "#gift-" + gvGift.id, "Ссылка на подарок скопирована"); });
+$("gvHide").addEventListener("click", async () => {
+  if (!gvGift) return;
+  const g = gvGift, hide = !g.hidden;
+  $("gvHide").disabled = true;
+  const { error } = await sb.rpc("set_gift_hidden", { p_gift: g.id, p_hidden: hide });
+  $("gvHide").disabled = false;
+  if (error) { toast("Не удалось изменить видимость подарка"); return; }
+  if (hide && state.profile.worn_gift === g.id) { Object.assign(state.profile, { worn_gift: null, worn_type: null, worn_model: null, worn_backdrop: null, worn_number: null }); refreshMe(); }
+  toast(hide ? "Подарок скрыт: его видите только вы" : "Подарок снова виден в профиле");
+  giftChanged(g.id); openGiftView(g.id);
+});
+$("gvDel").addEventListener("click", async () => {
+  if (!gvGift) return;
+  if (!delGiftArmed) { delGiftArmed = true; $("gvDel").textContent = "Точно удалить? Вернуть будет нельзя"; return; }
+  const g = gvGift;
+  $("gvDel").disabled = true;
+  const { error } = await sb.rpc("delete_gift", { p_gift: g.id });
+  $("gvDel").disabled = false;
+  if (error) { toast("Не удалось удалить подарок"); return; }
+  if (state.profile.worn_gift === g.id) { Object.assign(state.profile, { worn_gift: null, worn_type: null, worn_model: null, worn_backdrop: null, worn_number: null }); refreshMe(); }
+  $("dlgGiftView").close();
+  toast("Подарок удалён");
+  giftChanged(g.id);
+});
 $("gvAuc").addEventListener("click", async () => {
   if (!gvGift) return;
   if (!gvAuction) { $("gvAucForm").hidden = !$("gvAucForm").hidden; if (!$("gvAucForm").hidden) $("gvAucPrice").focus(); return; }
   $("gvAuc").disabled = true;
   const { error } = await sb.rpc("cancel_gift_auction", { p_auction: gvAuction.id });
   $("gvAuc").disabled = false;
-  if (error) { toast(/has bids/.test(error.message || "") ? "Уже есть ставки: снять с торгов нельзя" : "Не удалось снять с аукциона"); }
+  if (error) toast("Не удалось снять с аукциона");
   else toast("Подарок снят с аукциона");
   const id = gvGift.id; giftChanged(id); openGiftView(id);
 });
@@ -3915,6 +4121,23 @@ $("uUser").addEventListener("click", async () => {
 
 // премиум: 150 сорочек за 30 дней
 let premArmed = false;
+$("bonusCoins").addEventListener("click", async () => {
+  $("bonusCoins").disabled = true;
+  const { data, error } = await sb.rpc("claim_premium_coins");
+  if (error) { toast(/too early/.test(error.message || "") ? "Этот бонус вы уже забирали в последние 30 дней" : /premium/.test(error.message || "") ? "Бонус доступен только с премиумом" : "Не удалось получить бонус"); renderPremium(); return; }
+  state.profile.bonus_coins_at = new Date().toISOString();
+  state.balance = Number(data) || 0;
+  toast("Начислено 50 сорочек. На счёте " + coins(state.balance));
+  renderPremium(); loadWallet();
+});
+$("bonusGift").addEventListener("click", async () => {
+  $("bonusGift").disabled = true;
+  const { data, error } = await sb.rpc("claim_premium_gift");
+  if (error) { const m = error.message || ""; toast(/too early/.test(m) ? "Подарок вы уже забирали в последние 30 дней" : /sold out/.test(m) ? "Все тиражные подарки раскуплены. Попробуйте позже" : /premium/.test(m) ? "Подарок доступен только с премиумом" : "Не удалось получить подарок"); renderPremium(); return; }
+  state.profile.bonus_gift_at = new Date().toISOString();
+  renderPremium(); loadMyGifts();
+  if (Number(data)) openGiftView(Number(data), true);
+});
 function renderPremium() {
   const p = state.profile, on = isPremium(p);
   $("premTitle").textContent = on ? "Премиум активен" : "Премиум";
@@ -3922,6 +4145,15 @@ function renderPremium() {
   premArmed = false;
   $("premBuy").textContent = on ? "Продлить на 30 дней за 150 сорочек" : "Купить за 150 сорочек";
   $("pfBio").maxLength = on ? 500 : 200;
+  // бонусы премиума: каждый раз в 30 дней
+  const waitDays = (at) => { const left = at ? new Date(at).getTime() + 30 * 86400e3 - Date.now() : 0; return left > 0 ? Math.ceil(left / 86400e3) : 0; };
+  const wc = waitDays(p.bonus_coins_at), wg = waitDays(p.bonus_gift_at);
+  $("bonusCoins").disabled = !on || wc > 0;
+  $("bonusCoins").textContent = wc ? "50 сорочек: через " + wc + " дн." : "Получить 50 сорочек";
+  $("bonusGift").disabled = !on || wg > 0;
+  $("bonusGift").textContent = wg ? "Подарок: через " + wg + " дн." : "Получить подарок";
+  $("bonusHint").textContent = on ? "Бонусы премиума можно забирать раз в 30 дней. Подарок случайный, из тех, что выпускаются тиражом; его можно улучшить, но нельзя обменять на сорочки."
+    : "С премиумом раз в 30 дней можно забрать 50 сорочек и случайный подарок.";
   const canColor = on || !!p.is_admin;
   $("nameHues").classList.toggle("off", !canColor);
   $("nameHues").replaceChildren(...[null, 0, 25, 45, 145, 190, 215, 262, 310, 335].map((v) => {
@@ -3965,14 +4197,15 @@ $("myProfileRow").addEventListener("click", () => showUser(state.profile));
 // свои подарки прямо в настройках: нажатие открывает подарок, там же его можно обменять
 async function loadMyGifts() {
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,price_paid,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,price_paid,hidden,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   const rows = res.data || [];
   const byId = new Map(types.map((t) => [t.id, t]));
   $("myGifts").replaceChildren(...rows.map((g, i) => {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
     const el = giftTile(g, t, "button", { type: "button", title: "Открыть подарок", onclick: () => openGiftView(g.id) },
       h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
-      h("span", { class: "sub" }, g.nft_number != null ? "коллекционный" : canUpgrade(t) ? "можно улучшить" : "обмен: " + coins(Math.floor(g.price_paid * 0.9))));
+      h("span", { class: "sub" }, g.hidden ? "скрыт" : g.nft_number != null ? "коллекционный" : canUpgrade(t) ? "можно улучшить" : g.price_paid ? "обмен: " + coins(Math.floor(g.price_paid * 0.9)) : ""));
+    if (g.hidden) el.classList.add("hid");
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
   }));
@@ -4108,7 +4341,18 @@ $("btnProfile").addEventListener("click", () => {
   $("dlgProfile").showModal();
   drawBadge();
 });
+$("setHideSeen").addEventListener("change", async (e) => {
+  const on = e.target.checked;
+  if (on && !isPremium(state.profile)) { e.target.checked = false; toast("Скрывать время в сети можно только с премиумом"); return; }
+  e.target.disabled = true;
+  const { error } = await sb.rpc("set_hide_seen", { p_on: on });
+  e.target.disabled = false;
+  if (error) { e.target.checked = !on; toast("Не удалось изменить настройку"); return; }
+  state.profile.hide_seen = on;
+  toast(on ? "Время в сети скрыто: другие видят «был(а) недавно»" : "Время в сети снова видно");
+});
 $("btnSettings").addEventListener("click", () => {
+  $("setHideSeen").checked = !!state.profile.hide_seen && isPremium(state.profile);
   renderSettings();
   paintNotify();
   renderAccounts();
@@ -4188,6 +4432,43 @@ $("pickerForm").addEventListener("submit", (e) => {
 });
 // о группе
 let leaveArmed = false;
+let infoFor = null, infoPriv = false;
+function paintAccess(c) {
+  for (const b of $("infoPriv").children) b.setAttribute("aria-checked", String((b.dataset.p === "1") === infoPriv));
+  $("infoUserWrap").hidden = infoPriv;
+  const what = c.is_channel ? "канал" : "группу";
+  $("infoPrivHint").textContent = infoPriv ? "В частн" + (c.is_channel ? "ый канал" : "ую группу") + " попадают только по ссылке-приглашению. В поиске " + (c.is_channel ? "его" : "её") + " нет."
+    : "Открыт" + (c.is_channel ? "ый канал" : "ую группу") + " находят в поиске по названию или юзернейму, вступить может любой.";
+}
+$("infoPriv").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-p]"), c = state.chats.get(state.activeId);
+  if (!b || !c) return;
+  infoPriv = b.dataset.p === "1";
+  paintAccess(c);
+});
+$("infoAccessSave").addEventListener("click", async () => {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const u = $("infoUser").value.trim().replace(/^@/, "").toLowerCase();
+  if (!infoPriv && u && !USERNAME_RE.test(u)) { toast("Юзернейм: от 4 до 32 символов, латинские буквы, цифры и _, первой идёт буква"); return; }
+  $("infoAccessSave").disabled = true;
+  const { error } = await sb.rpc("set_chat_access", { p_chat: c.id, p_private: infoPriv, p_username: infoPriv ? null : u });
+  $("infoAccessSave").disabled = false;
+  if (error) { toast(/username taken/.test(error.message || "") ? "Юзернейм @" + u + " уже занят" : "Не удалось сохранить доступ"); return; }
+  toast("Доступ сохранён");
+  infoFor = null;
+  await loadChats(); paintInfo();
+});
+$("infoLink").addEventListener("click", () => { const c = state.chats.get(state.activeId); if (c && c.username) copyText(SITE + "#@" + c.username, "Ссылка скопирована"); });
+$("infoInviteCopy").addEventListener("click", () => { if ($("infoInvite").value) copyText($("infoInvite").value, "Ссылка-приглашение скопирована"); });
+$("infoInviteNew").addEventListener("click", async () => {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const { data, error } = await sb.rpc("chat_invite", { p_chat: c.id, p_reset: true });
+  if (error || typeof data !== "string") { toast("Не удалось создать ссылку"); return; }
+  $("infoInvite").value = SITE + "#join-" + data;
+  toast("Новая ссылка готова, старая больше не работает");
+});
 function paintInfo() {
   const c = state.chats.get(state.activeId);
   if (!c || !c.is_group) { $("dlgInfo").close(); return; }
@@ -4206,6 +4487,17 @@ function paintInfo() {
   $("infoDesc").hidden = !c.description;
   $("infoManage").hidden = !role;
   $("infoAvDel").hidden = !c.avatar_path;
+  $("infoLink").hidden = !c.username;
+  $("infoLink").textContent = c.username ? "@" + c.username + " · скопировать ссылку" : "";
+  $("infoCount").textContent += c.is_private ? " · частн" + (c.is_channel ? "ый канал" : "ая группа") : " · открыт" + (c.is_channel ? "ый канал" : "ая группа");
+  $("infoAccess").hidden = role !== "owner";
+  if (infoFor !== c.id) {   // поля доступа заполняем один раз на открытие, чтобы не сбивать ввод
+    infoFor = c.id; infoPriv = c.is_private;
+    $("infoUser").value = c.username || "";
+    $("infoInvite").value = "";
+    if (role) sb.rpc("chat_invite", { p_chat: c.id, p_reset: false }).then((r) => { if (!r.error && typeof r.data === "string" && infoFor === c.id) $("infoInvite").value = SITE + "#join-" + r.data; });
+  }
+  paintAccess(c);
   if (document.activeElement !== $("infoEditTitle")) $("infoEditTitle").value = c.title || "";
   if (document.activeElement !== $("infoEditDesc")) $("infoEditDesc").value = c.description || "";
   const showList = !c.is_channel || !!role;
@@ -4247,6 +4539,7 @@ $("convWho").addEventListener("click", () => {
   const c = state.chats.get(state.activeId);
   if (!c) return;
   if (!c.is_group) { const o = other(c); if (o) showUser(o); return; }
+  infoFor = null;
   paintInfo();
   $("dlgInfo").showModal();
 });
@@ -4502,6 +4795,31 @@ $("btnMute").addEventListener("click", async () => {
   toast(next ? "Уведомления из этого чата выключены" : "Уведомления из этого чата включены");
 });
 // переход в чат из уведомления
+async function handleLink() {
+  const hash = decodeURIComponent(location.hash || "");
+  if (hash.length < 3 || !state.started) return;
+  let m;
+  if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
+  else if ((m = /^#gift-(\d{1,12})$/.exec(hash))) openGiftView(Number(m[1]));
+  else if ((m = /^#join-([0-9a-f]{16,64})$/.exec(hash))) {
+    const { data } = await sb.rpc("invite_info", { p_code: m[1] });
+    const ch = Array.isArray(data) ? data[0] : null;
+    if (!ch) toast("Ссылка-приглашение не работает: возможно, её заменили");
+    else if (ch.joined && state.chats.has(ch.id)) openChat(ch.id);
+    else showChannel({ ...ch, invite: m[1] });
+  } else if ((m = /^#@([a-z][a-z0-9_]{3,31})$/i.exec(hash))) {
+    const name = m[1].toLowerCase();
+    const { data } = await sb.rpc("search_public_chats", { q: name });
+    const ch = (Array.isArray(data) ? data : []).find((x) => x.username === name);
+    if (ch) { if (ch.joined && state.chats.has(ch.id)) openChat(ch.id); else showChannel(ch); }
+    else {
+      const r = await sb.from("profiles").select(PF).eq("username", name).maybeSingle();
+      if (r.data && r.data.id) showUser(r.data); else toast("@" + name + " не найден");
+    }
+  } else return;
+  history.replaceState(null, "", location.pathname);
+}
+window.addEventListener("hashchange", handleLink);
 function openChatFromLink(id) {
   if (!id || !state.started) return;
   if (state.chats.has(id)) { openChat(id); return; }
