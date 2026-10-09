@@ -152,6 +152,8 @@ button { cursor: pointer; }
 .voice { display: flex; align-items: center; gap: 10px; min-width: 190px; padding: 2px 0 3px; }
 .voice .play { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
 .voice .play svg { width: 18px; height: 18px; }
+.voice .play .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: voice-spin .7s linear infinite; }
+@keyframes voice-spin { to { transform: rotate(360deg); } }
 .voice .track { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; cursor: pointer; padding: 0; border: 0; }
 .voice .track i { display: block; height: 100%; width: 0; background: var(--accent); }
 .voice .dur { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
@@ -1767,7 +1769,7 @@ function stopApp() {
   state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear();
   if (recorder) stopRecording(false);
   leaveTyping();
-  if (voice.audio) { voice.audio.pause(); voice.audio = null; voice.id = null; }
+  voiceStop();
   state.activeId = null; state.msgs = [];
   setPending(null);
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
@@ -1955,6 +1957,7 @@ async function openChat(id) {
   state.reactsLoaded.clear();
   closeFind();
   if (recorder) stopRecording(false);
+  voiceStop();
   joinTyping(id);
   $("placeholder").hidden = true;
   $("conv").hidden = false;
@@ -2005,35 +2008,78 @@ async function signedUrl(path, downloadName) {
 }
 function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
 // голосовые: один общий проигрыватель, кнопки в сообщениях только показывают его состояние
-const voice = { id: null, audio: null };
+const voice = { id: null, audio: null, loading: null };
+const voiceEl = new Audio();
+voiceEl.preload = "auto";
+let voiceUnlocked = false;
+const voiceBlobs = new Map();   // путь файла -> обещание адреса уже скачанной записи
+// Запись скачивается целиком и играет из памяти: потоковое проигрывание записей с другого устройства шло рывками.
+function voiceUrl(m) {
+  let pr = voiceBlobs.get(m.file_path);
+  if (!pr) {
+    pr = sb.storage.from("attachments").download(m.file_path).then((r) => {
+      if (r.error || !r.data) throw new Error("download");
+      const type = (m.file_type || "").split(";")[0] || r.data.type || "audio/mpeg";
+      return URL.createObjectURL(r.data.type === type ? r.data : new Blob([r.data], { type }));
+    });
+    pr.catch(() => voiceBlobs.delete(m.file_path));
+    voiceBlobs.set(m.file_path, pr);
+  }
+  return pr;
+}
+function voiceStop() { voiceEl.pause(); voice.id = null; voice.audio = null; voice.loading = null; }
+voiceEl.addEventListener("timeupdate", paintVoice);
+voiceEl.addEventListener("pause", paintVoice);
+voiceEl.addEventListener("playing", paintVoice);
+voiceEl.addEventListener("ended", () => { voice.id = null; voice.audio = null; paintVoice(); });
+voiceEl.addEventListener("error", () => {
+  if (!voice.audio) return;   // ошибка от служебной «разблокировки», а не от записи
+  voice.id = null; voice.audio = null;
+  toast("Это устройство не может проиграть запись");
+  paintVoice();
+});
 function paintVoice() {
   for (const v of $("msgs").querySelectorAll(".voice")) {
-    const on = voice.id === Number(v.dataset.voice) && voice.audio, total = Number(v.dataset.secs) || 0;
-    const cur = on ? voice.audio.currentTime : 0;
-    v.querySelector(".play").replaceChildren(icon(on && !voice.audio.paused ? "pause" : "play"));
+    const id = Number(v.dataset.voice), on = voice.id === id && voice.audio, total = Number(v.dataset.secs) || 0;
+    const cur = on ? voiceEl.currentTime : 0;
+    const state2 = voice.loading === id ? "wait" : on && !voiceEl.paused ? "pause" : "play";
+    if (v.dataset.st !== state2) {   // значок меняем только при смене состояния, чтобы кнопка не дёргалась
+      v.dataset.st = state2;
+      v.querySelector(".play").replaceChildren(state2 === "wait" ? h("span", { class: "spin" }) : icon(state2));
+    }
     v.querySelector(".track i").style.width = on && total ? Math.min(100, cur / total * 100) + "%" : "0";
     v.querySelector(".dur").textContent = on && cur > 0 ? fmtDur(cur) + " / " + fmtDur(total) : fmtDur(total);
   }
 }
 async function playVoice(m, at) {
   if (voice.id === m.id && voice.audio) {
-    if (at != null) voice.audio.currentTime = at;
-    else if (voice.audio.paused) voice.audio.play().catch(() => {}); else voice.audio.pause();
+    if (at != null) { try { voiceEl.currentTime = at; } catch (e) {} if (voiceEl.paused) voiceEl.play().catch(() => {}); }
+    else if (voiceEl.paused) voiceEl.play().catch(() => {}); else voiceEl.pause();
     paintVoice();
     return;
   }
-  if (voice.audio) voice.audio.pause();
-  const u = await signedUrl(m.file_path);
-  if (!u) { toast("Не удалось загрузить голосовое"); return; }
-  const a = new Audio(u);
-  voice.id = m.id; voice.audio = a;
-  a.addEventListener("timeupdate", paintVoice);
-  a.addEventListener("pause", paintVoice);
-  a.addEventListener("ended", () => { if (voice.audio === a) { voice.id = null; voice.audio = null; } paintVoice(); });
-  a.addEventListener("error", () => { if (voice.audio === a) { voice.id = null; voice.audio = null; toast("Это устройство не может проиграть запись"); paintVoice(); } });
-  if (at) a.currentTime = at;
-  a.play().catch(() => {});
+  // на телефонах звук можно запускать только из нажатия: «разблокируем» общий проигрыватель сразу, пока идёт загрузка
+  if (!voiceUnlocked) {
+    voiceUnlocked = true;
+    try { voiceEl.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA="; voiceEl.play().then(() => { if (!voice.audio) voiceEl.pause(); }).catch(() => {}); } catch (e) {}
+  }
+  voiceEl.pause();
+  voice.id = null; voice.audio = null; voice.loading = m.id;
   paintVoice();
+  let url;
+  try { url = await voiceUrl(m); } catch (e) { url = null; }
+  if (voice.loading !== m.id) return;   // пока грузилось, нажали другое
+  voice.loading = null;
+  if (!url) { toast("Не удалось загрузить голосовое"); paintVoice(); return; }
+  voice.id = m.id; voice.audio = voiceEl;
+  voiceEl.src = url;
+  if (at) { try { voiceEl.currentTime = at; } catch (e) {} }
+  voiceEl.play().catch(() => {});
+  paintVoice();
+}
+// свежие голосовые скачиваем заранее, чтобы они запускались сразу по нажатию
+function preloadVoices() {
+  for (const m of state.msgs.filter((x) => x.voice_secs != null && x.file_path).slice(-6)) voiceUrl(m).catch(() => {});
 }
 function photoNode(m) {
   const img = h("img", { class: "photo", alt: m.file_name || "Фото", loading: "lazy" });
@@ -2181,6 +2227,7 @@ function renderMsgs(newId) {
   }
   $("msgs").replaceChildren(...kids);
   paintVoice();
+  preloadVoices();
 }
 async function loadEarlier() {
   if (state.loadingMore || !state.msgs.length) return;
@@ -2520,14 +2567,51 @@ $("text").addEventListener("paste", (e) => {
 const micSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 let recorder = null, recChunks = [], recStart = 0, recTimer = null, recSend = false;
 function recMime() {
-  // mp4 проигрывается на любых устройствах, поэтому он первый; остальное на случай, если его нет
-  for (const t of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]) if (MediaRecorder.isTypeSupported(t)) return t;
+  for (const t of ["audio/webm;codecs=opus", "audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"]) if (MediaRecorder.isTypeSupported(t)) return t;
   return "";
+}
+// Телефоны и компьютеры записывают звук в разных форматах, и чужая запись могла играть с рывками или не играть вовсе.
+// Поэтому запись переводится в WAV (моно, 16 кГц): его одинаково проигрывает любое устройство.
+const VOICE_RATE = 16000;
+async function toWav(blob) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  const ctx = new AC();
+  try {
+    const raw = await blob.arrayBuffer();
+    const buf = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(raw, res, rej); if (pr && pr.catch) pr.catch(rej); });
+    const chans = [];
+    for (let c = 0; c < buf.numberOfChannels; c++) chans.push(buf.getChannelData(c));
+    const step = buf.sampleRate / VOICE_RATE, n = Math.floor(buf.length / step);
+    if (n < VOICE_RATE / 2) return null;
+    const out = new DataView(new ArrayBuffer(44 + n * 2));
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt "); out.setUint32(16, 16, true);
+    out.setUint16(20, 1, true); out.setUint16(22, 1, true); out.setUint32(24, VOICE_RATE, true); out.setUint32(28, VOICE_RATE * 2, true);
+    out.setUint16(32, 2, true); out.setUint16(34, 16, true); str(36, "data"); out.setUint32(40, n * 2, true);
+    let peak = 0;
+    const mono = new Float32Array(n);
+    for (let i = 0; i < n; i++) {   // усредняем соседние отсчёты: это и понижение частоты, и защита от искажений
+      const a = Math.floor(i * step), b = Math.max(a + 1, Math.min(buf.length, Math.floor((i + 1) * step)));
+      let sum = 0;
+      for (let k = a; k < b; k++) for (const ch of chans) sum += ch[k];
+      const v = sum / ((b - a) * chans.length);
+      mono[i] = v;
+      if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const gain = peak > 0.02 && peak < 0.5 ? Math.min(4, 0.7 / peak) : 1;   // тихую запись делаем громче
+    for (let i = 0; i < n; i++) {
+      const v = Math.max(-1, Math.min(1, mono[i] * gain));
+      out.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+    }
+    return { blob: new Blob([out.buffer], { type: "audio/wav" }), secs: n / VOICE_RATE };
+  } catch (e) { return null; }
+  finally { try { ctx.close(); } catch (e) {} }
 }
 async function startRecording() {
   if (recorder || !state.activeId) return;
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
   catch (e) { toast("Нет доступа к микрофону. Разрешите его в настройках браузера."); return; }
   const mime = recMime(), chatId = state.activeId;
   try { recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
@@ -2544,9 +2628,11 @@ async function startRecording() {
     if (!send) return;
     if (secs < 1 || !chunks.length) { toast("Запись слишком короткая"); return; }
     const clean = type.split(";")[0], ext = clean.includes("mp4") ? "m4a" : clean.includes("ogg") ? "ogg" : "webm";
-    const file = new File(chunks, "Голосовое сообщение." + ext, { type: clean });
+    const wav = await toWav(new Blob(chunks, { type: clean }));
+    // если перевести не удалось, уходит запись как есть: на этом же устройстве она точно проиграется
+    const file = wav ? new File([wav.blob], "voice.wav", { type: "audio/wav" }) : new File(chunks, "voice." + ext, { type: clean });
     if (file.size > MAX_FILE) { toast("Запись получилась слишком большой"); return; }
-    await sendFiles(chatId, [file], "", { voice_secs: Math.min(3600, secs), file_name: "Голосовое сообщение" });
+    await sendFiles(chatId, [file], "", { voice_secs: Math.min(3600, Math.max(1, Math.round(wav ? wav.secs : secs))), file_name: "Голосовое сообщение" });
   });
   recorder.start();
   $("recChip").hidden = false; $("recTime").textContent = "0:00"; $("btnMic").classList.add("on");
