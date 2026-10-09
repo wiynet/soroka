@@ -650,6 +650,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
           <div class="name" id="convName"></div>
           <div class="small muted" id="convSub"></div>
         </button>
+        <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
       </header>
       <div id="msgs"></div>
       <div class="attach-chip" id="attachChip" hidden>
@@ -744,6 +745,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
     <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
+
+    <div class="set-label">Уведомления</div>
+    <label class="toggle"><input type="checkbox" id="setNotify"><span>Уведомления о новых сообщениях на этом устройстве</span></label>
+    <div class="hint" id="notifyHint"></div>
 
     <div class="set-label">Тема</div>
     <div class="seg" data-key="theme" role="radiogroup" aria-label="Тема">
@@ -1127,6 +1132,7 @@ const MAX_FILE = 20 * 1024 * 1024;
 const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 const HERE = location.origin + location.pathname;
+const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
 const PF = "id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,collectible_usernames(username)";
 
 const $ = (id) => document.getElementById(id);
@@ -1174,6 +1180,8 @@ const ICONS = {
   shop: '<path d="M5 8h14l-1.200 11.500H6.200z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M8.500 8V7a3.500 3.500 0 017 0v1" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>',
   help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
+  bell: '<path d="M6 16V11a6 6 0 0112 0v5l1.500 2H4.500z M10 20.500a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round" stroke-linecap="round"/>',
+  belloff: '<path d="M6 16V11a6 6 0 019.500-4.900M18 11v5l1.500 2H8 M10 20.500a2 2 0 004 0 M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round" stroke-linecap="round"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   horn: '<path d="M4 10v4h3l7 4V6l-7 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17.5 9.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   tick: '<path d="M12 2.5l2.3 1.7 2.9-.1.9 2.7 2.3 1.7-.9 2.7.9 2.7-2.3 1.7-.9 2.7-2.9-.1L12 21.5l-2.3-1.7-2.9.1-.9-2.7-2.3-1.700.9-2.7-.9-2.7 2.3-1.7.9-2.7 2.9.1z" fill="currentColor"/><path d="M8.5 12.2l2.4 2.4 4.600-4.900" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -1228,6 +1236,7 @@ function marks(p) {
   }
   return out;
 }
+function muteMark() { const k = icon("belloff"); k.classList.add("kind"); k.style.marginLeft = "5px"; k.setAttribute("aria-label", "Без уведомлений"); return k; }
 function kindIcon(name) { const k = icon(name); k.classList.add("kind"); return k; }
 function isOnline(p) { return !!(p && p.last_seen_at && !p.banned_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000); }
 function fmtSeen(p) {
@@ -1447,7 +1456,7 @@ $("usernameForm").addEventListener("submit", (e) => {
     else startApp();
   });
 });
-$("unLogout").addEventListener("click", () => sb.auth.signOut());
+$("unLogout").addEventListener("click", () => logout());
 
 /* ---------- сессия ---------- */
 sb.auth.onAuthStateChange((event, session) => {
@@ -1478,7 +1487,7 @@ function showBanned() {
   const r = state.profile && state.profile.ban_reason;
   $("banReason").textContent = r ? "Причина: " + r : "Если считаете, что это ошибка, свяжитесь с администратором.";
 }
-$("banLogout").addEventListener("click", () => sb.auth.signOut());
+$("banLogout").addEventListener("click", () => logout());
 async function createProfile(username, name) {
   const { data, error } = await sb.from("profiles").insert({ id: state.me.id, username, display_name: name }).select().single();
   if (error) return error.code === "23505" ? "taken" : "error";
@@ -1511,9 +1520,12 @@ async function startApp() {
   $("app").hidden = false;
   refreshMe();
   checkAdmin();
+  resumePush();
   giftTypes().then(() => { if (state.activeId && state.msgs.some((m) => m.gift_type)) renderMsgs(); });
   await loadChats();
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
+  const linked = /^#c-([0-9a-f-]{36})$/.exec(location.hash);
+  if (linked) { history.replaceState(null, "", location.pathname); openChatFromLink(linked[1]); }
   flash($("chatList"), 900);
   if (state.channel) sb.removeChannel(state.channel);
   state.channel = sb.channel("inbox")
@@ -1563,7 +1575,7 @@ function stopApp() {
 /* ---------- список чатов ---------- */
 async function loadChats() {
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast("Не удалось загрузить чаты"); return; }
   if (!state.started) return;
@@ -1574,6 +1586,7 @@ async function loadChats() {
     reads: new Map(c.chat_members.map((m) => [m.user_id, Number(m.last_read_id) || 0])),
     avatar_path: c.avatar_path || null,
     admins: new Set(c.chat_members.filter((m) => m.is_admin).map((m) => m.user_id)),
+    muted: !!(c.chat_members.find((m) => m.user_id === state.me.id) || {}).muted,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
@@ -1607,7 +1620,7 @@ function chatRow(c) {
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
     av,
     h("span", { class: "txt" },
-      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c))), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "dot", title: "Новые сообщения" }))));
 }
 function personRow(p, onclick, picked) {
@@ -1701,6 +1714,9 @@ function renderHead() {
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, "участник", "участника", "участников") : (o ? fmtSeen(o) : "заметки для себя");
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
+  $("btnMute").replaceChildren(icon(c.muted ? "belloff" : "bell"));
+  $("btnMute").title = c.muted ? "Уведомления выключены. Нажмите, чтобы включить" : "Выключить уведомления из этого чата";
+  $("btnMute").setAttribute("aria-pressed", String(c.muted));
   const canPost = !c.is_channel || !!myRole(c);
   $("composer").hidden = !canPost;
   $("chanNote").hidden = canPost;
@@ -3116,6 +3132,7 @@ $("btnProfile").addEventListener("click", () => {
   renderPremium();
   loadWallet();
   loadMyGifts();
+  paintNotify();
   $("avText").value = [...state.profile.display_name.trim()][0] || "";
   $("dlgProfile").showModal();
   drawBadge();
@@ -3137,7 +3154,7 @@ $("profileForm").addEventListener("submit", (e) => {
     loadChats();
   });
 });
-$("btnLogout").addEventListener("click", () => sb.auth.signOut());
+$("btnLogout").addEventListener("click", () => logout());
 
 // выбор участников: новая группа или добавление в группу
 function openPicker(mode) {
@@ -3327,6 +3344,98 @@ $("icoMarket").append(icon("shop"));
 $("btnAttach").append(icon("clip"));
 $("btnSend").append(icon("send"));
 $("back").append(icon("back"));
+// ---------- уведомления ----------
+const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol === "https:";
+function b64uToBytes(s) {
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  const raw = atob((s + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (ch) => ch.charCodeAt(0));
+}
+async function pushSub() {
+  if (!pushSupported) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function savePush(sub, enabled) {
+  const j = sub.toJSON();
+  const { error } = await sb.rpc("save_push_subscription", {
+    p_endpoint: j.endpoint, p_p256dh: enabled ? j.keys.p256dh : "", p_auth: enabled ? j.keys.auth : "", p_enabled: enabled });
+  return !error;
+}
+async function paintNotify() {
+  const box = $("setNotify"), hint = $("notifyHint");
+  if (!pushSupported) {
+    box.checked = false; box.disabled = true;
+    hint.textContent = location.protocol !== "https:" ? "Уведомления работают только на https://soroka.lol." : "Этот браузер не поддерживает уведомления. На iPhone они работают, если добавить Сороку на экран «Домой».";
+    return;
+  }
+  const sub = await pushSub().catch(() => null);
+  box.disabled = Notification.permission === "denied";
+  box.checked = !!sub && Notification.permission === "granted" && settings.notify !== false;
+  hint.textContent = Notification.permission === "denied"
+    ? "Уведомления запрещены в настройках браузера для этого сайта. Разрешите их там, затем вернитесь сюда."
+    : box.checked ? "Чтобы не получать уведомления из одного чата, нажмите на колокольчик в его шапке." : "Сейчас уведомления на этом устройстве выключены.";
+}
+async function enablePush() {
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") { settings.notify = false; saveSettings(); paintNotify(); return false; }
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC) });
+  const ok = await savePush(sub, true);
+  settings.notify = ok; saveSettings();
+  return ok;
+}
+async function disablePush() {
+  const sub = await pushSub().catch(() => null);
+  if (sub) { await savePush(sub, false); await sub.unsubscribe().catch(() => {}); }
+}
+$("setNotify").addEventListener("change", async (e) => {
+  e.target.disabled = true;
+  try {
+    if (e.target.checked) toast((await enablePush()) ? "Уведомления включены" : "Уведомления не включены: нет разрешения");
+    else { settings.notify = false; saveSettings(); await disablePush(); toast("Уведомления на этом устройстве выключены"); }
+  } catch (err) { toast("Не удалось изменить уведомления"); }
+  e.target.disabled = false;
+  paintNotify();
+});
+// при входе привязываем подписку этого устройства к тому, кто вошёл
+async function resumePush() {
+  if (!pushSupported || settings.notify === false || Notification.permission !== "granted") return;
+  const sub = await pushSub().catch(() => null);
+  if (sub) savePush(sub, true);
+}
+async function logout() {
+  // уведомления для этого аккаунта на этом устройстве прекращаются; разрешение браузера остаётся
+  const sub = await pushSub().catch(() => null);
+  if (sub) await savePush(sub, false).catch(() => {});
+  sb.auth.signOut();
+}
+$("btnMute").addEventListener("click", async () => {
+  const c = state.chats.get(state.activeId);
+  if (!c) return;
+  const next = !c.muted;
+  $("btnMute").disabled = true;
+  const { error } = await sb.rpc("set_chat_muted", { p_chat: c.id, p_muted: next });
+  $("btnMute").disabled = false;
+  if (error) { toast("Не удалось изменить уведомления этого чата"); return; }
+  c.muted = next;
+  renderHead();
+  renderList();
+  toast(next ? "Уведомления из этого чата выключены" : "Уведомления из этого чата включены");
+});
+// переход в чат из уведомления
+function openChatFromLink(id) {
+  if (!id || !state.started) return;
+  if (state.chats.has(id)) { openChat(id); return; }
+  loadChats().then(() => { if (state.chats.has(id)) openChat(id); });
+}
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "open-chat") openChatFromLink(e.data.chat_id);
+  });
+}
+
 // своё приглашение установить приложение браузеру показывать не даём: приложение ставится из APK
 window.addEventListener("beforeinstallprompt", (e) => e.preventDefault());
 if ("serviceWorker" in navigator && location.protocol === "https:") {

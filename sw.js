@@ -1,7 +1,8 @@
-/* Сорока: сервис-воркер нужен, чтобы сайт ставился как приложение и открывался без сети.
+/* Сорока: сервис-воркер. Нужен, чтобы сайт открывался как приложение, работал без сети
+   и показывал уведомления о новых сообщениях, даже когда вкладка или приложение закрыты.
    Страницу всегда сначала берём из сети, поэтому обновления приходят сразу;
-   запросы к базе и библиотекам сюда не попадают вовсе. */
-const CACHE = "soroka-v1";
+   запросы к базе и библиотекам сюда не попадают. */
+const CACHE = "soroka-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -28,4 +29,38 @@ self.addEventListener("fetch", (e) => {
       return res;
     }).catch(() => caches.match(req.mode === "navigate" ? "/" : req).then((hit) => hit || caches.match("/")))
   );
+});
+
+// новое сообщение: если Сорока сейчас открыта перед глазами, уведомление не нужно
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "Сорока", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (wins.some((w) => w.visibilityState === "visible" && w.focused)) return;
+    await self.registration.showNotification(d.title || "Сорока", {
+      body: d.body || "Новое сообщение",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: d.chat_id || "soroka",
+      renotify: true,
+      data: { url: d.url || "/", chat_id: d.chat_id || null },
+    });
+  })());
+});
+
+// нажатие на уведомление: открываем нужный чат в уже открытой Сороке или в новом окне
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const data = e.notification.data || {};
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+    if (win) {
+      await win.focus();
+      win.postMessage({ type: "open-chat", chat_id: data.chat_id });
+      return;
+    }
+    await self.clients.openWindow(data.url || "/");
+  })());
 });

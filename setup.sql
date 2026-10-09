@@ -967,3 +967,12 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 -- Выдача от администратора (сорочки, премиум, NFT-юзернейм, галочка, админка) появляется
 -- карточкой в личном чате: миграция messenger_admin_grant_messages. Поля messages.event_kind,
 -- event_title, event_note заполняет только сервер (private.post_event), клиенту запись в них закрыта.
+
+-- Push-уведомления: миграция messenger_push_notifications.
+--   chat_members.muted — уведомления из чата выключены (меняет public.set_chat_muted).
+--   public.push_subscriptions — подписки устройств (public.save_push_subscription), видны только владельцу.
+--   private.push_config — VAPID-ключи и секрет вызова; хранится только в базе, клиенту недоступно,
+--   читает его лишь функция push через public.push_server_config() (только service_role).
+--   Триггер messages_push после вставки сообщения вызывает через pg_net функцию
+--   supabase/functions/push (заголовок x-hook-secret); она шлёт уведомления всем участникам,
+--   кроме отправителя и тех, у кого чат заглушён.
