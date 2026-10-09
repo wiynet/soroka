@@ -1057,3 +1057,7 @@ grant execute on function public.admin_grant_premium(uuid, integer) to authentic
 
 -- messenger_hidden_gifts_owner_only: скрытый подарок видит только владелец (админы больше не видят чужие скрытые)
 alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (select auth.uid())));
+
+-- messenger_gift_card_by_link: public.gift_card(p_id, p_type, p_number) — карточка подарка по ссылке.
+-- Открывает подарок по id или по «тип-номер» (Star-1). Скрытый подарок чужому отдаётся без владельца,
+-- отправителя, подписи и цены. SECURITY DEFINER, search_path = '', execute только для authenticated.
