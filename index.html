@@ -336,7 +336,7 @@ button { cursor: pointer; }
 .worn { display: inline-block; margin-left: 4px; font-size: .95em; line-height: 1; vertical-align: -1px; }
 .u-hero { display: grid; justify-items: center; gap: 8px; align-self: stretch; }
 .u-hero.nftg { margin: -20px -20px 0; padding: 26px 16px 18px; border-radius: 0; }
-.u-hero.nftg h2, .u-hero.nftg #uUser, .u-hero.nftg #uSeen { color: #fff !important; }
+.u-hero.nftg h2, .u-hero.nftg #uSeen { color: #fff !important; }
 .u-hero.nftg .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .35), 0 10px 24px rgb(0 0 0 / .35); }
 .u-hero.nftg .pat { font-size: 17px; gap: 16px 6px; }
 .gv-stage { font-size: 14px; font-weight: 600; color: var(--accent); min-height: 1.4em; }
@@ -352,6 +352,37 @@ button { cursor: pointer; }
 .gv-top .num { font-size: 14px; font-weight: 500; opacity: .9; }
 .gv dd .pct { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--mine); color: var(--accent); font-size: 12px; font-weight: 600; }
 .gift.out { opacity: .55; }
+/* плитки подарков в профиле и на аукционе: квадратные, с объёмом */
+.gift-grid:has(.tile) { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.gift.tile { position: relative; aspect-ratio: 1; align-content: center; padding: 8px 6px; border-radius: 18px; border: 0; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--panel-2) 78%, #fff), var(--panel-2) 55%, color-mix(in srgb, var(--panel-2) 86%, #000));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -10px 18px -10px rgb(0 0 0 / .22), 0 3px 8px rgb(0 0 0 / .12); }
+.gift.tile .em { font-size: 58px; line-height: 1; filter: drop-shadow(0 7px 7px rgb(0 0 0 / .3)); }
+.gift.tile .nm { display: none; }
+.gift.tile:has(.sub) { aspect-ratio: auto; padding: 16px 6px 10px; gap: 3px; }
+.gift.tile:has(.sub) .em { font-size: 48px; margin-bottom: 4px; }
+.gift.tile .sub { font-size: 11px; line-height: 1.2; }
+.gift.tile.nftg { box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -14px 22px -10px rgb(0 0 0 / .4), 0 4px 10px rgb(0 0 0 / .22); }
+.gift.tile.nftg .sub { font-weight: 600; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
+.gift.tile .rib { position: absolute; top: 11px; right: -30px; width: 108px; rotate: 45deg; padding: 2px 0; background: rgb(0 0 0 / .32); color: #fff; font-size: 10.5px; font-weight: 700; text-align: center; letter-spacing: .02em; backdrop-filter: blur(4px); }
+.gift.tile .from { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; font-size: 9px; box-shadow: 0 0 0 2px var(--panel-2); }
+.gift.tile .cap { position: absolute; left: 50%; bottom: 6px; translate: -50% 0; padding: 1px 8px; border-radius: 999px; background: rgb(0 0 0 / .45); color: #fff; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+/* строки-карточки в профиле */
+.pcard { align-self: stretch; display: grid; border-radius: 16px; background: var(--panel-2); overflow: hidden; text-align: left; }
+.prow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-width: 0; }
+.prow + .prow { border-top: 1px solid var(--line); }
+.pico { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 17px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 2px 5px rgb(0 0 0 / .18); }
+.pico svg { width: 19px; height: 19px; }
+.pico.blue { background: linear-gradient(160deg, #57b6ff, #1f7ae0); }
+.pico.grey { background: linear-gradient(160deg, #9aa4b2, #5f6b7a); }
+.pico.gold { background: linear-gradient(160deg, #ffcf5c, #e08a12); }
+.pico.violet { background: linear-gradient(160deg, #b08cff, #6d3fe0); }
+.ptx { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.ptx small { font-size: 12px; color: var(--muted); }
+.ptx #uUser { border: 0; background: none; padding: 0; text-align: left; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.ptx #uBio { white-space: pre-wrap; overflow-wrap: anywhere; }
+.user-card .avatar.lg { box-shadow: 0 12px 28px rgb(0 0 0 / .22), inset 0 2px 0 rgb(255 255 255 / .25); }
+.user-card h2 { font-size: 22px; }
 .gift.hid { opacity: .6; border-style: dashed; }
 .gv-more { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; align-self: stretch; font-size: 14px; }
 .gv-more .link.danger { color: #e5484d; }
@@ -428,7 +459,7 @@ button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 
 @media (max-width: 460px) { .ad-grid { grid-template-columns: 1fr; } }
 .user-card { align-items: center; text-align: center; }
 .user-card h2 { overflow-wrap: anywhere; }
-.user-card .avatar.lg { width: 104px; height: 104px; font-size: 36px; }
+.user-card .avatar.lg { width: 116px; height: 116px; font-size: 42px; }
 .user-card .avatar.zoom { cursor: zoom-in; }
 #uUser { border: 0; background: none; padding: 2px 8px; border-radius: 8px; color: var(--accent); font-weight: 500; }
 #uUser:hover { background: var(--panel-2); }
@@ -1408,7 +1439,6 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     <div class="u-hero" id="uHero">
       <span id="uAvatar"></span>
       <h2 id="uName"></h2>
-      <button type="button" id="uUser" title="Скопировать юзернейм"></button>
       <div class="small muted" id="uSeen"></div>
     </div>
     <div class="seg" id="uTabs" role="tablist" style="align-self:stretch">
@@ -1416,8 +1446,25 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <button type="button" role="tab" data-ut="gifts" aria-checked="false" id="uTabGifts">Подарки</button>
     </div>
     <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
-      <div class="nft-list" id="uNft"></div>
-      <div id="uBio"></div>
+      <div class="pcard">
+        <div class="prow">
+          <span class="pico blue">@</span>
+          <div class="ptx"><button type="button" id="uUser" title="Скопировать юзернейм"></button><small>Юзернейм</small></div>
+          <button class="icon-btn" type="button" id="uCopyLink" title="Скопировать ссылку на профиль" aria-label="Скопировать ссылку на профиль"></button>
+        </div>
+        <div class="prow" id="uBioRow">
+          <span class="pico grey">i</span>
+          <div class="ptx"><div id="uBio"></div><small>О себе</small></div>
+        </div>
+        <div class="prow" id="uNftRow">
+          <span class="pico gold" id="uNftIco"></span>
+          <div class="ptx"><div class="nft-list left" id="uNft"></div><small>NFT-юзернеймы</small></div>
+        </div>
+        <div class="prow" id="uPremRow">
+          <span class="pico violet">★</span>
+          <div class="ptx"><div id="uPremLine"></div><small>Премиум</small></div>
+        </div>
+      </div>
       <div class="small muted" id="uNoBio" hidden>Описание не заполнено.</div>
       <div class="banned-note" id="uBanned" hidden></div>
     </div>
@@ -1499,6 +1546,7 @@ const ICONS = {
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
   mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
   chats: '<path d="M3 10.200C3 6.800 6.100 4 10 4s7 2.800 7 6.200-3.100 6.200-7 6.200c-.700 0-1.400-.100-2-.200L4.500 18l.900-3.100C3.900 13.700 3 12 3 10.200z" fill="currentColor"/><path d="M18.500 9.300c1.600 1 2.500 2.500 2.500 4.200 0 1.400-.700 2.700-1.800 3.600l.700 2.400-2.700-1.400c-.500.100-1 .200-1.600.200-2 0-3.700-.800-4.700-2.100 3.900-.300 7.100-3 7.600-6.900z" fill="currentColor" opacity=".75"/>',
+  link: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 005.700 0l3-3a4 4 0 00-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 00-5.700 0l-3 3a4 4 0 005.700 5.700l1-1"/></g>',
   find: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.500 4.500"/></g>',
   play: '<path d="M8 5.500v13l11-6.500z" fill="currentColor"/>',
   pause: '<path d="M7 5h3.500v14H7zM13.500 5H17v14h-3.500z" fill="currentColor"/>',
@@ -1593,7 +1641,7 @@ function avatar(name, seed, small, path) {
   for (const ch of String(seed || name)) n = (n * 31 + ch.codePointAt(0)) % 360;
   const letters = String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] || "").join("").toUpperCase();
   const el = h("span", { class: "avatar" + (small === "lg" ? " lg" : small ? " sm" : ""), "aria-hidden": "true" }, letters || "?");
-  el.style.background = "hsl(" + n + " 42% 42%)";
+  el.style.background = "linear-gradient(160deg, hsl(" + n + " 68% 62%), hsl(" + ((n + 18) % 360) + " 62% 42%))";
   if (path) {
     const img = h("img", { alt: "" });
     img.addEventListener("error", () => img.remove());
@@ -3763,6 +3811,11 @@ function paintUser(p) {
   $("uUser").textContent = "@" + p.username;
   $("uBio").textContent = p.bio || "";
   $("uBio").hidden = !p.bio;
+  $("uBioRow").hidden = !p.bio;
+  $("uNftRow").hidden = !nfts(p).length;
+  $("uPremRow").hidden = !isPremium(p);
+  $("uPremLine").textContent = isPremium(p) ? "до " + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "") : "";
+  $("uNoBio").hidden = true;
   $("uWrite").hidden = p.id === state.me.id;
 }
 function showUserTab(name) {
@@ -3807,18 +3860,25 @@ function paintNft(el, look) {
   el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, look.m.emoji))));
   return el;
 }
+// квадратная плитка подарка: крупная модель, у NFT лента с номером в углу, у обычного значок отправителя
 function giftTile(g, t, tag, attrs, ...subs) {
   const look = giftLook(g, t);
-  const el = h(tag, { class: "gift", ...attrs },
+  const el = h(tag, { class: "gift tile", ...attrs },
     h("span", { class: "em" }, look ? look.m.emoji : t.emoji),
     h("span", { class: "nm" }, look ? t.name + " №" + g.nft_number : t.name), ...subs);
-  return look ? paintNft(el, look) : el;
+  if (look) { paintNft(el, look); el.append(h("span", { class: "rib", "aria-hidden": "true" }, "№" + g.nft_number)); }
+  else if (g.from && g.from.id) {
+    const chip = avatar(g.from.display_name, g.from.id, true, g.from.avatar_path);
+    chip.classList.add("from");
+    el.append(chip);
+  }
+  return el;
 }
 async function loadUserGifts(id) {
   $("uTabGifts").textContent = "Подарки";
   $("uGifts").replaceChildren(h("div", { class: "small muted" }, "Загружаем…"));
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,created_at,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,created_at,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name,avatar_path)").eq("to_id", id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   if (!viewed || viewed.id !== id) return;
   const rows = res.data || [];
   $("uTabGifts").textContent = rows.length ? "Подарки · " + rows.length : "Подарки";
@@ -3827,9 +3887,8 @@ async function loadUserGifts(id) {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
     // свой подарок открывается всегда, чужой: только NFT (его может рассмотреть любой)
     const open = id === state.me.id || g.nft_number != null;
-    const el = giftTile(g, t, open ? "button" : "div", { type: open ? "button" : null, title: open ? "Открыть подарок" : (g.note || ""), onclick: open ? () => openGiftView(g.id) : null },
-      h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
-      g.note && h("span", { class: "sub" }, "«" + g.note + "»"));
+    const about = t.name + (g.nft_number != null ? " №" + g.nft_number : "") + (g.from ? " · от: " + g.from.display_name : "") + (g.note ? " · «" + g.note + "»" : "");
+    const el = giftTile(g, t, open ? "button" : "div", { type: open ? "button" : null, title: about, "aria-label": about, onclick: open ? () => openGiftView(g.id) : null });
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
   }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? "Не удалось загрузить подарки." : "Подарков пока нет.")]));
@@ -4260,6 +4319,9 @@ $("uBan").addEventListener("click", async () => {
   toast(ban ? "Аккаунт заблокирован" : "Аккаунт разблокирован");
   refreshViewed();
 });
+$("uCopyLink").append(icon("link"));
+$("uNftIco").append(icon("gem"));
+$("uCopyLink").addEventListener("click", () => { if (viewed) copyText(SITE + "#@" + viewed.username, "Ссылка на профиль скопирована"); });
 $("uUser").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uUser").textContent); toast("Юзернейм скопирован"); } catch (e) {}
 });
@@ -4358,14 +4420,15 @@ $("myProfileRow").addEventListener("click", () => showUser(state.profile));
 // свои подарки прямо в настройках: нажатие открывает подарок, там же его можно обменять
 async function loadMyGifts() {
   const [types, res] = await Promise.all([giftTypes(),
-    sb.from("gifts").select("id,type_id,note,price_paid,hidden,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
+    sb.from("gifts").select("id,type_id,note,price_paid,hidden,nft_number,nft_model,nft_backdrop,from:profiles!gifts_from_id_fkey(id,username,display_name,avatar_path)").eq("to_id", state.me.id).is("sold_at", null).order("id", { ascending: false }).limit(60)]);
   const rows = res.data || [];
   const byId = new Map(types.map((t) => [t.id, t]));
   $("myGifts").replaceChildren(...rows.map((g, i) => {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: "Подарок" };
-    const el = giftTile(g, t, "button", { type: "button", title: "Открыть подарок", onclick: () => openGiftView(g.id) },
-      h("span", { class: "sub" }, g.from ? "от: " + g.from.display_name : "отправитель скрыт"),
-      h("span", { class: "sub" }, g.hidden ? "скрыт" : g.nft_number != null ? "коллекционный" : canUpgrade(t) ? "можно улучшить" : g.price_paid ? "обмен: " + coins(Math.floor(g.price_paid * 0.9)) : ""));
+    const tag = g.hidden ? "скрыт" : g.nft_number == null && canUpgrade(t) ? "улучшить" : "";
+    const about = t.name + (g.nft_number != null ? " №" + g.nft_number : "") + (g.from ? " · от: " + g.from.display_name : "");
+    const el = giftTile(g, t, "button", { type: "button", title: about, "aria-label": about, onclick: () => openGiftView(g.id) },
+      tag && h("span", { class: "cap" }, tag));
     if (g.hidden) el.classList.add("hid");
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
