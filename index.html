@@ -367,6 +367,23 @@ button { cursor: pointer; }
 .gift.tile .rib { position: absolute; top: 11px; right: -30px; width: 108px; rotate: 45deg; padding: 2px 0; background: rgb(0 0 0 / .32); color: #fff; font-size: 10.5px; font-weight: 700; text-align: center; letter-spacing: .02em; backdrop-filter: blur(4px); }
 .gift.tile .from { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; font-size: 9px; box-shadow: 0 0 0 2px var(--panel-2); }
 .gift.tile .cap { position: absolute; left: 50%; bottom: 6px; translate: -50% 0; padding: 1px 8px; border-radius: 999px; background: rgb(0 0 0 / .45); color: #fff; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+/* меню настроек: группы строк со значками */
+.set-head { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+.set-head h2 { margin: 0; flex: 1; }
+.set-menu { display: grid; gap: 14px; }
+#dlgSettings [data-page]:not(.set-menu):not([hidden]) { display: flex; flex-direction: column; gap: 14px; }
+.srow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border: 0; background: none; color: var(--ink); text-align: left; font-size: 16px; }
+.srow + .srow { border-top: 1px solid var(--line); }
+.srow:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.srow .st { flex: 1; min-width: 0; }
+.srow .sv { color: var(--muted); font-size: 15px; flex: none; }
+.srow .chev { color: var(--muted); font-size: 22px; line-height: 1; flex: none; }
+.pico.red { background: linear-gradient(160deg, #ff7a6b, #e0352b); }
+.pico.orange { background: linear-gradient(160deg, #ffc15c, #f08a1c); }
+.pico.sky { background: linear-gradient(160deg, #7fd0ff, #2f9be8); }
+.pico.green { background: linear-gradient(160deg, #6fe08a, #2fae4f); }
+.pico.teal { background: linear-gradient(160deg, #6fe0d0, #1fa79a); }
+.pico.pink { background: linear-gradient(160deg, #ff8fc0, #e0457f); }
 /* строки-карточки в профиле */
 .pcard { align-self: stretch; display: grid; border-radius: 16px; background: var(--panel-2); overflow: hidden; text-align: left; }
 .prow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-width: 0; }
@@ -944,15 +961,43 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 <!-- настройки: оформление, чаты, уведомления, аккаунты -->
 <dialog id="dlgSettings">
   <div class="dlg">
-    <h2>Настройки</h2>
+    <div class="set-head">
+      <button class="icon-btn" type="button" id="setBack" aria-label="Назад" hidden></button>
+      <h2 id="setTitle">Настройки</h2>
+    </div>
 
+    <div data-page="menu" class="set-menu">
+      <div class="pcard">
+        <button class="srow" type="button" data-go="saved"><span class="pico blue" data-ico="bookmark"></span><span class="st">Избранное</span><span class="sv" id="sv_saved"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="accounts"><span class="pico orange" data-ico="users"></span><span class="st">Аккаунты</span><span class="sv" id="sv_accounts"></span><span class="chev" aria-hidden="true">›</span></button>
+      </div>
+      <div class="pcard">
+        <button class="srow" type="button" data-go="notify"><span class="pico red" data-ico="bell"></span><span class="st">Уведомления</span><span class="sv" id="sv_notify"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="privacy"><span class="pico grey" data-ico="lock"></span><span class="st">Конфиденциальность</span><span class="sv" id="sv_privacy"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="look"><span class="pico sky" data-ico="half"></span><span class="st">Оформление</span><span class="sv" id="sv_look"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="chat"><span class="pico green" data-ico="bubble"></span><span class="st">Сообщения</span><span class="sv" id="sv_chat"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="lang"><span class="pico violet" data-ico="globe"></span><span class="st">Язык</span><span class="sv" id="sv_lang">Русский</span><span class="chev" aria-hidden="true">›</span></button>
+      </div>
+      <div class="pcard">
+        <button class="srow" type="button" data-go="premium"><span class="pico violet" data-ico="star"></span><span class="st">Премиум</span><span class="sv" id="sv_premium"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="coins"><span class="pico gold" data-ico="coin"></span><span class="st">Мои сорочки</span><span class="sv" id="sv_coins"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="gift"><span class="pico teal" data-ico="gift"></span><span class="st">Отправить подарок</span><span class="sv" id="sv_gift"></span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="srow" type="button" data-go="support"><span class="pico pink" data-ico="help"></span><span class="st">Поддержка</span><span class="sv" id="sv_support"></span><span class="chev" aria-hidden="true">›</span></button>
+      </div>
+    </div>
+
+    <div data-page="notify" hidden>
     <div class="set-label">Уведомления</div>
     <label class="toggle"><input type="checkbox" id="setNotify"><span>Уведомления о новых сообщениях на этом устройстве</span></label>
     <div class="hint" id="notifyHint"></div>
 
+    </div>
+    <div data-page="privacy" hidden>
     <div class="set-label">Приватность</div>
     <label class="toggle"><input type="checkbox" id="setHideSeen"><span>Скрывать время, когда я был в сети <span class="muted">(премиум)</span></span></label>
 
+    </div>
+    <div data-page="look" hidden>
     <div class="set-label">Тема</div>
     <div class="seg" data-key="theme" role="radiogroup" aria-label="Тема">
       <button type="button" role="radio" data-v="system">Как в системе</button>
@@ -1001,16 +1046,30 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
       <button type="button" role="radio" data-v="sharp">Строгие</button>
     </div>
 
+    </div>
+    <div data-page="chat" hidden>
     <div class="set-label">Сообщения</div>
     <label class="toggle"><input type="checkbox" id="setEnter"><span>Отправлять по Enter <span class="muted">(иначе по Ctrl+Enter)</span></span></label>
 
 
+    </div>
+    <div data-page="accounts" hidden>
     <div class="set-label">Аккаунты</div>
     <div id="accList" class="acc-list"></div>
     <div class="hint" id="accHint"></div>
 
+      <div class="actions" style="margin-top:10px"><button class="btn danger" type="button" id="btnLogout">Выйти из аккаунта</button></div>
+    </div>
+    <div data-page="lang" hidden>
+      <div class="set-label">Язык интерфейса</div>
+      <div class="seg" id="setLang" role="radiogroup" aria-label="Язык интерфейса">
+        <button type="button" role="radio" data-l="ru">Русский</button>
+        <button type="button" role="radio" data-l="en">English</button>
+      </div>
+      <div class="hint">После смены языка страница перезагрузится.</div>
+    </div>
+
     <div class="actions" style="margin-top:6px">
-      <button class="btn danger" type="button" id="btnLogout" style="margin-right:auto">Выйти из аккаунта</button>
       <button class="btn ghost" type="button" data-close>Закрыть</button>
     </div>
   </div>
@@ -1547,6 +1606,15 @@ const ICONS = {
   mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
   chats: '<path d="M3 10.200C3 6.800 6.100 4 10 4s7 2.800 7 6.200-3.100 6.200-7 6.200c-.700 0-1.400-.100-2-.200L4.500 18l.900-3.100C3.900 13.700 3 12 3 10.200z" fill="currentColor"/><path d="M18.500 9.300c1.600 1 2.500 2.500 2.500 4.200 0 1.400-.700 2.700-1.800 3.600l.700 2.400-2.700-1.400c-.500.100-1 .200-1.600.200-2 0-3.700-.800-4.700-2.100 3.900-.300 7.100-3 7.600-6.900z" fill="currentColor" opacity=".75"/>',
   link: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 005.700 0l3-3a4 4 0 00-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 00-5.700 0l-3 3a4 4 0 005.700 5.700l1-1"/></g>',
+  bookmark: '<path d="M7 4h10v16l-5-3.500L7 20z" fill="currentColor"/>',
+  users: '<g fill="currentColor"><circle cx="9" cy="8.500" r="3.200"/><path d="M3 19c.600-3.300 3-5 6-5s5.400 1.700 6 5z"/><circle cx="17" cy="9.500" r="2.500" opacity=".8"/><path d="M15.800 14.300c2.600.300 4.600 1.900 5.200 4.700h-4.200c-.200-1.800-.600-3.400-1-4.700z" opacity=".8"/></g>',
+  lock: '<path d="M8 10V8a4 4 0 118 0v2h1.500v10h-11V10zm2 0h4V8a2 2 0 10-4 0z" fill="currentColor"/>',
+  half: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/>',
+  bubble: '<path d="M4 11.500C4 7.900 7.600 5 12 5s8 2.900 8 6.500S16.400 18 12 18c-.900 0-1.800-.100-2.600-.400L5.500 19.500l1-3.300C5 15 4 13.300 4 11.500z" fill="currentColor"/>',
+  globe: '<g fill="none" stroke="currentColor" stroke-width="1.800"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.500 2.300 3.500 5 3.500 8s-1 5.700-3.500 8c-2.500-2.300-3.500-5-3.500-8s1-5.700 3.500-8z"/></g>',
+  starf: '<path d="M12 3.500l2.600 5.400 5.900.800-4.300 4.100 1.100 5.800L12 16.800 6.700 19.600l1.100-5.800L3.500 9.700l5.900-.800z" fill="currentColor"/>',
+  coinf: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14.500 9.500a3 3 0 100 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  giftf: '<path d="M4 9h16v3H4zM5.500 13h5.500v7H5.500zM13 13h5.500v7H13zM12 9c-3.500 0-5-1.200-5-2.800C7 5 8 4 9.200 4 10.800 4 12 5.800 12 9zm0 0c3.500 0 5-1.200 5-2.800C17 5 16 4 14.800 4 13.200 4 12 5.800 12 9z" fill="currentColor"/>',
   find: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.500 4.500"/></g>',
   play: '<path d="M8 5.500v13l11-6.500z" fill="currentColor"/>',
   pause: '<path d="M7 5h3.500v14H7zM13.500 5H17v14h-3.500z" fill="currentColor"/>',
@@ -4565,7 +4633,37 @@ $("btnProfile").addEventListener("click", () => {
   $("dlgProfile").showModal();
   drawBadge();
 });
+// меню настроек: страницы внутри одного окна
+const SET_TITLES = { menu: "Настройки", notify: "Уведомления", privacy: "Конфиденциальность", look: "Оформление", chat: "Сообщения", accounts: "Аккаунты", lang: "Язык" };
+const SET_ICONS = { star: "starf", coin: "coinf", gift: "giftf" };
+for (const el of document.querySelectorAll("#dlgSettings [data-ico]")) el.append(icon(SET_ICONS[el.dataset.ico] || el.dataset.ico));
+$("setBack").append(icon("back"));
+function showSetPage(name) {
+  for (const pg of document.querySelectorAll("#dlgSettings [data-page]")) pg.hidden = pg.dataset.page !== name;
+  $("setTitle").textContent = SET_TITLES[name] || SET_TITLES.menu;
+  $("setBack").hidden = name === "menu";
+  $("dlgSettings").querySelector(".dlg").scrollTop = 0;
+}
+$("setBack").addEventListener("click", () => showSetPage("menu"));
+$("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-go]");
+  if (!b) return;
+  const go = b.dataset.go;
+  if (SET_TITLES[go]) { showSetPage(go); return; }
+  $("dlgSettings").close();
+  if (go === "saved") startDirect(state.me.id);
+  else if (go === "support") openSupport();
+  else if (go === "gift") { $("btnMarket").click(); showMarketTab("gifts"); }
+  else if (go === "premium" || go === "coins") {
+    $("btnProfile").click();
+    setTimeout(() => { const t = go === "premium" ? $("premTitle") : $("coinBal"); if (t) t.scrollIntoView({ block: "center" }); }, 350);
+  }
+});
 // вкладки внизу: «Настройки» подсвечены, пока открыто их окно
+async function loadWalletValue() {
+  const w = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
+  if (w.data && w.data.balance != null) $("sv_coins").textContent = nf.format(Number(w.data.balance));
+}
 function paintTabs() {
   const set = $("dlgSettings").open;
   $("btnSettings").setAttribute("aria-current", String(set));
@@ -4593,7 +4691,13 @@ $("btnSettings").addEventListener("click", () => {
   renderSettings();
   paintNotify();
   renderAccounts();
+  showSetPage("menu");
+  $("sv_accounts").textContent = String(accounts().length || 1);
+  $("sv_notify").textContent = $("setNotify").checked ? "Вкл." : "Выкл.";
+  $("sv_premium").textContent = isPremium(state.profile) ? "активен" : "";
   $("dlgSettings").showModal();
+  paintNotify().then(() => { $("sv_notify").textContent = $("setNotify").checked ? "Вкл." : "Выкл."; });
+  loadWalletValue();
   paintTabs();
 });
 watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile.username);
