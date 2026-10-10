@@ -1061,3 +1061,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- messenger_gift_card_by_link: public.gift_card(p_id, p_type, p_number) — карточка подарка по ссылке.
 -- Открывает подарок по id или по «тип-номер» (Star-1). Скрытый подарок чужому отдаётся без владельца,
 -- отправителя, подписи и цены. SECURITY DEFINER, search_path = '', execute только для authenticated.
+
+-- messenger_profile_channel: канал в профиле.
+-- profiles.pinned_chat uuid → chats(id) on delete set null (читается только через функцию, отдельный grant не нужен).
+-- public.set_profile_channel(p_chat): закрепить открытый канал, где вызывающий владелец или админ; null — убрать.
+-- public.profile_channel(p_user): канал для показа в профиле (название, подписчики, последний пост);
+--   пусто, если канал стал частным или человек им больше не управляет.
+-- Обе SECURITY DEFINER, search_path = '', execute только для authenticated.
