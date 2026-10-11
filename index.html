@@ -669,7 +669,14 @@ button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 
 .msg { backdrop-filter: blur(10px); }
 :root[data-bubble="sharp"] .msg, :root[data-bubble="sharp"] .msg.mine { border-radius: 6px; }
 :root[data-bubble="sharp"] .msg img.photo { border-radius: 3px; }
-.msg.mine { background: linear-gradient(135deg, var(--mine), color-mix(in srgb, var(--mine) 74%, var(--accent))); }
+/* свои сообщения переливаются: градиент медленно плывёт по пузырю, под ним мягкое свечение */
+.msg.mine { background: linear-gradient(120deg, var(--mine) 0%, color-mix(in srgb, var(--mine) 68%, var(--accent)) 30%, color-mix(in srgb, var(--mine) 72%, hsl(calc(var(--h) + 55) 75% 55%)) 60%, var(--mine) 100%) 0 0 / 300% 100%;
+  box-shadow: 0 8px 24px -8px color-mix(in srgb, var(--accent) 45%, transparent); }
+.msg:not(.mine) { border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent); }
+/* «печатает»: пузырь с тремя прыгающими точками внизу переписки */
+.typing-b { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; padding: 12px 16px; border-radius: 16px; border-top-left-radius: 6px; background: var(--theirs); border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); backdrop-filter: blur(10px); }
+.typing-b i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--ink) 60%, transparent); opacity: .4; }
+.typing-b small { margin-right: 4px; font-size: 12px; color: var(--accent); font-weight: 600; }
 .msg { box-shadow: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent); }
 #auth { background-image: radial-gradient(60vmax 60vmax at 110% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%), radial-gradient(50vmax 50vmax at -10% 110%, color-mix(in srgb, hsl(calc(var(--h) + 70) 70% 50%) 16%, transparent), transparent 62%); }
 .side-head { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent); }
@@ -837,8 +844,19 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .dot { animation: dot-in .35s var(--ease) both; }
   #conv:not([hidden]) .conv-head { animation: fade-in .2s both; }
   #msgs.fresh > * { animation: rise .25s var(--ease) both; }
-  .msg.new { animation: pop-in .26s var(--ease) both; transform-origin: bottom left; }
-  .msg.mine.new { transform-origin: bottom right; }
+  .msg.new { animation: msg-in-l .35s cubic-bezier(.22, 1, .36, 1) both; }
+  .msg.mine.new { animation: msg-in-r .35s cubic-bezier(.22, 1, .36, 1) both, mine-flow 9s ease-in-out .35s infinite alternate; }
+  @keyframes msg-in-l { from { opacity: 0; transform: translate(-20px, 12px) scale(.96); } }
+  @keyframes msg-in-r { from { opacity: 0; transform: translate(20px, 12px) scale(.96); } }
+  .msg.mine { animation: mine-flow 9s ease-in-out infinite alternate; }
+  @keyframes mine-flow { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+  .msg { transition: transform .2s ease-out, box-shadow .2s; }
+  @media (hover: hover) { .msg:hover { transform: translateY(-1px) scale(1.01); } }
+  .typing-b { animation: typing-in .2s ease-out both; transform-origin: bottom left; }
+  @keyframes typing-in { from { opacity: 0; transform: scale(.9); } }
+  .typing-b i { animation: typing-dot .8s ease-in-out infinite; }
+  .typing-b i:nth-of-type(2) { animation-delay: .15s; } .typing-b i:nth-of-type(3) { animation-delay: .3s; }
+  @keyframes typing-dot { 0%, 100% { opacity: .4; transform: none; } 50% { opacity: 1; transform: translateY(-4px); } }
   .attach-chip:not([hidden]) { animation: rise .2s var(--ease) both; }
   .composer .send.fly svg { animation: fly .4s var(--ease); }
   dialog[open] { animation: pop-in .22s var(--ease) both; }
@@ -3108,6 +3126,7 @@ function renderHead() {
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   $("convSub").classList.toggle("typing", !!ty);
   if (ty) $("convSub").textContent = c.is_group ? ty.n + T(" печатает…") : T("печатает…");
+  paintTyping();
   paintPin();
   $("btnMute").replaceChildren(icon(c.muted ? "belloff" : "bell"));
   $("btnMute").title = c.muted ? T("Уведомления выключены. Нажмите, чтобы включить") : T("Выключить уведомления из этого чата");
@@ -3417,6 +3436,7 @@ function renderMsgs(newId) {
     } else kids.push(node);
   }
   $("msgs").replaceChildren(...kids);
+  paintTyping();
   paintVoice();
   preloadVoices();
 }
@@ -3663,6 +3683,18 @@ async function jumpTo(id) {
   flash(el, 1300, "hit");
 }
 /* ---------- печатает… ---------- */
+// пузырь с точками в конце переписки, пока собеседник набирает текст
+function paintTyping() {
+  const box = $("msgs"), c = state.chats.get(state.activeId);
+  const ty = c && state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
+  let el = $("typingB");
+  if (!ty) { if (el) el.remove(); return; }
+  const stick = nearBottom();
+  if (!el) el = h("div", { class: "typing-b", id: "typingB", role: "status", "aria-label": T("печатает…") });
+  el.replaceChildren(...(c.is_group ? [h("small", {}, ty.n)] : []), h("i"), h("i"), h("i"));
+  if (box.lastElementChild !== el) box.append(el);
+  if (stick) scrollDown();
+}
 function clearTyping() { clearTimeout(state.typingTimer); state.typing = null; if (state.activeId) renderHead(); }
 function joinTyping(id) {
   leaveTyping();
