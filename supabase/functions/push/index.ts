@@ -22,6 +22,8 @@ function preview(m: any): string {
   if (m.event_kind) return m.body || "Выдача от администратора";
   if (m.body) return m.body.length > 140 ? m.body.slice(0, 140) + "…" : m.body;
   if (m.file_type && String(m.file_type).startsWith("image/")) return "📷 Фото";
+  if (m.file_type && String(m.file_type).startsWith("video/")) return "🎥 Видео";
+  if (m.file_name === "Голосовое сообщение") return "🎤 Голосовое сообщение";
   return "📎 " + (m.file_name || "Файл");
 }
 

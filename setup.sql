@@ -1084,3 +1084,9 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- add_story: вид определяется по расширению файла; active_stories(user) — истории не старше 24 часов
 -- (вместе с kind и bucket); user_stories и view_story тоже учитывают только последние сутки.
 -- Недельный лимит прежний: 1 история, с премиумом 3.
+
+-- messenger_media_preview_labels: подпись последнего сообщения в списке чатов.
+-- private.media_label(...) : «Фото», «Фото (3)», «Видео», «Видео (2)», «Фото и видео (5)», «Голосовое сообщение»,
+--   у файла — его название; текст сообщения (подпись) важнее ярлыка.
+-- private.on_message_insert и private.refresh_chat_preview считают фото и видео одного альбома (album_id) вместе.
+-- Push-функция: «📷 Фото», «🎥 Видео», «🎤 Голосовое сообщение», «📎 название файла».
