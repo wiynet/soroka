@@ -1097,3 +1097,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- messenger_story_feed: public.story_feed() — лента историй над списком чатов:
 -- свои истории и истории тех, с кем есть личный чат (user_id, сколько историй, все ли просмотрены, время последней).
 -- SECURITY DEFINER, search_path = '', execute только для authenticated.
+
+-- messenger_story_views_owner_only: просмотры истории видит только автор.
+-- active_stories и user_stories отдают число просмотров только автору (остальным null);
+-- public.story_viewers(story_id) — кто и когда посмотрел, только для автора истории.
