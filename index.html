@@ -2866,8 +2866,9 @@ function watchUsername(input, hint, currentFn) {
   box.addEventListener("mousemove", (e) => {
     const r = box.getBoundingClientRect();
     const x = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / 300)), y = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / 300));
-    card.style.setProperty("--rx", (-y * 10).toFixed(2) + "deg");
-    card.style.setProperty("--ry", (x * 10).toFixed(2) + "deg");
+    // наклон едва заметный: до двух градусов
+    card.style.setProperty("--rx", (-y * 2).toFixed(2) + "deg");
+    card.style.setProperty("--ry", (x * 2).toFixed(2) + "deg");
   });
   box.addEventListener("mouseleave", () => { card.style.setProperty("--rx", "0deg"); card.style.setProperty("--ry", "0deg"); });
 })();
