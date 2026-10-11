@@ -445,8 +445,9 @@ button.wordmark.spin { opacity: .55; }
 .u-hero.nftg { margin: -20px -20px 0; padding: 26px 16px 18px; border-radius: 0; }
 .u-hero.nftg h2, .u-hero.nftg #uSeen { color: #fff !important; }
 /* уровень рейтинга: значок перед временем в сети */
-.seen-row { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.lvl { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border: 0; font: 700 11px/1 var(--font); color: #fff; cursor: pointer;
+.seen-row { display: flex; align-items: center; justify-content: center; gap: 6px; height: 20px; }
+.seen-row #uSeen { font-size: 13px; line-height: 20px; }
+.lvl { display: inline-grid; place-items: center; flex: none; min-width: 18px; height: 20px; padding: 0 4px; border: 0; font: 700 10.5px/1 var(--font); font-variant-numeric: tabular-nums; color: #fff; cursor: pointer;
   background: linear-gradient(160deg, #8fa1b3, #5b6b7c); clip-path: polygon(50% 0, 100% 22%, 100% 70%, 50% 100%, 0 70%, 0 22%); }
 .lvl.t1 { background: linear-gradient(160deg, #6fd08c, #2f9b56); }
 .lvl.t2 { background: linear-gradient(160deg, #62b6ff, #2a72e0); }
