@@ -1108,3 +1108,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   премиум — срок до 7 дней, 3 истории в неделю; админ — срок до года, без лимита по количеству.
 --   Сервер сам обрезает срок по правам, клиенту не доверяет. add_story оставлена для старых вкладок (24 часа).
 -- public.story_quota() дополнительно отдаёт admin и max_days; public.my_story_expiry() — сроки своих историй.
+
+-- messenger_video_notes: «кружки» — круглые видеосообщения до минуты.
+-- messages.video_secs integer (0..60), grant select и insert для authenticated.
+-- private.on_message_insert: video_secs сохраняется только у видеофайла; в списке чатов такое сообщение
+-- подписано «Видеосообщение». refresh_chat_preview и forward_message тоже знают про video_secs.
