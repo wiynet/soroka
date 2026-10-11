@@ -1198,3 +1198,12 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --     поэтому прежний адрес можно использовать для новой регистрации.
 -- Строки физически не удаляются; сообщения, отправленные другим людям, остаются у них без имени автора.
 -- Тексты пользовательского соглашения, политики конфиденциальности и правил лежат в index.html (DOCS), в базе их нет.
+
+-- messenger_reports: жалобы на людей, группы/каналы и сообщения.
+-- public.reports (reporter_id, kind user|chat|message, target_user, target_chat, target_message, reason, comment,
+--   snapshot — текст сообщения / название чата на момент жалобы, status open|closed, resolution, closed_by).
+-- RLS: читать могут только админы сайта; вставка и правка — только через функции.
+-- public.send_report(kind, user, chat, message, reason, comment): причины spam, fraud, abuse, violence, adult, child,
+--   fake, personal, illegal, other (для other комментарий обязателен); нельзя жаловаться на себя и своё сообщение;
+--   на сообщение — только участнику чата; не больше 20 жалоб в сутки; повтор той же открытой жалобы — 'duplicate'.
+-- public.close_report(id, note) — закрыть жалобу, только админ сайта.
