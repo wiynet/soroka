@@ -1207,3 +1207,21 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   fake, personal, illegal, other (для other комментарий обязателен); нельзя жаловаться на себя и своё сообщение;
 --   на сообщение — только участнику чата; не больше 20 жалоб в сутки; повтор той же открытой жалобы — 'duplicate'.
 -- public.close_report(id, note) — закрыть жалобу, только админ сайта.
+
+-- messenger_site_gate_ip_limit: три защиты от наплыва и накрутки.
+-- 1) Жалобы: send_report принимает не больше 3 жалоб в сутки с одного аккаунта.
+-- 2) Автозакрытие сайта. private.site_state (closed, reason, auto, opened_at, limit_n = 50, window_min = 5),
+--    private.site_entries (user_id, at) — по строке на человека, время последнего входа.
+--    public.site_gate()   — вызывается при входе: отмечает человека; если за window_min минут вошло больше limit_n
+--                           разных людей, сайт закрывается, а всем админам уходит личное сообщение
+--                           (private.notify_admins, пишет главный админ; чат создаёт private.direct_chat);
+--    public.site_status() — состояние сайта (для экрана «Сайт закрыт», плашки админа и админки);
+--    public.admin_set_site_closed(closed) — открыть или закрыть вручную, только админ сайта. После открытия счёт входов
+--                           начинается заново (opened_at), поэтому сайт не закрывается тут же повторно.
+--    private.is_banned() теперь возвращает true и тогда, когда сайт закрыт, а человек не админ: чаты и действия
+--    недоступны на уровне базы, а не только на экране. Поддержка (create_ticket) при этом работает.
+--    Лимит и окно меняются в private.site_state (limit_n, window_min).
+-- 3) Не больше 10 аккаунтов с одного IP. private.signup_ips (user_id, ip); триггер profiles_signup_ip
+--    (private.check_signup_ip) берёт IP из сеанса входа (auth.sessions.ip), при его отсутствии — из заголовков запроса,
+--    и отклоняет создание профиля с ошибкой 'too many accounts from this address'. Удалённые аккаунты тоже считаются.
+--    Для уже существующих аккаунтов IP взят из их первого сеанса.
