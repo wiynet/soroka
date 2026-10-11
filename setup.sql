@@ -1128,3 +1128,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   2) удалённых сообщений — у сообщения обнуляется file_path;
 --   3) видео и «кружков» старше 6 месяцев — сообщение остаётся, файл убирается, пустой текст заменяется пометкой.
 -- Фото, голосовые и обычные файлы не трогаются.
+
+-- messenger_profile_background: цветной фон профиля для премиума.
+-- profiles.profile_bg ('blue' | 'sky' | 'pink' | 'red' | 'green' | null), grant select для authenticated.
+-- public.set_profile_bg(color): поставить цвет может только аккаунт с премиумом, убрать (null) — любой.
+-- На экране фон виден, только пока премиум действует; надетый NFT-подарок перекрывает его своим фоном.
