@@ -1182,3 +1182,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   private.settle_gift_auction — 10 % с проданного на аукционе подарка;
 --   public.create_giveaway      — 20 % сверх приза (не возвращается, даже если никто не участвовал).
 -- Обычные покупки (премиум, подарки, улучшения, юзернеймы) комиссией не считаются и получателю не идут.
+
+-- messenger_giveaway_entrants: список участников розыгрыша.
+-- public.giveaway_entrants(id) — кто нажал «Участвовать» и когда (joined_at), у победителей — сколько выиграли.
+-- Доступно только владельцу и админам чата, где идёт розыгрыш (private.chat_role); остальным — 'not allowed'.
