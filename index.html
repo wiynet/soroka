@@ -3729,6 +3729,9 @@ function openChatCtx(c, x, y, row) {
     if (role !== "owner") del.push(item("exit", c.is_channel ? T("Отписаться") : T("Покинуть группу"), () => askChatDel(c, "leave"), true));
     if ((role === "owner" || state.isAdmin) && c.id !== UPDATES_CHAT) del.push(item("trash", T("Удалить у всех"), () => askChatDel(c, "all"), true));
   }
+  // пожаловаться: на чужую группу или канал, в личном чате — на собеседника
+  if (c.is_group && myRole(c) !== "owner" && c.id !== UPDATES_CHAT) kids.push(item("warn", T("Пожаловаться"), () => openReport({ kind: "chat", chat: c.id, label: (c.is_channel ? T("Канал: ") : T("Группа: ")) + chatTitle(c) })));
+  else if (!c.is_group && other(c)) kids.push(item("warn", T("Пожаловаться"), () => { const o = other(c); openReport({ kind: "user", user: o.id, label: T("Человек: ") + o.display_name + " · @" + o.username }); }));
   if (del.length) kids.push(h("hr", {}), ...del);
   ctxEl = h("div", { class: "ctx", role: "menu", "aria-label": T("Действия с чатом") }, kids);
   document.body.append(ctxEl);
