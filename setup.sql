@@ -1101,3 +1101,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- messenger_story_views_owner_only: просмотры истории видит только автор.
 -- active_stories и user_stories отдают число просмотров только автору (остальным null);
 -- public.story_viewers(story_id) — кто и когда посмотрел, только для автора истории.
+
+-- messenger_story_expiry_roles: срок жизни истории по ролям.
+-- stories.expires_at (по умолчанию now() + 24 часа); все выборки историй смотрят на expires_at > now().
+-- public.post_story(path, caption, expires): обычный аккаунт — всегда 24 часа и 1 история в неделю;
+--   премиум — срок до 7 дней, 3 истории в неделю; админ — срок до года, без лимита по количеству.
+--   Сервер сам обрезает срок по правам, клиенту не доверяет. add_story оставлена для старых вкладок (24 часа).
+-- public.story_quota() дополнительно отдаёт admin и max_days; public.my_story_expiry() — сроки своих историй.
