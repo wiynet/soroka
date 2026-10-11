@@ -3029,6 +3029,7 @@ async function startApp() {
 // раз в минуту: отмечаемся «в сети», проверяем бан и обновляем чужие статусы
 async function tick() {
   if (!state.started || document.hidden) return;
+  loadStoryUsers();
   sb.rpc("touch_presence").then(() => {});
   const { data } = await sb.from("profiles").select("banned_at,ban_reason").eq("id", state.me.id).maybeSingle();
   if (!state.started) return;
