@@ -340,6 +340,15 @@ button.wordmark.spin { opacity: .55; }
 }
 .tbadge { position: absolute; top: -4px; left: 58%; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e5484d; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--panel-2); white-space: nowrap; }
 .icon-btn { position: relative; }
+/* кнопки в шапке ведут себя как значки в доке: увеличение с поворотом, светящаяся рамка, подпись */
+.side-head .icon-btn { border-radius: 14px; border: 1px solid transparent; }
+.side-head .icon-btn::after { content: attr(aria-label); position: absolute; top: calc(100% + 8px); left: 50%; transform: translate(-50%, -4px); z-index: 20; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 12px; font-weight: 500; white-space: nowrap; box-shadow: 0 6px 16px rgb(0 0 0 / .2); opacity: 0; pointer-events: none; }
+.side-head .icon-btn:last-child::after { left: auto; right: 0; transform: translate(0, -4px); }
+@media (hover: hover) {
+  .side-head .icon-btn:hover { background: transparent; color: var(--ink); border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 22%, transparent); transform: scale(1.2) rotate(-5deg); z-index: 2; }
+  .side-head .icon-btn:hover::after { opacity: 1; transform: translate(-50%, 0) rotate(5deg) scale(.833); transform-origin: top center; }
+  .side-head .icon-btn:last-child:hover::after { transform: rotate(5deg) scale(.833); transform-origin: top right; }
+}
 .pip { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--panel); }
 .sup-chat { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; min-height: 140px; overflow-y: auto; padding: 4px 2px; }
 .sup-chat .b { max-width: 86%; padding: 7px 11px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
@@ -796,6 +805,9 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .input { transition: border-color .18s, box-shadow .18s, background-color .25s; }
   .input:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
   .composer textarea { transition: border-color .18s, background-color .25s; }
+  .side-head .icon-btn { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), border-color .2s, box-shadow .25s, color .2s; }
+  .side-head .icon-btn:active { transform: scale(.92); }
+  .side-head .icon-btn::after { transition: opacity .15s, transform .2s var(--ease); }
   .sbar::before, .sbar::after { animation: beam-spin 3.1s linear infinite; }
   @keyframes beam-spin { to { --beam-a: 360deg; } }
   .sbar { transition: box-shadow .25s; }
@@ -6252,6 +6264,8 @@ $("btnLeave").addEventListener("click", async () => {
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
+// у кнопок шапки своя всплывающая подпись, системная была бы второй
+for (const b of document.querySelectorAll(".side-head .icon-btn")) b.removeAttribute("title");
 $("tabSetIco").append(icon("gear"));
 $("tabChatsIco").prepend(icon("chats"));
 $("btnMic").append(icon("mic"));
