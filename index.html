@@ -2484,7 +2484,7 @@ void main() {
     </div>
   </form>
 </dialog>
-<input type="file" id="storyFile" accept="image/*,video/mp4,video/webm,video/quicktime" hidden>
+<input type="file" id="storyFile" accept="image/*,video/mp4,video/webm,video/quicktime" tabindex="-1" aria-hidden="true" style="position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0">
 
 <!-- просмотр историй -->
 <dialog id="dlgStory" class="full story-view">
@@ -5047,6 +5047,7 @@ function paintStoryRing() {
 async function loadUserStories(id) {
   const box = $("uStories"), mine = id === state.me.id;
   userStories = []; userStoriesOf = null;
+  if (mine) loadStoryQuota();
   $("uTabStories").textContent = T("Истории");
   box.replaceChildren(h("div", { class: "none" }, T("Загружаем…")));
   const { data, error } = await sb.rpc("active_stories", { p_user: id });
@@ -5141,14 +5142,21 @@ function quotaText(q) {
   const left = Math.max(0, q.limit - q.used);
   return T("Осталось на этой неделе: ") + left + T(" из ") + q.limit + (isPremium(state.profile) ? "" : T(". С премиумом — 3 истории в неделю."));
 }
-async function pickStory() {
+// Выбор файла открываем сразу по нажатию: айфон не даёт открыть его после ожидания ответа сервера.
+// Лимит известен заранее (подгружается при открытии профиля) и ещё раз проверяется после выбора файла.
+let storyQ = null;
+async function loadStoryQuota() {
   const { data, error } = await sb.rpc("story_quota");
-  if (error || !data) { toast(T("Не удалось проверить лимит историй")); return; }
-  if (data.used >= data.limit) {
-    toast(T("Лимит историй на неделю исчерпан") + (data.next_at ? T(". Следующую можно выложить ") + dFmt.format(new Date(data.next_at)) : "") + (isPremium(state.profile) ? "" : T(". С премиумом — 3 в неделю")));
-    return;
-  }
-  $("storyQuota").textContent = quotaText(data);
+  storyQ = error || !data ? null : data;
+  return storyQ;
+}
+function quotaBlocked(q) {
+  if (!q || q.used < q.limit) return false;
+  toast(T("Лимит историй на неделю исчерпан") + (q.next_at ? T(". Следующую можно выложить ") + dFmt.format(new Date(q.next_at)) : "") + (isPremium(state.profile) ? "" : T(". С премиумом — 3 в неделю")));
+  return true;
+}
+function pickStory() {
+  if (quotaBlocked(storyQ)) { loadStoryQuota(); return; }
   $("storyFile").value = "";
   $("storyFile").click();
 }
@@ -5171,6 +5179,10 @@ async function storyImage(file) {
 $("storyFile").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  const q = await loadStoryQuota();
+  if (!q) { toast(T("Не удалось проверить лимит историй")); return; }
+  if (quotaBlocked(q)) return;
+  $("storyQuota").textContent = quotaText(q);
   const pv = $("storyPrev"), pvv = $("storyPrevVid");
   if (/^video\/(mp4|webm|quicktime)$/.test(file.type)) {
     if (file.size > STORY_VIDEO_MAX) { toast(T("Видео слишком большое: можно до 20 МБ")); return; }
@@ -5207,6 +5219,7 @@ $("storyForm").addEventListener("submit", async (e) => {
     $("storyPrevVid").pause(); $("storyPrevVid").removeAttribute("src");
     $("dlgStoryNew").close();
     toast(T("История опубликована"));
+    loadStoryQuota();
     if (viewed && viewed.id === state.me.id && $("dlgUser").open) { showUserTab("stories"); loadUserStories(state.me.id); }
   } finally { btn.disabled = false; }
 });
