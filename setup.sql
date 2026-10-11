@@ -1120,3 +1120,11 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- reply_story(id, text)   — ответ уходит обычным сообщением в личный чат с автором (уважает блокировки);
 -- story_list(user)        — истории человека: просмотры и лайки видит только автор, «мой лайк» — каждый про себя;
 -- story_audience(id)      — кто посмотрел и кто лайкнул, только для автора; story_owner(id) — чья история.
+
+-- messenger_storage_cleanup: автоочистка хранилища (раз в сутки, pg_cron 'storage-cleanup' в 03:17 UTC).
+-- private.run_storage_cleanup() вызывает серверную функцию cleanup (supabase/functions/cleanup) с тем же секретом, что у push.
+-- public.cleanup_candidates(limit) и public.cleanup_mark(kind, ids) доступны только service_role.
+-- Удаляются файлы: 1) исчезнувших (спустя час) и удалённых историй — stories.purged_at;
+--   2) удалённых сообщений — у сообщения обнуляется file_path;
+--   3) видео и «кружков» старше 6 месяцев — сообщение остаётся, файл убирается, пустой текст заменяется пометкой.
+-- Фото, голосовые и обычные файлы не трогаются.
