@@ -354,6 +354,7 @@ button.wordmark.spin { opacity: .55; }
 :root[data-wall="live"] .placeholder { padding: 12px 20px; border-radius: 18px; background: color-mix(in srgb, var(--panel) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--ink); }
 .walls button.prem::after { content: "★"; position: absolute; top: 3px; right: 6px; font-size: 12px; color: var(--premium); }
 .msg { touch-action: pan-y; }
+@media (pointer: coarse) { .msg { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
 .msg.swiping { transition: none; }
 #swipeHint { position: fixed; z-index: 5; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); pointer-events: none; opacity: 0; }
 #swipeHint svg { width: 18px; height: 18px; }
@@ -4114,7 +4115,34 @@ function msgNode(m, group) {
     !temp && h("button", { class: "dots", type: "button", title: T("Действия с сообщением"), "aria-label": T("Действия с сообщением"), onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
     st && st.views != null && h("span", { class: "views", title: T("Сколько подписчиков прочитали пост") }, icon("eye"), String(st.views)),
     (m.edited_at ? T("изменено ") : "") + tFmt.format(new Date(m.created_at)), ticks));
+  if (!temp) msgMenuBind(el, group ? group[group.length - 1] : m, group);
   return el;
+}
+// то же меню, что по «⋯»: правая кнопка мыши, на телефоне — долгое нажатие на сообщение
+function msgMenuBind(el, m, group) {
+  el.addEventListener("contextmenu", (e) => {
+    // выделенный текст и поля ввода оставляем обычному меню браузера
+    if (e.target.closest("input, textarea") || String(getSelection() || "").trim()) return;
+    e.preventDefault();
+    openMsgMenu(m, group);
+  });
+  let timer = 0, sx = 0, sy = 0, held = false;
+  const stop = () => { clearTimeout(timer); timer = 0; };
+  el.addEventListener("touchstart", (e) => {
+    stop(); held = false;
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    timer = setTimeout(() => {
+      timer = 0; held = true;
+      if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {}
+      openMsgMenu(m, group);
+    }, 480);
+  }, { passive: true });
+  el.addEventListener("touchmove", (e) => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) stop(); }, { passive: true });
+  el.addEventListener("touchend", (e) => { stop(); if (held) { e.preventDefault(); setTimeout(() => { held = false; }, 400); } });
+  el.addEventListener("touchcancel", stop);
+  // после долгого нажатия палец отпускают над сообщением: фото или ссылка под ним открываться не должны
+  el.addEventListener("click", (e) => { if (held) { held = false; e.preventDefault(); e.stopPropagation(); } }, true);
 }
 function renderMsgs(newId) {
   const kids = [];
