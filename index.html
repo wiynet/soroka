@@ -905,6 +905,10 @@ textarea.input { resize: vertical; min-height: 72px; }
 .file .fn { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
 .more { align-self: center; margin-bottom: 6px; }
 .composer { display: flex; align-items: flex-end; gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--panel); border-top: 1px solid var(--line); }
+/* клавиатура открыта: отступ под «полоску» айфона не нужен, поле ввода встаёт вплотную к клавиатуре */
+html.kb .composer { padding-bottom: 6px; }
+html.kb .chan-note { padding-bottom: 14px; }
+html.kb .sv-foot { padding-bottom: 10px; }
 .composer textarea { flex: 1; min-width: 0; resize: none; max-height: 160px; padding: 9px 14px; border: 1px solid transparent; border-radius: 20px; background: var(--panel-2); }
 .composer textarea:focus { outline: none; border-color: var(--accent); }
 .composer .send { background: var(--accent); color: var(--accent-ink); }
@@ -1259,6 +1263,19 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
   document.documentElement.classList.add("ios");
   var vp = document.querySelector('meta[name="viewport"]');
   if (vp && !/maximum-scale/.test(vp.content)) vp.content += ", maximum-scale=1";
+})();
+/* Открыта ли экранная клавиатура: видимая область стала заметно ниже обычной. */
+(function () {
+  var vv = window.visualViewport;
+  if (!vv) return;
+  var full = vv.height, wide = window.innerWidth;
+  function check() {
+    if (window.innerWidth !== wide) { wide = window.innerWidth; full = vv.height; }   // повернули экран
+    if (vv.height > full) full = vv.height;
+    document.documentElement.classList.toggle("kb", full - vv.height > 120);
+  }
+  vv.addEventListener("resize", check);
+  window.addEventListener("orientationchange", function () { setTimeout(function () { full = vv.height; check(); }, 400); });
 })();
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
