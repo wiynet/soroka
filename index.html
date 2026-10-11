@@ -5224,7 +5224,7 @@ function showStory() {
   // полоски идут слева направо от старой истории к новой, как и листание
   const order = svList.length - 1 - svIdx;
   $("svBars").replaceChildren(...svList.map((_, i) => h("i", { class: i < order ? "done" : i === order ? "run" : "" }, h("b"))));
-  if (!mine && !r.seen) { r.seen = true; r.views = (Number(r.views) || 0) + 1; sb.rpc("view_story", { p_id: r.id }); }
+  if (!mine && !r.seen) { r.seen = true; r.views = (Number(r.views) || 0) + 1; sb.rpc("view_story", { p_id: r.id }).then(() => {}); }   // без .then запрос не уходит на сервер
   const run = (ms) => {
     const bar = $("svBars").querySelector(".run");
     if (bar) { bar.style.setProperty("--sv-d", ms + "ms"); bar.classList.remove("run"); void bar.offsetWidth; bar.classList.add("run"); }
