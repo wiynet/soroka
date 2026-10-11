@@ -1133,3 +1133,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- profiles.profile_bg ('blue' | 'sky' | 'pink' | 'red' | 'green' | null), grant select для authenticated.
 -- public.set_profile_bg(color): поставить цвет может только аккаунт с премиумом, убрать (null) — любой.
 -- На экране фон виден, только пока премиум действует; надетый NFT-подарок перекрывает его своим фоном.
+
+-- messenger_profile_background_admin_nft: админам доступны все фоны NFT-подарков как фон профиля.
+-- profiles.profile_bg дополнительно принимает 'nft:<id из gift_backdrops>'; set_profile_bg разрешает такое значение
+-- только админам, а пять обычных цветов — премиуму и админам.
