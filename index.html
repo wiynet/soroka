@@ -248,6 +248,7 @@ button.wordmark.spin { opacity: .55; }
 .tick { display: inline-block; width: 1em; height: 1em; margin-left: 4px; vertical-align: -0.14em; color: var(--verify); flex: none; }
 .kind { display: inline-block; width: 1em; height: 1em; margin-right: 5px; vertical-align: -0.14em; color: var(--muted); flex: none; }
 .avatar.online { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--online); }
+.avatar.story { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px #3b9cff; }
 #convSub.on, #uSeen.on { color: var(--online); font-weight: 500; }
 .msg .dots { border: 0; background: none; color: inherit; padding: 0 6px 0 0; font-size: 15px; line-height: 1; opacity: .7; cursor: pointer; }
 .msg .dots:hover { opacity: 1; }
@@ -3065,7 +3066,20 @@ function stopApp() {
 }
 
 /* ---------- список чатов ---------- */
+// у кого сейчас есть история: обновляем вместе со списком чатов, но не чаще раза в минуту
+let storyUsers = new Set(), storyUsersAt = 0;
+async function loadStoryUsers(force) {
+  if (!force && Date.now() - storyUsersAt < 60000) return;
+  storyUsersAt = Date.now();
+  const { data } = await sb.rpc("story_users");
+  if (!Array.isArray(data)) return;
+  const next = new Set(data.map((r) => r.user_id));
+  const same = next.size === storyUsers.size && [...next].every((id) => storyUsers.has(id));
+  storyUsers = next;
+  if (!same && state.started) renderList();
+}
 async function loadChats() {
+  loadStoryUsers();
   const { data, error } = await sb.from("chats")
     .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
@@ -3115,7 +3129,8 @@ function chatRow(c) {
   else if (c.last_text && c.last_sender === state.me.id) preview = T("Вы: ") + preview;
   else if (c.last_text && c.is_group) preview = memberName(c, c.last_sender) + ": " + preview;
   const av = avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? c.avatar_path : (other(c) || state.profile).avatar_path);
-  if (!c.is_group && isOnline(other(c))) av.classList.add("online");
+  // рамка вокруг аватарки в списке означает действующую историю, а не «в сети»
+  if (!c.is_group && other(c) && storyUsers.has(other(c).id)) av.classList.add("story");
   return h("button", { class: "row" + (c.id === state.activeId ? " active" : ""), type: "button", onclick: () => openChat(c.id) },
     av,
     h("span", { class: "txt" },
@@ -5168,6 +5183,7 @@ $("svDel").addEventListener("click", async () => {
   const { error } = await sb.rpc("delete_story", { p_id: r.id });
   if (error) { toast(T("Не удалось удалить историю")); return; }
   toast(T("История удалена"));
+  loadStoryUsers(true);
   $("dlgStory").close();
 });
 // новая история: сжимаем фото до 1 МБ, показываем остаток лимита
@@ -5253,6 +5269,7 @@ $("storyForm").addEventListener("submit", async (e) => {
     $("dlgStoryNew").close();
     toast(T("История опубликована"));
     loadStoryQuota();
+    loadStoryUsers(true);
     if (viewed && viewed.id === state.me.id && $("dlgUser").open) { showUserTab("stories"); loadUserStories(state.me.id); }
   } finally { btn.disabled = false; }
 });

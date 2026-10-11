@@ -1090,3 +1090,6 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   у файла — его название; текст сообщения (подпись) важнее ярлыка.
 -- private.on_message_insert и private.refresh_chat_preview считают фото и видео одного альбома (album_id) вместе.
 -- Push-функция: «📷 Фото», «🎥 Видео», «🎤 Голосовое сообщение», «📎 название файла».
+
+-- messenger_story_users: public.story_users() — id людей, у которых сейчас есть действующая (моложе 24 часов) история;
+-- по нему в списке чатов рисуется синяя рамка вокруг аватарки. SECURITY DEFINER, execute только для authenticated.
