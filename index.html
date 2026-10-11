@@ -3124,8 +3124,9 @@ function renderHead() {
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, T("участник"), T("участника"), T("участников")) : (o ? fmtSeen(o) : T("заметки для себя"));
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
-  $("convSub").classList.toggle("typing", !!ty);
-  if (ty) $("convSub").textContent = c.is_group ? ty.n + T(" печатает…") : T("печатает…");
+  // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
+  $("convSub").classList.toggle("typing", !!ty && c.is_group);
+  if (ty && c.is_group) $("convSub").textContent = ty.n + T(" печатает…");
   paintTyping();
   paintPin();
   $("btnMute").replaceChildren(icon(c.muted ? "belloff" : "bell"));
