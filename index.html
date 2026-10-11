@@ -231,7 +231,7 @@ button.wordmark.spin { opacity: .55; }
 /* наведение на чат: строка заливается градиентом, под ней мягкое свечение (только там, где есть курсор) */
 @media (hover: hover) and (pointer: fine) {
   #chatList .row { position: relative; isolation: isolate; transition: color .35s, transform .35s var(--ease); }
-  #chatList .row::before, #chatList .row::after { content: ""; position: absolute; border-radius: inherit; background: linear-gradient(45deg, var(--gf, #56CCF2), var(--gt, #2F80ED)); opacity: 0; z-index: -1; transition: opacity .45s var(--ease); pointer-events: none; }
+  #chatList .row::before, #chatList .row::after { content: ""; position: absolute; border-radius: inherit; background: linear-gradient(45deg, #3ecf8e, #1fa2a8); opacity: 0; z-index: -1; transition: opacity .45s var(--ease); pointer-events: none; }
   #chatList .row::before { inset: 0; }
   #chatList .row::after { inset: 8px 6px -4px; filter: blur(14px); z-index: -2; }
   #chatList .row.hv-now, #chatList .row.hv-now::before, #chatList .row.hv-now::after { transition: none; }
@@ -3570,8 +3570,6 @@ function chatRow(c) {
     h("span", { class: "txt" },
       h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "count" + (c.muted ? " quiet" : ""), title: T("Непрочитанные сообщения") }, state.unread.get(c.id) > 99 ? "99+" : String(state.unread.get(c.id))), c.pinAt && !state.unread.has(c.id) && pinMark())));
-  const gr = ROW_GRADS[[...String(c.id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % ROW_GRADS.length];
-  row.style.setProperty("--gf", gr[0]); row.style.setProperty("--gt", gr[1]);
   // список часто перерисовывается: строка под курсором не должна заново «разгораться»
   if (hoverChat === c.id) { row.classList.add("hv-now"); setTimeout(() => row.classList.remove("hv-now"), 80); }
   row.addEventListener("mouseenter", () => { hoverChat = c.id; });
@@ -3580,7 +3578,6 @@ function chatRow(c) {
   return row;
 }
 let hoverChat = null;
-const ROW_GRADS = [["#a955ff", "#ea51ff"], ["#56CCF2", "#2F80ED"], ["#FF9966", "#FF5E62"], ["#3ecf8e", "#1fa2a8"], ["#ff8fb4", "#f434e2"]];
 function pinMark() { const k = icon("pin"); k.classList.add("pinm"); k.setAttribute("aria-label", T("Закреплён")); return k; }
 // чат, удалённый «у себя», не виден в списке, пока в нём не появится новое сообщение
 function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt)); }
