@@ -1113,3 +1113,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- messages.video_secs integer (0..60), grant select и insert для authenticated.
 -- private.on_message_insert: video_secs сохраняется только у видеофайла; в списке чатов такое сообщение
 -- подписано «Видеосообщение». refresh_chat_preview и forward_message тоже знают про video_secs.
+
+-- messenger_story_likes_replies: лайки и ответы на истории.
+-- story_views.liked; messages.story_id (на какую историю это ответ), grant select для authenticated.
+-- like_story(id, on)      — поставить или снять лайк (свою лайкнуть нельзя);
+-- reply_story(id, text)   — ответ уходит обычным сообщением в личный чат с автором (уважает блокировки);
+-- story_list(user)        — истории человека: просмотры и лайки видит только автор, «мой лайк» — каждый про себя;
+-- story_audience(id)      — кто посмотрел и кто лайкнул, только для автора; story_owner(id) — чья история.
