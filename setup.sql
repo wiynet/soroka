@@ -1150,3 +1150,15 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.session_ok()        — жив ли текущий сеанс (сайт на отключённом устройстве сам выходит из аккаунта);
 -- public.check_my_password() — проверка текущего пароля, наружу только «да/нет», не больше 5 ошибок за 15 минут
 --                              (private.pw_fails). Хеш пароля наружу не отдаётся.
+
+-- messenger_giveaways: розыгрыши сорочек в группах и каналах.
+-- Таблицы public.giveaways (chat_id, creator_id, prize, fee, winners, ends_at, status open|done|refunded, message_id)
+-- и public.giveaway_entries (giveaway_id, user_id, won); messages.giveaway_id (grant select для authenticated).
+-- public.create_giveaway(chat, prize, winners, minutes) — устроить может тот, кто может писать в чате;
+--     со счёта списывается приз + 20 % комиссии (округление вверх); приз 10…100 000, победителей 1…10,
+--     срок от 5 минут до 7 дней, не больше трёх открытых розыгрышей на чат;
+-- public.join_giveaway(id)      — кнопка «Участвовать»: только участники чата, организатор не участвует;
+-- public.giveaway_info(ids)     — данные для карточек: приз, срок, число участников, участвую ли я, победители;
+-- private.settle_due_giveaways() — итоги: случайные победители среди тех, кто всё ещё в чате и не заблокирован,
+--     приз делится поровну (остаток — первому); если никто не участвовал, приз (без комиссии) возвращается организатору;
+-- public.settle_giveaways()     — то же по запросу с сайта; pg_cron 'settle-giveaways' подводит итоги раз в минуту.
