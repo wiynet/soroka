@@ -1077,3 +1077,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   delete_story(id)         — владелец или админ (помечает deleted_at);
 --   user_stories(user)       — публикации человека со счётчиком просмотров и признаком «я видел»;
 --   view_story(id)           — засчитать просмотр (свои не считаются, повторные тоже).
+
+-- messenger_stories_video_and_expiry: видео в историях и срок жизни 24 часа.
+-- Открытый бакет storage `stories` (картинки и видео mp4/webm/mov до 20 МБ), политика stories_upload: загрузка только в папку <uid>/.
+-- stories.kind ('image' | 'video') и stories.bucket ('stories' у новых, 'avatars' у самых первых).
+-- add_story: вид определяется по расширению файла; active_stories(user) — истории не старше 24 часов
+-- (вместе с kind и bucket); user_stories и view_story тоже учитывают только последние сутки.
+-- Недельный лимит прежний: 1 история, с премиумом 3.
