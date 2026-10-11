@@ -181,7 +181,19 @@ button { cursor: pointer; }
 button.wordmark { border: 0; background: none; padding: 0; color: inherit; text-align: left; cursor: pointer; }
 button.wordmark.spin { opacity: .55; }
 .search { padding: 4px 12px 10px; }
-.search .input { border-radius: 999px; background: var(--panel-2); border-color: transparent; padding: 9px 16px; }
+/* строка поиска: по краю бежит цветной луч */
+@property --beam-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.sbar { position: relative; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 13px; border-radius: 20px; background: var(--panel-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent), inset 0 0 50px 0 rgb(255 255 255 / .02); cursor: text; }
+.sbar svg { flex: none; opacity: .4; }
+.sbar:focus-within svg { opacity: .8; }
+.sbar::before, .sbar::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--beam-a), transparent 0 58%, #4f8cff 68%, #b06cff 76%, #ff6fa8 84%, #ffb35c 91%, #fff 95%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.sbar::after { filter: blur(6px); opacity: .7; }
+.search .sbar .input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: none; font-size: 15px; }
+.search .sbar .input:focus { outline: none; }
+.search .sbar .input::placeholder { color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.search .sbar .input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
 .list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px calc(8px + env(safe-area-inset-bottom, 0px)); }
 .list-label { padding: 12px 10px 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 10px; border: 0; border-radius: 12px; background: transparent; text-align: left; }
@@ -784,6 +796,9 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .input { transition: border-color .18s, box-shadow .18s, background-color .25s; }
   .input:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
   .composer textarea { transition: border-color .18s, background-color .25s; }
+  .sbar::before, .sbar::after { animation: beam-spin 3.1s linear infinite; }
+  @keyframes beam-spin { to { --beam-a: 360deg; } }
+  .sbar { transition: box-shadow .25s; }
   .auth-tilt { animation: rise .8s var(--ease) both; }
   .auth-card { transition: transform .25s ease-out; }
   .auth-logo { animation: logo-pop .8s cubic-bezier(.34, 1.56, .64, 1) both; }
@@ -1486,7 +1501,10 @@ void main() {
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
     </div>
-    <div class="search"><input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off"></div>
+    <div class="search"><label class="sbar">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="input" id="search" type="search" placeholder="Поиск по имени или @юзернейму" autocomplete="off">
+    </label></div>
     <div class="list" id="chatList"></div>
     <section id="dlgSettings" class="set-page" hidden>
       <div class="dlg">
