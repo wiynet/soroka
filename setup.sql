@@ -1068,3 +1068,12 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.profile_channel(p_user): канал для показа в профиле (название, подписчики, последний пост);
 --   пусто, если канал стал частным или человек им больше не управляет.
 -- Обе SECURITY DEFINER, search_path = '', execute только для authenticated.
+
+-- messenger_stories: истории (публикации в профиле).
+-- Таблицы public.stories (user_id, file_path, caption, created_at, deleted_at) и public.story_views (story_id, user_id);
+-- RLS включён, прямого доступа нет — только через функции (SECURITY DEFINER, search_path = '', execute для authenticated):
+--   story_quota()            — лимит и сколько использовано за 7 дней: 1 в неделю, с премиумом 3 (удалённые тоже считаются);
+--   add_story(path, caption) — путь только вида <uid>/story-<число>.(webp|jpg|png) в бакете avatars, подпись до 200 знаков;
+--   delete_story(id)         — владелец или админ (помечает deleted_at);
+--   user_stories(user)       — публикации человека со счётчиком просмотров и признаком «я видел»;
+--   view_story(id)           — засчитать просмотр (свои не считаются, повторные тоже).
