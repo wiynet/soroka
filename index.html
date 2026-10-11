@@ -4126,6 +4126,14 @@ function msgMenuBind(el, m, group) {
     e.preventDefault();
     openMsgMenu(m, group);
   });
+  // только на компьютере: двойной щелчок левой кнопкой — ответ на сообщение
+  el.addEventListener("dblclick", (e) => {
+    if (e.button !== 0 || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if ($("composer").hidden || e.target.closest("button, a, img, video, audio, input, textarea")) return;
+    e.preventDefault();
+    getSelection().removeAllRanges();   // двойной щелчок выделяет слово: снимаем выделение
+    startReply(m);
+  });
   let timer = 0, sx = 0, sy = 0, held = false;
   const stop = () => { clearTimeout(timer); timer = 0; };
   el.addEventListener("touchstart", (e) => {
