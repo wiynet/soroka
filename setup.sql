@@ -1235,3 +1235,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.admin_delete_gift(gift) — только главный админ (is_chief_admin) и только коллекционный (NFT) подарок:
 -- подарок снимается с профиля владельца и помечается удалённым (sold_at, sold_for = 0), как при обычном удалении;
 -- если он стоял на аукционе, аукцион отменяется, ставка возвращается покупателю.
+
+-- messenger_transfer_fee_and_upgrade_to_fee_receiver:
+-- public.transfer_gift — передача подарка другому человеку теперь стоит 25 сорочек (private.spend),
+--   они зачисляются получателю комиссий (private.pay_fee, сейчас @user); без 25 сорочек передать нельзя ('insufficient').
+-- public.upgrade_gift — плата за улучшение подарка тоже зачисляется получателю комиссий.
