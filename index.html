@@ -7489,7 +7489,7 @@ function renderSettings() {
 }
 function saveSettings() {
   try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
-  window.applyMestarioSettings();
+  window.applySorokaSettings();
   renderSettings();
 }
 $("dlgSettings").addEventListener("click", (e) => {
