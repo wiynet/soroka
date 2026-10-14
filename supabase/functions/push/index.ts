@@ -1,4 +1,4 @@
-// Сорока: отправка push-уведомлений о новом сообщении.
+// Mestario: отправка push-уведомлений о новом сообщении.
 // Вызывается только триггером базы; доступ проверяется секретом в заголовке x-hook-secret.
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .select("id,endpoint,p256dh,auth").in("user_id", targets).eq("enabled", true);
     if (!subs?.length) return new Response("no devices");
 
-    const who = sender?.display_name ?? "Сорока";
+    const who = sender?.display_name ?? "Mestario";
     const title = chat.is_group ? (chat.title || "Группа") : who;
     const body = (chat.is_group && !chat.is_channel ? who + ": " : "") + preview(m);
     const payload = JSON.stringify({ title, body, chat_id: chat.id, url: "/#c-" + chat.id });

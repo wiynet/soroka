@@ -1,9 +1,9 @@
-/* Сорока: сервис-воркер. Нужен, чтобы сайт открывался как приложение, работал без сети
+/* Mestario: сервис-воркер. Нужен, чтобы сайт открывался как приложение, работал без сети
    и показывал уведомления о новых сообщениях, даже когда вкладка или приложение закрыты.
    Страницу всегда сначала берём из сети, поэтому обновления приходят сразу;
    запросы к базе и библиотекам сюда не попадают. */
-const CACHE = "soroka-v3";
-const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+const CACHE = "mestario-v1";
+const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/mest.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
@@ -33,14 +33,14 @@ self.addEventListener("fetch", (e) => {
   );
 });
 
-// новое сообщение: если Сорока сейчас открыта перед глазами, уведомление не нужно
+// новое сообщение: если Mestario сейчас открыта перед глазами, уведомление не нужно
 self.addEventListener("push", (e) => {
   let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "Сорока", body: e.data ? e.data.text() : "" }; }
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "Mestario", body: e.data ? e.data.text() : "" }; }
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) return;
-    await self.registration.showNotification(d.title || "Сорока", {
+    await self.registration.showNotification(d.title || "Mestario", {
       body: d.body || "Новое сообщение",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
@@ -51,7 +51,7 @@ self.addEventListener("push", (e) => {
   })());
 });
 
-// нажатие на уведомление: открываем нужный чат в уже открытой Сороке или в новом окне
+// нажатие на уведомление: открываем нужный чат в уже открытой Mestario или в новом окне
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const data = e.notification.data || {};

@@ -1240,3 +1240,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.transfer_gift — передача подарка другому человеку теперь стоит 25 сорочек (private.spend),
 --   они зачисляются получателю комиссий (private.pay_fee, сейчас @user); без 25 сорочек передать нельзя ('insufficient').
 -- public.upgrade_gift — плата за улучшение подарка тоже зачисляется получателю комиссий.
+
+-- mestario_rebrand_texts: проект переименован в Mestario, валюта — Mest (не склоняется).
+-- private.coins_text(n) теперь возвращает «N Mest»; тексты в create_giveaway и delete_my_account обновлены.
+-- Старые записи истории и сообщения пользователей не менялись. Подарок «Сорока» (magpie) — это птица, его имя оставлено.

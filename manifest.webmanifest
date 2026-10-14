@@ -1,7 +1,7 @@
 {
-  "name": "Сорока",
-  "short_name": "Сорока",
-  "description": "Мессенджер: личные чаты, группы, каналы, подарки и сорочки.",
+  "name": "Mestario",
+  "short_name": "Mestario",
+  "description": "Мессенджер: личные чаты, группы, каналы, подарки и Mest.",
   "lang": "ru",
   "id": "/",
   "start_url": "/",
