@@ -13,7 +13,7 @@ async function config() {
   const { data, error } = await sb.rpc("push_server_config");
   if (error || !data) throw new Error("no push config: " + (error?.message ?? "empty"));
   cfg = data;
-  webpush.setVapidDetails("https://soroka.lol", cfg!.vapid_public, cfg!.vapid_private);
+  webpush.setVapidDetails("https://mestario.top", cfg!.vapid_public, cfg!.vapid_private);
   return cfg!;
 }
 
