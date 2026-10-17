@@ -1504,7 +1504,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=51cab0d895"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e65acf0680"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3095,7 +3095,7 @@ void main() {
 <dialog id="dlgInvite">
   <div class="dlg">
     <h2>Пригласить друзей</h2>
-    <div class="small muted">Отправьте ссылку другу. Когда он зарегистрируется по ней, вы оба получите по 25 Mest.</div>
+    <div class="small muted">Отправьте ссылку другу. Когда он зарегистрируется по ней, вы оба получите по 25 Mest. Через приглашения можно заработать до 100 Mest — это 4 друга; дальше друзья всё равно получают свой бонус.</div>
     <div class="ref-link" id="refLink"></div>
     <div class="actions" style="justify-content:flex-start">
       <button class="btn" type="button" id="refCopy">Скопировать</button>
@@ -3898,6 +3898,7 @@ async function startApp() {
   await loadChats();
   loadFolders();
   claimDaily();
+  setTimeout(prefetchChats, 200);
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
   flash($("chatList"), 900);
@@ -3923,6 +3924,7 @@ async function tick() {
   checkSite();
   if (state.activeId) { ensureGiveaways(true); ensurePolls(true); loadScheduled(); }
   claimDaily();
+  prefetchChats();
   sb.rpc("touch_presence").then(() => {});
   const { data } = await sb.from("profiles").select("banned_at,ban_reason").eq("id", state.me.id).maybeSingle();
   if (!state.started) return;
@@ -3946,7 +3948,7 @@ function stopApp() {
   outbox.length = 0;
   storyFeed = new Map(); storyUsers = new Set(); storyFeedKey = ""; storyUsersAt = 0; storyBarSig = ""; $("storyBar").replaceChildren();
   state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear(); state.blocked.clear();
-  mentionChats.clear(); folders = []; dailyKey = ""; closeMention();
+  mentionChats.clear(); folders = []; dailyKey = ""; closeMention(); msgCache.clear();
   $("dlgSettings").close();
   vpnLink = null; $("vpnLink").value = ""; $("vpnLink").hidden = true;
   if (recorder) stopRecording(false);
@@ -4409,6 +4411,7 @@ async function openChat(id) {
   if (searchMode) setSearchMode(false);   // открыли чат — поиск закрывается
   const c = state.chats.get(id);
   if (!c) return;
+  cacheActive();   // переписка, из которой ушли, остаётся в памяти — вернуться в неё можно мгновенно
   state.activeId = id;
   state.msgs = []; state.hasMore = false;
   state.unread.delete(id);
@@ -4429,12 +4432,33 @@ async function openChat(id) {
   $("app").classList.add("chat-open");
   renderHead();
   renderList();
-  $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
-  const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null).gt("id", (state.chats.get(id) || {}).cleared || 0).order("id", { ascending: false }).limit(PAGE);
+  const pendingHere = () => outbox.filter((t) => t.chat_id === id && !t.done);   // недоставленное остаётся видно
+  // переписка уже загружена заранее: показываем сразу, а свежую версию сверяем в фоне
+  const cached = msgCache.get(id);
+  if (cached) {
+    state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
+    state.hasMore = cached.hasMore;
+    renderMsgs(); paintPin(); scrollDown();
+    ensureReplies(); loadScheduled(); markReadSoon();
+    if (matchMedia("(min-width: 761px)").matches) $("text").focus();
+  } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
+  const fresh = await fetchPage(id);
   if (state.activeId !== id) return;
-  if (error) { $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Не удалось загрузить сообщения."))); return; }
-  state.msgs = data.reverse().filter(notExpired).concat(outbox.filter((t) => t.chat_id === id && !t.done));   // недоставленное остаётся видно
-  state.hasMore = data.length === PAGE;
+  if (!fresh) { if (!cached) $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Не удалось загрузить сообщения."))); return; }
+  msgCache.set(id, fresh);
+  if (cached) {
+    const sig = (list) => list.map((m) => m.id + ":" + (m.edited_at || "")).join(",");
+    if (sig(fresh.msgs) === sig(state.msgs.filter((m) => !isTemp(m)))) return;
+    const stick = nearBottom();
+    state.msgs = fresh.msgs.concat(pendingHere());
+    state.hasMore = fresh.hasMore;
+    renderMsgs(); paintPin();
+    if (stick) scrollDown();
+    ensureReplies();
+    return;
+  }
+  state.msgs = fresh.msgs.concat(pendingHere());
+  state.hasMore = fresh.hasMore;
   renderMsgs();
   paintPin();
   flash($("msgs"), 450);
@@ -4446,6 +4470,7 @@ async function openChat(id) {
 }
 function closeChat() {
   if (recorder) stopRecording(false);
+  cacheActive();
   leaveTyping();
   closeFind();
   state.activeId = null; state.msgs = [];
@@ -5286,7 +5311,7 @@ $("findText").addEventListener("focus", () => { if ($("findList").children.lengt
 function onChanged(m) {
   if (!state.started) return;
   reloadSoon();
-  if (m.chat_id !== state.activeId) return;
+  if (m.chat_id !== state.activeId) { cacheChanged(m); return; }
   const i = state.msgs.findIndex((x) => x.id === m.id);
   if (i < 0) return;
   if (m.deleted_at) {
@@ -5309,7 +5334,7 @@ function onIncoming(m) {
   if (m.chat_id === state.activeId) {
     addMsg(m);
     if (document.hidden && m.sender_id !== state.me.id) bumpUnread(m.chat_id);
-  } else if (m.sender_id !== state.me.id) bumpUnread(m.chat_id);
+  } else { cacheIncoming(m); if (m.sender_id !== state.me.id) bumpUnread(m.chat_id); }
   renderList();
 }
 document.addEventListener("visibilitychange", async () => {
@@ -5317,7 +5342,9 @@ document.addEventListener("visibilitychange", async () => {
   // После сна телефона часть событий могла потеряться: догружаем.
   if (state.activeId) state.unread.delete(state.activeId);
   markReadSoon();
+  for (const k of [...msgCache.keys()]) if (k !== state.activeId) msgCache.delete(k);
   await loadChats();
+  prefetchChats();
   const id = state.activeId;
   if (!id || !state.msgs.length) return;
   const { data } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null).gt("id", lastRealId()).order("id").limit(200);
@@ -8748,6 +8775,51 @@ async function claimDaily() {
   refreshMe();
 }
 
+/* ---------- переписки загружаются заранее ---------- */
+// последние сообщения 20 верхних чатов скачиваются сразу после входа, поэтому чат открывается без ожидания;
+// дальше заготовки обновляются сами по новым сообщениям
+const msgCache = new Map();   // chat_id → { msgs, hasMore }
+function cacheActive() {
+  if (!state.activeId || !state.chats.has(state.activeId)) return;
+  const real = state.msgs.filter((m) => !isTemp(m));
+  if (!real.length && !msgCache.has(state.activeId)) return;
+  msgCache.set(state.activeId, { msgs: real.slice(-PAGE * 2), hasMore: state.hasMore || real.length > PAGE * 2 });
+}
+async function fetchPage(id) {
+  const c = state.chats.get(id);
+  const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null)
+    .gt("id", (c || {}).cleared || 0).order("id", { ascending: false }).limit(PAGE);
+  if (error || !Array.isArray(data)) return null;
+  return { msgs: data.slice().reverse().filter(notExpired), hasMore: data.length === PAGE };
+}
+let prefetching = false;
+async function prefetchChats() {
+  if (prefetching || !state.started) return;
+  prefetching = true;
+  try {
+    const list = [...state.chats.values()].filter((c) => !chatHidden(c) && !c.archived && c.last_text && !msgCache.has(c.id) && c.id !== state.activeId)
+      .sort((a, b) => ((a.pinAt ? 0 : 1) - (b.pinAt ? 0 : 1)) || (a.last_at < b.last_at ? 1 : -1)).slice(0, 20);
+    for (let i = 0; i < list.length; i += 4) {   // по 4 запроса за раз, чтобы не мешать остальному
+      if (!state.started) return;
+      const part = list.slice(i, i + 4), got = await Promise.all(part.map((c) => fetchPage(c.id)));
+      got.forEach((g, k) => { const id = part[k].id; if (g && !msgCache.has(id) && id !== state.activeId) msgCache.set(id, g); });
+    }
+  } finally { prefetching = false; }
+}
+function cacheIncoming(m) {
+  const e = msgCache.get(m.chat_id);
+  if (!e || e.msgs.some((x) => x.id === m.id)) return;
+  e.msgs.push(m);
+  e.msgs.sort((a, b) => a.id - b.id);
+}
+function cacheChanged(m) {
+  const e = msgCache.get(m.chat_id);
+  if (!e) return;
+  const i = e.msgs.findIndex((x) => x.id === m.id);
+  if (i < 0) return;
+  if (m.deleted_at) e.msgs.splice(i, 1); else e.msgs[i] = m;
+}
+
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
 $("uBack").append(icon("back"));
@@ -9568,7 +9640,7 @@ async function openInvite() {
   const { data } = await sb.rpc("my_referrals");
   const r = (Array.isArray(data) ? data[0] : data) || { invited: 0, rewarded: 0 };
   $("refCount").textContent = String(r.invited || 0);
-  $("refEarn").textContent = String((Number(r.rewarded) || 0) * 25);
+  $("refEarn").textContent = Math.min(100, (Number(r.rewarded) || 0) * 25) + " / 100";
 }
 $("refCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(refUrl()); toast(T("Ссылка скопирована")); } catch (e) { toast(T("Не удалось скопировать")); } });
 $("refShare").addEventListener("click", () => { navigator.share({ title: "Mestario", text: T("Заходи ко мне в Mestario — получишь 25 Mest при регистрации"), url: refUrl() }).catch(() => {}); });
