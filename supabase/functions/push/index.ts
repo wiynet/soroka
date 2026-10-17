@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     if (input.selftest) return new Response(JSON.stringify(await selftest()), { headers: { "Content-Type": "application/json" } });
 
     const { data: m } = await sb.from("messages")
-      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,sticker_id,deleted_at")
+      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,sticker_id,scheduled,deleted_at")
       .eq("id", input.message_id).maybeSingle();
     if (!m || m.deleted_at) return new Response("skip");
 
@@ -63,7 +63,9 @@ Deno.serve(async (req) => {
       sb.from("chat_members").select("user_id,muted").eq("chat_id", m.chat_id).is("left_at", null),
     ]);
     if (!chat) return new Response("skip");
-    const targets = (members ?? []).filter((x: any) => x.user_id !== m.sender_id && !x.muted).map((x: any) => x.user_id);
+    let targets = (members ?? []).filter((x: any) => x.user_id !== m.sender_id && !x.muted).map((x: any) => x.user_id);
+    // напоминание в «Избранном» (отложенное сообщение самому себе) тоже приходит уведомлением
+    if (!targets.length && m.scheduled && (members ?? []).length === 1 && members![0].user_id === m.sender_id) targets = [m.sender_id];
     if (!targets.length) return new Response("nobody");
 
     const { data: subs } = await sb.from("push_subscriptions")
@@ -71,7 +73,8 @@ Deno.serve(async (req) => {
     if (!subs?.length) return new Response("no devices");
 
     const who = sender?.display_name ?? "Mestario";
-    const title = chat.is_group ? (chat.title || "Группа") : who;
+    const self = !chat.is_group && targets.length === 1 && targets[0] === m.sender_id;
+    const title = self ? "⏰ Напоминание" : chat.is_group ? (chat.title || "Группа") : who;
     const body = (chat.is_group && !chat.is_channel ? who + ": " : "") + preview(m);
     const payload = JSON.stringify({ title, body, chat_id: chat.id, url: "/#c-" + chat.id });
 

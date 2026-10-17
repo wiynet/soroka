@@ -1281,3 +1281,28 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- profiles.hide_crown / hide_tick (grant select); public.set_badge_hidden(kind 'crown'|'tick', hide).
 -- Скрытый значок другие не видят, а владелец видит его полупрозрачным и может вернуть тем же нажатием.
 -- Прежняя общая настройка hide_badges (Настройки → Конфиденциальность) убрана с сайта; колонка осталась без использования.
+
+-- mestario_polls + mestario_poll_answers: опросы в группах и каналах.
+-- public.polls (chat_id, creator_id, question, options jsonb, multiple, closed_at); messages.poll_id (grant select).
+-- public.poll_answers (poll_id, user_id, options int[]) — голос одной строкой, пустой массив = голос отозван.
+-- create_poll(chat, question, options[], multiple) — 2–10 вариантов, только кто может писать в чате;
+-- vote_poll(poll, options[]); close_poll(poll) — автор или админ чата; poll_results(ids[]) — итоги и мой выбор.
+-- (Таблица poll_votes из первой версии не используется.)
+
+-- mestario_scheduled_messages (+ cron 'send-scheduled' раз в минуту, + флаг messages.scheduled):
+-- public.scheduled_messages; schedule_message(chat, body, at) — от 30 секунд до года вперёд, до 50 в очереди;
+-- cancel_scheduled(id); private.send_due_scheduled() отправляет вовремя, если человек всё ещё может писать в чат.
+-- В «Избранном» это напоминание: push-функция присылает его уведомлением «⏰ Напоминание».
+
+-- mestario_referrals: приглашения. Ссылка ?ref=юзернейм; после регистрации сайт вызывает claim_referral(username)
+-- (в течение суток после создания профиля, один раз). Оба получают по 25 Mest, если адреса регистрации разные
+-- и у пригласившего меньше 50 наград. private.referrals; profiles.ref_by; my_referrals() — статистика.
+
+-- mestario_pin_code: ПИН-код. private.user_pins (хеш), private.pin_sessions (сеансы, где ПИН введён), private.pin_fails.
+-- pin_status(), verify_pin(pin) (5 ошибок за 15 минут), set_pin(new, old_pin, password) — поставить, сменить
+-- или убрать (new = null) по старому ПИН или паролю. Пока ПИН на устройстве не введён, private.is_banned()
+-- возвращает true — сервер закрывает чаты и действия, а не только экран.
+
+-- mestario_scheduled_flag_and_backups: резервные копии. Закрытый бакет backups, функция supabase/functions/backup,
+-- private.run_backup() и pg_cron 'daily-backup' (02:41 UTC). Каждая таблица public → <дата>/<таблица>.json.gz,
+-- хранится 14 дней. Файлы (фото, видео) и схема private в копию не входят. Копия лежит в том же проекте Supabase.
