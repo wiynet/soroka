@@ -442,6 +442,7 @@ button.wordmark.spin { opacity: .55; }
 .site-banner b { color: var(--danger); }
 .site-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; }
 .site-row .tx { flex: 1; min-width: 0; font-size: 14px; }
+.pbdg.vtick { margin: 0 4px 0 0 !important; }
 .pbdg { display: inline-block; width: 1em; height: 1em; margin-left: 4px; vertical-align: -0.14em; flex: none; }
 .pbdg.photo { border-radius: 50%; object-fit: cover; }
 .pbdg.mine, .star.mine { cursor: pointer; }
@@ -3195,12 +3196,13 @@ function marks(p) {
   if (worn) out.push(h("span", { class: "worn", role: "img", title: worn.title, "aria-label": T("Надет подарок: ") + worn.title }, worn.m.emoji));
   // надетый NFT заменяет значок премиума (как статус в Telegram)
   if (p && isPremium(p) && !worn) out.push(premBadge(p));
-  // кристальная галочка за ником: админы сайта и те, кому админ выдал подтверждение
-  if (p && (p.verified || p.is_admin)) {
-    const t = h("img", { class: "pbdg gem vtick", src: GEMS["gem-tick"], alt: "", role: "img", title: p.is_admin ? T("Администратор Mestario") : T("Подтверждённый аккаунт"), "aria-label": p.is_admin ? T("Администратор Mestario") : T("Подтверждённый аккаунт") });
-    out.push(t);
-  }
   return out;
+}
+// кристальная галочка перед ником: админы сайта и те, кому админ выдал подтверждение
+function preTick(p) {
+  if (!p || !(p.verified || p.is_admin)) return null;
+  const label = p.is_admin ? T("Администратор Mestario") : T("Подтверждённый аккаунт");
+  return h("img", { class: "pbdg gem vtick", src: GEMS["gem-tick"], alt: "", role: "img", title: label, "aria-label": label });
 }
 /* ---------- значок премиума: форма и цвет или своя картинка ---------- */
 const GEMS = { "gem-tick": "badge-tick.png", "gem-crown": "badge-crown.png" };
@@ -3834,7 +3836,7 @@ function chatRow(c) {
   const row = h("button", { class: "row" + (c.id === state.activeId ? " active" : "") + (c.pinAt ? " pinrow" : ""), type: "button", onclick: (e) => { if (row._held) { row._held = false; e.preventDefault(); return; } openChat(c.id); } },
     av,
     h("span", { class: "txt" },
-      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), !c.is_group && preTick(other(c)), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), state.unread.has(c.id) && h("span", { class: "count" + (c.muted ? " quiet" : ""), title: T("Непрочитанные сообщения") }, state.unread.get(c.id) > 99 ? "99+" : String(state.unread.get(c.id))), c.pinAt && !state.unread.has(c.id) && pinMark())));
   // список часто перерисовывается: строка под курсором не должна заново «разгораться»
   if (hoverChat === c.id) { row.classList.add("hv-now"); setTimeout(() => row.classList.remove("hv-now"), 80); }
@@ -3953,7 +3955,7 @@ function archiveRow(arch) {
 function personRow(p, onclick, picked) {
   return h("button", { class: "row" + (picked ? " picked" : ""), type: "button", onclick },
     avatar(p.display_name, p.id, true, p.avatar_path),
-    h("span", { class: "txt" }, tint(h("span", { class: "name" }, p.display_name, marks(p)), p), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.is_chief ? T(" · главный админ") : p.is_admin ? T(" · админ") : "") + (p.banned_at ? T(" · заблокирован") : "")))),
+    h("span", { class: "txt" }, tint(h("span", { class: "name" }, preTick(p), p.display_name, marks(p)), p), h("span", { class: "sub" }, h("span", {}, "@" + p.username + (p.is_chief ? T(" · главный админ") : p.is_admin ? T(" · админ") : "") + (p.banned_at ? T(" · заблокирован") : "")))),
     picked != null && h("span", { class: "check" }));
 }
 let searchSeq = 0;
@@ -4120,7 +4122,7 @@ function renderHead() {
   if (!c) return;
   const o = other(c);
   $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path));
-  $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), chatTitle(c), ...(c.is_group ? [] : marks(o)));
+  $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.is_group || !preTick(o) ? [] : [preTick(o)]), chatTitle(c), ...(c.is_group ? [] : marks(o)));
   tint($("convName"), c.is_group ? null : o);
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, T("участник"), T("участника"), T("участников")) : (o ? fmtSeen(o) : T("заметки для себя"));
@@ -4307,7 +4309,7 @@ function msgNode(m, group) {
   const el = h("div", { class: "msg" + (mine ? " mine" : "") + (temp ? (m.failed ? " failed" : " pending") : ""), "data-id": m.id });
   if (c && c.is_group && !c.is_channel && !mine) {
     const who = c.members.find((p) => p.id === m.sender_id);
-    el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, memberName(c, m.sender_id), marks(who), roleTag(c, m.sender_id)), who));
+    el.append(tint(h("button", { class: "author", type: "button", onclick: () => { if (who) showUser(who); } }, preTick(who), memberName(c, m.sender_id), marks(who), roleTag(c, m.sender_id)), who));
   }
   if (m.forwarded_from) el.append(h("div", { class: "fwd" }, T("Переслано от: ") + (state.names.get(m.forwarded_from) || "…")));
   if (group) {
@@ -6301,7 +6303,7 @@ function paintUser(p) {
     av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(p.avatar_path); $("viewer").showModal(); });
   }
   $("uAvatar").replaceChildren(av);
-  $("uName").replaceChildren(p.display_name, ...marks(p));
+  $("uName").replaceChildren(...[preTick(p)].filter(Boolean), p.display_name, ...marks(p));
   tint($("uName"), p);
   // надетый подарок рядом с именем: по нажатию открывается его карточка
   const wornEl = $("uName").querySelector(".worn");
@@ -7536,7 +7538,7 @@ function refreshMe() {
   $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
   $("avRemove").hidden = !p.avatar_path;
   $("myProfileAv").replaceChildren(avatar(p.display_name, p.id, false, p.avatar_path));
-  $("myProfileName").replaceChildren(p.display_name, ...marks(p));
+  $("myProfileName").replaceChildren(...[preTick(p)].filter(Boolean), p.display_name, ...marks(p));
   $("pfNft").replaceChildren(...nftChips(p));
   $("pfNft").hidden = !nfts(p).length;
 }
@@ -7856,7 +7858,7 @@ $("btnSettings").addEventListener("click", () => {
   setPageNow = "menu";
   showSetPage("menu");
   $("setMeAv").replaceChildren(avatar(state.profile.display_name, state.profile.id, false, state.profile.avatar_path));
-  $("setMeName").replaceChildren(state.profile.display_name, ...marks(state.profile));
+  $("setMeName").replaceChildren(...[preTick(state.profile)].filter(Boolean), state.profile.display_name, ...marks(state.profile));
   $("setMeUser").textContent = "@" + state.profile.username + (state.profile.num ? " · ID " + state.profile.num : "");
   $("sv_accounts").textContent = String(accounts().length || 1);
   $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл.");
