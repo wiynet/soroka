@@ -1276,3 +1276,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 
 -- mestario_hide_badges: profiles.hide_badges — спрятать свои значки у ника (корону премиума и галочку).
 -- public.set_hide_badges(on): включить может премиум или админ, выключить — любой. Надетый NFT при этом остаётся виден.
+
+-- mestario_hide_badges: свои значки у ника можно скрыть нажатием на них.
+-- profiles.hide_crown / hide_tick (grant select); public.set_badge_hidden(kind 'crown'|'tick', hide).
+-- Скрытый значок другие не видят, а владелец видит его полупрозрачным и может вернуть тем же нажатием.
+-- Прежняя общая настройка hide_badges (Настройки → Конфиденциальность) убрана с сайта; колонка осталась без использования.
