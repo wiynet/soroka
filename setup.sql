@@ -1258,3 +1258,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Сообщение-стикер: клиент передаёт messages.sticker_id, триггер on_message_insert подставляет sticker_path сам
 --   (чужой путь подсунуть нельзя), очищает текст и пишет в список чатов «Стикер».
 --   Ограничение messages_not_empty допускает сообщение, где есть только стикер.
+
+-- mestario_badges_gem_only: значки премиума упрощены.
+-- profiles.badge_style: 'gem-tick' (кристальная галочка, по умолчанию) | 'gem-crown' (кристальная корона) | 'photo'.
+-- 'photo' (своя картинка) — только админы сайта; set_badge отклоняет его остальным ('admins only').
+-- Прежние формы и цвета убраны, у кого они были — значок сброшен на стандартный.
