@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     if (input.selftest) return new Response(JSON.stringify(await selftest()), { headers: { "Content-Type": "application/json" } });
 
     const { data: m } = await sb.from("messages")
-      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,sticker_id,scheduled,deleted_at")
+      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,sticker_id,scheduled,mentions,deleted_at")
       .eq("id", input.message_id).maybeSingle();
     if (!m || m.deleted_at) return new Response("skip");
 
@@ -63,25 +63,31 @@ Deno.serve(async (req) => {
       sb.from("chat_members").select("user_id,muted").eq("chat_id", m.chat_id).is("left_at", null),
     ]);
     if (!chat) return new Response("skip");
-    let targets = (members ?? []).filter((x: any) => x.user_id !== m.sender_id && !x.muted).map((x: any) => x.user_id);
+    // упомянутым (@ник) уведомление приходит, даже если чат заглушён
+    const mentioned = new Set<string>((m.mentions ?? []) as string[]);
+    let targets = (members ?? []).filter((x: any) => x.user_id !== m.sender_id && (!x.muted || mentioned.has(x.user_id))).map((x: any) => x.user_id);
     // напоминание в «Избранном» (отложенное сообщение самому себе) тоже приходит уведомлением
     if (!targets.length && m.scheduled && (members ?? []).length === 1 && members![0].user_id === m.sender_id) targets = [m.sender_id];
     if (!targets.length) return new Response("nobody");
 
     const { data: subs } = await sb.from("push_subscriptions")
-      .select("id,endpoint,p256dh,auth").in("user_id", targets).eq("enabled", true);
+      .select("id,user_id,endpoint,p256dh,auth").in("user_id", targets).eq("enabled", true);
     if (!subs?.length) return new Response("no devices");
 
     const who = sender?.display_name ?? "Mestario";
     const self = !chat.is_group && targets.length === 1 && targets[0] === m.sender_id;
     const title = self ? "⏰ Напоминание" : chat.is_group ? (chat.title || "Группа") : who;
     const body = (chat.is_group && !chat.is_channel ? who + ": " : "") + preview(m);
-    const payload = JSON.stringify({ title, body, chat_id: chat.id, url: "/#c-" + chat.id });
+    const payloadFor = (uid: string) => JSON.stringify({
+      title: mentioned.has(uid) && chat.is_group ? "@ " + title : title,
+      body: mentioned.has(uid) && chat.is_group ? who + " упомянул(а) вас: " + preview(m) : body,
+      chat_id: chat.id, url: "/#c-" + chat.id,
+    });
 
     let sent = 0;
     await Promise.all(subs.map(async (s: any) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600, urgency: "high" });
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payloadFor(s.user_id), { TTL: 3600, urgency: "high" });
         sent++;
       } catch (e: any) {
         // устройство отписалось или адрес устарел: больше туда не шлём

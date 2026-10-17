@@ -1,8 +1,10 @@
 /* Mestario: сервис-воркер. Нужен, чтобы сайт открывался как приложение, работал без сети
    и показывал уведомления о новых сообщениях, даже когда вкладка или приложение закрыты.
-   Страницу всегда сначала берём из сети, поэтому обновления приходят сразу;
-   запросы к базе и библиотекам сюда не попадают. */
-const CACHE = "mestario-v1";
+   Страницу всегда сначала берём из сети, поэтому обновления приходят сразу.
+   Неизменяемое (библиотека с номером версии, шрифты, словарь с отпечатком, картинки) берём из кэша:
+   повторный вход не скачивает их заново. Запросы к базе сюда не попадают. */
+const CACHE = "mestario-v2";
+const STATIC = "mestario-static-v1";
 const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/mest.png"];
 
 self.addEventListener("install", (e) => {
@@ -11,7 +13,7 @@ self.addEventListener("install", (e) => {
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== STATIC).map((k) => caches.delete(k)))));
   self.clients.claim();
 });
 
@@ -19,6 +21,21 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  // неизменяемые файлы: сначала кэш, при промахе — сеть с сохранением
+  const immutable = (url.hostname === "cdn.jsdelivr.net" && /@\d+\.\d+\.\d+\//.test(url.pathname))
+    || url.hostname === "fonts.gstatic.com"
+    || (url.origin === self.location.origin && /^\/en\.js$/.test(url.pathname) && url.searchParams.has("v"));
+  if (immutable) {
+    e.respondWith(caches.open(STATIC).then((c) => c.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) {
+        c.put(req, res.clone());
+        // старые версии словаря больше не нужны
+        if (url.pathname === "/en.js") c.keys().then((ks) => ks.forEach((k) => { const u = new URL(k.url); if (u.pathname === "/en.js" && u.search !== url.search) c.delete(k); }));
+      }
+      return res;
+    }))));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
   // страницу просим у сервера заново, минуя кэш браузера: иначе обновление доходило бы с задержкой до 10 минут
   const ask = req.mode === "navigate" ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req);

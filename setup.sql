@@ -1306,3 +1306,29 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- mestario_scheduled_flag_and_backups: резервные копии. Закрытый бакет backups, функция supabase/functions/backup,
 -- private.run_backup() и pg_cron 'daily-backup' (02:41 UTC). Каждая таблица public → <дата>/<таблица>.json.gz,
 -- хранится 14 дней. Файлы (фото, видео) и схема private в копию не входят. Копия лежит в том же проекте Supabase.
+
+-- =====================================================================
+-- mestario_mentions_ttl_moderation_cols + mestario_links_regex_fix
+-- Упоминания, исчезающие сообщения, медленный режим, запрет ссылок новичкам.
+-- messages.mentions uuid[] — кого упомянули (@ник), заполняет триггер private.on_message_insert:
+--   только участники этого чата, без самого отправителя. Push-функция шлёт уведомление
+--   упомянутым даже из заглушённого чата.
+-- messages.expires_at — когда сообщение исчезнет; chats.msg_ttl (3600/86400/604800 или null) —
+--   только личные чаты, ставит public.set_chat_ttl(chat, seconds) с системным сообщением.
+--   private.expire_messages() раз в минуту (cron 'expire-messages') помечает истёкшие deleted_at.
+-- chats.slow_seconds (0/10/30/60/300/900/3600) и chats.links_new_block — public.set_chat_moderation
+--   (владелец и админы группы). Триггер для обычных участников: 'slow mode' — если писали меньше
+--   slow_seconds назад; 'links blocked' — ссылка от того, кто вступил меньше суток назад.
+--   В регулярном выражении граница слова в Postgres — \y (а не \b, это «backspace»), исправлено отдельно.
+-- =====================================================================
+
+-- =====================================================================
+-- mestario_daily_stats_folders
+-- private.daily_rewards(user_id, last_day, streak) и public.claim_daily():
+--   раз в сутки по времени Asia/Baku; награда 3, 5, 7 … 15 Mest (с 7-го дня подряд — 15),
+--   пропуск дня сбрасывает серию. Клиент вызывает при входе и раз в минуту, повтор сервер отклоняет (claimed=false).
+-- public.channel_stats(chat) — только владельцу и админам: участники, вступили/вышли/сообщения за 7 дней,
+--   по дням за 14 дней, 5 самых читаемых за 30 дней (прочитали = участники с last_read_id ≥ id сообщения).
+-- public.chat_folders(id, user_id, title, chat_ids, position, deleted_at) — свои папки (до 10),
+--   RLS: видны только свои неудалённые; изменение через public.save_folder / public.delete_folder (флаг deleted_at).
+-- =====================================================================
