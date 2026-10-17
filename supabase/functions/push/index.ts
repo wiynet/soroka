@@ -18,6 +18,7 @@ async function config() {
 }
 
 function preview(m: any): string {
+  if (m.sticker_id) return "🖼 Стикер";
   if (m.gift_type) return "🎁 Подарок";
   if (m.event_kind) return m.body || "Выдача от администратора";
   if (m.body) return m.body.length > 140 ? m.body.slice(0, 140) + "…" : m.body;
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
     if (input.selftest) return new Response(JSON.stringify(await selftest()), { headers: { "Content-Type": "application/json" } });
 
     const { data: m } = await sb.from("messages")
-      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,deleted_at")
+      .select("id,chat_id,sender_id,body,file_name,file_type,gift_type,event_kind,sticker_id,deleted_at")
       .eq("id", input.message_id).maybeSingle();
     if (!m || m.deleted_at) return new Response("skip");
 

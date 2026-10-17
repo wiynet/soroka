@@ -1244,3 +1244,17 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- mestario_rebrand_texts: проект переименован в Mestario, валюта — Mest (не склоняется).
 -- private.coins_text(n) теперь возвращает «N Mest»; тексты в create_giveaway и delete_my_account обновлены.
 -- Старые записи истории и сообщения пользователей не менялись. Подарок «Сорока» (magpie) — это птица, его имя оставлено.
+
+-- mestario_badges_and_stickers (+ mestario_sticker_message_trigger, mestario_messages_not_empty_sticker):
+-- Значок премиума. profiles.badge_style: 'форма-цвет' (формы tick|star|heart|crown|diamond|bolt|flame|moon,
+--   цвета violet|blue|sky|green|gold|orange|red|pink|white|rainbow) или 'photo' + profiles.badge_path (своя картинка
+--   в бакете avatars, <id>/badge-*.webp). public.set_badge(style, path) — только премиум и админы; null — обычный значок.
+--   Пока надет NFT-подарок, на сайте вместо значка премиума показывается он (подтверждённая галочка остаётся).
+-- Стикеры. public.sticker_packs (owner_id, title, deleted_at), public.stickers (pack_id, file_path, position, deleted_at),
+--   public.user_sticker_packs (user_id, pack_id) — добавленные к себе наборы. Читать могут все вошедшие, менять — только функции:
+--   create_sticker_pack(title) (не больше 20 своих), rename_sticker_pack, delete_sticker_pack, add_sticker(pack, path)
+--   (путь только в своей папке <id>/st/..., не больше 50 в наборе), delete_sticker, install_sticker_pack(pack, on) (до 50 наборов).
+--   Картинки лежат в публичном бакете avatars.
+-- Сообщение-стикер: клиент передаёт messages.sticker_id, триггер on_message_insert подставляет sticker_path сам
+--   (чужой путь подсунуть нельзя), очищает текст и пишет в список чатов «Стикер».
+--   Ограничение messages_not_empty допускает сообщение, где есть только стикер.
