@@ -104,10 +104,11 @@ async function pickImageModels(k: string) {
   if (!imageModels!.length) imageModels = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
   return imageModels!;
 }
-async function makeImage(prompt: string) {
+let geminiImgBlockedUntil = 0;   // бесплатный ключ: квота на картинки нулевая — не тратим время пользователя на повторные отказы
+async function makeImage(prompt: string, english = false) {
   const k = await key();
   let last: any = { ok: false, err: "no model" };
-  for (const model of (await pickImageModels(k)).slice(0, 3)) {
+  for (const model of Date.now() < geminiImgBlockedUntil ? [] : (await pickImageModels(k)).slice(0, 2)) {
     const r = await fetch(`${GL}/models/${model}:generateContent`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": k },
@@ -117,7 +118,11 @@ async function makeImage(prompt: string) {
       }),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { last = { ok: false, status: r.status, model, err: JSON.stringify(j).slice(0, 300) }; continue; }
+    if (!r.ok) {
+      last = { ok: false, status: r.status, model, err: JSON.stringify(j).slice(0, 300) };
+      if (r.status === 429 || r.status === 403) { geminiImgBlockedUntil = Date.now() + 3600_000; break; }
+      continue;
+    }
     const parts = (j.candidates || [])[0]?.content?.parts || [];
     const img = parts.find((x: any) => x.inlineData && String(x.inlineData.mimeType || "").startsWith("image/"));
     const text = parts.filter((x: any) => x.text).map((x: any) => x.text).join("").trim();
@@ -125,12 +130,12 @@ async function makeImage(prompt: string) {
     last = { ok: false, status: 200, model, err: "no image " + text.slice(0, 200) };
   }
   // у бесплатного ключа Gemini картинок нет — рисуем через бесплатный Pollinations (без ключа)
-  const p = await pollinations(prompt);
+  const p = await pollinations(prompt, english);
   return p.ok ? p : last.status === 429 && p.status !== 429 ? p : last;
 }
-async function pollinations(prompt: string) {
+async function pollinations(prompt: string, english = false) {
   try {
-    const tr = await ask("Переведи на английский как короткий промпт для генерации изображения (до 60 слов). Выведи только сам промпт, без кавычек и пояснений:\n" + prompt);
+    const tr = english ? { ok: true, text: prompt } : await ask("Переведи на английский как короткий промпт для генерации изображения (до 60 слов). Выведи только сам промпт, без кавычек и пояснений:\n" + prompt);
     const en = tr && tr.ok ? tr.text.replace(/^["'«]|["'»]$/g, "").slice(0, 600) : prompt;
     const seed = Math.floor(Math.random() * 1e9);
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(en)}?width=1024&height=1024&nologo=true&seed=${seed}`;
@@ -151,8 +156,8 @@ async function pollinations(prompt: string) {
 function wantsImage(t: string) {
   const s = t.trim().toLowerCase();
   if (/^(\/img|\/image|нарисуй|изобрази|draw |paint )/.test(s)) return true;
-  return /(сгенерир|создай|сделай|нарисуй|придумай|generate|create|make)/.test(s) &&
-    /(картинк|изображени|рисунок|рисунк|арт |аватарк|логотип|постер|обои|иллюстрац|image|picture|logo|wallpaper)/.test(s);
+  return /(сгенерир|создай|сделай|нарисуй|придумай|скинь|покажи|generate|create|make)/.test(s) &&
+    /(картинк|изображени|рисунок|рисунк|фото|фотк|мем|арт|аватар|логотип|лого|постер|обои|иллюстрац|стикер|image|picture|photo|meme|logo|wallpaper)/.test(s);
 }
 
 // ответ модели в чате: без разметки Markdown (сайт показывает обычный текст)
@@ -161,8 +166,10 @@ function plain(t: string) {
 }
 const CHAT_NOTE = "\nСейчас ты отвечаешь в чате мессенджера: ниже — последние сообщения переписки с пользователем, отвечай на последнее. " +
   "Пиши обычным текстом без Markdown (без ** и #), списки — с символом •. Любой код всегда оформляй блоком ```язык ... ``` " +
-  "с указанием языка — пользователь увидит его с кнопками «Копировать» и «Скачать файлом». Картинки ты тоже умеешь рисовать: " +
-  "если просят изображение, это сделает отдельный инструмент.";
+  "с указанием языка — пользователь увидит его с кнопками «Копировать» и «Скачать файлом». " +
+  "Ты умеешь рисовать и присылать картинки (рисунки, фото, мемы, арты, логотипы, обои и т. п.). Если пользователь просит " +
+  "изображение или изменить прошлое, ответь ТОЛЬКО одной строкой: [[IMAGE: подробное описание картинки на английском]] — " +
+  "без других слов; картинка придёт автоматически. Никогда не пиши, что «отправляешь запрос» или «генерируешь», не прислав эту строку.";
 
 // блоки кода из ответа превращаем в файлы
 const EXT: Record<string, string> = { python: "py", py: "py", javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx",
@@ -240,10 +247,18 @@ async function botReply(messageId: number) {
   if (!turns.length) turns.push({ role: "user", text: m.body });
 
   const { data: row } = await sb.from("ai_history").insert({ user_id: m.sender_id, question: String(m.body).slice(0, 1000) }).select("id").single();
-  if (wantsImage(String(m.body))) {
-    const t1 = Date.now();
-    const im = await makeImage(String(m.body).replace(/^\s*\/(img|image)\s*/i, ""));
-    const secs = Math.max(1, Math.ceil((Date.now() - t1) / 1000));
+  const t0 = Date.now();
+  let imagePrompt = "", english = false;
+  let r: any = null;
+  if (wantsImage(String(m.body))) imagePrompt = String(m.body).replace(/^\s*\/(img|image)\s*/i, "");
+  else {
+    r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t));
+    const mk = r && r.ok ? /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(r.text) : null;
+    if (mk) { imagePrompt = mk[1].trim(); english = true; }
+  }
+  if (imagePrompt) {
+    const im = await makeImage(imagePrompt, english);
+    const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
     if (!im.ok) {
       console.error("image failed", im.model, im.status, im.err);
       if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id);
@@ -268,8 +283,6 @@ async function botReply(messageId: number) {
     if (row) await sb.from("ai_history").update({ answer: "[изображение] " + (im.text || ""), status: "done" }).eq("id", row.id);
     return "image ok";
   }
-  const t0 = Date.now();
-  const r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t));
   const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
   if (!r || !r.ok) {
     if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id);
