@@ -92,7 +92,25 @@ function plain(t: string) {
   return t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#{1,6}\s+/gm, "").replace(/^\s*[-*]\s+/gm, "• ").trim();
 }
 const CHAT_NOTE = "\nСейчас ты отвечаешь в чате мессенджера: ниже — последние сообщения переписки с пользователем, отвечай на последнее. " +
-  "Пиши обычным текстом без Markdown (без ** и #), списки — с символом •.";
+  "Пиши обычным текстом без Markdown (без ** и #), списки — с символом •. Любой код всегда оформляй блоком ```язык ... ``` — " +
+  "каждый блок автоматически сохранится отдельным файлом, а в тексте останется ссылка на него. Код целиком пиши только в блоке.";
+
+// блоки кода из ответа превращаем в файлы
+const EXT: Record<string, string> = { python: "py", py: "py", javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx",
+  html: "html", css: "css", json: "json", bash: "sh", sh: "sh", shell: "sh", zsh: "sh", powershell: "ps1", sql: "sql", java: "java",
+  c: "c", cpp: "cpp", "c++": "cpp", csharp: "cs", cs: "cs", go: "go", rust: "rs", php: "php", kotlin: "kt", swift: "swift",
+  lua: "lua", ruby: "rb", yaml: "yml", yml: "yml", xml: "xml", markdown: "md", md: "md", dart: "dart", r: "r", luau: "lua", vb: "vb", toml: "toml" };
+function splitCode(t: string) {
+  const files: { name: string; code: string }[] = [];
+  const text = t.replace(/```([\w+#.-]*)[^\n]*\n([\s\S]*?)```/g, (_all, lang: string, code: string) => {
+    if (files.length >= 5 || !code.trim()) return code;
+    const ext = EXT[String(lang || "").toLowerCase()] || "txt";
+    const name = `code_${files.length + 1}.${ext}`;
+    files.push({ name, code: code.replace(/\s+$/, "") + "\n" });
+    return `📄 Код в файле ${name} (ниже)`;
+  });
+  return { text, files };
+}
 
 async function botReply(messageId: number) {
   const bot = (await sb.from("profiles").select("id").eq("username", "ai").maybeSingle()).data?.id;
@@ -143,9 +161,19 @@ async function botReply(messageId: number) {
     const c = (await sb.rpc("ai_charge", { p_user: m.sender_id, p_cost: secs })).data || { charged: secs, left: balance - secs };
     tail = `⏱ ${secs} с · −${c.charged} ${plural(c.charged)} · осталось ${c.left}`;
   }
-  const answer = plain(r.text);
-  if (row) await sb.from("ai_history").update({ answer, status: "done" }).eq("id", row.id);
+  const { text: prose, files } = splitCode(r.text);
+  const answer = plain(prose);
+  if (row) await sb.from("ai_history").update({ answer: r.text.slice(0, 20000), status: "done" }).eq("id", row.id);
   await say(answer.slice(0, 3900) + "\n\n" + tail);
+  // каждый блок кода — отдельным файлом в тот же чат
+  for (const f of files) {
+    const bytes = new TextEncoder().encode(f.code);
+    const path = `${m.chat_id}/ai-${crypto.randomUUID()}-${f.name}`;
+    const up = await sb.storage.from("attachments").upload(path, bytes, { contentType: "text/plain; charset=utf-8" });
+    if (up.error) { console.error("code upload", up.error.message); continue; }
+    await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: "", file_path: path, file_name: f.name,
+      file_type: "text/plain", file_size: bytes.length });
+  }
   return "ok";
 }
 function plural(n: number) {
