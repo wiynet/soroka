@@ -1522,7 +1522,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5b235b3e13"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=a9f15f7aff"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3950,6 +3950,7 @@ async function startApp() {
   await loadChats();
   loadFolders();
   claimDaily();
+  refreshAiCredits();
   setTimeout(prefetchChats, 200);
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
@@ -4440,6 +4441,7 @@ function renderHead() {
   const n = c.members.length;
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, T("участник"), T("участника"), T("участников")) : (o ? fmtSeen(o) : T("заметки для себя"));
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
+  if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
   $("convSub").classList.toggle("typing", !!ty && c.is_group);
@@ -4841,7 +4843,9 @@ function msgMenuBind(el, m, group) {
 function renderMsgs(newId) {
   const kids = [];
   if (state.hasMore) kids.push(h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")));
-  if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, T("Здесь пока пусто. Напишите первое сообщение.")));
+  if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, isAiChat(state.chats.get(state.activeId))
+    ? T("Это ИИ-помощник Mestario. Напишите вопрос — ответ придёт сюда же, можно уточнять. За каждую секунду работы списывается 1 ИИ-кредит.")
+    : T("Здесь пока пусто. Напишите первое сообщение.")));
   let prev = "";
   const chat = state.chats.get(state.activeId);
   for (let i = 0; i < state.msgs.length; i++) {
@@ -5381,6 +5385,7 @@ function onIncoming(m) {
   if (m.deleted_at) return;
   if (!state.chats.has(m.chat_id)) { bumpUnread(m.chat_id); reloadSoon(); return; }
   if (state.typing && state.typing.chat === m.chat_id && state.typing.u === m.sender_id) clearTyping();
+  if (isAiChat(state.chats.get(m.chat_id)) && m.sender_id !== state.me.id) refreshAiCredits();
   touchChat(m);
   if (Array.isArray(m.mentions) && m.mentions.includes(state.me.id) && (m.chat_id !== state.activeId || document.hidden)) mentionChats.add(m.chat_id);
   if (m.chat_id === state.activeId) {
@@ -5841,6 +5846,7 @@ async function deliverOne(t, someSent) {
     }
     dropTemp(t);
     touchChat(data);
+    if (data.body && isAiChat(state.chats.get(chatId))) aiThinking(chatId);
     if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else addMsg(data); }
     return true;
   } catch (e) {
@@ -8081,7 +8087,7 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   else if (go === "support") openSupport();
   else if (go === "docs") openDocs("terms");
   else if (go === "invite") openInvite();
-  else if (go === "ai") openAi();
+  else if (go === "ai") openAiChat();
   else if (go === "gift") { $("btnMarket").click(); showMarketTab("gifts"); }
   else if (go === "premium") { /* страница открывается выше */ }
 });
@@ -8233,7 +8239,7 @@ $("btnSettings").addEventListener("click", () => {
   $("sv_accounts").textContent = String(accounts().length || 1);
   $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл.");
   $("sv_premium").textContent = isPremium(state.profile) ? T("активен") : "";
-  sb.rpc("my_ai_credits").then((r) => { if (!r.error) $("sv_ai").textContent = credText(Number(r.data) || 0); });
+  refreshAiCredits();
   $("dlgSettings").showModal();
   paintNotify().then(() => { $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл."); });
   loadWalletValue();
@@ -8945,6 +8951,32 @@ $("aiForm").addEventListener("submit", async (e) => {
   $("aiAnswer").replaceChildren(h("div", { class: "ai-q" }, q), h("div", { class: "ai-a" }, ...aiText(res.data.answer)));
   paintAiCredits(res.data.credits);
 });
+/* ---------- чат с ботом @ai ---------- */
+function isAiChat(c) { const o = c && !c.is_group ? other(c) : null; return !!(o && o.username === "ai"); }
+async function refreshAiCredits() {
+  const r = await sb.rpc("my_ai_credits");
+  if (r.error) return;
+  aiCredits = Math.max(0, Number(r.data) || 0);
+  if ($("sv_ai")) $("sv_ai").textContent = state.isAdmin ? T("без ограничений") : credText(aiCredits);
+  const c = state.chats.get(state.activeId);
+  if (isAiChat(c)) renderHead();
+}
+async function openAiChat() {
+  const { data } = await sb.from("profiles").select("id").eq("username", "ai").maybeSingle();
+  if (!data) { toast(T("ИИ-помощник сейчас недоступен")); return; }
+  if (!$("dlgSettings").hidden) $("dlgSettings").close();
+  await startDirect(data.id);
+  refreshAiCredits();
+}
+// пока бот думает, в чате видно «печатает»; ответ его убирает
+function aiThinking(chatId) {
+  const c = state.chats.get(chatId), o = c && other(c);
+  if (!o || state.activeId !== chatId) return;
+  state.typing = { chat: chatId, u: o.id, n: o.display_name, until: Date.now() + 90000 };
+  clearTimeout(state.typingTimer);
+  state.typingTimer = setTimeout(clearTyping, 90000);
+  renderHead();
+}
 // главные админы выдают и списывают ИИ-кредиты в «Действиях администратора»
 async function loadUserAiCredits(id) {
   $("uAiWrap").hidden = !state.isChief;
