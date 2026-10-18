@@ -252,6 +252,15 @@ button.wordmark.spin { opacity: .55; }
 .ctx button svg { width: 19px; height: 19px; flex: none; color: var(--muted); }
 .ctx button.danger, .ctx button.danger svg { color: var(--danger); }
 .ctx hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+/* код в ответах @ai: карточка с отметкой </> и кнопками «Копировать» и «Файлом» */
+.code-card { margin: 6px 0; border-radius: 12px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); background: color-mix(in srgb, #0b0f14 88%, var(--accent)); color: #e6edf3; }
+.code-head { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; background: color-mix(in srgb, #fff 6%, transparent); border-bottom: 1px solid rgb(255 255 255 / .08); }
+.code-mark { font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #0b0f14; background: #f2c14e; border-radius: 6px; padding: 4px 6px; }
+.code-lang { flex: 1; min-width: 0; font-size: 12px; color: rgb(230 237 243 / .7); text-transform: lowercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-btn { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 8px; padding: 5px 9px; background: rgb(255 255 255 / .08); color: #e6edf3; font-size: 12px; font-weight: 600; cursor: pointer; }
+.code-btn:hover { background: rgb(255 255 255 / .16); }
+.code-btn svg { width: 14px; height: 14px; }
+.code-pre { margin: 0; padding: 10px 12px; max-height: 420px; overflow: auto; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; tab-size: 2; user-select: text; -webkit-user-select: text; }
 /* ИИ-помощник */
 .ai-h { display: flex; align-items: center; gap: 10px; }
 .ai-ico { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #7fd0ff, #2f9be8); flex: none; }
@@ -1522,7 +1531,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=ba9bf6da53"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=dcac317dcb"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3405,6 +3414,8 @@ const ICONS = {
   horn: '<path d="M4 10v4h3l7 4V6l-7 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17.5 9.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   tick: '<path d="M12 2.5l2.3 1.7 2.9-.1.9 2.7 2.3 1.7-.9 2.7.9 2.7-2.3 1.7-.9 2.7-2.9-.1L12 21.5l-2.3-1.7-2.9.1-.9-2.7-2.3-1.700.9-2.7-.9-2.7 2.3-1.7.9-2.7 2.9.1z" fill="currentColor"/><path d="M8.5 12.2l2.4 2.4 4.600-4.900" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
   ai: '<path d="M11 3l1.900 5.100L18 10l-5.100 1.900L11 17l-1.900-5.100L4 10l5.100-1.900zM18.500 14.500l.900 2.100 2.100.900-2.100.900-.900 2.100-.900-2.100-2.100-.900 2.100-.900z" fill="currentColor"/>',
+  copy: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8.500" y="8.500" width="11" height="11" rx="2"/><path d="M15.500 8.500V6a1.500 1.500 0 00-1.500-1.500H6A1.500 1.500 0 004.500 6v8A1.500 1.500 0 006 15.500h2.500"/></g>',
+  dl: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.500 10.500L12 15l4.500-4.500M5 19.500h14"/></g>',
   timer: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.500" r="7.500"/><path d="M12 9.500v4l2.500 1.500M10 2.500h4M19 6l-1.500 1.500"/></g>',
   chart: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></g>',
   folder: '<path d="M3.500 6.500a2 2 0 012-2h4l2 2.500h7a2 2 0 012 2v8.500a2 2 0 01-2 2h-13a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
@@ -4781,7 +4792,7 @@ function msgNode(m, group) {
         m.event_note && h("span", { class: "note" }, m.event_note)));
   } else {
     const text = group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
-    if (text) el.append(h("div", { class: "body" }, linkify(text)));
+    if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : linkify(text))));
     if (Array.isArray(m.mentions) && m.mentions.includes(state.me.id)) el.classList.add("at-me");
   }
   const rr = reactRow(m);
@@ -4938,7 +4949,7 @@ function mediaLabel(m) {
 // ярлыки приходят из базы по-русски; в английском интерфейсе переводим их на лету
 function previewText(t) {
   const m = /^(Стикер|Фото и видео|Фото|Видеосообщение|Видео|Голосовое сообщение|Файл)( \(\d+\))?$/.exec(t || "");
-  return m ? T(m[1]) + (m[2] || "") : t;
+  return m ? T(m[1]) + (m[2] || "") : t ? String(t).replace(/```[\w+#.-]*\n?/g, "") : t;
 }
 function touchChat(m) {
   const c = state.chats.get(m.chat_id);
@@ -8953,6 +8964,40 @@ $("aiForm").addEventListener("submit", async (e) => {
   paintAiCredits(res.data.credits);
 });
 /* ---------- чат с ботом @ai ---------- */
+const CODE_EXT = { python: "py", py: "py", javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx", html: "html", css: "css",
+  json: "json", bash: "sh", sh: "sh", shell: "sh", powershell: "ps1", sql: "sql", java: "java", c: "c", cpp: "cpp", "c++": "cpp", csharp: "cs", cs: "cs",
+  go: "go", rust: "rs", php: "php", kotlin: "kt", swift: "swift", lua: "lua", luau: "lua", ruby: "rb", yaml: "yml", yml: "yml", xml: "xml",
+  markdown: "md", md: "md", dart: "dart", r: "r", toml: "toml", txt: "txt" };
+// текст ответа @ai: обычные части как всегда, блоки ```язык … ``` — карточкой кода
+function aiRich(text) {
+  const out = [], re = /```([\w+#.-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g;
+  let last = 0, mm, n = 0;
+  while ((mm = re.exec(text))) {
+    if (mm.index > last) out.push(...linkify(text.slice(last, mm.index).replace(/^\n+|\n+$/g, "")));
+    out.push(codeCard((mm[1] || "").toLowerCase(), mm[2].replace(/\s+$/, ""), ++n));
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(...linkify(text.slice(last).replace(/^\n+/, "")));
+  return out;
+}
+function codeCard(lang, code, n) {
+  const ext = CODE_EXT[lang] || "txt";
+  const stop = (e) => { e.stopPropagation(); e.preventDefault(); };
+  return h("div", { class: "code-card", ondblclick: (e) => e.stopPropagation() },
+    h("div", { class: "code-head" },
+      h("span", { class: "code-mark", title: T("Код от ИИ"), "aria-label": T("Код") }, "</>"),
+      h("span", { class: "code-lang" }, lang || T("код")),
+      h("button", { class: "code-btn", type: "button", title: T("Скопировать код"), onclick: (e) => { stop(e); copyText(code, T("Код скопирован")); } }, icon("copy"), T("Копировать")),
+      h("button", { class: "code-btn", type: "button", title: T("Скачать файлом"), onclick: (e) => {
+        stop(e);
+        const url = URL.createObjectURL(new Blob([code + "\n"], { type: "text/plain;charset=utf-8" }));
+        const a = h("a", { href: url, download: "code_" + n + "." + ext });
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        toast(T("Файл code_") + n + "." + ext + T(" скачан"));
+      } }, icon("dl"), T("Файлом"))),
+    h("pre", { class: "code-pre" }, h("code", {}, code)));
+}
 function isAiChat(c) { const o = c && !c.is_group ? other(c) : null; return !!(o && o.username === "ai"); }
 async function refreshAiCredits() {
   const r = await sb.rpc("my_ai_credits");

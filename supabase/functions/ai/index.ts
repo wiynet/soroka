@@ -87,29 +87,122 @@ async function ask(text: string | Turn[]) {
   return last;
 }
 
+// ---------- изображения ----------
+let imageModels: string[] | null = null;
+async function pickImageModels(k: string) {
+  if (imageModels) return imageModels;
+  try {
+    const r = await fetch(GL + "/models?pageSize=300", { headers: { "x-goog-api-key": k } });
+    const j = await r.json();
+    const ver = (n: string) => Number((/gemini-(\d+(?:\.\d+)?)/.exec(n) || [])[1] || 0);
+    imageModels = (j.models || [])
+      .filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m: any) => String(m.name).replace(/^models\//, ""))
+      .filter((n: string) => /^gemini-[\d.]+-flash.*image/.test(n))
+      .sort((a: string, b: string) => (ver(b) - ver(a)) || (a.includes("preview") ? 1 : 0) - (b.includes("preview") ? 1 : 0));
+  } catch (_) { imageModels = []; }
+  if (!imageModels!.length) imageModels = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+  return imageModels!;
+}
+async function makeImage(prompt: string) {
+  const k = await key();
+  let last: any = { ok: false, err: "no model" };
+  for (const model of (await pickImageModels(k)).slice(0, 3)) {
+    const r = await fetch(`${GL}/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": k },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { last = { ok: false, status: r.status, model, err: JSON.stringify(j).slice(0, 300) }; continue; }
+    const parts = (j.candidates || [])[0]?.content?.parts || [];
+    const img = parts.find((x: any) => x.inlineData && String(x.inlineData.mimeType || "").startsWith("image/"));
+    const text = parts.filter((x: any) => x.text).map((x: any) => x.text).join("").trim();
+    if (img) return { ok: true, model, mime: img.inlineData.mimeType, bytes: Uint8Array.from(atob(img.inlineData.data), (ch) => ch.charCodeAt(0)), text };
+    last = { ok: false, status: 200, model, err: "no image " + text.slice(0, 200) };
+  }
+  // у бесплатного ключа Gemini картинок нет — рисуем через бесплатный Pollinations (без ключа)
+  const p = await pollinations(prompt);
+  return p.ok ? p : last.status === 429 && p.status !== 429 ? p : last;
+}
+async function pollinations(prompt: string) {
+  try {
+    const tr = await ask("Переведи на английский как короткий промпт для генерации изображения (до 60 слов). Выведи только сам промпт, без кавычек и пояснений:\n" + prompt);
+    const en = tr && tr.ok ? tr.text.replace(/^["'«]|["'»]$/g, "").slice(0, 600) : prompt;
+    const seed = Math.floor(Math.random() * 1e9);
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(en)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    const ctl = new AbortController();
+    const tm = setTimeout(() => ctl.abort(), 90000);
+    const r = await fetch(url, { signal: ctl.signal });
+    clearTimeout(tm);
+    const mime = (r.headers.get("content-type") || "").split(";")[0];
+    if (!r.ok || !mime.startsWith("image/")) return { ok: false, status: r.status, model: "pollinations", err: "bad response " + mime };
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (bytes.length < 1000) return { ok: false, status: 502, model: "pollinations", err: "tiny image" };
+    return { ok: true, model: "pollinations", mime, bytes, text: "" };
+  } catch (e) {
+    return { ok: false, status: 504, model: "pollinations", err: String(e).slice(0, 200) };
+  }
+}
+// просьба нарисовать: «нарисуй…», «/img …», «сгенерируй картинку…», «draw…»
+function wantsImage(t: string) {
+  const s = t.trim().toLowerCase();
+  if (/^(\/img|\/image|нарисуй|изобрази|draw |paint )/.test(s)) return true;
+  return /(сгенерир|создай|сделай|нарисуй|придумай|generate|create|make)/.test(s) &&
+    /(картинк|изображени|рисунок|рисунк|арт |аватарк|логотип|постер|обои|иллюстрац|image|picture|logo|wallpaper)/.test(s);
+}
+
 // ответ модели в чате: без разметки Markdown (сайт показывает обычный текст)
 function plain(t: string) {
   return t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#{1,6}\s+/gm, "").replace(/^\s*[-*]\s+/gm, "• ").trim();
 }
 const CHAT_NOTE = "\nСейчас ты отвечаешь в чате мессенджера: ниже — последние сообщения переписки с пользователем, отвечай на последнее. " +
-  "Пиши обычным текстом без Markdown (без ** и #), списки — с символом •. Любой код всегда оформляй блоком ```язык ... ``` — " +
-  "каждый блок автоматически сохранится отдельным файлом, а в тексте останется ссылка на него. Код целиком пиши только в блоке.";
+  "Пиши обычным текстом без Markdown (без ** и #), списки — с символом •. Любой код всегда оформляй блоком ```язык ... ``` " +
+  "с указанием языка — пользователь увидит его с кнопками «Копировать» и «Скачать файлом». Картинки ты тоже умеешь рисовать: " +
+  "если просят изображение, это сделает отдельный инструмент.";
 
 // блоки кода из ответа превращаем в файлы
 const EXT: Record<string, string> = { python: "py", py: "py", javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx",
   html: "html", css: "css", json: "json", bash: "sh", sh: "sh", shell: "sh", zsh: "sh", powershell: "ps1", sql: "sql", java: "java",
   c: "c", cpp: "cpp", "c++": "cpp", csharp: "cs", cs: "cs", go: "go", rust: "rs", php: "php", kotlin: "kt", swift: "swift",
   lua: "lua", ruby: "rb", yaml: "yml", yml: "yml", xml: "xml", markdown: "md", md: "md", dart: "dart", r: "r", luau: "lua", vb: "vb", toml: "toml" };
-function splitCode(t: string) {
+// текст ответа → сообщения до 3900 символов: проза без Markdown, блоки кода остаются ```язык …```
+// (сайт показывает их карточкой с кнопками). Блок длиннее одного сообщения уходит файлом.
+function buildReply(t: string) {
+  const segs: { kind: "text" | "code"; text: string; lang?: string }[] = [];
+  let last = 0;
+  const re = /```([\w+#.-]*)[^\n]*\n([\s\S]*?)```/g;
+  let mm: RegExpExecArray | null;
+  while ((mm = re.exec(t))) {
+    if (mm.index > last) segs.push({ kind: "text", text: plain(t.slice(last, mm.index)) });
+    segs.push({ kind: "code", lang: (mm[1] || "").toLowerCase(), text: mm[2].replace(/\s+$/, "") });
+    last = re.lastIndex;
+  }
+  if (last < t.length) segs.push({ kind: "text", text: plain(t.slice(last)) });
   const files: { name: string; code: string }[] = [];
-  const text = t.replace(/```([\w+#.-]*)[^\n]*\n([\s\S]*?)```/g, (_all, lang: string, code: string) => {
-    if (files.length >= 5 || !code.trim()) return code;
-    const ext = EXT[String(lang || "").toLowerCase()] || "txt";
-    const name = `code_${files.length + 1}.${ext}`;
-    files.push({ name, code: code.replace(/\s+$/, "") + "\n" });
-    return `📄 Код в файле ${name} (ниже)`;
-  });
-  return { text, files };
+  const msgs: string[] = [];
+  let cur = "";
+  const push = (piece: string) => {
+    if (!piece) return;
+    if (cur && (cur + "\n\n" + piece).length > 3900) { msgs.push(cur); cur = ""; }
+    if (piece.length > 3900) { for (let i = 0; i < piece.length; i += 3900) msgs.push(piece.slice(i, i + 3900)); return; }
+    cur = cur ? cur + "\n\n" + piece : piece;
+  };
+  let n = 0;
+  for (const s of segs) {
+    if (s.kind === "text") { push(s.text.trim()); continue; }
+    if (!s.text.trim()) continue;
+    n++;
+    const ext = EXT[s.lang || ""] || "txt";
+    const block = "```" + (s.lang || ext) + "\n" + s.text + "\n```";
+    if (block.length <= 3800) push(block);
+    else { const name = `code_${n}.${ext}`; files.push({ name, code: s.text + "\n" }); push(`📄 Код длинный — он в файле ${name} (ниже)`); }
+  }
+  if (cur) msgs.push(cur);
+  return { msgs, files };
 }
 
 async function botReply(messageId: number) {
@@ -147,6 +240,34 @@ async function botReply(messageId: number) {
   if (!turns.length) turns.push({ role: "user", text: m.body });
 
   const { data: row } = await sb.from("ai_history").insert({ user_id: m.sender_id, question: String(m.body).slice(0, 1000) }).select("id").single();
+  if (wantsImage(String(m.body))) {
+    const t1 = Date.now();
+    const im = await makeImage(String(m.body).replace(/^\s*\/(img|image)\s*/i, ""));
+    const secs = Math.max(1, Math.ceil((Date.now() - t1) / 1000));
+    if (!im.ok) {
+      console.error("image failed", im.model, im.status, im.err);
+      if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id);
+      await say(im.status === 429 ? "Рисовалка сейчас перегружена — попробуйте через минуту. Кредиты не списаны."
+        : "Не получилось нарисовать. Кредиты не списаны — попробуйте описать картинку иначе.");
+      return "image failed";
+    }
+    let itail: string;
+    if (unlimited) itail = `⏱ ${secs} с · без ограничений (админ)`;
+    else {
+      const c = (await sb.rpc("ai_charge", { p_user: m.sender_id, p_cost: secs })).data || { charged: secs, left: balance - secs };
+      itail = `⏱ ${secs} с · −${c.charged} ${plural(c.charged)} · осталось ${c.left}`;
+    }
+    const bytes: Uint8Array = im.bytes;
+    const ext = String(im.mime).includes("jpeg") ? "jpg" : String(im.mime).includes("webp") ? "webp" : "png";
+    const path = `${m.chat_id}/ai-${crypto.randomUUID()}.${ext}`;
+    const up = await sb.storage.from("attachments").upload(path, bytes, { contentType: im.mime });
+    if (up.error) { await say("Картинка получилась, но не загрузилась. Попробуйте ещё раз."); return "upload failed"; }
+    const caption = (plain(im.text || "").slice(0, 3000) + "\n\n" + itail).trim();
+    await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: caption, file_path: path,
+      file_name: "mestario-ai." + ext, file_type: im.mime, file_size: bytes.length });
+    if (row) await sb.from("ai_history").update({ answer: "[изображение] " + (im.text || ""), status: "done" }).eq("id", row.id);
+    return "image ok";
+  }
   const t0 = Date.now();
   const r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t));
   const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
@@ -161,10 +282,11 @@ async function botReply(messageId: number) {
     const c = (await sb.rpc("ai_charge", { p_user: m.sender_id, p_cost: secs })).data || { charged: secs, left: balance - secs };
     tail = `⏱ ${secs} с · −${c.charged} ${plural(c.charged)} · осталось ${c.left}`;
   }
-  const { text: prose, files } = splitCode(r.text);
-  const answer = plain(prose);
+  const { msgs, files } = buildReply(r.text);
   if (row) await sb.from("ai_history").update({ answer: r.text.slice(0, 20000), status: "done" }).eq("id", row.id);
-  await say(answer.slice(0, 3900) + "\n\n" + tail);
+  if (!msgs.length) msgs.push("…");
+  msgs[msgs.length - 1] += "\n\n" + tail;
+  for (const x of msgs) await say(x);
   // каждый блок кода — отдельным файлом в тот же чат
   for (const f of files) {
     const bytes = new TextEncoder().encode(f.code);
@@ -195,6 +317,12 @@ Deno.serve(async (req) => {
     if (input.selftest) {
       const { data: pc } = await sb.rpc("push_server_config");
       if (!pc || req.headers.get("x-hook-secret") !== pc.hook_secret) return reply({ error: "forbidden" }, 403);
+      if (input.list) {
+        const lr = await fetch(GL + "/models?pageSize=300", { headers: { "x-goog-api-key": await key() } });
+        const lj = await lr.json().catch(() => ({}));
+        return reply({ status: lr.status, models: (lj.models || []).map((x: any) => String(x.name).replace(/^models\//, "") + " [" + (x.supportedGenerationMethods || []).join(",") + "]") });
+      }
+      if (input.image) { const im = await makeImage(String(input.image)); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");
       return reply({ ok: r.ok, model: r.model, vertex: r.vertex, status: r.status, text: r.text, err: r.err, models: models?.slice(0, 5) });
     }
