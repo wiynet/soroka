@@ -1522,7 +1522,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=afe0ce0f8d"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5b235b3e13"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -8935,6 +8935,7 @@ $("aiForm").addEventListener("submit", async (e) => {
     try { code = (await res.error.context.json()).error || ""; } catch (x) {}
     $("aiAnswer").hidden = true;
     toast(code === "credits" ? T("ИИ-кредиты закончились. Купить их можно у @boss.")
+      : code === "busy" ? T("ИИ сейчас перегружен. Попробуйте через минуту — кредит не списан.")
       : code === "not configured" ? T("ИИ-помощник ещё не подключён. Загляните чуть позже, кредит не списан.")
       : T("Не удалось получить ответ. Кредит не списан — попробуйте ещё раз."));
     if (code === "credits") openAi();
