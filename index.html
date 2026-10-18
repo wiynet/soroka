@@ -3563,7 +3563,8 @@ async function squareWebp(file, side, cover) {
 }
 function muteMark() { const k = icon("belloff"); k.classList.add("kind"); k.style.marginLeft = "5px"; k.setAttribute("aria-label", T("Без уведомлений")); return k; }
 function kindIcon(name) { const k = icon(name); k.classList.add("kind"); return k; }
-function isOnline(p) { return !!(p && p.last_seen_at && !p.banned_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000); }
+// ИИ-помощник @ai работает круглосуточно, поэтому всегда «в сети»
+function isOnline(p) { return !!(p && !p.banned_at && (p.username === "ai" || (p.last_seen_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000))); }
 function fmtSeen(p) {
   if (!p) return "";
   if (p.banned_at) return T("аккаунт заблокирован");
