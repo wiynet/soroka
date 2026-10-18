@@ -42,8 +42,9 @@ async function pickModels(k: string) {
       const found = (j.models || [])
         .filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
         .map((m: any) => String(m.name).replace(/^models\//, ""))
-        .filter((n: string) => /^gemini-\d+(\.\d+)?-flash$/.test(n))
-        .sort((a: string, b: string) => ver(b) - ver(a));
+        .filter((n: string) => /^gemini-\d+(\.\d+)?-flash(-lite)?$/.test(n))
+        // сначала обычные Flash (умнее), потом Lite; внутри — от новой версии к старой
+        .sort((a: string, b: string) => (a.endsWith("-lite") ? 1 : 0) - (b.endsWith("-lite") ? 1 : 0) || ver(b) - ver(a));
       if (found.length) { models = [...found, ...FALLBACK.filter((x) => !found.includes(x))]; return models; }
     }
   } catch (_) { /* ниже запасной список */ }
@@ -70,21 +71,46 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
   const out = ((j.candidates || [])[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
   return { ok: !!out, status: r.status, text: out, err: out ? "" : "empty " + JSON.stringify(j).slice(0, 200) };
 }
-// пробуем модели по очереди; если ключ не принимает обычный адрес — пробуем адрес Vertex AI
+// у каждой модели свой бесплатный лимит: исчерпанную пропускаем 30 минут и идём к следующей,
+// а если кончились все — отвечает запасной бесплатный ИИ (Pollinations)
+const blocked = new Map<string, number>();
 async function ask(text: string | Turn[]) {
   const k = await key();
-  if (!k) return { ok: false, err: "no key", status: 503 } as any;
-  const list = await pickModels(k);
-  let last: any = null;
-  for (const vertex of useVertex ? [true] : [false, true]) {
-    for (const m of list.slice(0, 4)) {
-      const res = await callModel(k, m, text, vertex);
-      if (res.ok) { useVertex = vertex; return { ...res, model: m, vertex }; }
-      last = { ...res, model: m, vertex };
-      if (res.status === 429) return last;          // лимит бесплатного тарифа: дальше пробовать бессмысленно
+  let last: any = { ok: false, status: 503, err: "no key" };
+  if (k) {
+    const list = (await pickModels(k)).filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 8);
+    for (const vertex of useVertex ? [true] : [false, true]) {
+      let any429 = false;
+      for (const m of list) {
+        const res = await callModel(k, m, text, vertex);
+        if (res.ok) { useVertex = vertex; return { ...res, model: m, vertex }; }
+        last = { ...res, model: m, vertex };
+        if (res.status === 429) { blocked.set(m, Date.now() + 30 * 60_000); any429 = true; }
+      }
+      if (any429) break;   // ключ принят, просто лимиты — адрес Vertex не поможет
     }
   }
-  return last;
+  const fb = await pollinationsText(text);
+  return fb.ok ? fb : last;
+}
+async function pollinationsText(text: string | Turn[]) {
+  try {
+    const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
+    const ctl = new AbortController();
+    const tm = setTimeout(() => ctl.abort(), 60000);
+    const r = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST", signal: ctl.signal,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: SYSTEM },
+        ...turns.map((t) => ({ role: t.role === "model" ? "assistant" : "user", content: t.text }))] }),
+    });
+    clearTimeout(tm);
+    const j = await r.json().catch(() => ({}));
+    const out = String(j?.choices?.[0]?.message?.content || "").trim();
+    return out ? { ok: true, status: 200, text: out, model: "pollinations" } : { ok: false, status: r.status, err: "pollinations empty", model: "pollinations" };
+  } catch (e) {
+    return { ok: false, status: 504, err: String(e).slice(0, 200), model: "pollinations" };
+  }
 }
 
 // ---------- изображения ----------
