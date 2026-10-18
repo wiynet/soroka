@@ -256,6 +256,7 @@ button.wordmark.spin { opacity: .55; }
 .ai-h { display: flex; align-items: center; gap: 10px; }
 .ai-ico { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #7fd0ff, #2f9be8); flex: none; }
 .ai-ico svg { width: 19px; height: 19px; }
+.ai-cred { margin-left: auto; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .ai-lock { display: grid; gap: 8px; justify-items: start; padding: 14px; border-radius: 14px; background: var(--panel-2); }
 .ai-form { display: grid; gap: 8px; }
 .ai-form textarea { resize: vertical; min-height: 96px; }
@@ -1521,7 +1522,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d3b0562cd3"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=afe0ce0f8d"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2881,6 +2882,17 @@ void main() {
           <button class="btn ghost" type="button" id="uCoinTake">Списать</button>
         </div>
       </div>
+      <div id="uAiWrap" hidden>
+        <div class="set-label">ИИ-кредиты</div>
+        <div class="coin-admin">
+          <div id="uAiBal"></div>
+          <input class="input" id="uAiAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="Сколько кредитов">
+          <div class="actions">
+            <button class="btn ghost" type="button" id="uAiGive">Выдать</button>
+            <button class="btn ghost" type="button" id="uAiTake">Списать</button>
+          </div>
+        </div>
+      </div>
       <div class="set-label">Премиум</div>
       <div class="coin-admin">
         <div id="uPrem"></div>
@@ -3128,12 +3140,12 @@ void main() {
 <!-- ИИ-помощник: один вопрос в сутки для премиума -->
 <dialog id="dlgAi">
   <div class="dlg">
-    <h2 class="ai-h"><span class="ai-ico" id="aiIco"></span>ИИ-помощник</h2>
-    <div class="small muted" id="aiNote"></div>
+    <h2 class="ai-h"><span class="ai-ico" id="aiIco"></span>ИИ-помощник<span class="ai-cred" id="aiCred"></span></h2>
+    <div class="small muted" id="aiNote">Один вопрос — один ИИ-кредит. Уточнить ответ потом нельзя, поэтому опишите всё в одном сообщении. Если ответ не пришёл, кредит возвращается.</div>
     <div class="ai-lock" id="aiLock" hidden>
-      <b>Только для премиума</b>
-      <span class="small muted">С премиумом можно задавать ИИ-помощнику один вопрос в день.</span>
-      <button class="btn" type="button" id="aiGetPrem">Оформить премиум</button>
+      <b>ИИ-кредитов нет</b>
+      <span class="small muted">Кредиты платные. Чтобы купить, напишите @boss.</span>
+      <button class="btn" type="button" id="aiBuy">Написать @boss</button>
     </div>
     <form id="aiForm" class="ai-form" hidden>
       <textarea class="input" id="aiQ" rows="4" maxlength="1000" placeholder="Ваш вопрос" aria-label="Ваш вопрос"></textarea>
@@ -6695,7 +6707,7 @@ function paintUser(p) {
   $("uAdminOpen").hidden = !state.isAdmin;
   $("auWho").textContent = p.display_name + " · @" + p.username + (p.banned_at ? T(" · заблокирован") : "");
   $("uBan").hidden = $("uVerify").hidden = p.id === state.me.id;
-  if (state.isAdmin) loadUserCoins(p.id);
+  if (state.isAdmin) { loadUserCoins(p.id); loadUserAiCredits(p.id); }
   $("uPrem").textContent = isPremium(p) ? T("Премиум до ") + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "") + T(". Новый срок прибавится к текущему.") : T("Премиума нет. Выдать на срок:");
   $("uPremOff").hidden = !isPremium(p);
   $("uAdminToggle").hidden = !(state.isChief && p.id !== state.me.id && !p.is_chief);
@@ -8221,7 +8233,7 @@ $("btnSettings").addEventListener("click", () => {
   $("sv_accounts").textContent = String(accounts().length || 1);
   $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл.");
   $("sv_premium").textContent = isPremium(state.profile) ? T("активен") : "";
-  $("sv_ai").textContent = isPremium(state.profile) ? T("1 вопрос в день") : T("с премиумом");
+  sb.rpc("my_ai_credits").then((r) => { if (!r.error) $("sv_ai").textContent = credText(Number(r.data) || 0); });
   $("dlgSettings").showModal();
   paintNotify().then(() => { $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл."); });
   loadWalletValue();
@@ -8862,8 +8874,9 @@ function cacheChanged(m) {
   if (m.deleted_at) e.msgs.splice(i, 1); else e.msgs[i] = m;
 }
 
-/* ---------- ИИ-помощник: один вопрос в сутки для премиума ---------- */
+/* ---------- ИИ-помощник: один вопрос — один ИИ-кредит ---------- */
 $("aiIco").append(icon("ai"));
+const AI_SELLER = "boss";   // кредиты пока продаёт он
 // **жирный** из ответа показываем жирным, остальное — как есть
 function aiText(t) {
   return String(t || "").replace(/^#{1,6}\s+/gm, "").split(/\*\*(.+?)\*\*/g).map((x, i) => i % 2 ? h("b", {}, x) : x);
@@ -8873,28 +8886,37 @@ function aiItem(r) {
   return h("div", { class: "ai-item" }, h("span", { class: "when" }, dFmt.format(d) + ", " + tFmt.format(d)),
     h("div", { class: "ai-q" }, r.question), h("div", { class: "ai-a" }, ...aiText(r.answer)));
 }
+function credText(n) { return n + " " + plural(n, T("кредит"), T("кредита"), T("кредитов")); }
+let aiCredits = 0;
+function paintAiCredits(n) {
+  aiCredits = Math.max(0, Number(n) || 0);
+  $("aiCred").textContent = credText(aiCredits);
+  $("aiLock").hidden = aiCredits > 0;
+  $("aiForm").hidden = aiCredits <= 0;
+  if ($("sv_ai")) $("sv_ai").textContent = credText(aiCredits);
+}
 async function openAi() {
-  const prem = isPremium(state.profile);
-  $("aiLock").hidden = prem;
-  $("aiForm").hidden = true;
   $("aiAnswer").hidden = true;
-  $("aiNote").textContent = prem ? T("Загружаем…") : "";
-  $("aiNote").hidden = !prem;
-  $("aiHist").replaceChildren(); $("aiHistLabel").hidden = true;
+  $("aiForm").hidden = true; $("aiLock").hidden = true;
+  $("aiCred").textContent = "…";
   if (!$("dlgAi").open) $("dlgAi").showModal();
-  if (!prem) return;
-  const { data } = await sb.from("ai_questions").select("id,day,question,answer,status,created_at").eq("status", "done").order("id", { ascending: false }).limit(20);
-  const rows = Array.isArray(data) ? data : [];
-  const used = rows.some((r) => r.day === bakuDay());
-  $("aiForm").hidden = used;
-  $("aiNote").textContent = used ? T("Сегодняшний вопрос уже задан. Следующий можно задать завтра.")
-    : T("Один вопрос в день. Уточнить ответ потом нельзя, поэтому опишите всё в одном сообщении.");
+  const [c, hist] = await Promise.all([sb.rpc("my_ai_credits"),
+    sb.from("ai_history").select("id,question,answer,status,created_at").eq("status", "done").order("id", { ascending: false }).limit(20)]);
+  paintAiCredits(c.data);
+  const rows = Array.isArray(hist.data) ? hist.data : [];
   $("aiHistLabel").hidden = !rows.length;
   $("aiHist").replaceChildren(...rows.map(aiItem));
-  if (!used) setTimeout(() => $("aiQ").focus(), 50);
+  if (aiCredits > 0) setTimeout(() => $("aiQ").focus(), 50);
 }
 $("aiQ").addEventListener("input", () => { $("aiLeft").textContent = $("aiQ").value.length + " / 1000"; });
-$("aiGetPrem").addEventListener("click", () => { $("dlgAi").close(); $("btnSettings").click(); showSetPage("premium"); paintPremiumPage(); });
+$("aiBuy").addEventListener("click", async () => {
+  const { data } = await sb.from("profiles").select("id").eq("username", AI_SELLER).maybeSingle();
+  if (!data) { toast(T("Не удалось открыть чат")); return; }
+  $("dlgAi").close();
+  if (!$("dlgSettings").hidden) $("dlgSettings").close();
+  await startDirect(data.id);
+  if (!$("text").value) { $("text").value = T("Здравствуйте! Хочу купить ИИ-кредиты для Mestario."); fitText(); syncComposer(); }
+});
 let aiBusy = false;
 $("aiForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -8912,18 +8934,39 @@ $("aiForm").addEventListener("submit", async (e) => {
     let code = "";
     try { code = (await res.error.context.json()).error || ""; } catch (x) {}
     $("aiAnswer").hidden = true;
-    toast(code === "limit" ? T("Сегодня вы уже задали вопрос. Следующий — завтра.")
-      : code === "premium" ? T("ИИ-помощник доступен только с премиумом.")
-      : code === "not configured" ? T("ИИ-помощник ещё не подключён. Загляните чуть позже.")
-      : T("Не удалось получить ответ. Вопрос не засчитан — попробуйте ещё раз."));
-    if (code === "limit" || code === "premium") openAi();
+    toast(code === "credits" ? T("ИИ-кредиты закончились. Купить их можно у @boss.")
+      : code === "not configured" ? T("ИИ-помощник ещё не подключён. Загляните чуть позже, кредит не списан.")
+      : T("Не удалось получить ответ. Кредит не списан — попробуйте ещё раз."));
+    if (code === "credits") openAi();
     return;
   }
   $("aiQ").value = ""; $("aiLeft").textContent = "0 / 1000";
   $("aiAnswer").replaceChildren(h("div", { class: "ai-q" }, q), h("div", { class: "ai-a" }, ...aiText(res.data.answer)));
-  $("aiForm").hidden = true;
-  $("aiNote").textContent = T("Следующий вопрос можно задать завтра.");
+  paintAiCredits(res.data.credits);
 });
+// главные админы выдают и списывают ИИ-кредиты в «Действиях администратора»
+async function loadUserAiCredits(id) {
+  $("uAiWrap").hidden = !state.isChief;
+  if (!state.isChief) return;
+  $("uAiBal").textContent = T("ИИ-кредиты: …");
+  const { data } = await sb.rpc("admin_ai_credits", { p_user: id });
+  if (viewed && viewed.id === id) $("uAiBal").textContent = T("ИИ-кредиты: ") + (Number(data) || 0);
+}
+async function moveAiCredits(sign) {
+  if (!viewed) return;
+  const amt = Math.floor(Number($("uAiAmt").value));
+  if (!(amt > 0)) { toast(T("Введите число кредитов больше нуля")); return; }
+  const id = viewed.id;
+  $("uAiGive").disabled = $("uAiTake").disabled = true;
+  const { data, error } = await sb.rpc("admin_grant_ai_credits", { p_user: id, p_amount: sign * amt });
+  $("uAiGive").disabled = $("uAiTake").disabled = false;
+  if (error) { toast(/insufficient/.test(error.message || "") ? T("У человека меньше кредитов, чем вы списываете") : T("Не удалось изменить ИИ-кредиты")); return; }
+  $("uAiAmt").value = "";
+  toast((sign > 0 ? T("Выдано ИИ-кредитов: ") : T("Списано ИИ-кредитов: ")) + amt);
+  if (viewed && viewed.id === id) $("uAiBal").textContent = T("ИИ-кредиты: ") + (Number(data) || 0);
+}
+$("uAiGive").addEventListener("click", () => moveAiCredits(1));
+$("uAiTake").addEventListener("click", () => moveAiCredits(-1));
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));

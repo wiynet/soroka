@@ -1350,3 +1350,14 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- занимает сегодняшний вопрос и спрашивает модель Claude. Ключ — секрет функций ANTHROPIC_API_KEY
 -- (Supabase → Edge Functions → Secrets); в репозитории и в базе его нет. Без ключа отвечает 'not configured'.
 -- =====================================================================
+
+-- =====================================================================
+-- mestario_ai_credits + mestario_ai_history (ИИ-помощник теперь за платные ИИ-кредиты, без премиума и дневного лимита)
+-- private.ai_credits(user_id, balance ≥ 0), private.ai_credit_log — история начислений и списаний.
+-- public.my_ai_credits() — свой баланс; public.admin_grant_ai_credits(user, ±amount) и public.admin_ai_credits(user) —
+--   только главные администраторы (is_chief_admin). Продажа пока вручную: покупатели пишут @boss.
+-- public.ai_take_credit(user) / public.ai_refund_credit(user) — только service_role (вызывает функция ai):
+--   кредит списывается до запроса к модели и возвращается, если ответ не получен.
+-- public.ai_history — вопросы и ответы (RLS: только свои). Таблица ai_questions с индексом «один в сутки»
+--   больше не используется (удалить индекс миграцией не дали — отклоняется как DROP).
+-- =====================================================================
