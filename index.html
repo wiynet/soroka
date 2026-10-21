@@ -3958,8 +3958,9 @@ watchUsername($("unUser"), $("unUserHint"));
 $("loginForm").addEventListener("submit", (e) => {
   e.preventDefault();
   busy(e.target, async () => {
+    state.freshLogin = true;   // вход по паролю: после него покажем заставку
     const { error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPass").value });
-    if (error) $("loginErr").textContent = authError(error);
+    if (error) { state.freshLogin = false; $("loginErr").textContent = authError(error); }
   });
 });
 
@@ -9384,8 +9385,9 @@ $("notifyYes").addEventListener("click", async () => {
 $("notifyLater").addEventListener("click", () => {
   settings.notifyAsked = Date.now(); saveSettings(); $("dlgNotify").close();
 });
-/* ---------- знакомство при первом входе в аккаунт ----------
-   Новому аккаунту один раз показываем заставку: прокрутка проигрывает её как ролик.
+/* ---------- заставка при входе в аккаунт ----------
+   Показывается после каждого входа по паролю и один раз новому аккаунту: прокрутка проигрывает её как ролик.
+   При обновлении страницы и переключении между сохранёнными аккаунтами её нет.
    GSAP скачивается только для неё, остальным он не нужен. */
 const INTRO_KEY = "mestario.intro";
 let gsapReady = null;
@@ -9398,12 +9400,13 @@ function loadGsap() {
   return gsapReady;
 }
 function introSeen() { try { return JSON.parse(localStorage.getItem(INTRO_KEY) || "[]"); } catch (e) { return []; } }
-// заставку видит только тот, кто впервые заходит в аккаунт: профиль создан меньше суток назад и на этом устройстве её ещё не было
+// заставку видит тот, кто только что вошёл по паролю, и новый аккаунт (создан меньше суток назад), если на этом устройстве её ещё не было
 function wantIntro() {
-  const p = state.profile;
-  if (!p || !p.created_at || Date.now() - new Date(p.created_at) > 86400e3) return false;
-  if (introSeen().includes(p.id)) return false;
-  return !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const p = state.profile, fresh = state.freshLogin;
+  state.freshLogin = false;
+  if (!p) return false;
+  if (fresh) return true;
+  return !!p.created_at && Date.now() - new Date(p.created_at) < 86400e3 && !introSeen().includes(p.id);
 }
 let introCtx = null, introRaf = 0;
 async function maybeIntro() {
