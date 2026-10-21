@@ -1470,7 +1470,126 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
     #app.chat-open .pane { animation: slide-in .26s var(--ease) both; }
     #app.back .sidebar { animation: slide-back .22s var(--ease) both; }
   }
+}/* знакомство при первом входе в аккаунт: кинематографичная заставка, которая проигрывается прокруткой */
+dialog.intro { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; padding: 0; background: var(--bg); color: var(--ink); overflow: hidden; }
+dialog.intro::backdrop { background: var(--bg); }
+.ci-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ci-scroll::-webkit-scrollbar { display: none; }
+.ci-track { position: relative; height: calc(100% + 5200px); }
+.ci { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; display: flex; align-items: center; justify-content: center; perspective: 1500px; font-family: var(--display); -webkit-font-smoothing: antialiased; }
+.ci .reveal { visibility: hidden; }
+.ci-grain { position: absolute; inset: 0; pointer-events: none; z-index: 50; opacity: .05; mix-blend-mode: overlay;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>'); }
+.ci-grid { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .5; background-size: 60px 60px;
+  background-image: linear-gradient(to right, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%); }
+.ci-hero, .ci-cta { position: absolute; z-index: 10; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px; will-change: transform; }
+.ci-hero h1 { margin: 0; font-size: clamp(40px, 8vw, 96px); line-height: 1.05; letter-spacing: -.03em; }
+.ci-t1 { font-weight: 700; margin-bottom: 8px !important; color: var(--ink); text-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 20%, transparent), 0 2px 4px color-mix(in srgb, var(--ink) 10%, transparent); }
+.ci-t2, .ci-cta h2 { font-weight: 800; letter-spacing: -.05em; background: linear-gradient(180deg, var(--ink) 0%, color-mix(in srgb, var(--ink) 40%, transparent) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: translateZ(0);
+  filter: drop-shadow(0 10px 20px color-mix(in srgb, var(--ink) 15%, transparent)) drop-shadow(0 2px 4px color-mix(in srgb, var(--ink) 10%, transparent)); }
+.ci-hint { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.ci-hint svg { width: 20px; height: 20px; animation: ci-bob 1.6s ease-in-out infinite; }
+@keyframes ci-bob { 50% { transform: translateY(5px); } }
+.ci-cta h2 { margin: 0 0 20px; font-size: clamp(36px, 6.5vw, 72px); line-height: 1.05; }
+.ci-cta p { margin: 0 auto 40px; max-width: 36rem; font-size: clamp(16px, 2vw, 20px); font-weight: 300; line-height: 1.6; color: var(--muted); }
+.ci-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.ci-btn { display: inline-flex; align-items: center; gap: 12px; padding: 16px 28px; border: 0; border-radius: 20px; font: 700 18px/1 var(--display); letter-spacing: -.01em; cursor: pointer; transition: all .4s cubic-bezier(.25, 1, .5, 1); }
+.ci-btn svg { width: 24px; height: 24px; transition: transform .4s cubic-bezier(.25, 1, .5, 1); }
+.ci-btn:hover svg { transform: scale(1.08); }
+.ci-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.ci-btn.light { background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%); color: #0f172a;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.1), 0 12px 24px -4px rgba(0,0,0,.3), inset 0 1px 1px #fff, inset 0 -3px 6px rgba(0,0,0,.06); }
+.ci-btn.light:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 6px 12px -2px rgba(0,0,0,.15), 0 20px 32px -6px rgba(0,0,0,.4), inset 0 1px 1px #fff, inset 0 -3px 6px rgba(0,0,0,.06); }
+.ci-btn.light:active { transform: translateY(1px); background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%); box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.1), inset 0 3px 6px rgba(0,0,0,.1); }
+.ci-btn.dark { background: linear-gradient(180deg, #27272a 0%, #18181b 100%); color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 2px 4px rgba(0,0,0,.6), 0 12px 24px -4px rgba(0,0,0,.9), inset 0 1px 1px rgba(255,255,255,.15), inset 0 -3px 6px rgba(0,0,0,.8); }
+.ci-btn.dark:hover { transform: translateY(-3px); background: linear-gradient(180deg, #3f3f46 0%, #27272a 100%); box-shadow: 0 0 0 1px rgba(255,255,255,.15), 0 6px 12px -2px rgba(0,0,0,.7), 0 20px 32px -6px #000, inset 0 1px 1px rgba(255,255,255,.2), inset 0 -3px 6px rgba(0,0,0,.8); }
+.ci-btn.dark:active { transform: translateY(1px); background: #18181b; box-shadow: 0 0 0 1px rgba(255,255,255,.05), inset 0 3px 8px rgba(0,0,0,.9); }
+.ci-skip { position: absolute; z-index: 60; top: max(14px, env(safe-area-inset-top)); right: 14px; padding: 8px 14px; border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 60%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--ink); font: 500 14px var(--font); cursor: pointer; }
+/* передний план: тёмно-синяя «физическая» карточка, на ней свет следует за курсором */
+.ci-layer { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; pointer-events: none; perspective: 1500px; }
+.ci-card { position: relative; overflow: hidden; pointer-events: auto; display: flex; align-items: center; justify-content: center; width: 92vw; height: 92vh; height: 92dvh; border-radius: 32px;
+  background: linear-gradient(145deg, hsl(225 66% 26%) 0%, #0a101d 100%); border: 1px solid rgba(255,255,255,.04); color: #fff;
+  box-shadow: 0 40px 100px -20px rgba(0,0,0,.9), 0 20px 40px -20px rgba(0,0,0,.8), inset 0 1px 2px rgba(255,255,255,.2), inset 0 -2px 4px rgba(0,0,0,.8); }
+.ci-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 50; mix-blend-mode: screen;
+  background: radial-gradient(800px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.06) 0%, transparent 40%); }
+.ci-in { position: relative; z-index: 10; width: 100%; height: 100%; max-width: 80rem; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; }
+.ci-brand { order: 1; display: flex; justify-content: center; width: 100%; }
+.ci-brand h2 { margin: 0; font-size: clamp(48px, 12vw, 128px); font-weight: 900; text-transform: uppercase; letter-spacing: -.05em; line-height: 1;
+  background: linear-gradient(180deg, #fff 0%, #a1a1aa 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: translateZ(0);
+  filter: drop-shadow(0 12px 24px rgba(0,0,0,.8)) drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+.ci-text { order: 3; width: 100%; padding: 0 16px; text-align: center; }
+.ci-text h3 { margin: 0; font-size: clamp(24px, 3vw, 36px); line-height: 1.15; font-weight: 700; letter-spacing: -.02em; }
+.ci-text p { display: none; margin: 0 auto; max-width: 24rem; color: rgb(219 234 254 / .7); font-size: 16px; line-height: 1.65; }
+.ci-text p b { color: #fff; font-weight: 600; }
+.ci-mockwrap { order: 2; position: relative; width: 100%; height: 380px; display: flex; align-items: center; justify-content: center; perspective: 1000px; }
+.ci-mockscale { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: scale(.65); }
+/* айфон: рамка, кнопки, «остров», блик на стекле */
+.ci-phone { position: relative; width: 280px; height: 580px; flex: none; border-radius: 48px; background: #111; transform-style: preserve-3d; will-change: transform;
+  box-shadow: inset 0 0 0 2px #52525b, inset 0 0 0 7px #000, 0 40px 80px -15px rgba(0,0,0,.9), 0 15px 25px -5px rgba(0,0,0,.7); }
+.ci-hw { position: absolute; width: 3px; background: linear-gradient(90deg, #404040 0%, #171717 100%); border-left: 1px solid rgba(255,255,255,.05);
+  box-shadow: -2px 0 5px rgba(0,0,0,.8), inset -1px 0 1px rgba(255,255,255,.15), inset 1px 0 2px rgba(0,0,0,.8); }
+.ci-hw.l { left: -3px; border-radius: 6px 0 0 6px; }
+.ci-hw.r { right: -3px; border-radius: 0 6px 6px 0; transform: scaleX(-1); }
+.ci-screen { position: absolute; inset: 7px; z-index: 10; overflow: hidden; border-radius: 40px; background: #050914; box-shadow: inset 0 0 15px #000; color: #fff; font-family: var(--font); }
+.ci-glare { position: absolute; inset: 0; z-index: 40; pointer-events: none; background: linear-gradient(110deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 45%); }
+.ci-island { position: absolute; z-index: 50; top: 5px; left: 50%; transform: translateX(-50%); width: 100px; height: 28px; border-radius: 999px; background: #000;
+  display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; box-shadow: inset 0 -1px 2px rgba(255,255,255,.1); }
+.ci-island i { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,.8); animation: ci-pulse 2s ease-in-out infinite; }
+@keyframes ci-pulse { 50% { opacity: .5; } }
+.ci-app { position: relative; height: 100%; padding: 48px 16px 32px; display: flex; flex-direction: column; }
+.ci-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.ci-top small { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #a3a3a3; }
+.ci-top b { font-size: 20px; letter-spacing: -.02em; text-shadow: 0 4px 3px rgba(0,0,0,.07); }
+.ci-me { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #e5e5e5; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 15px -3px rgba(0,0,0,.5); }
+.ci-search { height: 32px; margin-bottom: 14px; border-radius: 10px; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 13px; color: #737373; background: rgba(255,255,255,.05); }
+.ci-search svg { width: 14px; height: 14px; }
+.ci-rows { display: grid; gap: 10px; }
+.ci-row { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 16px; border: 1px solid rgba(255,255,255,.03);
+  background: linear-gradient(180deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.01) 100%); box-shadow: 0 10px 20px rgba(0,0,0,.3), inset 0 1px 1px rgba(255,255,255,.05), inset 0 -1px 1px rgba(0,0,0,.5); }
+.ci-av { color: #fff; width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; object-fit: cover; border: 1px solid rgba(255,255,255,.12); }
+.ci-av.a { background: linear-gradient(135deg, #3b82f6, #1e3a8a); }
+.ci-av.b { background: linear-gradient(135deg, #10b981, #065f46); }
+.ci-av.c { background: linear-gradient(135deg, #f59e0b, #9a3412); }
+.ci-row div { flex: 1; min-width: 0; }
+.ci-row b { display: block; font-size: 13px; }
+.ci-row div span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11.5px; color: #a3a3a3; }
+.ci-row em { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: grid; place-items: center; font: 700 10.5px/1 var(--font); background: #3b82f6; }
+.ci-bar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.2); }
+/* стеклянные значки, которые парят возле телефона */
+.ci-badge { position: absolute; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.01) 100%); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 25px 50px -12px rgba(0,0,0,.8), inset 0 1px 1px rgba(255,255,255,.2), inset 0 -1px 1px rgba(0,0,0,.5); }
+.ci-badge.one { top: 64px; left: -15px; }
+.ci-badge.two { bottom: 48px; right: -15px; }
+.ci-badge > span { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; border: 1px solid rgb(96 165 250 / .3); background: linear-gradient(180deg, rgb(59 130 246 / .2), rgb(30 58 138 / .1)); }
+.ci-badge b { display: block; font-size: 12px; letter-spacing: -.01em; }
+.ci-badge small { display: block; font-size: 10px; font-weight: 500; color: rgb(191 219 254 / .5); }
+@media (min-width: 768px) {
+  .ci-card { width: 85vw; height: 85vh; height: 85dvh; border-radius: 40px; }
+  .ci-mockscale { transform: scale(.85); }
+  .ci-text p { display: block; }
 }
+@media (min-width: 1024px) {
+  .ci-in { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.3fr); gap: 48px; padding: 0 48px; }
+  .ci-brand { order: 3; justify-content: flex-end; }
+  .ci-brand h2 { font-size: clamp(56px, 5.2vw, 112px); }
+  .ci-text { order: 1; padding: 0; text-align: left; }
+  .ci-text h3 { margin-bottom: 20px; }
+  .ci-text p { max-width: none; margin: 0; font-size: 18px; }
+  .ci-mockwrap { height: 600px; }
+  .ci-mockscale { transform: none; }
+  .ci-badge { padding: 16px; gap: 16px; border-radius: 16px; }
+  .ci-badge.one { top: 150px; left: -80px; }
+  .ci-badge.two { bottom: 80px; right: -80px; }
+  .ci-badge > span { width: 40px; height: 40px; font-size: 20px; }
+  .ci-badge b { font-size: 14px; }
+  .ci-badge small { font-size: 12px; }
+}
+
 </style>
 <script>
 /* На защищённый адрес переходим, только убедившись, что он открывается:
@@ -1531,7 +1650,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=dcac317dcb"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=a4bfc346dc"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2667,6 +2786,77 @@ void main() {
     </form>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
+</dialog>
+
+<!-- знакомство с Mestario при первом входе в аккаунт: проигрывается прокруткой -->
+<dialog id="dlgIntro" class="intro" aria-label="Знакомство с Mestario">
+  <div class="ci-scroll" id="introScroll">
+    <div class="ci-track" id="introTrack">
+      <div class="ci" id="introStage">
+        <div class="ci-grain" aria-hidden="true"></div>
+        <div class="ci-grid" aria-hidden="true"></div>
+
+        <div class="ci-hero">
+          <h1 class="ci-t1 reveal">Ваши разговоры —</h1>
+          <h1 class="ci-t2 reveal">в одном месте.</h1>
+          <div class="ci-hint reveal">Листайте вниз<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+
+        <div class="ci-cta reveal">
+          <h2>Можно начинать.</h2>
+          <p>Найдите друзей по юзернейму, соберите группу или просто спросите что-нибудь у @ai.</p>
+          <div class="ci-btns">
+            <button class="ci-btn light" type="button" id="introGo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8.5 8.5 0 01-12.400 7.600L3 21l1.400-5.600A8.500 8.500 0 1121 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Открыть чаты</button>
+            <button class="ci-btn dark" type="button" id="introAi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.900 5.100L19 10l-5.100 1.900L12 17l-1.900-5.100L5 10l5.100-1.900zM19 15l.9 2.100L22 18l-2.100.9L19 21l-.9-2.100L16 18l2.100-.9z" fill="currentColor"/></svg>Спросить @ai</button>
+          </div>
+        </div>
+
+        <div class="ci-layer">
+          <div class="ci-card reveal" id="introCard">
+            <div class="ci-sheen" aria-hidden="true"></div>
+            <div class="ci-in">
+              <div class="ci-brand reveal"><h2>Mestario</h2></div>
+
+              <div class="ci-mockwrap">
+                <div class="ci-mockscale">
+                  <div class="ci-phone" id="introPhone" aria-hidden="true">
+                    <i class="ci-hw l" style="top:120px;height:25px"></i>
+                    <i class="ci-hw l" style="top:160px;height:45px"></i>
+                    <i class="ci-hw l" style="top:220px;height:45px"></i>
+                    <i class="ci-hw r" style="top:170px;height:70px"></i>
+                    <div class="ci-screen">
+                      <div class="ci-glare"></div>
+                      <div class="ci-island"><i></i></div>
+                      <div class="ci-app">
+                        <div class="ci-top ci-w"><div><small>Сегодня</small><b>Чаты</b></div><div class="ci-me" id="introMe"></div></div>
+                        <div class="ci-search ci-w"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.500 4.500" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Поиск</div>
+                        <div class="ci-rows">
+                          <div class="ci-row ci-w"><img class="ci-av" src="ai-avatar.png" alt=""><div><b>@ai</b><span>Привет! Чем могу помочь?</span></div><em>1</em></div>
+                          <div class="ci-row ci-w"><span class="ci-av a">★</span><div><b>Избранное</b><span>Заметки и ссылки для себя</span></div></div>
+                          <div class="ci-row ci-w"><span class="ci-av b">Д</span><div><b>Друзья</b><span>🎤 Голосовое сообщение</span></div><em>3</em></div>
+                          <div class="ci-row ci-w"><span class="ci-av c">С</span><div><b>Семья</b><span>📷 Фото</span></div></div>
+                        </div>
+                        <div class="ci-bar"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="ci-badge one"><span aria-hidden="true">🎁</span><div><b>Вам подарок</b><small>Откройте в чате</small></div></div>
+                  <div class="ci-badge two"><span aria-hidden="true">💬</span><div><b>Новое сообщение</b><small>от @ai</small></div></div>
+                </div>
+              </div>
+
+              <div class="ci-text reveal">
+                <h3>Общение без лишнего.</h3>
+                <p><b>Mestario</b> — мессенджер для личных переписок, групп и каналов: голосовые и видеосообщения, истории, подарки и ИИ-помощник @ai.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ci-skip" type="button" id="introSkip">Пропустить</button>
 </dialog>
 
 <!-- предложение включить уведомления сразу после входа -->
@@ -3956,6 +4146,7 @@ async function startApp() {
   $("app").hidden = false;
   refreshMe();
   checkAdmin();
+  maybeIntro();   // новый аккаунт: сначала заставка; её окно закрывает собой предложения ниже
   resumePush();
   offerHomeScreen();
   loadBlocked();
@@ -4006,6 +4197,7 @@ function stopApp() {
   if (state.channel) { sb.removeChannel(state.channel); state.channel = null; }
   clearInterval(state.timer);
   state.started = false;
+  if ($("dlgIntro").open) $("dlgIntro").close();
   state.isAdmin = false;
   state.isChief = false;
   state.editing = null;
@@ -9192,6 +9384,102 @@ $("notifyYes").addEventListener("click", async () => {
 $("notifyLater").addEventListener("click", () => {
   settings.notifyAsked = Date.now(); saveSettings(); $("dlgNotify").close();
 });
+/* ---------- знакомство при первом входе в аккаунт ----------
+   Новому аккаунту один раз показываем заставку: прокрутка проигрывает её как ролик.
+   GSAP скачивается только для неё, остальным он не нужен. */
+const INTRO_KEY = "mestario.intro";
+let gsapReady = null;
+function loadGsap() {
+  const add = (src) => new Promise((ok, fail) => document.head.append(h("script", { src, crossorigin: "anonymous", onload: ok, onerror: fail })));
+  gsapReady = gsapReady || add("https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js")
+    .then(() => add("https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"))
+    .then(() => { gsap.registerPlugin(ScrollTrigger); })
+    .catch((err) => { gsapReady = null; throw err; });
+  return gsapReady;
+}
+function introSeen() { try { return JSON.parse(localStorage.getItem(INTRO_KEY) || "[]"); } catch (e) { return []; } }
+// заставку видит только тот, кто впервые заходит в аккаунт: профиль создан меньше суток назад и на этом устройстве её ещё не было
+function wantIntro() {
+  const p = state.profile;
+  if (!p || !p.created_at || Date.now() - new Date(p.created_at) > 86400e3) return false;
+  if (introSeen().includes(p.id)) return false;
+  return !matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+let introCtx = null, introRaf = 0;
+async function maybeIntro() {
+  if (!wantIntro()) return false;
+  try { await loadGsap(); } catch (e) { return false; }   // GSAP не скачался: заставку покажем в следующий раз
+  if (!state.started || $("dlgIntro").open) return false;
+  try { localStorage.setItem(INTRO_KEY, JSON.stringify([...introSeen(), state.profile.id].slice(-20))); } catch (e) {}
+  const name = String(state.profile.display_name || "").trim();
+  $("introMe").textContent = name.split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase() || "M";
+  // GSAP мог качаться дольше, чем ждут эти предложения: убираем их, после заставки они откроются снова
+  for (const d of [$("dlgNotify"), $("dlgHome")]) if (d.open) d.close();
+  $("introScroll").scrollTop = 0;
+  $("dlgIntro").showModal();
+  $("introSkip").focus();
+  playIntro();
+  return true;
+}
+function playIntro() {
+  const stage = $("introStage"), scroller = $("introScroll"), vh = stage.clientHeight, mobile = innerWidth < 768;
+  introCtx = gsap.context(() => {
+    gsap.set(".ci-t1", { autoAlpha: 0, y: 60, scale: .85, filter: "blur(20px)", rotationX: -20 });
+    gsap.set(".ci-t2", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" });
+    gsap.set(".ci-hint", { autoAlpha: 0 });
+    gsap.set(".ci-card", { y: vh + 200, autoAlpha: 1 });
+    gsap.set([".ci-text", ".ci-brand", ".ci-mockwrap", ".ci-badge", ".ci-w"], { autoAlpha: 0 });
+    gsap.set(".ci-cta", { autoAlpha: 0, scale: .8, filter: "blur(30px)" });
+
+    gsap.timeline({ delay: .3 })
+      .to(".ci-t1", { duration: 1.8, autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)", rotationX: 0, ease: "expo.out" })
+      .to(".ci-t2", { duration: 1.4, clipPath: "inset(0 0% 0 0)", ease: "power4.inOut" }, "-=1.0")
+      .to(".ci-hint", { duration: .8, autoAlpha: 1 }, "-=.4");
+
+    gsap.timeline({ scrollTrigger: { trigger: $("introTrack"), scroller, start: "top top", end: "bottom bottom", scrub: 1 } })
+      .to(".ci-hint", { autoAlpha: 0, duration: .4 }, 0)
+      .to([".ci-hero", ".ci-grid"], { scale: 1.15, filter: "blur(20px)", opacity: .2, ease: "power2.inOut", duration: 2 }, 0)
+      .to(".ci-card", { y: 0, ease: "power3.inOut", duration: 2 }, 0)
+      .to(".ci-card", { width: "100%", height: "100%", borderRadius: 0, ease: "power3.inOut", duration: 1.5 })
+      .fromTo(".ci-mockwrap", { y: 300, z: -500, rotationX: 50, rotationY: -30, autoAlpha: 0, scale: .6 },
+        { y: 0, z: 0, rotationX: 0, rotationY: 0, autoAlpha: 1, scale: 1, ease: "expo.out", duration: 2.5 }, "-=0.8")
+      .fromTo(".ci-w", { y: 40, autoAlpha: 0, scale: .95 }, { y: 0, autoAlpha: 1, scale: 1, stagger: .15, ease: "back.out(1.2)", duration: 1.5 }, "-=1.5")
+      .fromTo(".ci-badge", { y: 100, autoAlpha: 0, scale: .7, rotationZ: -10 }, { y: 0, autoAlpha: 1, scale: 1, rotationZ: 0, ease: "back.out(1.5)", duration: 1.5, stagger: .2 }, "-=1.2")
+      .fromTo(".ci-text", { x: -50, autoAlpha: 0 }, { x: 0, autoAlpha: 1, ease: "power4.out", duration: 1.5 }, "-=1.5")
+      .fromTo(".ci-brand", { x: 50, autoAlpha: 0, scale: .8 }, { x: 0, autoAlpha: 1, scale: 1, ease: "expo.out", duration: 1.5 }, "<")
+      .to({}, { duration: 2.5 })
+      .set(".ci-hero", { autoAlpha: 0 })
+      .set(".ci-cta", { autoAlpha: 1 })
+      .to({}, { duration: 1.5 })
+      .to([".ci-mockwrap", ".ci-badge", ".ci-text", ".ci-brand"], { scale: .9, y: -40, z: -200, autoAlpha: 0, ease: "power3.in", duration: 1.2, stagger: .05 })
+      .to(".ci-card", { width: mobile ? "92vw" : "85vw", height: mobile ? "92%" : "85%", borderRadius: mobile ? 32 : 40, ease: "expo.inOut", duration: 1.8 }, "pullback")
+      .to(".ci-cta", { scale: 1, filter: "blur(0px)", ease: "expo.inOut", duration: 1.8 }, "pullback")
+      .to(".ci-card", { y: -vh - 300, ease: "power3.in", duration: 1.5 });
+  }, stage);
+}
+// свет на карточке и наклон телефона следуют за курсором (только мышь)
+$("dlgIntro").addEventListener("mousemove", (e) => {
+  if (!introCtx || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  cancelAnimationFrame(introRaf);
+  introRaf = requestAnimationFrame(() => {
+    const card = $("introCard"), r = card.getBoundingClientRect();
+    card.style.setProperty("--mx", e.clientX - r.left + "px");
+    card.style.setProperty("--my", e.clientY - r.top + "px");
+    const x = (e.clientX / innerWidth - .5) * 2, y = (e.clientY / innerHeight - .5) * 2;
+    gsap.to("#introPhone", { rotationY: x * 12, rotationX: -y * 12, ease: "power3.out", duration: 1.2 });
+  });
+});
+$("dlgIntro").addEventListener("close", () => {
+  cancelAnimationFrame(introRaf);
+  if (introCtx) { introCtx.revert(); introCtx = null; }
+  // пока шла заставка, окна с уведомлениями и экраном «Домой» не открывались: предлагаем их сейчас
+  if (!state.started || document.querySelector("dialog[open]")) return;
+  if (pushSupported && settings.notify !== false && Notification.permission === "default") $("dlgNotify").showModal();
+  else offerHomeScreen();
+});
+$("introSkip").addEventListener("click", () => $("dlgIntro").close());
+$("introGo").addEventListener("click", () => $("dlgIntro").close());
+$("introAi").addEventListener("click", () => { $("dlgIntro").close(); openAiChat(); });
 /* ---------- несколько аккаунтов на одном устройстве ----------
    Для каждого аккаунта храним его вход (как это делает и сам Supabase) и переключаемся без пароля.
    Без премиума можно держать 2 аккаунта, с премиумом на любом из них 4. */
