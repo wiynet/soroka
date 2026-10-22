@@ -1495,7 +1495,8 @@ dialog.intro::backdrop { background: var(--bg); }
 .ci-cta h2 { margin: 0 0 20px; font-size: clamp(36px, 6.5vw, 72px); line-height: 1.05; }
 .ci-cta p { margin: 0 auto 40px; max-width: 36rem; font-size: clamp(16px, 2vw, 20px); font-weight: 300; line-height: 1.6; color: var(--muted); }
 .ci-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
-.ci-btn { display: inline-flex; align-items: center; gap: 12px; padding: 16px 28px; border: 0; border-radius: 20px; font: 700 18px/1 var(--display); letter-spacing: -.01em; cursor: pointer; transition: all .4s cubic-bezier(.25, 1, .5, 1); }
+@media (max-width: 639px) { .ci-btns { flex-direction: column; width: min(300px, 100%); } }
+.ci-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 28px; border: 0; border-radius: 20px; font: 700 18px/1 var(--display); letter-spacing: -.01em; cursor: pointer; transition: all .4s cubic-bezier(.25, 1, .5, 1); }
 .ci-btn svg { width: 24px; height: 24px; transition: transform .4s cubic-bezier(.25, 1, .5, 1); }
 .ci-btn:hover svg { transform: scale(1.08); }
 .ci-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -1650,7 +1651,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=a4bfc346dc"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=ba0a1427f2"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2788,7 +2789,7 @@ void main() {
   </div>
 </dialog>
 
-<!-- знакомство с Mestario при первом входе в аккаунт: проигрывается прокруткой -->
+<!-- знакомство с Mestario перед входом: проигрывается прокруткой -->
 <dialog id="dlgIntro" class="intro" aria-label="Знакомство с Mestario">
   <div class="ci-scroll" id="introScroll">
     <div class="ci-track" id="introTrack">
@@ -2804,10 +2805,10 @@ void main() {
 
         <div class="ci-cta reveal">
           <h2>Можно начинать.</h2>
-          <p>Найдите друзей по юзернейму, соберите группу или просто спросите что-нибудь у @ai.</p>
+          <p>Войдите или создайте аккаунт за минуту — и пишите друзьям, собирайте группы, спрашивайте @ai.</p>
           <div class="ci-btns">
-            <button class="ci-btn light" type="button" id="introGo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8.5 8.5 0 01-12.400 7.600L3 21l1.400-5.600A8.500 8.500 0 1121 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Открыть чаты</button>
-            <button class="ci-btn dark" type="button" id="introAi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.900 5.100L19 10l-5.100 1.900L12 17l-1.900-5.100L5 10l5.100-1.900zM19 15l.9 2.100L22 18l-2.100.9L19 21l-.9-2.100L16 18l2.100-.9z" fill="currentColor"/></svg>Спросить @ai</button>
+            <button class="ci-btn light" type="button" id="introLogin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l4-4-4-4M14 12H4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Войти</button>
+            <button class="ci-btn dark" type="button" id="introSignup"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.500"/><path d="M3 20c.6-3.600 3-5.500 6-5.500s5.400 1.900 6 5.500M19 8v6M16 11h6"/></g></svg>Создать аккаунт</button>
           </div>
         </div>
 
@@ -2828,7 +2829,7 @@ void main() {
                       <div class="ci-glare"></div>
                       <div class="ci-island"><i></i></div>
                       <div class="ci-app">
-                        <div class="ci-top ci-w"><div><small>Сегодня</small><b>Чаты</b></div><div class="ci-me" id="introMe"></div></div>
+                        <div class="ci-top ci-w"><div><small>Сегодня</small><b>Чаты</b></div><div class="ci-me">Я</div></div>
                         <div class="ci-search ci-w"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.500 4.500" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Поиск</div>
                         <div class="ci-rows">
                           <div class="ci-row ci-w"><img class="ci-av" src="ai-avatar.png" alt=""><div><b>@ai</b><span>Привет! Чем могу помочь?</span></div><em>1</em></div>
@@ -3896,6 +3897,7 @@ function showAuth(view) {
   }
   $("authTabs").hidden = !(view === "login" || view === "signup");
   for (const e of $("auth").querySelectorAll(".error")) e.textContent = "";
+  if (view === "login" || view === "signup") maybeIntro();
 }
 $("authTabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]");
@@ -3958,9 +3960,8 @@ watchUsername($("unUser"), $("unUserHint"));
 $("loginForm").addEventListener("submit", (e) => {
   e.preventDefault();
   busy(e.target, async () => {
-    state.freshLogin = true;   // вход по паролю: после него покажем заставку
     const { error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPass").value });
-    if (error) { state.freshLogin = false; $("loginErr").textContent = authError(error); }
+    if (error) $("loginErr").textContent = authError(error);
   });
 });
 
@@ -4147,7 +4148,7 @@ async function startApp() {
   $("app").hidden = false;
   refreshMe();
   checkAdmin();
-  maybeIntro();   // новый аккаунт: сначала заставка; её окно закрывает собой предложения ниже
+  if ($("dlgIntro").open) $("dlgIntro").close();   // вошли, пока шла заставка (например, в другой вкладке)
   resumePush();
   offerHomeScreen();
   loadBlocked();
@@ -4198,7 +4199,6 @@ function stopApp() {
   if (state.channel) { sb.removeChannel(state.channel); state.channel = null; }
   clearInterval(state.timer);
   state.started = false;
-  if ($("dlgIntro").open) $("dlgIntro").close();
   state.isAdmin = false;
   state.isChief = false;
   state.editing = null;
@@ -9385,11 +9385,10 @@ $("notifyYes").addEventListener("click", async () => {
 $("notifyLater").addEventListener("click", () => {
   settings.notifyAsked = Date.now(); saveSettings(); $("dlgNotify").close();
 });
-/* ---------- заставка при входе в аккаунт ----------
-   Показывается после каждого входа по паролю и один раз новому аккаунту: прокрутка проигрывает её как ролик.
-   При обновлении страницы и переключении между сохранёнными аккаунтами её нет.
-   GSAP скачивается только для неё, остальным он не нужен. */
-const INTRO_KEY = "mestario.intro";
+/* ---------- заставка перед входом ----------
+   Кто открыл сайт без аккаунта, сначала видит заставку: прокрутка проигрывает её как ролик,
+   в конце кнопки «Войти» и «Создать аккаунт». Один раз за открытие страницы.
+   GSAP скачивается только для неё, вошедшим он не нужен. */
 let gsapReady = null;
 function loadGsap() {
   const add = (src) => new Promise((ok, fail) => document.head.append(h("script", { src, crossorigin: "anonymous", onload: ok, onerror: fail })));
@@ -9399,25 +9398,14 @@ function loadGsap() {
     .catch((err) => { gsapReady = null; throw err; });
   return gsapReady;
 }
-function introSeen() { try { return JSON.parse(localStorage.getItem(INTRO_KEY) || "[]"); } catch (e) { return []; } }
-// заставку видит тот, кто только что вошёл по паролю, и новый аккаунт (создан меньше суток назад), если на этом устройстве её ещё не было
-function wantIntro() {
-  const p = state.profile, fresh = state.freshLogin;
-  state.freshLogin = false;
-  if (!p) return false;
-  if (fresh) return true;
-  return !!p.created_at && Date.now() - new Date(p.created_at) < 86400e3 && !introSeen().includes(p.id);
-}
-let introCtx = null, introRaf = 0;
+let introCtx = null, introRaf = 0, introDone = false;
+// заставка нужна, пока человек не вошёл: при «Добавить аккаунт» и после выхода её нет
+const introWanted = () => !introDone && !state.me && !state.adding && !$("auth").hidden;
 async function maybeIntro() {
-  if (!wantIntro()) return false;
-  try { await loadGsap(); } catch (e) { return false; }   // GSAP не скачался: заставку покажем в следующий раз
-  if (!state.started || $("dlgIntro").open) return false;
-  try { localStorage.setItem(INTRO_KEY, JSON.stringify([...introSeen(), state.profile.id].slice(-20))); } catch (e) {}
-  const name = String(state.profile.display_name || "").trim();
-  $("introMe").textContent = name.split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase() || "M";
-  // GSAP мог качаться дольше, чем ждут эти предложения: убираем их, после заставки они откроются снова
-  for (const d of [$("dlgNotify"), $("dlgHome")]) if (d.open) d.close();
+  if (!introWanted()) return false;
+  introDone = true;
+  try { await loadGsap(); } catch (e) { return false; }   // GSAP не скачался: сразу экран входа
+  if (state.me || state.adding || $("auth").hidden) return false;   // пока качался GSAP, человек успел войти
   $("introScroll").scrollTop = 0;
   $("dlgIntro").showModal();
   $("introSkip").focus();
@@ -9475,14 +9463,15 @@ $("dlgIntro").addEventListener("mousemove", (e) => {
 $("dlgIntro").addEventListener("close", () => {
   cancelAnimationFrame(introRaf);
   if (introCtx) { introCtx.revert(); introCtx = null; }
-  // пока шла заставка, окна с уведомлениями и экраном «Домой» не открывались: предлагаем их сейчас
-  if (!state.started || document.querySelector("dialog[open]")) return;
-  if (pushSupported && settings.notify !== false && Notification.permission === "default") $("dlgNotify").showModal();
-  else offerHomeScreen();
+  // после заставки открываем нужную форму: «Пропустить» и Esc ведут ко входу
+  if (state.me || $("auth").hidden) return;
+  const view = $("dlgIntro").returnValue === "signup" ? "signup" : "login";
+  showAuth(view);
+  $(view === "signup" ? "suName" : "loginEmail").focus();
 });
-$("introSkip").addEventListener("click", () => $("dlgIntro").close());
-$("introGo").addEventListener("click", () => $("dlgIntro").close());
-$("introAi").addEventListener("click", () => { $("dlgIntro").close(); openAiChat(); });
+$("introSkip").addEventListener("click", () => $("dlgIntro").close("login"));
+$("introLogin").addEventListener("click", () => $("dlgIntro").close("login"));
+$("introSignup").addEventListener("click", () => $("dlgIntro").close("signup"));
 /* ---------- несколько аккаунтов на одном устройстве ----------
    Для каждого аккаунта храним его вход (как это делает и сам Supabase) и переключаемся без пароля.
    Без премиума можно держать 2 аккаунта, с премиумом на любом из них 4. */
