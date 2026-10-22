@@ -1447,3 +1447,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Electron-окно открывает сайт (обновления сразу), без интернета — встроенную копию интерфейса.
 -- Выпуск windows-N: Mestario-Setup.exe и Mestario.exe, make_latest: false (releases/latest остаётся за APK).
 -- При переезде на mestario.top поменять SITE в desktop/main.js.
+
+-- ===== Mestario для iPhone (.github/workflows/ios.yml; без изменений БД) =====
+-- Capacitor iOS, интерфейс встроен (capacitor://localhost), тихое обновление интерфейса с сайта работает и тут.
+-- Сборка без подписи (нет аккаунта Apple Developer): выпуск ios-N с Mestario.ipa, make_latest: false.
+-- Ставится через AltStore/Sideloadly со своим Apple ID; для TestFlight/App Store нужен аккаунт разработчика.

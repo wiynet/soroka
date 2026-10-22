@@ -8,7 +8,7 @@
 /* Android-приложение: если приложение уже скачало свежий интерфейс с сайта, показываем его вместо встроенного.
    Если прошлый запуск свежей версии сломался (не дошёл до отметки «ok»), возвращаемся к встроенной. */
 (function () {
-  if (window.__mestarioLive || !(location.hostname === "localhost" && /Android/i.test(navigator.userAgent))) return;
+  if (window.__mestarioLive || !(location.hostname === "localhost" && (/Android/i.test(navigator.userAgent) || location.protocol === "capacitor:"))) return;
   try {
     var m = document.querySelector('meta[name="mestario-bundle"]'), bundle = m ? m.content : "";
     if (bundle) localStorage.setItem("mestario.bundle", bundle);
@@ -9708,7 +9708,7 @@ const APK_URL = "https://github.com/wiynet/soroka/releases/latest/download/Mesta
 const APK_PAGE = "https://github.com/wiynet/soroka/releases/latest";
 let apkNewer = 0;   // номер новой сборки APK, если она вышла
 function apkBuild() { const m = document.querySelector('meta[name="mestario-apk"]'); return Number(m && m.content) || Number(localStorage.getItem("mestario.apk") || 0) || 0; }
-function appBarState() { return IN_APP ? (apkNewer ? "upd" + apkNewer : "") : /Android/i.test(navigator.userAgent) ? "dl" : ""; }
+function appBarState() { return IN_APP ? (!/Android/i.test(navigator.userAgent) ? "" : apkNewer ? "upd" + apkNewer : "") : /Android/i.test(navigator.userAgent) ? "dl" : ""; }
 // круг рядом с «Моя история»: в браузере на Android — «Скачать», в приложении — «Обновить», когда вышла новая сборка
 function appBarItem() {
   const st = appBarState();
@@ -9723,8 +9723,8 @@ async function appUpdates() {
   if (!IN_APP) return;
   try { localStorage.setItem("mestario.boot", "ok"); } catch (e) {}   // этот запуск дошёл до конца — версия рабочая
   try { const b = document.querySelector('meta[name="mestario-apk"]'); if (b) localStorage.setItem("mestario.apk", b.content); } catch (e) {}
-  // 1) новая сборка APK (нужна, только если менялось что-то в самом приложении)
-  try {
+  // 1) новая сборка APK (нужна, только если менялось что-то в самом приложении); на iPhone APK не предлагаем
+  if (/Android/i.test(navigator.userAgent)) try {
     const r = await fetch("https://api.github.com/repos/wiynet/soroka/releases/latest", { cache: "no-store" });
     if (r.ok) {
       const j = await r.json(), n = Number(String(j.tag_name || "").replace(/\D/g, "")) || 0;
@@ -9737,6 +9737,7 @@ async function appUpdates() {
     if (!r.ok) return;
     const html = await r.text();
     if (html.length < 100000 || !html.includes("mestario-bundle") && !html.includes("Mestario")) return;
+    if (!(window.crypto && crypto.subtle)) return;
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(html));
     const hash = [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join("");
     const base = localStorage.getItem("mestario.bundle") || "";

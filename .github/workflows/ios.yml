@@ -1,0 +1,67 @@
+name: iOS IPA
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/ios.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: { group: ios, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Файлы интерфейса в приложение
+        run: |
+          mkdir -p app/www
+          cp index.html en.js manifest.webmanifest sw.js *.png app/www/
+          H=$(shasum -a 256 index.html | cut -d' ' -f1)
+          # отпечаток встроенного интерфейса — по нему приложение понимает, что на сайте вышло обновление
+          perl -0pi -e "s#<head>#<head>\n<meta name=\"mestario-bundle\" content=\"$H\">\n<meta name=\"mestario-ios\" content=\"${{ github.run_number }}\">#" app/www/index.html
+          head -5 app/www/index.html
+      - name: Проект iOS
+        working-directory: app
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-audit --no-fund --no-save @capacitor/ios@6.1.2
+          npx cap add ios
+          npx cap sync ios
+      - name: Разрешения, версия, иконка
+        working-directory: app/ios/App
+        run: |
+          P=App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Mestario" $P || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Mestario" $P
+          add() { /usr/libexec/PlistBuddy -c "Add :$1 string $2" $P 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :$1 $2" $P; }
+          add NSCameraUsageDescription "Камера нужна для фото, видеосообщений и видеозвонков"
+          add NSMicrophoneUsageDescription "Микрофон нужен для голосовых сообщений и звонков"
+          add NSLocationWhenInUseUsageDescription "Местоположение нужно, чтобы отправить его в чат"
+          add NSPhotoLibraryUsageDescription "Доступ к фото нужен, чтобы отправлять их в чаты"
+          add NSPhotoLibraryAddUsageDescription "Чтобы сохранять фото из чатов"
+          ICON=$(find App/Assets.xcassets/AppIcon.appiconset -name "*.png" | head -1)
+          echo "icon: $ICON"
+          sips -z 1024 1024 ../../../icon-512.png --out "$ICON"
+      - name: Сборка
+        working-directory: app/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} MARKETING_VERSION=1.0.${{ github.run_number }} \
+            PRODUCT_BUNDLE_IDENTIFIER=top.mestario.app build | tail -20
+          APP=build/Build/Products/Release-iphoneos/App.app
+          ls "$APP" | head
+          mkdir -p Payload && cp -R "$APP" Payload/
+          zip -qry ../../Mestario.ipa Payload
+          ls -la ../../Mestario.ipa
+      - name: Выпуск
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-${{ github.run_number }}
+          name: Mestario для iPhone · сборка ${{ github.run_number }}
+          body: |
+            Неподписанный .ipa: ставится через AltStore или Sideloadly со своим Apple ID (подпись живёт 7 дней, затем её продлевают).
+            Сборка из коммита ${{ github.sha }}.
+          files: app/Mestario.ipa
+          make_latest: false
