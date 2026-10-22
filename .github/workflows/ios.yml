@@ -14,6 +14,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - name: Xcode 26 — системные элементы iOS 26 в стиле Liquid Glass (если на сборщике есть)
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
       - name: Файлы интерфейса в приложение
         run: |
           mkdir -p app/www
@@ -59,7 +64,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-${{ github.run_number }}
-          name: Mestario для iPhone · сборка ${{ github.run_number }}
+          name: Mestario для iPhone · сборка ${{ github.run_number }} · Liquid Glass
           body: |
             Неподписанный .ipa: ставится через AltStore или Sideloadly со своим Apple ID (подпись живёт 7 дней, затем её продлевают).
             Сборка из коммита ${{ github.sha }}.

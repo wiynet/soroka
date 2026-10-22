@@ -1636,6 +1636,80 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
     #app.back .sidebar { animation: slide-back .22s var(--ease) both; }
   }
 }
+/* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
+:root[data-glass="liquid"] {
+  --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
+  --lg-tint-strong: color-mix(in srgb, var(--panel) 64%, transparent);
+  --lg-edge: rgb(255 255 255 / .26);
+  --lg-shine: linear-gradient(160deg, rgb(255 255 255 / .22), rgb(255 255 255 / .05) 38%, rgb(255 255 255 / 0) 60%, rgb(255 255 255 / .08));
+  --lg-blur: blur(24px) saturate(185%);
+  --lg-shadow: inset 0 1px 0 rgb(255 255 255 / .42), inset 0 -1px 1px rgb(255 255 255 / .1), inset 0 0 0 .5px var(--lg-edge), 0 10px 34px rgb(0 0 0 / .22);
+}
+:root[data-glass="liquid"][data-theme="light"], :root[data-glass="liquid"]:not([data-theme]) { --lg-edge: rgb(255 255 255 / .55); }
+:root[data-glass="liquid"] .tabbar,
+:root[data-glass="liquid"] .ctx,
+:root[data-glass="liquid"] #toast,
+:root[data-glass="liquid"] .ga,
+:root[data-glass="liquid"] #folderBar button,
+:root[data-glass="liquid"] .sbar,
+:root[data-glass="liquid"] .composer textarea,
+:root[data-glass="liquid"] .pin-bar,
+:root[data-glass="liquid"] .day {
+  background: var(--lg-shine), var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  border-color: transparent !important;
+  box-shadow: var(--lg-shadow) !important;
+}
+:root[data-glass="liquid"] #toast { color: var(--ink); border-radius: 20px; }
+:root[data-glass="liquid"] .tabbar { border-radius: 30px; transform: none; background: var(--lg-shine), var(--lg-tint-strong) !important; }
+:root[data-glass="liquid"] .ctx { border-radius: 22px; background: var(--lg-shine), var(--lg-tint-strong) !important; }
+:root[data-glass="liquid"] .ga.me, :root[data-glass="liquid"] #folderBar button.on {
+  background: var(--lg-shine), color-mix(in srgb, var(--accent) 72%, transparent) !important; color: #fff;
+}
+/* шапки и поле ввода — полупрозрачные, фон чата просвечивает */
+:root[data-glass="liquid"] .conv-head, :root[data-glass="liquid"] .composer {
+  background: linear-gradient(180deg, rgb(255 255 255 / .1), rgb(255 255 255 / .02)), var(--lg-tint) !important;
+  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  border-color: rgb(255 255 255 / .1) !important;
+  position: relative; z-index: 2;
+}
+:root[data-glass="liquid"] .composer textarea { border-radius: 22px; }
+/* чужие сообщения — стеклянные пузыри, свои — цветное стекло */
+:root[data-glass="liquid"] .msg:not(.mine) {
+  background: var(--lg-shine), color-mix(in srgb, var(--theirs) 58%, transparent) !important;
+  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px var(--lg-edge), 0 4px 14px rgb(0 0 0 / .14);
+}
+:root[data-glass="liquid"] .msg.mine { box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 0 0 .5px rgb(255 255 255 / .2), 0 4px 14px rgb(0 0 0 / .16); }
+/* окна — толстое стекло */
+:root[data-glass="liquid"] dialog:not(.full):not(.story-view):not(#viewer) {
+  background: var(--lg-shine), var(--lg-tint-strong) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
+  border-color: transparent !important; border-radius: 28px; box-shadow: var(--lg-shadow) !important;
+}
+:root[data-glass="liquid"] dialog::backdrop { background: rgb(0 0 0 / .28); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* кнопки — капсулы с бликом */
+:root[data-glass="liquid"] .btn { border-radius: 999px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), inset 0 -2px 6px rgb(0 0 0 / .08), 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
+:root[data-glass="liquid"] .btn.ghost { background: var(--lg-shine), var(--lg-tint) !important; -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); box-shadow: var(--lg-shadow); }
+:root[data-glass="liquid"] .side-head .icon-btn, :root[data-glass="liquid"] .conv-head .icon-btn {
+  background: var(--lg-shine), var(--lg-tint); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 0 0 .5px var(--lg-edge);
+}
+/* блик, который медленно скользит по панели — как свет на стекле */
+:root[data-glass="liquid"] .tabbar { overflow: hidden; }
+:root[data-glass="liquid"] .tabbar::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / .18) 45%, transparent 60%) no-repeat;
+  background-size: 250% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-glass="liquid"] .tabbar::before { animation: lg-sheen 7s ease-in-out infinite; }
+  @keyframes lg-sheen { 0%, 60% { background-position: 130% 0; } 100% { background-position: -130% 0; } }
+  :root[data-glass="liquid"] .ctx, :root[data-glass="liquid"] dialog[open]:not(.full) { animation-timing-function: cubic-bezier(.34, 1.4, .64, 1); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-glass="liquid"] { --lg-tint: color-mix(in srgb, var(--panel) 92%, transparent); --lg-tint-strong: var(--panel); }
+}
+
 /* ---------- заставка при открытии ---------- */
 #boot { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 16px; background: var(--bg); color: var(--ink); transition: opacity .38s ease, transform .38s ease, visibility 0s .38s; }
 #boot img { width: 86px; height: 86px; border-radius: 26px; box-shadow: 0 18px 50px color-mix(in srgb, var(--accent) 35%, transparent); }
@@ -1744,7 +1818,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
 })();
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
-  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "crystal", bubble: "round", font: "wide", lang: "ru" };
+  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "crystal", bubble: "round", font: "wide", lang: "ru", glass: "auto" };
   try { Object.assign(s, JSON.parse(localStorage.getItem("soroka.settings") || "{}")); } catch (e) {}
   // прежние узоры (точки, сетка, линии) заменены цветными фонами
   if (["crystal", "live", "glow", "sunset", "aurora", "ocean", "candy", "space", "neon", "none"].indexOf(s.wall) < 0) s.wall = "live";
@@ -1760,6 +1834,9 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     r.setAttribute("data-size", s.size === "s" || s.size === "l" ? s.size : "m");
     r.setAttribute("data-wall", s.wall);
     r.setAttribute("data-bubble", s.bubble === "sharp" ? "sharp" : "round");
+    // «жидкое стекло»: само включается в приложении для iPhone, вручную — в настройках оформления
+    var glass = s.glass === "on" || (s.glass !== "off" && location.protocol === "capacitor:");
+    r.setAttribute("data-glass", glass ? "liquid" : "none");
     r.setAttribute("data-font", ["classic", "inter", "wide", "sf"].indexOf(s.font) >= 0 ? s.font : "wide");
   };
   window.applySorokaSettings();
@@ -1768,7 +1845,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6822d4880c"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=cbeb80e7a4"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2470,6 +2547,14 @@ void main() {
           <button type="button" role="radio" data-v="round">Округлые</button>
           <button type="button" role="radio" data-v="sharp">Строгие</button>
         </div>
+
+        <div class="set-label">Жидкое стекло</div>
+        <div class="seg" data-key="glass" role="radiogroup" aria-label="Жидкое стекло">
+          <button type="button" role="radio" data-v="auto">Авто</button>
+          <button type="button" role="radio" data-v="on">Вкл</button>
+          <button type="button" role="radio" data-v="off">Выкл</button>
+        </div>
+        <p class="small muted" style="margin:-4px 0 0">Полупрозрачные панели с размытием и бликами, как в iOS 26. «Авто» — включено в приложении для iPhone.</p>
     
         </div>
         <div data-page="chat" hidden>

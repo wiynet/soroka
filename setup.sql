@@ -1456,3 +1456,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- ===== Кнопки «скачать приложение» над историями (только клиент) =====
 -- #getApps: одна кнопка «Скачать приложение», по нажатию меню Android (APK) / Windows (EXE) / iPhone (IPA), своё устройство первым. В приложениях не показывается.
 -- APK — releases/latest/download; EXE и IPA — самый свежий выпуск windows-*/ios-* через api.github.com (они не «latest»).
+
+-- ===== «Жидкое стекло» (Liquid Glass) — только клиент =====
+-- :root[data-glass="liquid"]: полупрозрачные панели, меню, окна, пузыри с размытием и бликом; настройка «Жидкое стекло»
+-- (Авто/Вкл/Выкл, settings.glass). «Авто» включает его в приложении для iPhone (capacitor://).
+-- iOS-сборка выбирает Xcode 26, если он есть на сборщике, — системные элементы получают стиль iOS 26.
