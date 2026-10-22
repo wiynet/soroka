@@ -1034,6 +1034,17 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .stories-bar { display: flex; gap: 6px; padding: 2px 10px 8px; overflow-x: auto; scrollbar-width: none; flex: none; }
 .stories-bar::-webkit-scrollbar { display: none; }
 .stories-bar:empty { display: none; }
+.get-apps { display: flex; gap: 6px; padding: 0 10px 8px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.get-apps::-webkit-scrollbar { display: none; }
+.get-apps[hidden] { display: none; }
+.ga { flex: none; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 999px; padding: 6px 12px 6px 9px; font: inherit; font-size: 13px; cursor: pointer; transition: transform .12s var(--ease), filter .2s, background-color .2s; }
+.ga svg { width: 16px; height: 16px; }
+.ga b { font-weight: 600; }
+.ga span { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+.ga.me { background: var(--accent); border-color: transparent; color: #fff; }
+.ga.me span { color: rgb(255 255 255 / .8); }
+.ga:hover { filter: brightness(1.08); }
+.ga:active { transform: scale(.95); }
 .sb-item { position: relative; flex: none; width: 76px; display: grid; justify-items: center; gap: 5px; padding: 4px 0 0; border: 0; background: none; color: var(--ink); font-size: 11.5px; }
 .sb-item .avatar { width: 54px; height: 54px; font-size: 19px; box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px #3b9cff; }
 .sb-item.seen .avatar { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--ink) 22%, transparent); }
@@ -1644,6 +1655,7 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   @keyframes boot-bar { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
   /* появление интерфейса после заставки: части выезжают по очереди */
   #app.enter .side-head { animation: rise .45s var(--ease) both; }
+  #app.enter #getApps { animation: rise .45s var(--ease) .03s both; }
   #app.enter #storyBar { animation: rise .45s var(--ease) .06s both; }
   #app.enter .sbar { animation: rise .45s var(--ease) .12s both; }
   #app.enter #folderBar { animation: rise .45s var(--ease) .18s both; }
@@ -1756,7 +1768,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=8dfb0af7d5"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=3d12ce279b"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2308,6 +2320,7 @@ void main() {
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
     </div>
+    <div class="get-apps" id="getApps" aria-label="Скачать приложение" hidden></div>
     <div class="stories-bar" id="storyBar" aria-label="Истории"></div>
     <div class="search"><label class="sbar">
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -9690,7 +9703,7 @@ function msgsGone(before) {
 // «волна» от пальца или курсора на кнопках и строках
 document.addEventListener("pointerdown", (e) => {
   if (!motionOK() || e.button > 0) return;
-  const t = e.target.closest && e.target.closest(".btn, .row, .srow, .pick, .sb-item .sb-app, #folderBar button");
+  const t = e.target.closest && e.target.closest(".btn, .row, .srow, .pick, .sb-item .sb-app, #folderBar button, .ga");
   if (!t || t.disabled) return;
   const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
   const cs = getComputedStyle(t);
@@ -9708,7 +9721,7 @@ const APK_URL = "https://github.com/wiynet/soroka/releases/latest/download/Mesta
 const APK_PAGE = "https://github.com/wiynet/soroka/releases/latest";
 let apkNewer = 0;   // номер новой сборки APK, если она вышла
 function apkBuild() { const m = document.querySelector('meta[name="mestario-apk"]'); return Number(m && m.content) || Number(localStorage.getItem("mestario.apk") || 0) || 0; }
-function appBarState() { return IN_APP ? (!/Android/i.test(navigator.userAgent) ? "" : apkNewer ? "upd" + apkNewer : "") : /Android/i.test(navigator.userAgent) ? "dl" : ""; }
+function appBarState() { return IN_APP && /Android/i.test(navigator.userAgent) && apkNewer ? "upd" + apkNewer : ""; }
 // круг рядом с «Моя история»: в браузере на Android — «Скачать», в приложении — «Обновить», когда вышла новая сборка
 function appBarItem() {
   const st = appBarState();
@@ -9750,6 +9763,40 @@ async function appUpdates() {
   } catch (e) {}
 }
 setTimeout(appUpdates, 4000);
+// кнопки над историями: скачать Mestario для Android, Windows и iPhone (в самих приложениях не показываем)
+const DL_KINDS = [
+  { id: "apk", label: "Android", ext: "APK", prefix: "android-", file: "Mestario.apk" },
+  { id: "exe", label: "Windows", ext: "EXE", prefix: "windows-", file: "Mestario-Setup.exe" },
+  { id: "ipa", label: "iPhone", ext: "IPA", prefix: "ios-", file: "Mestario.ipa" },
+];
+function paintGetApps() {
+  const box = $("getApps");
+  if (!box) return;
+  const ua = navigator.userAgent;
+  if (IN_APP || /Electron/i.test(ua)) { box.hidden = true; return; }
+  const mineId = /Android/i.test(ua) ? "apk" : /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "ipa" : /Windows/i.test(ua) ? "exe" : "";
+  const mine = DL_KINDS.find((k) => k.id === mineId);
+  const list = mine ? [mine, ...DL_KINDS.filter((k) => k !== mine)] : DL_KINDS;
+  box.replaceChildren(...list.map((k) => h("button", { type: "button", class: "ga" + (k === mine ? " me" : ""), title: T("Скачать Mestario для ") + k.label, onclick: () => getApp(k) },
+    icon("dl"), h("b", {}, k.label), h("span", {}, k.ext))));
+  box.hidden = false;
+}
+async function getApp(k) {
+  if (k.id === "apk") { location.href = APK_URL; return; }
+  // выпуски Windows и iPhone не помечены «последними» (это место за APK), поэтому ищем самый свежий по названию
+  let url = "https://github.com/wiynet/soroka/releases";
+  try {
+    const r = await fetch("https://api.github.com/repos/wiynet/soroka/releases?per_page=40", { cache: "no-store" });
+    const rels = r.ok ? await r.json() : [];
+    const rel = rels.find((x) => String(x.tag_name || "").startsWith(k.prefix) && !x.draft);
+    const a = rel && (rel.assets || []).find((x) => x.name === k.file);
+    if (a) url = a.browser_download_url;
+  } catch (e) {}
+  location.href = url;
+  if (k.id === "ipa") toast(T("IPA ставится через Sideloadly, AltStore или ESign. Проще всего: Safari → «Поделиться» → «На экран Домой»"));
+  else toast(T("Если Windows предупредит — нажмите «Подробнее» → «Выполнить в любом случае»"));
+}
+paintGetApps();
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
