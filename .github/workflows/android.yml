@@ -2,13 +2,23 @@ name: Android APK
 on:
   push:
     branches: [main]
-    paths: [index.html, en.js, "app/**", ".github/workflows/android.yml"]
+    paths: ["app/**", ".github/workflows/android.yml"]   # интерфейс приложение подтягивает с сайта само
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"   # раз в неделю только обновляем кэш ключа подписи, чтобы он не истёк
 permissions:
   contents: write
 concurrency: { group: android, cancel-in-progress: true }
 jobs:
+  keep-key:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v4
+        with: { path: ~/.mestario-ks, key: mestario-signing-v1 }
+      - run: ls ~/.mestario-ks || true
   build:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +30,10 @@ jobs:
         run: |
           mkdir -p app/www
           cp index.html en.js manifest.webmanifest sw.js *.png app/www/
+          # отпечаток встроенного интерфейса и номер сборки — по ним приложение понимает, есть ли обновления
+          H=$(sha256sum index.html | cut -d' ' -f1)
+          sed -i "0,/<head>/s##<head>\n<meta name=\"mestario-bundle\" content=\"$H\">\n<meta name=\"mestario-apk\" content=\"${{ github.run_number }}\">#" app/www/index.html
+          head -5 app/www/index.html
       - name: ImageMagick для иконок
         run: command -v convert || (sudo apt-get update -q && sudo apt-get install -y -q imagemagick)
       - name: Проект Android
@@ -41,6 +55,9 @@ jobs:
             convert ../../../icon-512.png -resize ${s}x${s} src/main/res/mipmap-$n/ic_launcher_round.png
             cp src/main/res/mipmap-$n/ic_launcher.png src/main/res/mipmap-$n/ic_launcher_foreground.png
           done
+      - name: Постоянный ключ подписи
+        uses: actions/cache@v4
+        with: { path: ~/.mestario-ks, key: mestario-signing-v1 }
       - name: Сборка
         working-directory: app/android
         env:
@@ -59,8 +76,17 @@ jobs:
             $BT/apksigner sign --ks release.keystore --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS --out ../Mestario.apk aligned.apk
             rm -f release.keystore
           else
-            ./gradlew --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk ../Mestario.apk
+            # без секретов: свой ключ, созданный один раз и хранящийся в кэше — чтобы новые APK ставились поверх старых
+            K=~/.mestario-ks
+            if [ ! -f $K/key.jks ]; then
+              mkdir -p $K; openssl rand -hex 24 > $K/pass
+              keytool -genkeypair -keystore $K/key.jks -storepass "$(cat $K/pass)" -keypass "$(cat $K/pass)" -alias mestario -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Mestario"
+            fi
+            ./gradlew --no-daemon assembleRelease
+            APK=$(ls app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null || ls app/build/outputs/apk/release/*.apk | head -1)
+            BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+            $BT/zipalign -f -p 4 "$APK" aligned.apk
+            $BT/apksigner sign --ks $K/key.jks --ks-pass file:$K/pass --ks-key-alias mestario --key-pass file:$K/pass --out ../Mestario.apk aligned.apk
           fi
           ls -la ../Mestario.apk
       - name: Выпуск

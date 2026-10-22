@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mestario</title>
+<script>
+/* Android-приложение: если приложение уже скачало свежий интерфейс с сайта, показываем его вместо встроенного.
+   Если прошлый запуск свежей версии сломался (не дошёл до отметки «ok»), возвращаемся к встроенной. */
+(function () {
+  if (window.__mestarioLive || !(location.hostname === "localhost" && /Android/i.test(navigator.userAgent))) return;
+  try {
+    var m = document.querySelector('meta[name="mestario-bundle"]'), bundle = m ? m.content : "";
+    if (bundle) localStorage.setItem("mestario.bundle", bundle);
+    var st = JSON.parse(localStorage.getItem("mestario.live") || "null");
+    if (!st || !st.html) return;
+    if (st.base !== bundle) { localStorage.removeItem("mestario.live"); return; }          // поставили новый APK — старое обновление не нужно
+    if (localStorage.getItem("mestario.boot") === "pending") { localStorage.removeItem("mestario.live"); localStorage.removeItem("mestario.boot"); return; }
+    localStorage.setItem("mestario.boot", "pending");
+    // документ ещё разбирается, поэтому вписываем свежую версию прямо сюда, а остаток встроенной глушим тегом plaintext (её скрипты не запустятся)
+    document.write(st.html.replace("<head>", "<head><script>window.__mestarioLive=" + JSON.stringify(st.hash) + "<\/script>") + "<plaintext hidden>");
+  } catch (e) {}
+})();
+</script>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0b7284">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -1020,6 +1038,10 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .sb-item .avatar { width: 54px; height: 54px; font-size: 19px; box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px #3b9cff; }
 .sb-item.seen .avatar { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--ink) 22%, transparent); }
 .sb-item.none .avatar { box-shadow: none; }
+.sb-item.app .sb-app { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #6fe08a, #2fae4f); box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px #2fae4f; }
+.sb-item.app.upd .sb-app { background: linear-gradient(160deg, #7fd0ff, #2f9be8); box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px #2f9be8; animation: sb-pulse 2s ease-in-out infinite; }
+.sb-item.app .sb-app svg { width: 26px; height: 26px; }
+@keyframes sb-pulse { 50% { box-shadow: 0 0 0 2px var(--panel), 0 0 0 6px rgb(47 155 232 / .45); } }
 .sb-item .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .sb-item:not(.seen):not(.none) .nm { color: var(--ink); font-weight: 500; }
 .sb-plus { position: absolute; left: 46px; top: 38px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #3b9cff; color: #fff; border: 2px solid var(--panel); box-sizing: content-box; cursor: pointer; }
@@ -1663,7 +1685,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=9130fa1dde"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=8dfb0af7d5"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4256,7 +4278,7 @@ function paintStoryBar() {
   if (!state.started || !state.profile) { bar.replaceChildren(); storyBarSig = ""; return; }
   const mine = storyFeed.get(state.me.id), me = state.profile;
   // перерисовываем только когда что-то изменилось, иначе лента мигала бы при каждом обновлении списка
-  const sig = storyFeedKey + "|" + me.avatar_path + "|" + me.display_name + "|" + [...storyUsers].map((id) => { const o = chatPerson(id); return o ? o.display_name + o.avatar_path : ""; }).join(",") + "|" + window.SOROKA_LANG;
+  const sig = appBarState() + "|" + storyFeedKey + "|" + me.avatar_path + "|" + me.display_name + "|" + [...storyUsers].map((id) => { const o = chatPerson(id); return o ? o.display_name + o.avatar_path : ""; }).join(",") + "|" + window.SOROKA_LANG;
   if (sig === storyBarSig && bar.children.length) return;
   storyBarSig = sig;
   const my = h("button", { class: "sb-item" + (mine ? " seen" : " none"), type: "button", title: mine ? T("Смотреть мою историю") : T("Добавить историю"),
@@ -4265,7 +4287,7 @@ function paintStoryBar() {
     h("span", { class: "sb-plus", role: "button", title: T("Добавить историю"), "aria-label": T("Добавить историю"), onclick: (e) => { e.stopPropagation(); pickStory(); } }, icon("plus")));
   const others = [...storyFeed].filter(([id]) => id !== state.me.id).map(([id, f]) => ({ p: chatPerson(id), f })).filter((x) => x.p)
     .sort((a, b) => (a.f.seen - b.f.seen) || (a.f.at < b.f.at ? 1 : -1));
-  bar.replaceChildren(my, ...others.map(({ p, f }, i) => {
+  bar.replaceChildren(my, ...appBarItem(), ...others.map(({ p, f }, i) => {
     const el = h("button", { class: "sb-item" + (f.seen ? " seen" : ""), type: "button", title: p.display_name, onclick: () => watchStories(p) },
       avatar(p.display_name, p.id, false, p.avatar_path), h("span", { class: "nm" }, p.display_name.split(/\s+/)[0]));
     el.style.animationDelay = Math.min(i + 1, 8) * 35 + "ms";
@@ -9443,6 +9465,53 @@ function geoCard(m) {
       h("span", {}, lat.toFixed(5) + ", " + lng.toFixed(5) + (m.geo_acc ? T(" · точность ~") + m.geo_acc + T(" м") : ""))),
     h("div", { class: "geo-btns" }, btn(gmapsUrl(lat, lng), "Google Maps"), btn(wazeUrl(lat, lng), "Waze")));
 }
+
+/* ---------- Android-приложение: ссылка на APK, проверка новой версии, тихое обновление интерфейса ---------- */
+const APK_URL = "https://github.com/wiynet/soroka/releases/latest/download/Mestario.apk";
+const APK_PAGE = "https://github.com/wiynet/soroka/releases/latest";
+let apkNewer = 0;   // номер новой сборки APK, если она вышла
+function apkBuild() { const m = document.querySelector('meta[name="mestario-apk"]'); return Number(m && m.content) || Number(localStorage.getItem("mestario.apk") || 0) || 0; }
+function appBarState() { return IN_APP ? (apkNewer ? "upd" + apkNewer : "") : /Android/i.test(navigator.userAgent) ? "dl" : ""; }
+// круг рядом с «Моя история»: в браузере на Android — «Скачать», в приложении — «Обновить», когда вышла новая сборка
+function appBarItem() {
+  const st = appBarState();
+  if (!st) return [];
+  const upd = st.startsWith("upd");
+  return [h("button", { class: "sb-item app" + (upd ? " upd" : ""), type: "button",
+      title: upd ? T("Вышла новая версия приложения") : T("Скачать приложение для Android"),
+      onclick: () => { if (upd) toast(T("Скачайте новую версию и установите её поверх старой")); const u = upd ? APK_PAGE : APK_URL; if (IN_APP) location.href = u; else open(u, "_blank"); } },
+    h("span", { class: "sb-app" }, icon("dl")), h("span", { class: "nm" }, upd ? T("Обновить") : T("Скачать")))];
+}
+async function appUpdates() {
+  if (!IN_APP) return;
+  try { localStorage.setItem("mestario.boot", "ok"); } catch (e) {}   // этот запуск дошёл до конца — версия рабочая
+  try { const b = document.querySelector('meta[name="mestario-apk"]'); if (b) localStorage.setItem("mestario.apk", b.content); } catch (e) {}
+  // 1) новая сборка APK (нужна, только если менялось что-то в самом приложении)
+  try {
+    const r = await fetch("https://api.github.com/repos/wiynet/soroka/releases/latest", { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json(), n = Number(String(j.tag_name || "").replace(/\D/g, "")) || 0;
+      if (n > apkBuild()) { apkNewer = n; if (state.started) paintStoryBar(); }
+    }
+  } catch (e) {}
+  // 2) свежий интерфейс с сайта: скачиваем и включаем со следующего запуска
+  try {
+    const r = await fetch(PUBLIC_SITE + "index.html?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const html = await r.text();
+    if (html.length < 100000 || !html.includes("mestario-bundle") && !html.includes("Mestario")) return;
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(html));
+    const hash = [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join("");
+    const base = localStorage.getItem("mestario.bundle") || "";
+    const running = window.__mestarioLive || base;
+    if (!base || hash === running) return;
+    const prev = JSON.parse(localStorage.getItem("mestario.live") || "null");
+    if (prev && prev.hash === hash) return;
+    localStorage.setItem("mestario.live", JSON.stringify({ base, hash, html }));
+    toast(T("Загружено обновление Mestario — оно включится при следующем открытии приложения"));
+  } catch (e) {}
+}
+setTimeout(appUpdates, 4000);
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
