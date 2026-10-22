@@ -376,6 +376,21 @@ button.wordmark.spin { opacity: .55; }
 @media (min-width: 768px) and (max-width: 1023px) { .intro-mock-in { transform: scale(.85); } .intro-copy p { display: block; } }
 @media (prefers-reduced-motion: reduce) { .intro-island i, .intro-hint i::after { animation: none; } }
 
+/* местоположение в чате */
+.msg.geom { padding: 4px; }
+.geo-card { display: grid; width: min(270px, 64vw); border-radius: 12px; overflow: hidden; background: var(--panel-2); }
+.geo-map { position: relative; height: 150px; overflow: hidden; background: #dfe7e3; cursor: pointer; }
+.geo-map img { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; -webkit-user-drag: none; }
+.geo-pin { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -34px 0 0 -17px; color: #e53935; filter: drop-shadow(0 3px 4px rgb(0 0 0 / .35)); pointer-events: none; }
+.geo-pin svg { width: 100%; height: 100%; }
+.geo-osm { position: absolute; right: 4px; bottom: 3px; font-size: 9px; color: #333; background: rgb(255 255 255 / .75); padding: 0 4px; border-radius: 4px; }
+.geo-info { padding: 8px 10px 4px; display: grid; gap: 1px; }
+.geo-info b { font-size: 14px; }
+.geo-info span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.geo-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px 8px 8px; }
+.geo-btns a { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+.geo-btns a:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.geo-btns svg { width: 16px; height: 16px; }
 /* ИИ-помощник */
 .ai-h { display: flex; align-items: center; gap: 10px; }
 .ai-ico { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #7fd0ff, #2f9be8); flex: none; }
@@ -1646,7 +1661,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=edd145fdcc"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6103a36291"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3591,6 +3606,7 @@ const ICONS = {
   ai: '<path d="M11 3l1.900 5.100L18 10l-5.100 1.900L11 17l-1.900-5.100L4 10l5.100-1.900zM18.500 14.500l.900 2.100 2.100.900-2.100.900-.900 2.100-.900-2.100-2.100-.900 2.100-.900z" fill="currentColor"/>',
   copy: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8.500" y="8.500" width="11" height="11" rx="2"/><path d="M15.500 8.500V6a1.500 1.500 0 00-1.500-1.500H6A1.500 1.500 0 004.500 6v8A1.500 1.500 0 006 15.500h2.500"/></g>',
   dl: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.500 10.500L12 15l4.500-4.500M5 19.500h14"/></g>',
+  geo: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-6.500-5.600-6.500-11A6.500 6.500 0 0118.500 10c0 5.400-6.500 11-6.500 11z"/><circle cx="12" cy="10" r="2.400"/></g>',
   timer: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.500" r="7.500"/><path d="M12 9.500v4l2.500 1.500M10 2.500h4M19 6l-1.500 1.500"/></g>',
   chart: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></g>',
   folder: '<path d="M3.500 6.500a2 2 0 012-2h4l2 2.500h7a2 2 0 012 2v8.500a2 2 0 01-2 2h-13a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
@@ -4968,7 +4984,8 @@ function msgNode(m, group) {
         h("span", { class: "line" }, mine ? T("Получатель: ") + (o ? o.display_name : T("собеседник")) : T("Выдал администратор: ") + (o ? o.display_name : T("администратор"))),
         m.event_note && h("span", { class: "note" }, m.event_note)));
   } else {
-    const text = group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
+    const text = m.geo_lat != null ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
+    if (m.geo_lat != null) { el.classList.add("geom"); el.append(geoCard(m)); }
     if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : linkify(text))));
     if (Array.isArray(m.mentions) && m.mentions.includes(state.me.id)) el.classList.add("at-me");
   }
@@ -5630,12 +5647,13 @@ function syncComposer() {
 }
 $("btnAttach").addEventListener("click", (e) => {
   const c = state.chats.get(state.activeId);
-  // в группах и каналах скрепка открывает меню: файл или опрос
-  if (!c || !c.is_group) { $("fileInput").click(); return; }
+  if (!c) return;
+  // скрепка открывает меню: файл, местоположение, а в группах и каналах ещё опрос
   e.stopPropagation();
   closeCtx();
   const item = (ic, text, fn) => h("button", { type: "button", role: "menuitem", onclick: () => { closeCtx(); fn(); } }, icon(ic), h("span", {}, text));
-  ctxEl = h("div", { class: "ctx", role: "menu" }, item("clip", T("Фото или файл"), () => $("fileInput").click()), item("chats", T("Опрос"), openPollForm));
+  ctxEl = h("div", { class: "ctx", role: "menu" }, item("clip", T("Фото или файл"), () => $("fileInput").click()),
+    item("geo", T("Местоположение"), sendLocation), ...(c.is_group ? [item("chats", T("Опрос"), openPollForm)] : []));
   document.body.append(ctxEl);
   const r = $("btnAttach").getBoundingClientRect();
   ctxEl.style.left = Math.max(8, r.left) + "px";
@@ -9362,6 +9380,61 @@ $("introSkip").addEventListener("click", () => closeIntro());
 $("introSignup").addEventListener("click", () => closeIntro("signup"));
 $("introLogin").addEventListener("click", () => closeIntro("login"));
 addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("intro").hidden) closeIntro(); });
+
+/* ---------- местоположение ---------- */
+// отправить своё место: браузер спрашивает разрешение, в чат уходит карточка с картой и кнопками Google Maps и Waze
+function gmapsUrl(lat, lng) { return "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng; }
+function wazeUrl(lat, lng) { return "https://waze.com/ul?ll=" + lat + "," + lng + "&navigate=yes"; }
+let geoBusy = false;
+function sendLocation() {
+  const chatId = state.activeId;
+  if (!chatId || geoBusy) return;
+  if (!("geolocation" in navigator)) { toast(T("Этот браузер не умеет определять местоположение")); return; }
+  geoBusy = true;
+  toast(T("Определяем местоположение…"));
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = Math.round(pos.coords.latitude * 1e6) / 1e6, lng = Math.round(pos.coords.longitude * 1e6) / 1e6;
+    const acc = Math.min(100000, Math.round(pos.coords.accuracy || 0));
+    const { data, error } = await sb.from("messages").insert({ chat_id: chatId, sender_id: state.me.id, body: T("📍 Местоположение"), geo_lat: lat, geo_lng: lng, geo_acc: acc || null }).select().single();
+    geoBusy = false;
+    if (error || !data) { toast(T("Не удалось отправить местоположение")); return; }
+    touchChat(data);
+    if (state.activeId === chatId) addMsg(data);
+    toast(T("Местоположение отправлено"));
+  }, (err) => {
+    geoBusy = false;
+    toast(err && err.code === 1 ? T("Нет доступа к геолокации. Разрешите его в настройках браузера для этого сайта.")
+      : err && err.code === 3 ? T("Не удалось определить место за 15 секунд. Попробуйте ещё раз.") : T("Не удалось определить местоположение"));
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+}
+// карта из плиток OpenStreetMap: точка ровно посередине
+function geoMap(lat, lng, w, hgt) {
+  const z = 15, n = 1 << z, rad = lat * Math.PI / 180;
+  const gx = (lng + 180) / 360 * n * 256, gy = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n * 256;
+  const left = gx - w / 2, top = gy - hgt / 2, tiles = [];
+  for (let tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++)
+    for (let ty = Math.floor(top / 256); ty <= Math.floor((top + hgt) / 256); ty++) {
+      if (ty < 0 || ty >= n) continue;
+      const img = h("img", { alt: "", loading: "lazy", draggable: "false", referrerpolicy: "strict-origin-when-cross-origin",
+        src: "https://tile.openstreetmap.org/" + z + "/" + (((tx % n) + n) % n) + "/" + ty + ".png" });
+      img.style.left = Math.round(tx * 256 - left) + "px"; img.style.top = Math.round(ty * 256 - top) + "px";
+      tiles.push(img);
+    }
+  return tiles;
+}
+function geoCard(m) {
+  const lat = Number(m.geo_lat), lng = Number(m.geo_lng);
+  const pin = h("span", { class: "geo-pin", "aria-hidden": "true" });
+  pin.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 22s-7-6-7-12a7 7 0 0114 0c0 6-7 12-7 12z" fill="currentColor" stroke="#fff" stroke-width="1.500"/><circle cx="12" cy="10" r="2.600" fill="#fff"/></svg>';
+  const map = h("div", { class: "geo-map", role: "link", tabindex: "0", title: T("Открыть в Google Maps"),
+    onclick: (e) => { e.stopPropagation(); open(gmapsUrl(lat, lng), "_blank", "noopener"); } },
+    ...geoMap(lat, lng, 270, 150), pin, h("span", { class: "geo-osm" }, "© OpenStreetMap"));
+  const btn = (href, label) => h("a", { href, target: "_blank", rel: "noopener noreferrer", onclick: (e) => e.stopPropagation() }, icon("geo"), label);
+  return h("div", { class: "geo-card" }, map,
+    h("div", { class: "geo-info" }, h("b", {}, T("Местоположение")),
+      h("span", {}, lat.toFixed(5) + ", " + lng.toFixed(5) + (m.geo_acc ? T(" · точность ~") + m.geo_acc + T(" м") : ""))),
+    h("div", { class: "geo-btns" }, btn(gmapsUrl(lat, lng), "Google Maps"), btn(wazeUrl(lat, lng), "Waze")));
+}
 
 /* ---------- иконки ---------- */
 $("btnNewGroup").append(icon("plus"));
