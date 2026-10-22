@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v4
-        with: { path: ~/.mestario-ks, key: mestario-signing-v1 }
-      - run: ls ~/.mestario-ks || true
+        with: { path: ~/.android/debug.keystore, key: mestario-debug-key-v1 }
+      - run: ls -la ~/.android || true
   build:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
           done
       - name: Постоянный ключ подписи
         uses: actions/cache@v4
-        with: { path: ~/.mestario-ks, key: mestario-signing-v1 }
+        with: { path: ~/.android/debug.keystore, key: mestario-debug-key-v1 }
       - name: Сборка
         working-directory: app/android
         env:
@@ -76,17 +76,13 @@ jobs:
             $BT/apksigner sign --ks release.keystore --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS --out ../Mestario.apk aligned.apk
             rm -f release.keystore
           else
-            # без секретов: свой ключ, созданный один раз и хранящийся в кэше — чтобы новые APK ставились поверх старых
-            K=~/.mestario-ks
-            if [ ! -f $K/key.jks ]; then
-              mkdir -p $K; openssl rand -hex 24 > $K/pass
-              keytool -genkeypair -keystore $K/key.jks -storepass "$(cat $K/pass)" -keypass "$(cat $K/pass)" -alias mestario -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Mestario"
+            # без секретов: обычная сборка, но ключ подписи один и тот же (хранится в кэше) — новые APK ставятся поверх старых
+            if [ ! -f ~/.android/debug.keystore ]; then
+              mkdir -p ~/.android
+              keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Mestario"
             fi
-            ./gradlew --no-daemon assembleRelease
-            APK=$(ls app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null || ls app/build/outputs/apk/release/*.apk | head -1)
-            BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
-            $BT/zipalign -f -p 4 "$APK" aligned.apk
-            $BT/apksigner sign --ks $K/key.jks --ks-pass file:$K/pass --ks-key-alias mestario --key-pass file:$K/pass --out ../Mestario.apk aligned.apk
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../Mestario.apk
           fi
           ls -la ../Mestario.apk
       - name: Выпуск

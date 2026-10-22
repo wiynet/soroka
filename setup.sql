@@ -1432,5 +1432,5 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   его вписывает workflow), сохраняет в localStorage и показывает его со следующего запуска. Если свежая версия не дошла до
 --   отметки mestario.boot=ok, при следующем запуске она отбрасывается и открывается встроенная.
 -- Новая сборка APK: api.github.com releases/latest, тег android-N больше meta mestario-apk → круг «Обновить».
--- Workflow собирает APK только при изменении app/** или самого workflow; подпись — постоянным ключом из actions/cache
+-- Workflow собирает APK только при изменении app/** или самого workflow; подпись — постоянным debug-ключом (~/.android/debug.keystore) из actions/cache
 --   (раз в неделю отдельная задача освежает кэш). Секреты ANDROID_KEYSTORE_* по-прежнему имеют приоритет.
