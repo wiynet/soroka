@@ -82,7 +82,10 @@ jobs:
               keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Mestario"
             fi
             ./gradlew --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk ../Mestario.apk
+            # Gradle может держать свой debug-ключ в другом месте, поэтому подписываем явно нашим ключом из кэша
+            AS=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name apksigner -path '*build-tools*' | sort -V | tail -1)
+            "$AS" sign --ks ~/.android/debug.keystore --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android --out ../Mestario.apk app/build/outputs/apk/debug/app-debug.apk
+            "$AS" verify --print-certs ../Mestario.apk | head -3
           fi
           ls -la ../Mestario.apk
       - name: Выпуск
