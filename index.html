@@ -1625,6 +1625,77 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
     #app.back .sidebar { animation: slide-back .22s var(--ease) both; }
   }
 }
+/* ---------- заставка при открытии ---------- */
+#boot { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 16px; background: var(--bg); color: var(--ink); transition: opacity .38s ease, transform .38s ease, visibility 0s .38s; }
+#boot img { width: 86px; height: 86px; border-radius: 26px; box-shadow: 0 18px 50px color-mix(in srgb, var(--accent) 35%, transparent); }
+#boot b { font-size: 24px; font-weight: 700; letter-spacing: .02em; }
+#boot i { position: relative; width: 128px; height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; }
+#boot i::after { content: ""; position: absolute; inset: 0; width: 40%; border-radius: inherit; background: var(--accent); }
+#boot.gone { opacity: 0; transform: scale(1.06); visibility: hidden; pointer-events: none; }
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; background: currentColor; opacity: .16; transform: scale(0); }
+@media (prefers-reduced-motion: no-preference) {
+  /* заставка */
+  #boot img { animation: boot-logo .9s cubic-bezier(.34, 1.56, .64, 1) both, boot-breathe 2.4s ease-in-out .9s infinite; }
+  #boot b { animation: rise .6s var(--ease) .15s both; }
+  #boot i { animation: fade-in .4s .35s both; }
+  #boot i::after { animation: boot-bar 1.1s ease-in-out infinite; }
+  @keyframes boot-logo { from { opacity: 0; transform: scale(.4) rotate(-12deg); } }
+  @keyframes boot-breathe { 50% { transform: scale(1.05); } }
+  @keyframes boot-bar { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
+  /* появление интерфейса после заставки: части выезжают по очереди */
+  #app.enter .side-head { animation: rise .45s var(--ease) both; }
+  #app.enter #storyBar { animation: rise .45s var(--ease) .06s both; }
+  #app.enter .sbar { animation: rise .45s var(--ease) .12s both; }
+  #app.enter #folderBar { animation: rise .45s var(--ease) .18s both; }
+  #app.enter #chatList > * { animation: from-left .45s var(--ease) both; }
+  #app.enter #chatList > :nth-child(1) { animation-delay: .2s; } #app.enter #chatList > :nth-child(2) { animation-delay: .24s; }
+  #app.enter #chatList > :nth-child(3) { animation-delay: .28s; } #app.enter #chatList > :nth-child(4) { animation-delay: .32s; }
+  #app.enter #chatList > :nth-child(5) { animation-delay: .36s; } #app.enter #chatList > :nth-child(6) { animation-delay: .4s; }
+  #app.enter #chatList > :nth-child(7) { animation-delay: .44s; } #app.enter #chatList > :nth-child(n+8) { animation-delay: .48s; }
+  #app.enter .pane { animation: fade-in .6s .15s both; }
+  #app.enter .tabbar { animation: tabbar-in .55s cubic-bezier(.34, 1.56, .64, 1) .3s both; }
+  @keyframes tabbar-in { from { opacity: 0; transform: translateY(40px) scale(.9); } }
+  /* закрытие окон, меню и подсказок */
+  dialog.shut { animation: dlg-out .17s var(--ease) both !important; pointer-events: none; }
+  dialog.shut::backdrop { animation: fade-out .17s both !important; }
+  dialog.full.shut { animation-name: to-right !important; }
+  dialog.story-view.shut, #viewer.shut { animation-name: fade-out !important; }
+  @keyframes dlg-out { to { opacity: 0; transform: translateY(10px) scale(.95); } }
+  @keyframes to-right { to { opacity: 0; transform: translateX(30px); } }
+  @keyframes fade-out { to { opacity: 0; } }
+  .ctx.out { animation: ctx-out .12s ease-in both; }
+  @keyframes ctx-out { to { opacity: 0; transform: scale(.94); } }
+  #toast.out { animation: toast-out .2s ease-in both; }
+  #toast.again { animation: toast-again .3s var(--ease); }
+  @keyframes toast-out { to { opacity: 0; transform: translate(-50%, 10px) scale(.96); } }
+  @keyframes toast-again { 40% { transform: translate(-50%, -4px) scale(1.04); } }
+  /* сообщения */
+  .msg.edited-in { animation: edited-in .9s var(--ease); }
+  @keyframes edited-in { 0% { filter: brightness(1.5); transform: scale(1.03); } 100% { filter: none; transform: none; } }
+  .msg.new .react, #msgs.fresh .react { animation: react-pop .35s var(--ease) .15s both; }
+  .day { animation: fade-in .4s both; }
+  .geo-pin { animation: pin-drop .6s cubic-bezier(.34, 1.56, .64, 1) .1s both; }
+  @keyframes pin-drop { from { opacity: 0; transform: translate(-50%, -140%); } }
+  .code-card { animation: rise .35s var(--ease) .05s both; }
+  .code-card button { transition: transform .12s var(--ease), background-color .18s; }
+  .code-card button:active { transform: scale(.93); }
+  .ttl-mark { animation: dot-in .35s var(--ease) both; }
+  .composer textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+  #btnSend { transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), filter .2s; }
+  #btnSend:hover { transform: scale(1.08) rotate(-8deg); }
+  #btnSend:active { transform: scale(.88); }
+  /* список чатов */
+  .count.bump { animation: count-bump .45s cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes count-bump { 40% { transform: scale(1.45); } }
+  #folderBar button { transition: background-color .2s, color .2s, transform .15s var(--ease); }
+  #folderBar button:active { transform: scale(.93); }
+  #folderBar button.on { animation: tab-on .35s cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes tab-on { from { transform: scale(.88); } }
+  .ripple { animation: ripple .55s ease-out forwards; }
+  @keyframes ripple { to { transform: scale(1); opacity: 0; } }
+  /* смена темы, цвета, фона — плавным перетеканием */
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .4s; }
+}
 </style>
 <script>
 /* На защищённый адрес переходим, только убедившись, что он открывается:
@@ -1700,6 +1771,27 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 </script>
 </head>
 <body>
+<div id="boot" aria-hidden="true"><img src="icon-192.png" alt=""><b>Mestario</b><i></i></div>
+<script>
+/* заставка висит, пока не появится экран входа, интро или сам мессенджер (но не дольше 8 секунд) */
+(function () {
+  var b = document.getElementById("boot"), t0 = Date.now();
+  function done() {
+    if (!b) return;
+    b.classList.add("gone"); var el = b; b = null; setTimeout(function () { el.remove(); }, 450);
+    var a = document.getElementById("app");
+    if (a && !a.hidden) { a.classList.add("enter"); setTimeout(function () { a.classList.remove("enter"); }, 1500); }
+  }
+  function check() {
+    if (!b) return;
+    var ids = ["app", "auth", "intro"];
+    for (var i = 0; i < ids.length; i++) { var e = document.getElementById(ids[i]); if (e && !e.hidden) { setTimeout(done, Math.max(0, 350 - (Date.now() - t0))); return; } }
+    if (Date.now() - t0 > 8000) return done();
+    setTimeout(check, 50);
+  }
+  window.addEventListener("DOMContentLoaded", check);
+})();
+</script>
 <canvas id="bgfx" aria-hidden="true"></canvas>
 <script type="x-shader/x-fragment" id="bgFrag">
 #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -3819,10 +3911,17 @@ function avatar(name, seed, small, path) {
 let toastTimer;
 function toast(text) {
   const t = $("toast");
+  const again = !t.hidden && !t.classList.contains("out");
   t.textContent = text;
+  t.classList.remove("out", "again");
   t.hidden = false;
+  if (again) { void t.offsetWidth; t.classList.add("again"); }   // новая подсказка поверх прежней — лёгкий «толчок»
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+  toastTimer = setTimeout(() => {
+    if (!motionOK()) { t.hidden = true; return; }
+    t.classList.add("out");
+    toastTimer = setTimeout(() => { t.hidden = true; t.classList.remove("out"); }, 200);
+  }, 4000);
 }
 function flash(el, ms, cls) {
   cls = cls || "fresh";
@@ -4367,7 +4466,7 @@ function chatRow(c) {
     av.title = T("Смотреть историю");
     av.addEventListener("click", (e) => { e.stopPropagation(); watchStories(who); });   // тап по рамке открывает историю, а не чат
   }
-  const row = h("button", { class: "row" + (c.id === state.activeId ? " active" : "") + (c.pinAt ? " pinrow" : ""), type: "button", onclick: (e) => { if (row._held) { row._held = false; e.preventDefault(); return; } openChat(c.id); } },
+  const row = h("button", { class: "row" + (c.id === state.activeId ? " active" : "") + (c.pinAt ? " pinrow" : ""), type: "button", "data-cid": c.id, onclick: (e) => { if (row._held) { row._held = false; e.preventDefault(); return; } openChat(c.id); } },
     av,
     h("span", { class: "txt" },
       h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), !c.is_group && preTick(other(c)), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
@@ -4386,7 +4485,11 @@ function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date
 
 /* ---------- меню чата в списке: правая кнопка мыши или долгое нажатие ---------- */
 let ctxEl = null, archView = false;
-function closeCtx() { if (ctxEl) { ctxEl.remove(); ctxEl = null; } for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); }
+function closeCtx() {
+  if (ctxEl) {
+    const el = ctxEl; ctxEl = null;
+    if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), 130); } else el.remove();
+  } for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); }
 function chatCtxBind(row, c) {
   row.addEventListener("contextmenu", (e) => { e.preventDefault(); openChatCtx(c, e.clientX, e.clientY, row); });
   // на телефоне правой кнопки нет: то же меню по долгому нажатию
@@ -4564,16 +4667,16 @@ async function renderList() {
       const arch = chats.filter((c) => c.archived), main = chats.filter((c) => !c.archived);
       if (archView && !arch.length) archView = false;
       if (archView) {
-        list.replaceChildren(h("button", { class: "row", type: "button", onclick: () => { archView = false; renderList(); } },
+        flipList(list, () => list.replaceChildren(h("button", { class: "row", type: "button", onclick: () => { archView = false; renderList(); } },
           h("span", { class: "arch-ico" }, icon("back")), h("span", { class: "txt" }, h("span", { class: "name" }, T("Архив")), h("span", { class: "sub" }, h("span", {}, T("Назад к чатам"))))),
-          ...arch.map(chatRow));
+          ...arch.map(chatRow)));
       } else {
         // своя папка показывает и архивные чаты; «Личные», «Группы», «Каналы» — только из основного списка
         const ft = folderTab, pool = ft.startsWith("f") ? chats.filter((c) => inFolder(c, ft)) : main.filter((c) => inFolder(c, ft));
         const pins = pool.filter((c) => c.pinAt).sort((a, b) => (a.pinAt < b.pinAt ? 1 : -1));
         const rows = [...pins.map(chatRow), ...pool.filter((c) => !c.pinAt).map(chatRow)];
         if (!rows.length) rows.push(h("div", { class: "empty-note" }, ft.startsWith("f") ? T("В папке пока нет чатов. Нажмите на неё правой кнопкой мыши или удерживайте, чтобы изменить.") : T("Здесь пока пусто.")));
-        list.replaceChildren(...(arch.length && ft === "all" ? [archiveRow(arch)] : []), ...rows);
+        flipList(list, () => list.replaceChildren(...(arch.length && ft === "all" ? [archiveRow(arch)] : []), ...rows));
       }
     }
     return;
@@ -5107,7 +5210,18 @@ function renderMsgs(newId) {
       kids.push(h("div", { class: "mrow" }, av, node));
     } else kids.push(node);
   }
+  const before = msgsBefore();
   $("msgs").replaceChildren(...kids);
+  msgsGone(before);
+  if (newId && flyFrom && Date.now() - flyFrom.t < 1500) {
+    const n = $("msgs").querySelector('.msg.mine[data-id="' + newId + '"]');
+    if (n) { flyFrom.start = performance.now(); flyFrom.id = newId; flying = flyFrom; flyIn(n, flying, 0); }
+    flyFrom = null;
+  } else if (flying && performance.now() - flying.start < FLY_MS) {
+    // сообщение ушло на сервер и перерисовалось с настоящим номером — продолжаем полёт с того же места
+    const all = $("msgs").querySelectorAll(".msg.mine"), n = all[all.length - 1];
+    if (n) flyIn(n, flying, performance.now() - flying.start);
+  } else flying = null;
   paintTyping();
   paintVoice();
   preloadVoices();
@@ -5129,12 +5243,12 @@ function addMsg(m) {
   if (state.msgs.some((x) => x.id === m.id)) return;
   if (m.sender_id === state.me.id && !isTemp(m)) {
     const twin = outbox.find((t) => t.pending && !t.done && t.chat_id === m.chat_id && (t._row.body || "") === (m.body || "") && !!t._file === !!m.file_path && (!t._path || t._path === m.file_path));
-    if (twin) dropTemp(twin);
+    if (twin) { dropTemp(twin); var wasTemp = true; }
   }
   const stick = nearBottom() || m.sender_id === state.me.id;
   state.msgs.push(m);
   state.msgs.sort((a, b) => a.id - b.id);
-  renderMsgs(m.id);
+  renderMsgs(wasTemp ? null : m.id);   // своё сообщение уже «прилетело» черновиком — второй раз не анимируем
   if (stick) scrollDown();
   state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
   if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies(); else ensureStats();
@@ -5609,10 +5723,11 @@ function onChanged(m) {
     if (pc && pc.pinned === m.id) { pc.pinned = null; paintPin(); }
     state.msgs.splice(i, 1);
     if (state.editing && state.editing.id === m.id) cancelEdit();
-  } else state.msgs[i] = m;
+  } else { var editedNow = (state.msgs[i].body || "") !== (m.body || ""); state.msgs[i] = m; }
   const keep = $("msgs").scrollTop;
   renderMsgs();
   $("msgs").scrollTop = keep;
+  if (editedNow) { const n = $("msgs").querySelector('.msg[data-id="' + m.id + '"]'); if (n && motionOK()) flash(n, 900, "edited-in"); }
 }
 function onIncoming(m) {
   if (!state.started) return;
@@ -6039,6 +6154,7 @@ function sendFiles(chatId, files, body, extra, onQueued) {
     return t;
   });
   outbox.push(...temps);
+  noteFlyFrom();
   if (state.activeId === chatId) { state.msgs.push(...temps); renderMsgs(temps[temps.length - 1].id); scrollDown(); }
   flash($("btnSend"), 420, "fly");
   if (onQueued) onQueued();
@@ -8238,7 +8354,8 @@ function renderSettings() {
 }
 function saveSettings() {
   try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
-  window.applySorokaSettings();
+  if (document.startViewTransition && motionOK() && !document.hidden) document.startViewTransition(() => window.applySorokaSettings());
+  else window.applySorokaSettings();
   renderSettings();
 }
 $("dlgSettings").addEventListener("click", (e) => {
@@ -9465,6 +9582,126 @@ function geoCard(m) {
       h("span", {}, lat.toFixed(5) + ", " + lng.toFixed(5) + (m.geo_acc ? T(" · точность ~") + m.geo_acc + T(" м") : ""))),
     h("div", { class: "geo-btns" }, btn(gmapsUrl(lat, lng), "Google Maps"), btn(wazeUrl(lat, lng), "Waze")));
 }
+
+/* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
+function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+// окна закрываются с анимацией; пока окно «уезжает», оно считается закрытым, и его можно сразу открыть снова
+(function () {
+  const P = HTMLDialogElement.prototype, close = P.close, showModal = P.showModal, show = P.show;
+  const od = Object.getOwnPropertyDescriptor(P, "open");
+  if (!od || !od.get) return;
+  Object.defineProperty(P, "open", { configurable: true, enumerable: od.enumerable, get() { return od.get.call(this) && !this._shut; }, set(v) { od.set.call(this, v); } });
+  P.close = function (v) {
+    if (this._shut) return;
+    if (!od.get.call(this) || !motionOK() || document.hidden) return close.call(this, v);
+    this.classList.add("shut");
+    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, 170);
+  };
+  const revive = (d) => { if (!d._shut) return false; clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); return true; };
+  P.showModal = function () { if (revive(this)) return; return showModal.call(this); };
+  P.show = function () { if (revive(this)) return; return show.call(this); };
+})();
+// список чатов: поднявшийся наверх чат плавно переезжает, новые строки выезжают, счётчик непрочитанных «подпрыгивает»
+const listCounts = new Map();
+function flipList(list, paint) {
+  const ok = motionOK() && !document.hidden && list.offsetParent && !$("app").classList.contains("enter");
+  const before = new Map();
+  if (ok) for (const r of list.children) if (r.dataset.cid) before.set(r.dataset.cid, r.getBoundingClientRect().top);
+  paint();
+  const rows = [...list.children].filter((r) => r.dataset.cid);
+  for (const r of rows) {
+    const c = r.querySelector(".count:not(.at)"), was = listCounts.get(r.dataset.cid), now = c ? c.textContent : "";
+    if (ok && c && was !== undefined && was !== now) c.classList.add("bump");
+    listCounts.set(r.dataset.cid, now);
+  }
+  if (!ok) return;
+  const shared = rows.filter((r) => before.has(r.dataset.cid)).length;
+  let k = 0;
+  for (const r of rows) {
+    const top = before.get(r.dataset.cid);
+    if (top == null) {
+      // новая строка; если сменился весь список (другая папка) — строки выезжают по очереди
+      r.animate([{ opacity: 0, transform: "translateX(-16px)" }, { opacity: 1, transform: "none" }],
+        { duration: 300, delay: shared ? 0 : Math.min(k++, 10) * 28, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
+      continue;
+    }
+    const dy = top - r.getBoundingClientRect().top;
+    if (Math.abs(dy) > 2) r.animate([{ transform: "translateY(" + dy + "px)" }, { transform: "none" }], { duration: 360, easing: "cubic-bezier(.2,.8,.3,1)" });
+  }
+}
+// отправленное сообщение «вылетает» из поля ввода на своё место
+let flyFrom = null, flying = null;
+const FLY_MS = 440;
+function noteFlyFrom() {
+  const ta = $("text");
+  if (!motionOK() || !ta || !ta.offsetParent) { flyFrom = null; return; }
+  const r = ta.getBoundingClientRect();
+  flyFrom = { t: Date.now(), right: r.right, top: r.top, h: r.height };
+}
+function flyIn(node, from, elapsed) {
+  node.classList.remove("new");
+  node.style.opacity = "0";
+  requestAnimationFrame(() => {
+    node.style.opacity = "";
+    const r = node.getBoundingClientRect();
+    if (from.dx == null) { from.dx = from.right - r.right; from.dy = from.top + from.h / 2 - (r.top + r.height / 2); }
+    const dx = from.dx, dy = from.dy;
+    const a = node.animate([
+      { transform: "translate(" + dx + "px," + dy + "px) scale(.86)", opacity: .35 },
+      { transform: "translate(" + dx * .15 + "px," + dy * .1 + "px) scale(1.03)", opacity: 1, offset: .7 },
+      { transform: "none", opacity: 1 },
+    ], { duration: FLY_MS, easing: "cubic-bezier(.2,.9,.25,1)" });
+    if (elapsed) a.currentTime = Math.min(elapsed + 16, FLY_MS);
+  });
+}
+// удалённое сообщение не исчезает мгновенно, а сжимается и растворяется
+let lastMsgsChat = null;
+function msgsBefore() {
+  const same = lastMsgsChat === state.activeId;
+  lastMsgsChat = state.activeId;
+  if (!same || !motionOK() || document.hidden) return null;
+  return [...$("msgs").querySelectorAll(".msg[data-id]")].map((n) => ({ id: n.dataset.id, outer: n.closest(".mrow") || n }));
+}
+function msgsGone(before) {
+  if (!before || !before.length) return;
+  const box = $("msgs"), now = new Set([...box.querySelectorAll(".msg[data-id]")].map((n) => n.dataset.id));
+  const gone = before.filter((x) => !now.has(x.id) && Number(x.id) < TEMP_BASE);
+  if (!gone.length || gone.length > 3) return;
+  for (const g of gone) {
+    let anchor = null;
+    for (let k = before.indexOf(g) + 1; k < before.length; k++) {
+      if (!now.has(before[k].id)) continue;
+      const n = box.querySelector('.msg[data-id="' + before[k].id + '"]');
+      anchor = n && (n.closest(".mrow") || n);
+      break;
+    }
+    const el = g.outer;
+    el.classList.remove("new");
+    el.style.pointerEvents = "none";
+    box.insertBefore(el, anchor && anchor.parentNode === box ? anchor : null);
+    const hgt = el.offsetHeight;
+    el.style.overflow = "hidden";
+    el.animate([
+      { opacity: 1, transform: "scale(1)", height: hgt + "px" },
+      { opacity: 0, transform: "scale(.8)", height: "0px", marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" },
+    ], { duration: 320, easing: "cubic-bezier(.4,0,.2,1)" }).onfinish = () => el.remove();
+  }
+}
+// «волна» от пальца или курсора на кнопках и строках
+document.addEventListener("pointerdown", (e) => {
+  if (!motionOK() || e.button > 0) return;
+  const t = e.target.closest && e.target.closest(".btn, .row, .srow, .pick, .sb-item .sb-app, #folderBar button");
+  if (!t || t.disabled) return;
+  const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
+  const cs = getComputedStyle(t);
+  if (cs.position === "static") t.style.position = "relative";
+  if (cs.overflow === "visible") { t.style.overflow = "hidden"; setTimeout(() => { t.style.overflow = ""; }, 600); }
+  const w = document.createElement("span");
+  w.className = "ripple";
+  w.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+  t.append(w);
+  setTimeout(() => w.remove(), 600);
+}, { passive: true });
 
 /* ---------- Android-приложение: ссылка на APK, проверка новой версии, тихое обновление интерфейса ---------- */
 const APK_URL = "https://github.com/wiynet/soroka/releases/latest/download/Mestario.apk";
