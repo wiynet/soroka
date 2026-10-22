@@ -1768,7 +1768,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=3d12ce279b"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6822d4880c"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -9777,8 +9777,15 @@ function paintGetApps() {
   const mineId = /Android/i.test(ua) ? "apk" : /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "ipa" : /Windows/i.test(ua) ? "exe" : "";
   const mine = DL_KINDS.find((k) => k.id === mineId);
   const list = mine ? [mine, ...DL_KINDS.filter((k) => k !== mine)] : DL_KINDS;
-  box.replaceChildren(...list.map((k) => h("button", { type: "button", class: "ga" + (k === mine ? " me" : ""), title: T("Скачать Mestario для ") + k.label, onclick: () => getApp(k) },
-    icon("dl"), h("b", {}, k.label), h("span", {}, k.ext))));
+  // одна кнопка «Скачать», а по нажатию — выбор: Android, Windows или iPhone (своё устройство — первым)
+  const btn = h("button", { type: "button", class: "ga me", title: T("Скачать приложение"), "aria-haspopup": "menu",
+    onclick: () => {
+      const r = btn.getBoundingClientRect();
+      placeCtx(h("div", { class: "ctx", role: "menu", "aria-label": T("Скачать приложение") },
+        ...list.map((k) => ctxItem("dl", k.label + " · " + k.ext + (k === mine ? T(" — это устройство") : ""), () => getApp(k)))), r.left, r.bottom + 6);
+    } },
+    icon("dl"), h("b", {}, T("Скачать приложение")));
+  box.replaceChildren(btn);
   box.hidden = false;
 }
 async function getApp(k) {

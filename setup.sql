@@ -1454,5 +1454,5 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Ставится через AltStore/Sideloadly со своим Apple ID; для TestFlight/App Store нужен аккаунт разработчика.
 
 -- ===== Кнопки «скачать приложение» над историями (только клиент) =====
--- #getApps: Android (APK), Windows (EXE), iPhone (IPA); своя платформа — первой и выделена. В приложениях не показываются.
+-- #getApps: одна кнопка «Скачать приложение», по нажатию меню Android (APK) / Windows (EXE) / iPhone (IPA), своё устройство первым. В приложениях не показывается.
 -- APK — releases/latest/download; EXE и IPA — самый свежий выпуск windows-*/ios-* через api.github.com (они не «latest»).
