@@ -1,0 +1,7 @@
+{
+  "appId": "top.mestario.app",
+  "appName": "Mestario",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#05070d" }
+}

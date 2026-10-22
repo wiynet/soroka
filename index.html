@@ -3518,7 +3518,10 @@ const APP_NAME = T("Mestario");
 const MAX_FILE = 20 * 1024 * 1024;
 const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
-const HERE = location.origin + location.pathname;
+// внутри Android-приложения страница открыта как https://localhost — ссылки и письма должны вести на настоящий сайт
+const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Android/i.test(navigator.userAgent);
+const PUBLIC_SITE = "https://soroka.lol/";
+const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
 const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username)";
 
@@ -3809,7 +3812,7 @@ function randomId() {
   (window.crypto || window.msCrypto).getRandomValues(b);
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
-const SITE = /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://mestario.top/";
+const SITE = IN_APP ? PUBLIC_SITE : /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://mestario.top/";
 async function copyText(text, ok) {
   try { await navigator.clipboard.writeText(text); toast(ok || T("Скопировано")); }
   catch (e) { toast(T("Не удалось скопировать. Ссылка: ") + text); }

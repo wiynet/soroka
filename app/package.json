@@ -1,0 +1,11 @@
+{
+  "name": "mestario-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mestario для Android: интерфейс сайта, упакованный в приложение (Capacitor)",
+  "dependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/cli": "6.1.2",
+    "@capacitor/core": "6.1.2"
+  }
+}

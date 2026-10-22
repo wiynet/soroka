@@ -1,0 +1,75 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+    paths: [index.html, en.js, "app/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: { group: android, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Файлы интерфейса в приложение
+        run: |
+          mkdir -p app/www
+          cp index.html en.js manifest.webmanifest sw.js *.png app/www/
+      - name: ImageMagick для иконок
+        run: command -v convert || (sudo apt-get update -q && sudo apt-get install -y -q imagemagick)
+      - name: Проект Android
+        working-directory: app
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Разрешения, версия, иконки
+        working-directory: app/android/app
+        run: |
+          M=src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.CAMERA" />\n  <uses-permission android:name="android.permission.RECORD_AUDIO" />\n  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />\n  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>#' $M
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" build.gradle
+          rm -rf src/main/res/mipmap-anydpi-v26
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            n=${d%%:*}; s=${d##*:}
+            convert ../../../icon-512.png -resize ${s}x${s} src/main/res/mipmap-$n/ic_launcher.png
+            convert ../../../icon-512.png -resize ${s}x${s} src/main/res/mipmap-$n/ic_launcher_round.png
+            cp src/main/res/mipmap-$n/ic_launcher.png src/main/res/mipmap-$n/ic_launcher_foreground.png
+          done
+      - name: Сборка
+        working-directory: app/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > release.keystore
+            ./gradlew --no-daemon assembleRelease
+            APK=$(ls app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null || ls app/build/outputs/apk/release/*.apk | head -1)
+            BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+            $BT/zipalign -f -p 4 "$APK" aligned.apk
+            $BT/apksigner sign --ks release.keystore --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS --out ../Mestario.apk aligned.apk
+            rm -f release.keystore
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../Mestario.apk
+          fi
+          ls -la ../Mestario.apk
+      - name: Выпуск
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Mestario для Android · сборка ${{ github.run_number }}
+          body: |
+            Установка: скачайте Mestario.apk на телефон и откройте его (разрешите установку из этого источника).
+            Сборка из коммита ${{ github.sha }}.
+          files: app/Mestario.apk
+          make_latest: true
