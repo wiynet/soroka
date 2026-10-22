@@ -1442,3 +1442,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Отправленное сообщение вылетает из поля ввода; удалённое сжимается и растворяется; изменённое мягко вспыхивает.
 -- «Волна» от нажатия на кнопках и строках; смена темы/цвета/фона — через View Transitions.
 -- При системной настройке «уменьшить движение» всё это отключается.
+
+-- ===== Mestario для Windows (desktop/, .github/workflows/windows.yml; без изменений БД) =====
+-- Electron-окно открывает сайт (обновления сразу), без интернета — встроенную копию интерфейса.
+-- Выпуск windows-N: Mestario-Setup.exe и Mestario.exe, make_latest: false (releases/latest остаётся за APK).
+-- При переезде на mestario.top поменять SITE в desktop/main.js.

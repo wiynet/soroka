@@ -1,0 +1,21 @@
+{
+  "name": "mestario-desktop",
+  "version": "1.0.0",
+  "description": "Mestario для Windows",
+  "author": "Mestario",
+  "main": "main.js",
+  "private": true,
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "top.mestario.desktop",
+    "productName": "Mestario",
+    "files": ["main.js", "www/**", "icon.png"],
+    "directories": { "output": "dist" },
+    "win": { "icon": "icon.png", "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": true, "artifactName": "Mestario-Setup.${ext}", "shortcutName": "Mestario" },
+    "portable": { "artifactName": "Mestario.${ext}" }
+  }
+}

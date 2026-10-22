@@ -1,0 +1,45 @@
+name: Windows EXE
+on:
+  push:
+    branches: [main]
+    paths: ["desktop/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: { group: windows, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Интерфейс и иконка
+        shell: bash
+        run: |
+          mkdir -p desktop/www
+          cp index.html en.js manifest.webmanifest sw.js *.png desktop/www/
+          cp icon-512.png desktop/icon.png
+      - name: Сборка
+        working-directory: desktop
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win --x64 --publish never -c.extraMetadata.version=1.0.${{ github.run_number }}
+          ls -la dist
+      - name: Выпуск
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-${{ github.run_number }}
+          name: Mestario для Windows · сборка ${{ github.run_number }}
+          body: |
+            Mestario-Setup.exe — установщик (ярлык на рабочем столе и в «Пуске»).
+            Mestario.exe — запуск без установки.
+            Windows может предупредить «Windows защитил ваш компьютер»: нажмите «Подробнее» → «Выполнить в любом случае».
+            Сборка из коммита ${{ github.sha }}.
+          files: |
+            desktop/dist/Mestario-Setup.exe
+            desktop/dist/Mestario.exe
+          make_latest: false
