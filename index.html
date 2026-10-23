@@ -1687,6 +1687,21 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .msg.swipe-back { transition: transform .26s cubic-bezier(.2,.9,.3,1.15); }
 #swipeHint { will-change: transform, opacity; transition: transform .18s cubic-bezier(.3,1.6,.5,1); }
 
+/* ---------- переходы «как в Telegram»: страницы и окна на весь экран въезжают и уезжают целиком ---------- */
+.set-page { overflow-x: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes tg-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: none; } }
+  @keyframes tg-in-left { from { transform: translate3d(-25%, 0, 0); opacity: .55; } to { transform: none; opacity: 1; } }
+  @keyframes tg-out-right { to { transform: translate3d(100%, 0, 0); } }
+  #dlgSettings [data-page].from-right { animation: tg-in-right .3s cubic-bezier(.22,.9,.28,1) both !important; }
+  #dlgSettings [data-page].from-left { animation: tg-in-left .3s cubic-bezier(.22,.9,.28,1) both !important; }
+  dialog.full[open] { animation: tg-in-right .32s cubic-bezier(.22,.9,.28,1) both; box-shadow: -14px 0 34px rgb(0 0 0 / .28); }
+  dialog.full.shut { animation: tg-out-right .24s cubic-bezier(.4,0,.6,1) both !important; }
+  dialog.full.shut::backdrop { animation: fade-out .24s both !important; }
+  .ctx.out { animation: ctx-out2 .15s cubic-bezier(.4,0,1,1) both !important; }
+  @keyframes ctx-out2 { to { opacity: 0; transform: scale(.7); } }
+}
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -5459,7 +5474,7 @@ function addMsg(m) {
   state.msgs.push(m);
   state.msgs.sort((a, b) => a.id - b.id);
   renderMsgs(wasTemp ? null : m.id);   // своё сообщение уже «прилетело» черновиком — второй раз не анимируем
-  if (stick) scrollDown();
+  if (stick) { scrollDown(); if (!wasTemp) pushUp(m.id); }
   state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
   if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies(); else ensureStats();
   if (m.giveaway_id) ensureGiveaways(true);   // новый розыгрыш или сообщение об итогах
@@ -6388,7 +6403,7 @@ function sendFiles(chatId, files, body, extra, onQueued) {
   });
   outbox.push(...temps);
   noteFlyFrom();
-  if (state.activeId === chatId) { state.msgs.push(...temps); renderMsgs(temps[temps.length - 1].id); scrollDown(); }
+  if (state.activeId === chatId) { state.msgs.push(...temps); renderMsgs(temps[temps.length - 1].id); scrollDown(); pushUp(temps[temps.length - 1].id); }
   flash($("btnSend"), 420, "fly");
   if (onQueued) onQueued();
   const run = sendChain.then(() => deliver(temps));
@@ -8656,7 +8671,12 @@ function showSetPage(name) {
   $("setBack").hidden = name === "menu";
   $("dlgSettings").querySelector(".dlg").scrollTop = 0;
 }
-$("setBack").addEventListener("click", () => showSetPage("menu"));
+$("setBack").addEventListener("click", () => {
+  const pg = $("dlgSettings").querySelector("[data-page]:not([hidden])");
+  if (!pg || !motionOK() || setPageNow === "menu") return showSetPage("menu");
+  pg.animate([{ transform: "none" }, { transform: "translate3d(100%,0,0)" }], { duration: 240, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" })
+    .onfinish = () => { pg.getAnimations().forEach((a) => a.cancel()); showSetPage("menu"); };
+});
 for (const b of $("setLang").children) b.setAttribute("aria-checked", String(b.dataset.l === window.SOROKA_LANG));
 $("sv_lang").textContent = window.SOROKA_LANG === "en" ? "English" : "Русский";
 $("setLang").addEventListener("click", (e) => {
@@ -10095,6 +10115,7 @@ function takePress() {
 function growFrom(d, x, y) {
   const r = d.getBoundingClientRect();
   if (!r.width) return;
+  d._growFrom = { x, y };
   const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
   d.animate([
     { opacity: 0, transform: "translate(" + dx + "px," + dy + "px) scale(.3)" },
@@ -10125,6 +10146,26 @@ function holdBlur() {
   setTimeout(() => l.remove(), 200);
 }
 
+/* новое сообщение внизу: переписка плавно сдвигается вверх на его высоту, само оно выезжает снизу (как в Telegram) */
+function pushUp(id) {
+  if (!motionOK() || document.hidden) return;
+  const box = $("msgs"), node = box.querySelector('.msg[data-id="' + id + '"]');
+  if (!node) return;
+  const outer = node.closest(".mrow") || node, kids = [...box.children], idx = kids.indexOf(outer);
+  if (idx < 0) return;
+  const hgt = outer.offsetHeight + 4;
+  if (hgt > box.clientHeight) return;
+  const ease = "cubic-bezier(.22,.9,.28,1)";
+  for (let i = Math.max(0, idx - 14); i < idx; i++) {
+    kids[i].animate([{ transform: "translate3d(0," + hgt + "px,0)" }, { transform: "none" }], { duration: 280, easing: ease });
+  }
+  if (!node.classList.contains("mine")) {   // свои летят из поля ввода (flyIn), чужие — выезжают снизу
+    node.classList.remove("new");
+    node.style.transformOrigin = "0 100%";
+    outer.animate([{ transform: "translate3d(0," + hgt * 0.6 + "px,0) scale(.9)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 300, easing: ease });
+  }
+}
+
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 // клавиатуру на экране сами не открываем: поле ввода получает фокус автоматически только там, где есть мышь
 function canAutoFocus() { return !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches); }
@@ -10137,7 +10178,17 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
   Object.defineProperty(P, "open", { configurable: true, enumerable: od.enumerable, get() { return od.get.call(this) && !this._shut; }, set(v) { od.set.call(this, v); } });
   P.close = function (v) {
     if (this._shut) return;
-    if (!od.get.call(this) || !motionOK() || document.hidden) return close.call(this, v);
+    if (!od.get.call(this) || !motionOK() || document.hidden) { this._growFrom = null; return close.call(this, v); }
+    if (this._growFrom) {   // окно выросло из пальца — туда же и сворачивается
+      const g = this._growFrom, r = this.getBoundingClientRect();
+      this._growFrom = null;
+      const dx = g.x - (r.left + r.width / 2), dy = g.y - (r.top + r.height / 2);
+      this.classList.add("shut");
+      this.getAnimations().forEach((a) => a.cancel());
+      this.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translate(" + dx + "px," + dy + "px) scale(.3)" }], { duration: 210, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards" });
+      this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); this.getAnimations().forEach((a) => a.cancel()); close.call(this, v); }, 200);
+      return;
+    }
     this.classList.add("shut");
     this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, 170);
   };
