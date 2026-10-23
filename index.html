@@ -1805,6 +1805,10 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .be-log .lg q { quotes: none; font-weight: 600; }
 .be-log .lg .sm { color: var(--muted); }
 .be-sales { font-size: 13px; color: var(--muted); margin: -4px 0 8px; }
+.be-sales:empty { display: none; }
+.be-wallet { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--text); }
+.be-wd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 2px; }
+.be-wd-in { width: 96px; }
 .be-ai { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 8px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent); }
 .be-ai textarea { width: 100%; min-height: 60px; resize: vertical; }
@@ -11267,7 +11271,7 @@ function beReply(r, kind) {
     h("div", { class: "be-sub" }, T("Клавиатура над полем ввода:")), kb,
     h("div", { class: "be-sub" }, T("Кнопки под сообщением:")), il,
     h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")),
-    ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут вам")), h("div", { class: "be-pay" }, pay, paid)] : []));
+    ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут на баланс бота")), h("div", { class: "be-pay" }, pay, paid)] : []));
   box.read = () => {
     const o = { text: ta.value.trim() };
     if (on) o.on = on.value.trim();
@@ -11300,10 +11304,38 @@ function openBotEdit(b) {
   $("beFilter").value = "";
   $("beGenText").value = "";
   beGenHist = []; paintGenLog();
-  $("beSales").textContent = "";
-  sb.rpc("bot_sales", { p_bot: b.id }).then(({ data }) => { if (data && data.count && beBot && beBot.id === b.id) $("beSales").textContent = T("Продажи: ") + data.count + T(" · получено ") + data.total + " Mest"; });
+  paintBeSales(b.id);
   if (!$("dlgBotEdit").open) $("dlgBotEdit").showModal();
   paintBeAi();
+}
+// кошелёк бота: оплаты в боте копятся на балансе бота, владелец выводит их себе с комиссией 20%
+async function paintBeSales(id) {
+  const box = $("beSales");
+  box.replaceChildren();
+  const { data } = await sb.rpc("bot_sales", { p_bot: id });
+  if (!data || !beBot || beBot.id !== id) return;
+  const bal = Number(data.balance) || 0;
+  const amt = h("input", { type: "number", min: "5", max: String(Math.max(5, bal)), step: "1", value: String(bal), class: "be-wd-in", "aria-label": T("Сколько вывести") });
+  const calc = h("span", { class: "sm" });
+  const upd = () => { const a = Math.floor(Number(amt.value) || 0), fee = Math.ceil(a * 0.2); calc.textContent = a >= 5 ? T("вам придёт ") + (a - fee) + T(" Mest, комиссия ") + fee : T("минимум 5 Mest"); };
+  amt.addEventListener("input", upd); upd();
+  const go = h("button", { class: "btn", type: "button", disabled: bal < 5, onclick: async () => {
+    const a = Math.floor(Number(amt.value) || 0);
+    if (a < 5) { toast(T("Минимум для вывода — 5 Mest")); return; }
+    if (a > bal) { toast(T("На балансе бота только ") + bal + " Mest"); return; }
+    go.disabled = true;
+    const { data: r, error } = await sb.rpc("bot_withdraw", { p_bot: id, p_amount: a });
+    go.disabled = false;
+    if (error) { toast(/insufficient|balance|funds/i.test(error.message || "") ? T("На балансе бота не хватает Mest") : /min/i.test(error.message || "") ? T("Минимум для вывода — 5 Mest") : T("Не получилось вывести")); return; }
+    toast(T("Выведено: ") + r.payout + T(" Mest вам, комиссия ") + r.fee + " Mest");
+    if (typeof refreshMe === "function") refreshMe();
+    paintBeSales(id);
+  } }, T("Вывести себе"));
+  box.append(
+    h("div", { class: "be-wallet" }, h("b", {}, T("💰 Баланс бота: ") + bal + " Mest"),
+      h("span", { class: "sm" }, T("Продаж: ") + (data.count || 0) + T(" · всего получено ") + (data.total || 0) + " Mest" + (data.withdrawn ? T(" · выведено ") + data.withdrawn : ""))),
+    h("div", { class: "be-wd" }, amt, go, calc),
+    h("div", { class: "be-sub" }, T("Все оплаты в боте приходят на его баланс. Вывод себе — с комиссией 20%, от 5 Mest.")));
 }
 function beFill(cfg) {
   const many = (cfg.cmds || []).length > 6;
@@ -11406,14 +11438,37 @@ $("beAddCmd").addEventListener("click", () => {
   const r = beReply({}, "cmd"); $("beCmds").append(r); beCount(); r.querySelector(".be-top input").focus();
 });
 // для кнопок клавиатуры без ответа — заготовки команд
-$("beFromKb").addEventListener("click", () => {
+$("beFromKb").addEventListener("click", async () => {
+  // с доступом к ИИ — помощник сам пишет команды для кнопок без ответа; без него — пустые заготовки
+  if (beBot && beAiInfo && (beAiInfo.admin || beAiInfo.until)) {
+    const btn = $("beFromKb"), before = beRead();
+    btn.disabled = true; const was = btn.textContent; btn.textContent = T("ИИ пишет ответы…");
+    try {
+      const tok = (await sb.auth.getSession()).data.session?.access_token;
+      const r = await fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST",
+        headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok },
+        body: JSON.stringify({ bot_gen: true, fill_missing: true, bot: beBot.id, config: before }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.config) {
+        if (j.added) {
+          beFill(j.config);
+          beGenHist.push({ request: T("Ответы для всех кнопок"), summary: j.summary, before }); paintGenLog();
+          toast(T("ИИ добавил команд: ") + j.added + T(" — проверьте и нажмите «Сохранить»"));
+          return;
+        }
+        if (/уже есть/.test(j.summary || "")) { toast(T("У всех кнопок уже есть ответы")); return; }
+      }
+    } catch (e) { /* ниже — заготовки */ }
+    finally { btn.disabled = false; btn.textContent = was; }
+  }
   const cfg = beRead();
-  const have = new Set([...$("beCmds").children].map((x) => (x.read().on || "").toLowerCase()));
+  const nb = (t) => String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}\/ ]+/gu, " ").replace(/\s+/g, " ").trim();
+  const have = new Set([...$("beCmds").children].flatMap((x) => (x.read().on || "").split("|").map((v) => nb(v.replace(/^\s*~/, "")))));
   const all = [cfg.start, ...cfg.cmds, cfg.unknown].filter(Boolean).flatMap((r) => (r.kb || []).flat().concat((r.inline || []).flat().filter((b) => !b.u).map((b) => b.s || b.t)));
   let n = 0;
   for (const t of all) {
-    const k = t.toLowerCase();
-    if (have.has(k) || ["/start", "start", "старт", "начать"].includes(k)) continue;   // на «Старт» отвечает приветствие
+    const k = nb(t);
+    if (!k || have.has(k) || ["/start", "start", "старт", "начать"].includes(k)) continue;   // на «Старт» отвечает приветствие
     have.add(k); n++;
     $("beCmds").append(beReply({ on: t, text: "" }, "cmd"));
   }

@@ -605,12 +605,51 @@ config — ПОЛНЫЙ бот:
 • pay — цена в Mest (1–100000): под ответом появится кнопка «Оплатить N Mest», деньги уходят владельцу бота; paid — текст после оплаты (можно {pay}). Используй для «купить», «VIP», «донат», «товар».
 • Бот НЕ умеет начислять Mest, запоминать данные, считать очки, ставки и выигрыши — не обещай этого в текстах (никаких «вам начислено», «ваш счёт»). Для игр используй {random}, для свободных разговоров — ai.on и ai.prompt.
 Правила правки: если дан текущий бот — сохрани всё, о чём не просили, и измени только нужное; не удаляй команды без просьбы. Учитывай прошлые просьбы из истории. Не больше 120 команд. Пиши на языке владельца, дружелюбно, с уместными эмодзи.`;
+// кнопки, на которые у бота нет ответа (сравнение как в базе: без регистра, ё=е, без эмодзи и знаков)
+function normB(t: string) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}\/ ]+/gu, " ").replace(/\s+/g, " ").trim(); }
+function missingButtons(cfg: any): string[] {
+  const ons = new Set(["/start", "start", "старт", "начать"]);
+  for (const c of (cfg?.cmds || [])) for (const v of String(c?.on || "").split("|")) if (v.trim()) ons.add(normB(v.trim().replace(/^~/, "")));
+  const out: string[] = [], seen = new Set<string>();
+  const add = (t: string) => { const n = normB(t); if (n && !ons.has(n) && !seen.has(n)) { seen.add(n); out.push(String(t).trim()); } };
+  for (const r of [cfg?.start, cfg?.unknown, ...(cfg?.cmds || [])]) {
+    if (!r) continue;
+    for (const row of (Array.isArray(r.kb) ? r.kb : [])) for (const b of (Array.isArray(row) ? row : [])) if (typeof b === "string") add(b);
+    for (const row of (Array.isArray(r.inline) ? r.inline : [])) for (const b of (Array.isArray(row) ? row : [])) if (b && !b.u && (b.s || b.t)) add(b.s || b.t);
+  }
+  return out;
+}
+// ИИ сам создаёт команды для кнопок без ответа
+async function fillMissing(cfg: any) {
+  const miss = missingButtons(cfg).slice(0, 40);
+  if (!miss.length) return { cfg, added: [] as string[] };
+  const r: any = await ask("Текущий бот (JSON):\n" + JSON.stringify(cfg).slice(0, 80000) +
+    "\n\nУ этих кнопок нет команд: " + JSON.stringify(miss) +
+    "\nСоздай для КАЖДОЙ кнопки команду с \"on\" ровно как текст кнопки (можно добавить синонимы через |), с осмысленным ответом в духе бота, desc и клавиатурой (верни главное меню или кнопку назад). " +
+    "Верни ТОЛЬКО JSON {\"summary\":\"...\",\"cmds\":[...]} — только новые команды.", undefined, GEN_SYS, 16384, { json: true, think: true });
+  if (!r || !r.ok) return { cfg, added: [] as string[] };
+  try {
+    const raw = String(r.text), a = raw.indexOf("{"), z = raw.lastIndexOf("}");
+    const j = JSON.parse(raw.slice(a, z + 1));
+    const want = new Set(miss.map(normB));
+    const fresh = (Array.isArray(j.cmds) ? j.cmds : []).filter((c: any) => c && c.on && c.text &&
+      String(c.on).split("|").some((v: string) => want.has(normB(v))));
+    const out = { ...cfg, cmds: [...(cfg.cmds || []), ...fresh].slice(0, 200) };
+    return { cfg: out, added: fresh.map((c: any) => String(c.on).split("|")[0].trim()) };
+  } catch (_) { return { cfg, added: [] as string[] }; }
+}
 async function botGen(uid: string, input: any) {
   const id = String(input.bot || "");
   const { data: b } = await sb.from("bots").select("id,owner,config").eq("id", id).maybeSingle();
   if (!b || b.owner !== uid) return { error: "not owner", status: 403 };
   const { data: ok } = await sb.rpc("bot_ai_take", { p_owner: uid, p_kind: "gen" });
   if (!ok) return { error: "no access", status: 402 };
+  // отдельный режим: только дописать команды для кнопок без ответа
+  if (input.fill_missing) {
+    const base = input.config && typeof input.config === "object" ? input.config : b.config;
+    const f = await fillMissing(base);
+    return { config: f.cfg, summary: f.added.length ? "Создал команды для кнопок: " + f.added.join(", ") + "." : "У всех кнопок уже есть ответы.", added: f.added.length };
+  }
   const task = String(input.request || "").trim().slice(0, 2000);
   if (!task) return { error: "empty", status: 400 };
   const cur = input.config && typeof input.config === "object" ? JSON.stringify(input.config).slice(0, 80000) : "";
@@ -626,7 +665,10 @@ async function botGen(uid: string, input: any) {
     const j = JSON.parse(raw.slice(a, z + 1));
     const config = j && j.config && typeof j.config === "object" ? j.config : j;
     if (!config || typeof config !== "object" || (!config.start && !config.cmds)) return { error: "bad json", status: 502 };
-    return { config, summary: String((j && j.summary) || "").slice(0, 600) };
+    // если ИИ оставил кнопки без ответа — сразу дописываем для них команды
+    const f = await fillMissing(config);
+    const summary = String((j && j.summary) || "").slice(0, 600) + (f.added.length ? " Дописал команды для кнопок: " + f.added.join(", ") + "." : "");
+    return { config: f.cfg, summary };
   } catch (_) { return { error: "bad json", status: 502 }; }
 }
 function plural(n: number) {
