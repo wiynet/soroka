@@ -238,9 +238,46 @@ function buildReply(t: string) {
   return { msgs, files };
 }
 
+// расшифровка голосового для ИИ: тот же Gemini, что отвечает; результат сохраняется для всех участников чата
+function b64(bytes: Uint8Array) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+async function voiceText(m: any): Promise<string> {
+  const { data: done } = await sb.from("message_transcripts").select("body").eq("message_id", m.id).maybeSingle();
+  if (done) return done.body;
+  if (Number(m.voice_secs ?? m.video_secs) > 600) return "";
+  const f = await sb.storage.from("attachments").download(m.file_path);
+  if (f.error || !f.data) return "";
+  const bytes = new Uint8Array(await f.data.arrayBuffer());
+  if (bytes.length > 15 * 1024 * 1024) return "";
+  const t = String(m.file_type || "");
+  const mime = /webm/.test(t) ? "video/webm" : /ogg/.test(t) ? "audio/ogg" : /mp4|m4a|aac/.test(t) ? (m.video_secs != null ? "video/mp4" : "audio/aac") : /mpeg|mp3/.test(t) ? "audio/mp3" : /wav/.test(t) ? "audio/wav" : (t || "audio/ogg");
+  const k = await key();
+  if (!k) return "";
+  const data = b64(bytes);
+  const prompt = "Это голосовое сообщение из мессенджера. Запиши дословно, что сказано, на языке оригинала, с обычной пунктуацией. " +
+    "Без пояснений, кавычек и меток времени. Если речи нет или ничего не разобрать — ответь ровно: [без слов]";
+  for (const model of (await pickModels(k)).filter((x) => (blocked.get(x) || 0) < Date.now()).slice(0, 6)) {
+    const r = await fetch(`${GL}/models/${model}:generateContent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data } }, { text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 4096 } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 429) { blocked.set(model, Date.now() + 30 * 60_000); continue; }
+    if (!r.ok) continue;
+    const out = ((j.candidates || [])[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim().replace(/^["«]|["»]$/g, "").slice(0, 8000);
+    if (!out) continue;
+    await sb.from("message_transcripts").upsert({ message_id: m.id, chat_id: m.chat_id, body: out, by_user: m.sender_id });
+    return out;
+  }
+  return "";
+}
+
 async function botReply(messageId: number) {
   const bot = (await sb.from("profiles").select("id").eq("username", "ai").maybeSingle()).data?.id;
-  const { data: m } = await sb.from("messages").select("id,chat_id,sender_id,body,file_path,sticker_id,deleted_at").eq("id", messageId).maybeSingle();
+  const { data: m } = await sb.from("messages").select("id,chat_id,sender_id,body,file_path,file_type,voice_secs,video_secs,sticker_id,deleted_at").eq("id", messageId).maybeSingle();
   if (!bot || !m || m.deleted_at || m.sender_id === bot) return "skip";
   const { data: chat } = await sb.from("chats").select("id,is_group").eq("id", m.chat_id).maybeSingle();
   if (!chat || chat.is_group) return "skip";
@@ -254,7 +291,8 @@ async function botReply(messageId: number) {
   const { data: u } = await sb.from("profiles").select("is_admin,banned_at,deleted_at").eq("id", m.sender_id).maybeSingle();
   if (!u || u.banned_at || u.deleted_at) return "skip";
   const unlimited = !!u.is_admin;
-  if (!m.body || !String(m.body).trim()) { await say("Я пока понимаю только текст. Напишите вопрос словами."); return "no text"; }
+  const isVoice = !!m.file_path && (m.voice_secs != null || m.video_secs != null);
+  if ((!m.body || !String(m.body).trim()) && !isVoice) { await say("Я понимаю текст и голосовые сообщения. Напишите вопрос словами или запишите голосовое."); return "no text"; }
   let balance = 0;
   if (!unlimited) {
     balance = Number((await sb.rpc("ai_balance", { p_user: m.sender_id })).data) || 0;
@@ -263,25 +301,38 @@ async function botReply(messageId: number) {
       return "no credits";
     }
   }
-  // последние сообщения переписки — чтобы можно было уточнять
-  const { data: hist } = await sb.from("messages").select("sender_id,body").eq("chat_id", m.chat_id).is("deleted_at", null)
+  const t0 = Date.now();
+  // голосовое: сначала расшифровываем (текст сохраняется и виден под голосовым), дальше отвечаем на сказанное
+  let question = String(m.body || "").trim();
+  if (!question && isVoice) {
+    const heard = await voiceText(m);
+    if (!heard) { await say("Не получилось разобрать голосовое — попробуйте ещё раз или напишите текстом. Кредиты не списаны."); return "voice failed"; }
+    if (/^\[без слов\]$/i.test(heard.trim())) { await say("В голосовом не слышно слов — запишите, пожалуйста, ещё раз. Кредиты не списаны."); return "voice empty"; }
+    question = heard;
+  }
+  // последние сообщения переписки — чтобы можно было уточнять; у голосовых берём их расшифровку
+  const { data: hist } = await sb.from("messages").select("id,sender_id,body,voice_secs,video_secs").eq("chat_id", m.chat_id).is("deleted_at", null)
     .lte("id", m.id).order("id", { ascending: false }).limit(14);
+  const vids = (hist || []).filter((x: any) => !x.body && (x.voice_secs != null || x.video_secs != null)).map((x: any) => x.id);
+  const heardMap = new Map<number, string>();
+  if (vids.length) for (const r of ((await sb.from("message_transcripts").select("message_id,body").in("message_id", vids)).data || [])) heardMap.set(r.message_id, r.body);
+  heardMap.set(m.id, question);
   const turns: Turn[] = [];
   for (const x of (hist || []).reverse()) {
-    if (!x.body) continue;
+    const body = x.body || (heardMap.has(x.id) ? "(голосовое) " + heardMap.get(x.id) : "");
+    if (!body) continue;
     const role = x.sender_id === bot ? "model" : "user";
-    const text = role === "model" ? String(x.body).replace(/\n*⏱[^\n]*$/, "") : String(x.body);
+    const text = role === "model" ? String(body).replace(/\n*⏱[^\n]*$/, "") : String(body);
     if (turns.length && turns[turns.length - 1].role === role) turns[turns.length - 1].text += "\n" + text;
     else turns.push({ role, text });
   }
   while (turns.length && turns[0].role === "model") turns.shift();
-  if (!turns.length) turns.push({ role: "user", text: m.body });
+  if (!turns.length) turns.push({ role: "user", text: question });
 
-  const { data: row } = await sb.from("ai_history").insert({ user_id: m.sender_id, question: String(m.body).slice(0, 1000) }).select("id").single();
-  const t0 = Date.now();
+  const { data: row } = await sb.from("ai_history").insert({ user_id: m.sender_id, question: question.slice(0, 1000) }).select("id").single();
   let imagePrompt = "", english = false;
   let r: any = null;
-  if (wantsImage(String(m.body))) imagePrompt = String(m.body).replace(/^\s*\/(img|image)\s*/i, "");
+  if (wantsImage(question)) imagePrompt = question.replace(/^\s*\/(img|image)\s*/i, "");
   else {
     r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t));
     const mk = r && r.ok ? /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(r.text) : null;
