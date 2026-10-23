@@ -3465,7 +3465,19 @@ void main() {
     <div class="actions">
       <button class="btn ghost danger" type="button" id="beDelete">Удалить бота</button>
       <button class="btn ghost" type="button" id="beOpen">Открыть чат</button>
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
       <button class="btn" type="button" id="beSave">Сохранить</button>
+    </div>
+  </div>
+</dialog>
+<dialog id="dlgBeAsk">
+  <div class="dlg">
+    <h2>Сохранить изменения?</h2>
+    <p class="hint">В боте есть несохранённые изменения. Если не сохранить, они пропадут.</p>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="beAskBack">Остаться</button>
+      <button class="btn ghost danger" type="button" id="beAskDrop">Не сохранять</button>
+      <button class="btn" type="button" id="beAskSave">Сохранить</button>
     </div>
   </div>
 </dialog>
@@ -6990,10 +7002,10 @@ $("composer").addEventListener("submit", async (e) => {
 /* ---------- диалоги ---------- */
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-close]");
-  if (b) b.closest("dialog").close();
+  if (b) { const d = b.closest("dialog"); d.guardClose ? d.guardClose() : d.close(); }
 });
 for (const d of document.querySelectorAll("dialog")) {
-  d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+  d.addEventListener("click", (e) => { if (e.target === d) d.guardClose ? d.guardClose() : d.close(); });
 }
 
 // админка: выдача коллекционных (NFT) юзернеймов. Права проверяет база, кнопка лишь показывает панель.
@@ -11217,7 +11229,7 @@ $("botNewForm").addEventListener("submit", async (e) => {
 
 // конструктор
 var beBot = null, beAvatar = null;
-const BOT_VARS = [["{name}", "имя человека"], ["{username}", "его @юзернейм"], ["{mest}", "его Mest"], ["{id}", "его номер"], ["{date}", "сегодняшняя дата"], ["{time}", "время"], ["{bot}", "имя бота"], ["{random:1..6}", "случайное число от 1 до 6"], ["{random:да|нет}", "случайный вариант"]];
+const BOT_VARS = [["{name}", "имя человека"], ["{username}", "его @юзернейм"], ["{mest}", "его Mest"], ["{id}", "его номер"], ["{date}", "сегодняшняя дата"], ["{time}", "время"], ["{bot}", "имя бота"], ["{random:1..6}", "случайное число от 1 до 6"], ["{random:да|нет}", "случайный вариант"], ["{give}", "сколько бот выплатил"], ["{bank}", "призовой фонд бота"]];
 var beLastText = null;
 $("beVars").replaceChildren(...BOT_VARS.map(([v, d]) => h("button", { type: "button", title: T(d), onclick: () => {
   const ta = beLastText && document.contains(beLastText) ? beLastText : $("dlgBotEdit").querySelector("textarea");
@@ -11278,19 +11290,29 @@ function beReply(r, kind) {
   ta.addEventListener("focus", () => { beLastText = ta; });
   const kb = beKbEditor(r.kb, false), il = beKbEditor(r.inline, true);
   const hide = h("input", { type: "checkbox" }); hide.checked = !!r.hide;
-  let desc = null, inMenu = null, pay = null, paid = null;
+  let desc = null, inMenu = null, pay = null, paid = null, give = null, chance = null, cd = null, win = null;
   if (kind === "cmd") {
     desc = h("input", { maxlength: "80", placeholder: T("Описание для меню: что делает команда") }); desc.value = r.desc || "";
     inMenu = h("input", { type: "checkbox" }); inMenu.checked = !r.nomenu;
     pay = h("input", { type: "number", min: "0", max: "100000", step: "1", placeholder: T("Цена, Mest") }); pay.value = r.pay ? String(r.pay) : "";
     paid = h("input", { class: "pd", maxlength: "3000", placeholder: T("Ответ после оплаты: Спасибо! Оплачено {pay} Mest") }); paid.value = r.paid || "";
+    give = h("input", { type: "number", min: "0", max: "100000", step: "1", placeholder: T("Выплата, Mest") }); give.value = r.give ? String(r.give) : "";
+    chance = h("input", { type: "number", min: "1", max: "100", step: "1", placeholder: T("Шанс, %") }); chance.value = r.give && r.chance ? String(r.chance) : "";
+    cd = h("select", { "aria-label": T("Как часто") },
+      ...[[86400, T("раз в сутки")], [3600, T("раз в час")], [600, T("раз в 10 мин")], [60, T("раз в минуту")], [604800, T("раз в неделю")], [0, T("без ограничения")]]
+        .map(([v, t]) => h("option", { value: String(v) }, t)));
+    cd.value = String(r.cd != null ? r.cd : 86400);
+    if (![...cd.options].some((o) => o.value === cd.value)) cd.value = "86400";
+    win = h("input", { class: "pd", maxlength: "3000", placeholder: T("Текст при выигрыше: 🎉 Вы выиграли {give} Mest!") }); win.value = r.win || "";
     box.append(h("div", { class: "be-cmdx" }, desc, h("label", { class: "be-sub" }, inMenu, T("в меню"))));
   }
   box.append(ta,
     h("div", { class: "be-sub" }, T("Клавиатура над полем ввода:")), kb,
     h("div", { class: "be-sub" }, T("Кнопки под сообщением:")), il,
     h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")),
-    ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут на баланс бота")), h("div", { class: "be-pay" }, pay, paid)] : []));
+    ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут на баланс бота")), h("div", { class: "be-pay" }, pay, paid),
+      h("div", { class: "be-sub" }, T("🎁 Выплата из фонда бота (игры и бонусы, необязательно). С ценой — это ставка: оплатил → с шансом получает выплату, иначе — ответ после оплаты. Без цены — бонус: выдаётся не чаще выбранного, а при проигрыше показывается основной текст.")),
+      h("div", { class: "be-pay" }, give, chance, cd, win)] : []));
   box.read = () => {
     const o = { text: ta.value.trim() };
     if (on) o.on = on.value.trim();
@@ -11298,6 +11320,14 @@ function beReply(r, kind) {
     if (inMenu && !inMenu.checked) o.nomenu = true;
     const pv = pay ? Math.floor(Number(pay.value) || 0) : 0;
     if (pv >= 1 && pv <= 100000) { o.pay = pv; if (paid.value.trim()) o.paid = paid.value.trim(); }
+    const gv = give ? Math.floor(Number(give.value) || 0) : 0;
+    if (gv >= 1 && gv <= 100000) {
+      o.give = gv;
+      const ch = Math.floor(Number(chance.value) || 100);
+      if (ch >= 1 && ch < 100) o.chance = ch;
+      if (!o.pay && cd.value !== "86400") o.cd = Number(cd.value);
+      if (win.value.trim()) o.win = win.value.trim();
+    }
     const k = kb.read(), i = il.read();
     if (k.length) o.kb = k;
     if (i.length) o.inline = i;
@@ -11326,7 +11356,31 @@ function openBotEdit(b) {
   paintBeSales(b.id);
   if (!$("dlgBotEdit").open) $("dlgBotEdit").showModal();
   paintBeAi();
+  beBase = beSnap();
 }
+// несохранённые изменения: при выходе из конструктора спрашиваем, сохранить или нет
+var beBase = "", beAfterAsk = null;
+function beSnap() { try { return JSON.stringify([$("beName").value.trim(), $("beAbout").value.trim(), beAvatar, beRead()]); } catch (e) { return ""; } }
+function beTryClose(then) {
+  const d = $("dlgBotEdit");
+  if (!d.open) { if (then) then(); return; }
+  if (!beBot || beSnap() === beBase) { d.close(); if (then) then(); return; }
+  beAfterAsk = then || null;
+  $("dlgBeAsk").showModal();
+}
+$("dlgBotEdit").guardClose = () => beTryClose();
+$("dlgBotEdit").addEventListener("cancel", (e) => { e.preventDefault(); beTryClose(); });
+$("beAskBack").addEventListener("click", () => { $("dlgBeAsk").close(); beAfterAsk = null; });
+$("beAskDrop").addEventListener("click", () => {
+  $("dlgBeAsk").close(); beBase = beSnap(); $("dlgBotEdit").close();
+  const t = beAfterAsk; beAfterAsk = null; if (t) t();
+});
+$("beAskSave").addEventListener("click", async () => {
+  $("dlgBeAsk").close();
+  if (!(await beDoSave())) return;   // ошибка видна в конструкторе — он остаётся открытым
+  $("dlgBotEdit").close();
+  const t = beAfterAsk; beAfterAsk = null; if (t) t();
+});
 // кошелёк бота: оплаты в боте копятся на балансе бота, владелец выводит их себе с комиссией 20%
 async function paintBeSales(id) {
   const box = $("beSales");
@@ -11350,11 +11404,26 @@ async function paintBeSales(id) {
     if (typeof refreshMe === "function") refreshMe();
     paintBeSales(id);
   } }, T("Вывести себе"));
+  const dep = h("input", { type: "number", min: "1", max: "1000000", step: "1", placeholder: T("Сколько"), class: "be-wd-in", "aria-label": T("Сколько пополнить") });
+  const depGo = h("button", { class: "btn ghost", type: "button", onclick: async () => {
+    const a = Math.floor(Number(dep.value) || 0);
+    if (a < 1) { dep.focus(); toast(T("Укажите, сколько Mest положить в бота")); return; }
+    depGo.disabled = true;
+    const { data: r, error } = await sb.rpc("bot_deposit", { p_bot: id, p_amount: a });
+    depGo.disabled = false;
+    if (error) { toast(/insufficient|balance|funds/i.test(error.message || "") ? T("У вас не хватает Mest") : T("Не получилось пополнить")); return; }
+    toast(T("Бот пополнен на ") + a + T(" Mest · у вас осталось ") + r.balance);
+    if (typeof refreshMe === "function") refreshMe();
+    paintBeSales(id);
+  } }, T("Пополнить бота"));
   box.append(
     h("div", { class: "be-wallet" }, h("b", {}, T("💰 Баланс бота: ") + bal + " Mest"),
-      h("span", { class: "sm" }, T("Продаж: ") + (data.count || 0) + T(" · всего получено ") + (data.total || 0) + " Mest" + (data.withdrawn ? T(" · выведено ") + data.withdrawn : ""))),
+      h("span", { class: "sm" }, T("Продаж: ") + (data.count || 0) + T(" · всего получено ") + (data.total || 0) + " Mest"
+        + (data.deposited ? T(" · пополнено ") + data.deposited : "") + (data.paid_out ? T(" · выплачено игрокам ") + data.paid_out : "")
+        + (data.withdrawn ? T(" · выведено ") + data.withdrawn : ""))),
     h("div", { class: "be-wd" }, amt, go, calc),
-    h("div", { class: "be-sub" }, T("Все оплаты в боте приходят на его баланс. Вывод себе — с комиссией 20%, от 5 Mest.")));
+    h("div", { class: "be-wd" }, dep, depGo),
+    h("div", { class: "be-sub" }, T("Все оплаты в боте приходят на его баланс. Из него же бот платит выигрыши и бонусы — для игр пополните бота заранее. Вывод себе — с комиссией 20%, от 5 Mest; пополнение — без комиссии.")));
 }
 function beFill(cfg) {
   const many = (cfg.cmds || []).length > 6;
@@ -11505,21 +11574,26 @@ $("beAvFile").addEventListener("change", async (e) => {
   if (!path) { toast(T("Не удалось загрузить картинку")); return; }
   beAvatar = path; paintBeAv();
 });
-$("beSave").addEventListener("click", async () => {
-  if (!beBot) return;
+async function beDoSave() {
+  if (!beBot) return false;
   const cfg = beRead();
-  if (!cfg.start.text) { $("beErr").textContent = T("Напишите текст приветствия"); return; }
+  if (!cfg.start.text) { $("beErr").textContent = T("Напишите текст приветствия"); return false; }
   $("beSave").disabled = true;
+  const snap = beSnap();
   const { error } = await sb.rpc("bot_update", { p_bot: beBot.id, p_name: $("beName").value.trim(), p_about: $("beAbout").value.trim(), p_avatar: beAvatar, p_config: cfg });
   $("beSave").disabled = false;
-  if (error) { $("beErr").textContent = /too big/.test(error.message || "") ? T("Слишком много текста и кнопок") : T("Не получилось сохранить"); return; }
+  if (error) { $("beErr").textContent = /too big/.test(error.message || "") ? T("Слишком много текста и кнопок") : T("Не получилось сохранить"); return false; }
+  $("beErr").textContent = "";
+  beBase = snap;
   toast(T("Бот сохранён — изменения работают сразу"));
   await loadMyBots();
   const b = myBots.find((x) => x.id === beBot.id);
   if (b) beBot = b;
   loadChats();
-});
-$("beOpen").addEventListener("click", () => { if (!beBot) return; const p = beBot.p; $("dlgBotEdit").close(); startDirect(p.id, p); });
+  return true;
+}
+$("beSave").addEventListener("click", () => beDoSave());
+$("beOpen").addEventListener("click", () => { if (!beBot) return; const p = beBot.p; beTryClose(() => startDirect(p.id, p)); });
 $("beDelete").addEventListener("click", async () => {
   if (!beBot) return;
   const b = $("beDelete");
