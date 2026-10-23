@@ -35,7 +35,7 @@ async function key() {
 async function pickModels(k: string) {
   if (models) return models;
   try {
-    const r = await fetch(GL + "/models?pageSize=200", { headers: { "x-goog-api-key": k } });
+    const r = await tfetch(GL + "/models?pageSize=200", { headers: { "x-goog-api-key": k } }, 4000);
     if (r.ok) {
       const j = await r.json();
       const ver = (n: string) => Number((/gemini-(\d+(?:\.\d+)?)/.exec(n) || [])[1] || 0);
@@ -52,21 +52,94 @@ async function pickModels(k: string) {
   return models;
 }
 type Turn = { role: "user" | "model"; text: string };
+// любой запрос наружу — с ограничением по времени: зависший ответ не должен держать ИИ минутами
+async function tfetch(url: string, init: RequestInit, ms: number) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...init, signal: c.signal }); } finally { clearTimeout(t); }
+}
+// «размышление» модели перед ответом — главная задержка (5–20 с); для чата выключаем его или ставим минимальным
+const noThink = new Set<string>();
+function thinkCfg(model: string) {
+  if (noThink.has(model)) return undefined;
+  if (/gemini-2\.5/.test(model)) return { thinkingBudget: 0 };
+  if (/gemini-[3-9]/.test(model)) return { thinkingLevel: "minimal" };
+  return undefined;
+}
+function genCfg(model: string, extra: Record<string, unknown> = {}) {
+  const tc = thinkCfg(model);
+  return tc ? { ...extra, thinkingConfig: tc } : extra;
+}
+const thinkRejected = (status: number, err: string) => status === 400 && /think/i.test(err);
+// потоковый ответ: текст приходит кусками, onText получает всё накопленное
+async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void) {
+  const body = (gc: any) => JSON.stringify({
+    systemInstruction: { parts: [{ text: SYSTEM }] },
+    contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+    generationConfig: gc,
+  });
+  const c = new AbortController();
+  let tm = setTimeout(() => c.abort(), 12000);   // первые слова — не дольше 12 с, иначе к следующей модели
+  let full = "";
+  try {
+    let r = await fetch(`${GL}/models/${model}:streamGenerateContent?alt=sse`, { method: "POST", signal: c.signal,
+      headers: { "content-type": "application/json", "x-goog-api-key": k }, body: body(genCfg(model, { maxOutputTokens: 4096, temperature: 0.7 })) });
+    if (!r.ok) {
+      const err = await r.text().catch(() => "");
+      if (!thinkRejected(r.status, err)) return { ok: false, status: r.status, err: err.slice(0, 300) };
+      noThink.add(model);
+      r = await fetch(`${GL}/models/${model}:streamGenerateContent?alt=sse`, { method: "POST", signal: c.signal,
+        headers: { "content-type": "application/json", "x-goog-api-key": k }, body: body({ maxOutputTokens: 4096, temperature: 0.7 }) });
+      if (!r.ok) return { ok: false, status: r.status, err: (await r.text().catch(() => "")).slice(0, 300) };
+    }
+    const rd = r.body!.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        try {
+          const j = JSON.parse(line.slice(5));
+          const piece = ((j.candidates || [])[0]?.content?.parts || []).filter((p: any) => !p.thought).map((p: any) => p.text || "").join("");
+          if (piece) {
+            if (!full) { clearTimeout(tm); tm = setTimeout(() => c.abort(), 60000); }   // ответ пошёл — даём дописать
+            full += piece; onText(full);
+          }
+        } catch (_) { /* неполная строка */ }
+      }
+    }
+  } catch (e) {
+    if (!full) return { ok: false, status: 504, err: "timeout " + String(e).slice(0, 100) };
+  } finally { clearTimeout(tm); }
+  full = full.trim();
+  return { ok: !!full, status: 200, text: full, err: full ? "" : "empty" };
+}
 async function callModel(k: string, model: string, text: string | Turn[], vertex: boolean) {
   const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
   const url = vertex
     ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodeURIComponent(k)}`
     : `${GL}/models/${model}:generateContent`;
-  const r = await fetch(url, {
+  const send = (gc: any) => tfetch(url, {
     method: "POST",
     headers: vertex ? { "content-type": "application/json" } : { "content-type": "application/json", "x-goog-api-key": k },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM }] },
       contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
-      generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+      generationConfig: gc,
     }),
-  });
-  const j = await r.json().catch(() => ({}));
+  }, 30000);
+  let r: Response;
+  try { r = await send(genCfg(model, { maxOutputTokens: 4096, temperature: 0.7 })); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+  let j = await r.json().catch(() => ({}));
+  if (!r.ok && thinkRejected(r.status, JSON.stringify(j))) {
+    noThink.add(model);
+    try { r = await send({ maxOutputTokens: 4096, temperature: 0.7 }); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+    j = await r.json().catch(() => ({}));
+  }
   if (!r.ok) return { ok: false, status: r.status, err: JSON.stringify(j).slice(0, 300) };
   const out = ((j.candidates || [])[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
   return { ok: !!out, status: r.status, text: out, err: out ? "" : "empty " + JSON.stringify(j).slice(0, 200) };
@@ -74,15 +147,20 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
 // у каждой модели свой бесплатный лимит: исчерпанную пропускаем 30 минут и идём к следующей,
 // а если кончились все — отвечает запасной бесплатный ИИ (Pollinations)
 const blocked = new Map<string, number>();
-async function ask(text: string | Turn[]) {
+async function ask(text: string | Turn[], onText?: (t: string) => void) {
   const k = await key();
   let last: any = { ok: false, status: 503, err: "no key" };
   if (k) {
     const list = (await pickModels(k)).filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 8);
+    const started = Date.now();
     for (const vertex of useVertex ? [true] : [false, true]) {
       let any429 = false;
       for (const m of list) {
-        const res = await callModel(k, m, text, vertex);
+        if (Date.now() - started > 35000) break;   // общий предел: дальше — запасной ИИ, а не бесконечный перебор
+        const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
+        const res: any = onText && !vertex ? await streamModel(k, m, turns, onText) : await callModel(k, m, text, vertex);
+        // модель, которая не отвечает или недоступна ключу, на время пропускаем — не тратим на неё секунды
+        if (!res.ok && res.status !== 429 && (res.status === 404 || res.status === 403 || res.status === 504)) blocked.set(m, Date.now() + 10 * 60_000);
         if (res.ok) { useVertex = vertex; return { ...res, model: m, vertex }; }
         last = { ...res, model: m, vertex };
         if (res.status === 429) { blocked.set(m, Date.now() + 30 * 60_000); any429 = true; }
@@ -97,7 +175,7 @@ async function pollinationsText(text: string | Turn[]) {
   try {
     const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
     const ctl = new AbortController();
-    const tm = setTimeout(() => ctl.abort(), 60000);
+    const tm = setTimeout(() => ctl.abort(), 25000);
     const r = await fetch("https://text.pollinations.ai/openai", {
       method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json" },
@@ -260,10 +338,13 @@ async function voiceText(m: any): Promise<string> {
   const prompt = "Это голосовое сообщение из мессенджера. Запиши дословно, что сказано, на языке оригинала, с обычной пунктуацией. " +
     "Без пояснений, кавычек и меток времени. Если речи нет или ничего не разобрать — ответь ровно: [без слов]";
   for (const model of (await pickModels(k)).filter((x) => (blocked.get(x) || 0) < Date.now()).slice(0, 6)) {
-    const r = await fetch(`${GL}/models/${model}:generateContent`, {
-      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data } }, { text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 4096 } }),
-    });
+    let r: Response;
+    try {
+      r = await tfetch(`${GL}/models/${model}:generateContent`, {
+        method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data } }, { text: prompt }] }], generationConfig: genCfg(model, { temperature: 0, maxOutputTokens: 4096 }) }),
+      }, 30000);
+    } catch (_) { continue; }
     const j = await r.json().catch(() => ({}));
     if (r.status === 429) { blocked.set(model, Date.now() + 30 * 60_000); continue; }
     if (!r.ok) continue;
@@ -275,27 +356,43 @@ async function voiceText(m: any): Promise<string> {
   return "";
 }
 
+let botCached = "";
+async function botId() {
+  if (!botCached) botCached = (await sb.from("profiles").select("id").eq("username", "ai").maybeSingle()).data?.id || "";
+  return botCached;
+}
 async function botReply(messageId: number) {
-  const bot = (await sb.from("profiles").select("id").eq("username", "ai").maybeSingle()).data?.id;
-  const { data: m } = await sb.from("messages").select("id,chat_id,sender_id,body,file_path,file_type,voice_secs,video_secs,sticker_id,deleted_at").eq("id", messageId).maybeSingle();
+  // запросы к базе — параллельно: каждая лишняя очередь — это задержка перед ответом
+  const [bq, mq] = await Promise.all([
+    botId(),
+    sb.from("messages").select("id,chat_id,sender_id,body,file_path,file_type,voice_secs,video_secs,sticker_id,deleted_at").eq("id", messageId).maybeSingle(),
+  ]);
+  const bot = bq, m = mq.data;
   if (!bot || !m || m.deleted_at || m.sender_id === bot) return "skip";
-  const { data: chat } = await sb.from("chats").select("id,is_group").eq("id", m.chat_id).maybeSingle();
+  const [{ data: chat }, { data: members }] = await Promise.all([
+    sb.from("chats").select("id,is_group").eq("id", m.chat_id).maybeSingle(),
+    sb.from("chat_members").select("user_id").eq("chat_id", m.chat_id).eq("user_id", bot),
+  ]);
   if (!chat || chat.is_group) return "skip";
-  const { data: members } = await sb.from("chat_members").select("user_id").eq("chat_id", m.chat_id);
-  if (!(members || []).some((x: any) => x.user_id === bot)) return "skip";
+  if (!(members || []).length) return "skip";
   // отвечаем ровно один раз: запустить могут и база, и само приложение
   const { data: claimed } = await sb.rpc("ai_claim", { p_message: m.id });
   if (!claimed) return "dup";
   const say = (body: string) => sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: body.slice(0, 4000) });
 
-  const { data: u } = await sb.from("profiles").select("is_admin,banned_at,deleted_at").eq("id", m.sender_id).maybeSingle();
+  const [{ data: u }, bal, { data: hist }] = await Promise.all([
+    sb.from("profiles").select("is_admin,banned_at,deleted_at").eq("id", m.sender_id).maybeSingle(),
+    sb.rpc("ai_balance", { p_user: m.sender_id }),
+    sb.from("messages").select("id,sender_id,body,voice_secs,video_secs").eq("chat_id", m.chat_id).is("deleted_at", null)
+      .lte("id", m.id).order("id", { ascending: false }).limit(14),
+  ]);
   if (!u || u.banned_at || u.deleted_at) return "skip";
   const unlimited = !!u.is_admin;
   const isVoice = !!m.file_path && (m.voice_secs != null || m.video_secs != null);
   if ((!m.body || !String(m.body).trim()) && !isVoice) { await say("Я понимаю текст и голосовые сообщения. Напишите вопрос словами или запишите голосовое."); return "no text"; }
   let balance = 0;
   if (!unlimited) {
-    balance = Number((await sb.rpc("ai_balance", { p_user: m.sender_id })).data) || 0;
+    balance = Number(bal.data) || 0;
     if (balance < 1) {
       await say("У вас нет ИИ-кредитов. Я списываю 1 кредит за каждую секунду работы над ответом.\nКупить кредиты можно за Mest: кнопка «+ Кредиты» вверху этого чата (1 Mest = 1 кредит).");
       return "no credits";
@@ -311,8 +408,6 @@ async function botReply(messageId: number) {
     question = heard;
   }
   // последние сообщения переписки — чтобы можно было уточнять; у голосовых берём их расшифровку
-  const { data: hist } = await sb.from("messages").select("id,sender_id,body,voice_secs,video_secs").eq("chat_id", m.chat_id).is("deleted_at", null)
-    .lte("id", m.id).order("id", { ascending: false }).limit(14);
   const vids = (hist || []).filter((x: any) => !x.body && (x.voice_secs != null || x.video_secs != null)).map((x: any) => x.id);
   const heardMap = new Map<number, string>();
   if (vids.length) for (const r of ((await sb.from("message_transcripts").select("message_id,body").in("message_id", vids)).data || [])) heardMap.set(r.message_id, r.body);
@@ -329,12 +424,32 @@ async function botReply(messageId: number) {
   while (turns.length && turns[0].role === "model") turns.shift();
   if (!turns.length) turns.push({ role: "user", text: question });
 
-  const { data: row } = await sb.from("ai_history").insert({ user_id: m.sender_id, question: question.slice(0, 1000) }).select("id").single();
+  // запись в историю — не ждём, она не нужна для ответа
+  const rowP = sb.from("ai_history").insert({ user_id: m.sender_id, question: question.slice(0, 1000) }).select("id").single().then((x: any) => x.data);
   let imagePrompt = "", english = false;
   let r: any = null;
+  // ответ печатается прямо в чате по мере готовности: первое сообщение появляется через секунду-две и дописывается
+  let live: number | null = null, shown = "", lastPush = 0, chain: Promise<unknown> = Promise.resolve();
+  const preview = (full: string) => { const b = buildReply(full).msgs[0] || ""; return b.length > 3900 ? b.slice(0, 3900) : b; };
+  const onText = (full: string) => {
+    if (/^\s*\[\[/.test(full)) return;                 // это команда нарисовать картинку — не показываем
+    const now = Date.now();
+    if (now - lastPush < (live ? 700 : 250) || full.length < 12) return;
+    lastPush = now;
+    const text = preview(full) + " ▍";
+    if (text === shown) return;
+    shown = text;
+    chain = chain.then(async () => {
+      if (live == null) {
+        const { data } = await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: text }).select("id").single();
+        live = data ? data.id : null;
+      } else await sb.from("messages").update({ body: text }).eq("id", live);
+    }).catch(() => {});
+  };
   if (wantsImage(question)) imagePrompt = question.replace(/^\s*\/(img|image)\s*/i, "");
   else {
-    r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t));
+    r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t), onText);
+    await chain;
     const mk = r && r.ok ? /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(r.text) : null;
     if (mk) { imagePrompt = mk[1].trim(); english = true; }
   }
@@ -343,7 +458,7 @@ async function botReply(messageId: number) {
     const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
     if (!im.ok) {
       console.error("image failed", im.model, im.status, im.err);
-      if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id);
+      { const row = await rowP; if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id); }
       await say(im.status === 429 ? "Рисовалка сейчас перегружена — попробуйте через минуту. Кредиты не списаны."
         : "Не получилось нарисовать. Кредиты не списаны — попробуйте описать картинку иначе.");
       return "image failed";
@@ -362,12 +477,13 @@ async function botReply(messageId: number) {
     const caption = (plain(im.text || "").slice(0, 3000) + "\n\n" + itail).trim();
     await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: caption, file_path: path,
       file_name: "mestario-ai." + ext, file_type: im.mime, file_size: bytes.length });
-    if (row) await sb.from("ai_history").update({ answer: "[изображение] " + (im.text || ""), status: "done" }).eq("id", row.id);
+    { const row = await rowP; if (row) await sb.from("ai_history").update({ answer: "[изображение] " + (im.text || ""), status: "done" }).eq("id", row.id); }
     return "image ok";
   }
   const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
   if (!r || !r.ok) {
-    if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id);
+    if (live != null) await sb.from("messages").delete().eq("id", live);
+    { const row = await rowP; if (row) await sb.from("ai_history").update({ status: "failed" }).eq("id", row.id); }
     await say(r?.status === 429 ? "Я сейчас перегружен — попробуйте через минуту. Кредиты не списаны." : "Не получилось ответить. Кредиты не списаны — попробуйте ещё раз.");
     return "failed";
   }
@@ -378,10 +494,13 @@ async function botReply(messageId: number) {
     tail = `⏱ ${secs} с · −${c.charged} ${plural(c.charged)} · осталось ${c.left}`;
   }
   const { msgs, files } = buildReply(r.text);
-  if (row) await sb.from("ai_history").update({ answer: r.text.slice(0, 20000), status: "done" }).eq("id", row.id);
+  { const row = await rowP; if (row) await sb.from("ai_history").update({ answer: r.text.slice(0, 20000), status: "done" }).eq("id", row.id); }
   if (!msgs.length) msgs.push("…");
   msgs[msgs.length - 1] += "\n\n" + tail;
-  for (const x of msgs) await say(x);
+  if (live != null) {
+    await sb.from("messages").update({ body: msgs[0].slice(0, 4000) }).eq("id", live);
+    for (const x of msgs.slice(1)) await say(x);
+  } else for (const x of msgs) await say(x);
   // каждый блок кода — отдельным файлом в тот же чат
   for (const f of files) {
     const bytes = new TextEncoder().encode(f.code);
@@ -427,6 +546,20 @@ Deno.serve(async (req) => {
         const lr = await fetch(GL + "/models?pageSize=300", { headers: { "x-goog-api-key": await key() } });
         const lj = await lr.json().catch(() => ({}));
         return reply({ status: lr.status, models: (lj.models || []).map((x: any) => String(x.name).replace(/^models\//, "") + " [" + (x.supportedGenerationMethods || []).join(",") + "]") });
+      }
+      // замер: сколько отвечает каждая модель, с выключенным «размышлением» и без
+      if (input.probe) {
+        const k = await key(); const out: any[] = [];
+        for (const m of (await pickModels(k)).slice(0, 5)) for (const think of [true, false]) {
+          const t = Date.now();
+          const gc: any = { maxOutputTokens: 256, temperature: 0.7 };
+          if (think) gc.thinkingConfig = /gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: String(input.level || "minimal") };
+          const r = await fetch(`${GL}/models/${m}:generateContent`, { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k },
+            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Привет! Как дела? Ответь одним предложением." }] }], generationConfig: gc }) });
+          const j = await r.json().catch(() => ({}));
+          out.push({ m, think, status: r.status, ms: Date.now() - t, err: r.ok ? "" : JSON.stringify(j).slice(0, 160) });
+        }
+        return reply(out);
       }
       if (input.image) { const im = await makeImage(String(input.image)); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");

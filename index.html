@@ -6163,6 +6163,22 @@ $("findText").addEventListener("focus", () => { if ($("findList").children.lengt
 // сообщение изменили или удалили
 function onChanged(m) {
   if (!state.started) return;
+  // ИИ печатает ответ: его сообщение дописывается несколько раз в секунду — меняем только этот пузырь,
+  // без перерисовки чата и без перезагрузки списка
+  if (!m.deleted_at && m.chat_id === state.activeId && isAiChat(state.chats.get(m.chat_id)) && m.sender_id !== state.me.id) {
+    const i = state.msgs.findIndex((x) => x.id === m.id);
+    const old = i >= 0 && $("msgs").querySelector('.msg[data-id="' + m.id + '"]');
+    if (old && !old.closest(".mrow")) {
+      const box = $("msgs"), stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+      state.msgs[i] = m;
+      const node = msgNode(m, null);
+      node.classList.add("keep");
+      old.replaceWith(node);
+      if (stick) box.scrollTop = box.scrollHeight;
+      if (!/ ▍$/.test(m.body || "")) { reloadSoon(); refreshAiCredits(); }   // ответ готов — обновим список и кредиты
+      return;
+    }
+  }
   reloadSoon();
   if (m.chat_id !== state.activeId) { cacheChanged(m); return; }
   const i = state.msgs.findIndex((x) => x.id === m.id);
