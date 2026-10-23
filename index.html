@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mestario</title>
 <script>
+// сайт всегда по https: вход хранится отдельно для http и https (ссылка «Войти через браузер» из программы приходит по http)
+if (location.protocol === "http:" && /(^|\.)(soroka\.lol|mestario\.top)$/.test(location.hostname)) location.replace("https:" + location.href.slice(5));
 /* Android-приложение: если приложение уже скачало свежий интерфейс с сайта, показываем его вместо встроенного.
    Если прошлый запуск свежей версии сломался (не дошёл до отметки «ok»), возвращаемся к встроенной. */
 (function () {
@@ -1720,6 +1722,8 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .ho-btn { width: 100%; margin-top: 4px; }
 .ho-btn[hidden] { display: none; }
 .ho-code { font-size: 40px; font-weight: 800; letter-spacing: .3em; text-align: center; padding: 10px 0 4px; font-variant-numeric: tabular-nums; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+.ho-link { word-break: break-all; user-select: all; -webkit-user-select: all; padding: 6px 8px; border-radius: 8px; background: var(--panel-2); }
 .ho-state { text-align: center; }
 .ho-warn { font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--ink); }
 
@@ -1980,7 +1984,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5c6c331f10"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=87b937247d"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3771,6 +3775,8 @@ void main() {
     <div class="small muted">В браузере открылась страница Mestario. Если вы там уже вошли, проверьте код и нажмите «Подтвердить вход».</div>
     <div class="ho-code" id="hoCode">····</div>
     <div class="small muted ho-state" id="hoState">Ждём подтверждения…</div>
+    <div class="small muted">Открылся браузер, где вы не вошли? <button class="linkbtn" type="button" id="hoCopy">Скопировать ссылку</button> и откройте её там, где вход выполнен.</div>
+    <div class="small ho-link" id="hoLinkTxt" hidden></div>
     <div class="actions"><button class="btn ghost" type="button" id="hoCancel">Отмена</button><button class="btn" type="button" id="hoReopen">Открыть браузер ещё раз</button></div>
   </div>
 </dialog>
@@ -4502,7 +4508,9 @@ function onAuth(event, session) {
     const next = accounts()[0];
     if (next) { switchTo(next); return; }
     showAuth("login");
-    showIntro("login");
+    // пришли по ссылке «Войти через браузер», а в этом браузере вход не выполнен — без интро, сразу с подсказкой
+    if (/^#approve-/.test(location.hash)) $("loginErr").textContent = T("Чтобы подтвердить вход в приложение, сначала войдите здесь в свой аккаунт — запрос появится сразу после входа.");
+    else showIntro("login");
     return;
   }
   if (state.recovering) return;
@@ -10583,10 +10591,13 @@ function hoDevice() {
   return model && !/^wv$|^K$/.test(model) ? kind + " · " + model.trim() : kind;
 }
 let ho = null;
+function hoLink() { return ho ? PUBLIC_SITE + "#approve-" + ho.id : ""; }
 function hoOpen() {
   if (!ho) return;
-  const url = PUBLIC_SITE + "#approve-" + ho.id;
-  if (IN_ELECTRON) window.open(url, "_blank");   // программа отдаёт такие ссылки обычному браузеру
+  const url = hoLink();
+  // программа: адрес через http — даже старые сборки программы, которые открывали свой сайт у себя в окне,
+  // отдают его обычному браузеру (сайт сам переводит на https, часть после # сохраняется)
+  if (IN_ELECTRON) window.open(url.replace(/^https:/, "http:"), "_blank");   // программа отдаёт такие ссылки обычному браузеру
   else location.href = url;                       // приложение на телефоне открывает чужой адрес в системном браузере
 }
 async function loginViaBrowser() {
@@ -10626,6 +10637,12 @@ async function hoTick() {
 $("loginBrowser").hidden = !(IN_APP || IN_ELECTRON);
 $("loginBrowser").addEventListener("click", loginViaBrowser);
 $("hoReopen").addEventListener("click", () => { if (ho) hoOpen(); else $("dlgHoWait").close(); });
+// открылся не тот браузер (где вход не выполнен) — ссылку можно скопировать и открыть там, где вы вошли
+$("hoCopy").addEventListener("click", async () => {
+  if (!ho) return;
+  try { await navigator.clipboard.writeText(hoLink()); toast(T("Ссылка скопирована — откройте её в браузере, где вы вошли в Mestario")); }
+  catch (e) { $("hoLinkTxt").hidden = false; $("hoLinkTxt").textContent = hoLink(); }
+});
 $("hoCancel").addEventListener("click", () => { if (ho) clearTimeout(ho.t); ho = null; $("dlgHoWait").close(); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden && ho) { clearTimeout(ho.t); hoTick(); } });   // вернулись из браузера — проверяем сразу
 
