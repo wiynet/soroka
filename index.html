@@ -1230,7 +1230,6 @@ button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 
 .walls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .walls button { height: 58px; border: 2px solid var(--line); border-radius: 12px; background-color: var(--bg); color: var(--ink); font-weight: 500; font-size: 13px; padding: 4px; }
 .walls button[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
-.msg { backdrop-filter: blur(10px); }
 :root[data-bubble="sharp"] .msg, :root[data-bubble="sharp"] .msg.mine { border-radius: 6px; }
 :root[data-bubble="sharp"] .msg img.photo { border-radius: 3px; }
 /* свои сообщения переливаются: градиент медленно плывёт по пузырю, под ним мягкое свечение */
@@ -1419,12 +1418,11 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .list.fresh .row { animation: rise .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 35ms); }
   .dot { animation: dot-in .35s var(--ease) both; }
   #conv:not([hidden]) .conv-head { animation: fade-in .2s both; }
-  #msgs.fresh > * { animation: rise .25s var(--ease) both; }
+  #msgs.fresh > :nth-last-child(-n+8) { animation: rise .25s var(--ease) both; }
   .msg.new { animation: msg-in-l .35s cubic-bezier(.22, 1, .36, 1) both; }
-  .msg.mine.new { animation: msg-in-r .35s cubic-bezier(.22, 1, .36, 1) both, mine-flow 9s ease-in-out .35s infinite alternate; }
+  .msg.mine.new { animation: msg-in-r .35s cubic-bezier(.22, 1, .36, 1) both, mine-flow 2.4s ease-in-out .35s 1 alternate; }
   @keyframes msg-in-l { from { opacity: 0; transform: translate(-20px, 12px) scale(.96); } }
   @keyframes msg-in-r { from { opacity: 0; transform: translate(20px, 12px) scale(.96); } }
-  .msg.mine { animation: mine-flow 9s ease-in-out infinite alternate; }
   @keyframes mine-flow { from { background-position: 0% 0; } to { background-position: 100% 0; } }
   .msg { transition: transform .2s ease-out, box-shadow .2s; }
   @media (hover: hover) { .msg:hover { transform: translateY(-1px) scale(1.01); } }
@@ -1681,6 +1679,13 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   .hold-layer { animation: fade-in .22s both; }
   .hold-layer.out { animation: fade-out .18s both; }
 }
+
+/* ---------- производительность анимаций ---------- */
+@media (max-width: 760px) { #msgs.fresh > * { animation: none !important; } }
+#app.peek .sbar::before, #app.peek .sbar::after, #app.peek .tabbar { animation-play-state: paused !important; }
+.msg.swiping { will-change: transform; }
+.msg.swipe-back { transition: transform .26s cubic-bezier(.2,.9,.3,1.15); }
+#swipeHint { will-change: transform, opacity; transition: transform .18s cubic-bezier(.3,1.6,.5,1); }
 
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
@@ -5380,7 +5385,9 @@ function msgMenuBind(el, m, group) {
   // после долгого нажатия палец отпускают над сообщением: фото или ссылка под ним открываться не должны
   el.addEventListener("click", (e) => { if (held) { held = false; e.preventDefault(); e.stopPropagation(); } }, true);
 }
+let slideBusy = false, slidePending = false;
 function renderMsgs(newId) {
+  if (slideBusy && !newId) { slidePending = true; return; }   // перерисуем сразу после въезда
   const kids = [];
   if (state.hasMore) kids.push(h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")));
   if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, isAiChat(state.chats.get(state.activeId))
@@ -6264,9 +6271,28 @@ $("replyCancel").addEventListener("click", cancelReply);
 (function () {
   const box = $("msgs"), hint = $("swipeHint");
   hint.append(icon("reply"));
-  let el = null, x0 = 0, y0 = 0, dx = 0, active = false;
+  let el = null, x0 = 0, y0 = 0, dx = 0, active = false, raf = 0, rect = null;
   const msgOf = (node) => { const id = Number(node.dataset.id); return state.msgs.find((m) => m.id === id); };
-  const reset = () => { if (el) { el.classList.remove("swiping"); el.style.transform = ""; } hint.style.opacity = "0"; el = null; active = false; dx = 0; };
+  const paint = () => {
+    raf = 0;
+    if (!el || !rect) return;
+    el.style.transform = "translate3d(" + dx + "px,0,0)";
+    hint.style.left = Math.min(innerWidth - 44, rect.right + 8 + dx) + "px";
+    hint.style.top = rect.top + rect.height / 2 - 17 + "px";
+    hint.style.opacity = String(Math.min(1, -dx / 56));
+    hint.style.transform = "scale(" + (dx <= -56 ? 1.15 : 0.85) + ")";
+  };
+  const reset = () => {
+    cancelAnimationFrame(raf); raf = 0;
+    if (el) {
+      const n = el;
+      n.classList.remove("swiping");
+      n.classList.add("swipe-back");   // пузырь мягко возвращается на место, а не прыгает
+      n.style.transform = "";
+      setTimeout(() => n.classList.remove("swipe-back"), 300);
+    }
+    hint.style.opacity = "0"; el = null; active = false; dx = 0; rect = null;
+  };
   box.addEventListener("touchstart", (e) => {
     const t = e.target.closest(".msg");
     if (!t || e.touches.length !== 1 || $("composer").hidden) return;
@@ -6277,20 +6303,19 @@ $("replyCancel").addEventListener("click", cancelReply);
     const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
     if (!active) {
       if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)) { reset(); return; }   // это прокрутка
-      if (mx < -10 && Math.abs(mx) > Math.abs(my) * 1.5) { active = true; el.classList.add("swiping"); }
+      if (mx < -10 && Math.abs(mx) > Math.abs(my) * 1.5) { active = true; el.classList.add("swiping"); rect = el.getBoundingClientRect(); }
       else return;
     }
-    dx = Math.max(-84, Math.min(0, mx));
-    el.style.transform = "translateX(" + dx + "px)";
-    const r = el.getBoundingClientRect();
-    hint.style.left = Math.min(innerWidth - 44, r.right + 8) + "px";
-    hint.style.top = r.top + r.height / 2 - 17 + "px";
-    hint.style.opacity = String(Math.min(1, -dx / 56));
-    hint.style.transform = "scale(" + (dx <= -56 ? 1.15 : 0.85) + ")";
+    // палец ведёт пузырь: до порога — как есть, дальше — с «резиновым» сопротивлением
+    const raw = Math.min(0, mx + 10);
+    dx = raw > -64 ? raw : -64 - Math.sqrt(-raw - 64) * 4;
+    dx = Math.max(-110, dx);
+    if (!raf) raf = requestAnimationFrame(paint);
   }, { passive: true });
   const end = () => {
     if (!el) return;
     const m = active && dx <= -56 ? msgOf(el) : null;
+    if (m) dx = 0;
     reset();
     if (m) { if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} } startReply(m); }
   };
@@ -9941,9 +9966,12 @@ function chatSlideIn() {
   pane.style.transform = "translateX(100%)";
   requestAnimationFrame(() => requestAnimationFrame(() => {
     pane.style.transform = "";
-    pane.animate([{ transform: "translateX(100%)" }, { transform: "none" }], { duration: 330, easing: OPEN_EASE });
+    slideBusy = true; slidePending = false;
+    const done = () => { slideBusy = false; if (slidePending) { slidePending = false; repaintKeep(); } };
+    setTimeout(done, 420);   // на случай, если анимацию прервали
+    pane.animate([{ transform: "translate3d(100%,0,0)" }, { transform: "translate3d(0,0,0)" }], { duration: 330, easing: OPEN_EASE });
     side.animate([{ transform: "none", filter: "brightness(1)" }, { transform: "translateX(-" + PEEK * 100 + "%)", filter: "brightness(.8)" }], { duration: 330, easing: OPEN_EASE })
-      .onfinish = () => { if ($("app").classList.contains("chat-open")) peekReset(); };
+      .onfinish = () => { if ($("app").classList.contains("chat-open")) peekReset(); done(); };
   }));
 }
 // назад: чат уезжает вправо с того места, где его отпустили
