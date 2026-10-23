@@ -1646,6 +1646,24 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
 .ab-chips button { border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; }
 .ab-chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 
+/* ---------- плавность: быстрые касания, без «резинки» у списков, заготовки строк ---------- */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, .row, .srow, label.toggle { touch-action: manipulation; }
+#msgs, #chatList, .scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#chatList > .row { content-visibility: auto; contain-intrinsic-size: auto 68px; }
+.row.skel { pointer-events: none; }
+.row.skel .sk-av { width: 48px; height: 48px; border-radius: 50%; flex: none; background: var(--panel-2); }
+.row.skel .sk-lines { display: grid; gap: 8px; flex: 1; }
+.row.skel .sk-lines i { display: block; height: 11px; border-radius: 6px; background: var(--panel-2); width: 46%; }
+.row.skel .sk-lines i + i { width: 78%; opacity: .7; }
+@media (prefers-reduced-motion: no-preference) {
+  .row.skel .sk-av, .row.skel .sk-lines i { background: linear-gradient(90deg, var(--panel-2) 25%, color-mix(in srgb, var(--panel-2) 60%, var(--ink) 12%) 50%, var(--panel-2) 75%); background-size: 300% 100%; animation: sk-wave 1.3s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 70ms); }
+  @keyframes sk-wave { from { background-position: 100% 0; } to { background-position: 0 0; } }
+  #msgs { scroll-behavior: auto; }
+  .msg, .row, .btn, .icon-btn { -webkit-font-smoothing: antialiased; }
+  .composer textarea { transition: height .15s var(--ease), border-color .18s, background-color .25s, box-shadow .2s; }
+}
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1855,7 +1873,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=421f1d0e24"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=64f2d2f1fa"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2569,6 +2587,7 @@ void main() {
         </div>
         <div data-page="chat" hidden>
         <div class="set-label">Сообщения</div>
+        <label class="toggle"><input type="checkbox" id="setSounds"><span>Звуки сообщений <span class="muted">(свои звуки Mestario; на iPhone молчат в беззвучном режиме)</span></span></label>
         <label class="toggle"><input type="checkbox" id="setEnter"><span>Отправлять по Enter <span class="muted">(иначе по Ctrl+Enter)</span></span></label>
     
     
@@ -4401,7 +4420,10 @@ async function startApp() {
   offerHomeScreen();
   loadBlocked();
   giftTypes().then(() => { renderList(); if (state.activeId) { renderHead(); if (state.msgs.some((m) => m.gift_type)) renderMsgs(); } });
+  // список чатов с прошлого раза показываем сразу, свежий подгружается следом
+  if (!state.chats.size && loadChatsSnap()) renderList(); else if (!state.chats.size) paintSkeleton();
   await loadChats();
+  await renderList();
   loadFolders();
   claimDaily();
   refreshAiCredits();
@@ -4554,6 +4576,34 @@ async function loadChats() {
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   renderList();
   if (state.activeId) renderHead();
+  saveChatsSoon();
+}
+/* снимок списка чатов на этом устройстве: следующий запуск показывает его мгновенно */
+function chatsKey() { return "mestario.chats." + (state.me && state.me.id); }
+function saveChatsSnap() {
+  if (!state.started || !state.me) return;
+  try {
+    const chats = [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1)).slice(0, 60)
+      .map((c) => ({ ...c, reads: [...c.reads], admins: [...c.admins] }));
+    localStorage.setItem(chatsKey(), JSON.stringify({ t: Date.now(), chats, unread: [...state.unread] }));
+  } catch (e) {}
+}
+const saveChatsSoon = debounce(saveChatsSnap, 1500);
+function loadChatsSnap() {
+  try {
+    const j = JSON.parse(localStorage.getItem(chatsKey()) || "null");
+    if (!j || !Array.isArray(j.chats) || !j.chats.length) return false;
+    state.chats = new Map(j.chats.map((c) => [c.id, { ...c, reads: new Map(c.reads || []), admins: new Set(c.admins || []) }]));
+    state.unread = new Map(j.unread || []);
+    return true;
+  } catch (e) { return false; }
+}
+// пока чатов нет даже в снимке — мерцающие заготовки строк
+function paintSkeleton() {
+  const list = $("chatList");
+  if (list.children.length) return;
+  list.replaceChildren(...Array.from({ length: 7 }, (_, i) => h("div", { class: "row skel", "aria-hidden": "true", style: "--i:" + i },
+    h("span", { class: "sk-av" }), h("span", { class: "sk-lines" }, h("i"), h("i")))));
 }
 const reloadSoon = debounce(() => { if (state.started) loadChats(); }, 400);
 
@@ -4769,7 +4819,13 @@ function searchHome(chats) {
   else kids.push(h("div", { class: "empty-note" }, T("Здесь появятся люди и каналы, которых вы искали.")));
   return kids;
 }
-async function renderList() {
+// список перерисовывается не чаще одного раза за кадр: пачка событий подряд не дёргает интерфейс
+let listWait = null;
+function renderList() {
+  if (!listWait) listWait = new Promise((res) => requestAnimationFrame(() => { listWait = null; renderListNow().then(res, res); }));
+  return listWait;
+}
+async function renderListNow() {
   paintStoryBar();
   const list = $("chatList"), q = $("search").value.trim();
   const chats = [...state.chats.values()].filter((c) => !chatHidden(c)).sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
@@ -5864,7 +5920,11 @@ function onIncoming(m) {
     addMsg(m);
     if (document.hidden && m.sender_id !== state.me.id) bumpUnread(m.chat_id);
   } else { cacheIncoming(m); if (m.sender_id !== state.me.id) bumpUnread(m.chat_id); }
+  // свой звук: в открытом чате — «сообщение», из другого чата — «уведомление» (похожий, но заметнее)
+  const sc = state.chats.get(m.chat_id);
+  if (m.sender_id !== state.me.id && !document.hidden && sc && !sc.muted) playSound(m.chat_id === state.activeId ? "msg" : "notify");
   renderList();
+  saveChatsSoon();
 }
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden || !state.started) return;
@@ -8474,6 +8534,7 @@ function renderSettings() {
     }
   }
   $("setEnter").checked = !!settings.enterSends;
+  $("setSounds").checked = settings.sounds !== false;
 }
 function saveSettings() {
   try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
@@ -8492,6 +8553,7 @@ $("dlgSettings").addEventListener("click", (e) => {
   saveSettings();
 });
 $("setEnter").addEventListener("change", (e) => { settings.enterSends = e.target.checked; saveSettings(); });
+$("setSounds").addEventListener("change", (e) => { settings.sounds = e.target.checked; saveSettings(); if (e.target.checked) { sndUnlock(); playSound("msg"); } });
 // аватарка в шапке открывает свой профиль; редактирование — по кнопке «Изм.» в нём
 $("btnProfile").addEventListener("click", () => showUser(state.profile));
 function openProfileEdit() {
@@ -9753,6 +9815,57 @@ $("abForm").addEventListener("submit", async (e) => {
   refreshAiCredits();
 });
 
+/* ---------- свои звуки Mestario: синтезируются прямо в браузере, без файлов ---------- */
+let sndCtx = null, sndBus = null, sndLast = 0;
+function sndUnlock() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  // iPhone: «фоновый» режим звука — беззвучный переключатель его глушит, как у системных звуков
+  try { if (navigator.audioSession && navigator.audioSession.type !== "ambient") navigator.audioSession.type = "ambient"; } catch (e) {}
+  if (!sndCtx) {
+    try {
+      sndCtx = new AC();
+      // общий выход: мягкое эхо делает звук «объёмным», компрессор не даёт ему щёлкать
+      const out = sndCtx.createDynamicsCompressor(), dl = sndCtx.createDelay(0.5), fb = sndCtx.createGain(), wet = sndCtx.createGain();
+      sndBus = sndCtx.createGain(); sndBus.gain.value = 0.9;
+      dl.delayTime.value = 0.11; fb.gain.value = 0.22; wet.gain.value = 0.18;
+      sndBus.connect(out); sndBus.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out);
+      out.connect(sndCtx.destination);
+    } catch (e) { sndCtx = null; return; }
+  }
+  if (sndCtx.state === "suspended") sndCtx.resume().catch(() => {});
+}
+// браузер разрешает звук только после первого касания или нажатия
+for (const ev of ["pointerdown", "keydown", "touchend"]) addEventListener(ev, sndUnlock, { passive: true, capture: true });
+function sndTone(t0, freq, dur, vol, type, glide) {
+  const o = sndCtx.createOscillator(), g = sndCtx.createGain();
+  o.type = type || "sine";
+  o.frequency.setValueAtTime(freq, t0);
+  if (glide) o.frequency.exponentialRampToValueAtTime(glide, t0 + dur * 0.5);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(sndBus);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+}
+// «сообщение» — короткая капля из двух нот; «уведомление» — те же ноты и третья выше, чуть громче и длиннее
+function playSound(kind) {
+  if (settings.sounds === false || !sndCtx || sndCtx.state !== "running") return;
+  const now = performance.now();
+  if (now - sndLast < 600) return;   // пачка сообщений подряд — один звук
+  sndLast = now;
+  const t = sndCtx.currentTime + 0.01;
+  if (kind === "notify") {
+    sndTone(t, 784, 0.22, 0.2, "sine", 1046);
+    sndTone(t + 0.1, 1175, 0.3, 0.16, "sine");
+    sndTone(t + 0.21, 1568, 0.45, 0.1, "triangle");
+  } else {
+    sndTone(t, 880, 0.16, 0.16, "sine", 1320);
+    sndTone(t + 0.075, 1320, 0.24, 0.11, "sine");
+  }
+  if (kind === "notify" && navigator.vibrate) try { navigator.vibrate(18); } catch (e) {}
+}
+
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
 // окна закрываются с анимацией; пока окно «уезжает», оно считается закрытым, и его можно сразу открыть снова
@@ -10986,6 +11099,7 @@ async function logout() {
   const sub = await pushSub().catch(() => null);
   if (sub) await savePush(sub, false).catch(() => {});
   state.adding = false; $("authBack").hidden = true;
+  try { localStorage.removeItem(chatsKey()); } catch (e) {}   // снимок списка чатов не оставляем на устройстве
   sb.auth.signOut({ scope: "local" });   // выходим только на этом устройстве
 }
 $("btnMute").addEventListener("click", async () => {

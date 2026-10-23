@@ -1466,3 +1466,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.buy_ai_credits(p_amount int) → {credits, balance}: 1 Mest = 1 кредит, 1..100000, списание через private.spend
 -- (запись в coin_ledger «ИИ-кредиты: N»), начисление в private.ai_credits + private.ai_credit_log (reason 'buy').
 -- Клиент: кнопка «+ Кредиты» в шапке чата с @ai (кроме админов) → окно dlgAiBuy. Бот при нуле кредитов отсылает к ней (ai v10).
+
+-- ===== Плавность и свои звуки (только клиент) =====
+-- renderList не чаще раза за кадр (requestAnimationFrame); снимок списка чатов в localStorage mestario.chats.<uid>
+-- (до 60 чатов) — при запуске список виден сразу, без снимка — мерцающие заготовки; при выходе снимок удаляется.
+-- Звуки синтезируются WebAudio: «сообщение» (открытый чат) и «уведомление» (другой чат, + лёгкая вибрация на Android);
+-- не звучат в заглушённых чатах и при скрытой вкладке; iPhone: audioSession 'ambient' — молчит в беззвучном режиме.
+-- Настройка «Звуки сообщений» (settings.sounds). Звук системных пуш-уведомлений веб-версия поменять не может.
