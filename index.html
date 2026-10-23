@@ -1723,6 +1723,26 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 .dust-canvas { position: fixed; z-index: 80; pointer-events: none; }
 
+/* расшифровка голосовых */
+.tr-btn { flex: none; min-width: 30px; height: 26px; padding: 0 7px; border: 0; border-radius: 9px; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); display: grid; place-items: center; cursor: pointer; }
+.msg.mine .tr-btn { color: inherit; background: rgb(255 255 255 / .16); }
+.tr-btn.on { background: var(--accent); color: var(--accent-ink); }
+.tr-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+.tr-text { margin: 6px 0 2px; padding: 7px 10px; border-radius: 10px; font-size: 14px; line-height: 1.4; background: color-mix(in srgb, var(--ink) 6%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.mine .tr-text { background: rgb(255 255 255 / .12); }
+.tr-text.empty { font-style: italic; opacity: .7; }
+.vn-tr { display: flex; justify-content: flex-end; margin-top: 4px; }
+@media (prefers-reduced-motion: no-preference) { .tr-text:not(.keep *) { animation: rise .3s var(--ease) both; } .keep .tr-text { animation: none; } }
+/* свои фоны профиля: градиенты и своя картинка */
+.upage .u-hero.pbg-aurora, .pbg-sw.pbg-aurora { background: linear-gradient(135deg, #14d8a8, #4b5cf0 55%, #b04fe0); }
+.upage .u-hero.pbg-sunset, .pbg-sw.pbg-sunset { background: linear-gradient(160deg, #ffb347, #ff5e62 50%, #6a3093); }
+.upage .u-hero.pbg-ocean, .pbg-sw.pbg-ocean { background: linear-gradient(160deg, #2bc0e4, #1a6dd6 55%, #0b2463); }
+.upage .u-hero.pbg-night, .pbg-sw.pbg-night { background: radial-gradient(120% 90% at 70% 10%, #3a3f9f, #11143a 60%, #05060f); }
+.upage .u-hero.pbg-candy, .pbg-sw.pbg-candy { background: linear-gradient(135deg, #ff9a9e, #fad0c4 40%, #a18cd1); }
+.upage .u-hero.pbg-forest, .pbg-sw.pbg-forest { background: linear-gradient(160deg, #a8e063, #3fa56a 50%, #134e3a); }
+.upage .u-hero.pbg-img { background-size: cover; background-position: center; }
+.pbg-sw.own { background: var(--panel-2); font-size: 18px; }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1932,7 +1952,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4d49b76717"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f636405f25"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2850,9 +2870,17 @@ void main() {
         <button type="button" role="radio" class="pbg-sw pbg-pink" data-bg="pink" title="Розовый" aria-label="Розовый"></button>
         <button type="button" role="radio" class="pbg-sw pbg-red" data-bg="red" title="Красный" aria-label="Красный"></button>
         <button type="button" role="radio" class="pbg-sw pbg-green" data-bg="green" title="Зелёный" aria-label="Зелёный"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-aurora" data-bg="aurora" title="Сияние" aria-label="Сияние"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-sunset" data-bg="sunset" title="Закат" aria-label="Закат"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-ocean" data-bg="ocean" title="Океан" aria-label="Океан"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-night" data-bg="night" title="Ночь" aria-label="Ночь"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-candy" data-bg="candy" title="Конфета" aria-label="Конфета"></button>
+        <button type="button" role="radio" class="pbg-sw pbg-forest" data-bg="forest" title="Лес" aria-label="Лес"></button>
+        <button type="button" class="pbg-sw own" id="pfBgOwn" title="Своя картинка" aria-label="Своя картинка">🖼</button>
+        <input type="file" id="pfBgFile" accept="image/*" hidden>
       </div>
       <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:8px" hidden></div>
-      <div class="hint">Цвет шапки вашего профиля. Если надет NFT-подарок, показывается его фон.</div>
+      <div class="hint">Фон шапки вашего профиля: цвет, градиент или своя картинка (🖼). Если надет NFT-подарок, показывается его фон.</div>
     </div>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
@@ -5150,7 +5178,7 @@ async function openChat(id) {
     state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
     state.hasMore = cached.hasMore;
     renderMsgs(); paintPin(); scrollDown();
-    ensureReplies(); loadScheduled(); markReadSoon();
+    ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
     if (canAutoFocus()) $("text").focus();
   } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
   const fresh = await fetchPage(id);
@@ -5171,6 +5199,7 @@ async function openChat(id) {
   state.msgs = fresh.msgs.concat(pendingHere());
   state.hasMore = fresh.hasMore;
   renderMsgs();
+  loadTranscripts(id);
   paintPin();
   flash($("msgs"), 450);
   scrollDown();
@@ -5335,6 +5364,7 @@ function msgNode(m, group) {
   } else if (m.video_secs != null && (m.file_path || (temp && m.local_url))) {
     el.classList.add("vn");
     el.append(vnoteNode(m, temp ? m.local_url : signedUrl(m.file_path)));
+    if (!temp) { el.append(h("div", { class: "vn-tr" }, trButton(m))); const tt = trText(m); if (tt) el.append(tt); }
   } else if (m.file_path && m.voice_secs != null) {
     const v = h("div", { class: "voice", "data-voice": m.id, "data-secs": m.voice_secs },
       h("button", { class: "play", type: "button", "aria-label": T("Проиграть голосовое сообщение"), onclick: () => playVoice(m) }, icon("play")),
@@ -5342,8 +5372,10 @@ function msgNode(m, group) {
         const r = e.currentTarget.getBoundingClientRect();
         playVoice(m, Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (m.voice_secs || 0));
       } }, h("i", {})),
-      h("span", { class: "dur" }, fmtDur(m.voice_secs)));
+      h("span", { class: "dur" }, fmtDur(m.voice_secs)), !temp && trButton(m));
     el.append(v);
+    const tt = !temp && trText(m);
+    if (tt) el.append(tt);
   } else if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
       const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
@@ -7330,7 +7362,10 @@ async function loadUserChannel(id) {
 // мой профиль: цвет фона (только с премиумом)
 function paintMyBg() {
   const cur = state.profile.profile_bg || "";
-  for (const b of $("pfBg").children) b.setAttribute("aria-checked", String(b.dataset.bg === cur));
+  for (const b of $("pfBg").children) if (b.dataset.bg !== undefined) b.setAttribute("aria-checked", String(b.dataset.bg === cur));
+  $("pfBgOwn").setAttribute("aria-pressed", String(/^img:/.test(cur)));
+  $("pfBgOwn").style.background = /^img:/.test(cur) ? "center / cover url(\"" + avatarUrl(cur.slice(4)) + "\")" : "";
+  $("pfBgOwn").textContent = /^img:/.test(cur) ? "" : "🖼";
   // админам — ещё и все фоны NFT-подарков
   const row = $("pfBgNft");
   row.hidden = !state.isAdmin;
@@ -7357,7 +7392,38 @@ async function pickMyBg(e) {
   refreshMe();
   toast(color ? T("Фон профиля изменён") : T("Фон профиля убран"));
 }
-$("pfBg").addEventListener("click", pickMyBg);
+$("pfBg").addEventListener("click", (e) => { if (!e.target.closest("#pfBgOwn")) pickMyBg(e); });
+// своя картинка на фон профиля: уменьшаем до 1280 px и сохраняем рядом с аватаркой
+$("pfBgOwn").addEventListener("click", () => {
+  if (!isPremium(state.profile) && !state.isAdmin) { toast(T("Фон профиля доступен с премиумом")); return; }
+  $("pfBgFile").click();
+});
+$("pfBgFile").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f || !/^image\//.test(f.type)) return;
+  toast(T("Загружаем фон…"));
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+    const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(img.src);
+    let blob = null;
+    for (const q of [0.85, 0.75, 0.6, 0.45]) { blob = await new Promise((r) => cv.toBlob(r, "image/webp", q)); if (blob && blob.size < 950 * 1024) break; }
+    if (!blob || blob.size >= 1024 * 1024) { toast(T("Картинка слишком большая")); return; }
+    const path = state.me.id + "/bg-" + Date.now() + ".webp";
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: blob.type || "image/webp", cacheControl: "31536000" });
+    if (up.error) { toast(T("Не удалось загрузить картинку")); return; }
+    const { error } = await sb.rpc("set_profile_bg", { p_color: "img:" + path });
+    if (error) { toast(/premium/.test(error.message || "") ? T("Фон профиля доступен с премиумом") : T("Не удалось изменить фон профиля")); return; }
+    state.profile = Object.assign({}, state.profile, { profile_bg: "img:" + path });
+    paintMyBg(); refreshMe();
+    toast(T("Фон профиля изменён"));
+    if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
+  } catch (x) { toast(T("Не удалось открыть картинку")); }
+});
 $("pfBgNft").addEventListener("click", pickMyBg);
 // мой профиль: список каналов на выбор
 async function paintMyChannel() {
@@ -7378,7 +7444,7 @@ $("pfChan").addEventListener("change", async (e) => {
   if (error) { toast(T("Не удалось закрепить канал")); paintMyChannel(); return; }
   toast(id ? T("Канал закреплён в профиле") : T("Канал убран из профиля"));
 });
-const PBG = ["blue", "sky", "pink", "red", "green"];
+const PBG = ["blue", "sky", "pink", "red", "green", "aurora", "sunset", "ocean", "night", "candy", "forest"];
 function paintUser(p) {
   const av = avatar(p.display_name, p.id, "lg", p.avatar_path);
   if (p.avatar_path) {
@@ -7402,9 +7468,15 @@ function paintUser(p) {
   hero.classList.remove("nftg");
   // цветной фон профиля у премиума; надетый NFT важнее и перекрывает его
   for (const k of PBG) hero.classList.remove("pbg", "pbg-" + k);
+  hero.classList.remove("pbg-img"); hero.style.backgroundImage = "";
   hero.style.removeProperty("--b1"); hero.style.removeProperty("--b2");
   if (worn) paintNft(hero, worn);
   else if ((isPremium(p) || p.is_admin) && PBG.includes(p.profile_bg)) hero.classList.add("pbg", "pbg-" + p.profile_bg);
+  else if ((isPremium(p) || p.is_admin) && /^img:/.test(p.profile_bg || "")) {
+    // своя картинка: под текстом лёгкое затемнение, чтобы имя читалось на любом фото
+    hero.classList.add("pbg", "pbg-img");
+    hero.style.backgroundImage = "linear-gradient(rgb(0 0 0 / .18), rgb(0 0 0 / .5)), url(\"" + avatarUrl(p.profile_bg.slice(4)) + "\")";
+  }
   else if (p.is_admin && /^nft:/.test(p.profile_bg || "")) {
     // у админов фоном может быть любой фон NFT-подарков; список фонов подгружается отдельно
     const apply = () => {
@@ -10495,6 +10567,48 @@ function dustAway(el, ms) {
     requestAnimationFrame(frame);
     setTimeout(() => { if (cv.isConnected) cv.remove(); done(); }, ms + 1500);
   });
+}
+
+/* ---------- расшифровка голосовых и видеосообщений в текст ---------- */
+const transcripts = new Map(), trBusy = new Set(), trHidden = new Set();
+function trButton(m) {
+  const has = transcripts.has(m.id);
+  return h("button", { class: "tr-btn" + (has ? " on" : "") + (trBusy.has(m.id) ? " busy" : ""), type: "button", "data-tr": m.id,
+    title: has ? T("Скрыть текст") : T("Расшифровать в текст"), "aria-label": T("Расшифровать в текст"),
+    onclick: (e) => { e.stopPropagation(); toggleTranscript(m); } }, trBusy.has(m.id) ? h("span", { class: "tr-spin" }) : T("Аа"));
+}
+function trText(m) {
+  const t = transcripts.get(m.id);
+  if (t == null || trHidden.has(m.id)) return null;
+  const empty = !t || /^\[без слов\]$/i.test(t.trim());
+  return h("div", { class: "tr-text" + (empty ? " empty" : "") }, empty ? T("Речь не распознана") : t);
+}
+async function loadTranscripts(chatId) {
+  const { data } = await sb.from("message_transcripts").select("message_id,body").eq("chat_id", chatId).order("message_id", { ascending: false }).limit(500);
+  if (!Array.isArray(data) || !data.length || state.activeId !== chatId) return;
+  let fresh = false;
+  for (const r of data) if (!transcripts.has(r.message_id)) { transcripts.set(r.message_id, r.body); fresh = true; }
+  if (fresh && state.msgs.some((m) => transcripts.has(m.id))) repaintKeep();
+}
+async function toggleTranscript(m) {
+  if (transcripts.has(m.id)) {   // уже есть — показать или спрятать
+    if (trHidden.has(m.id)) trHidden.delete(m.id); else trHidden.add(m.id);
+    repaintKeep();
+    return;
+  }
+  if (trBusy.has(m.id)) return;
+  trBusy.add(m.id); repaintKeep();
+  let r = {};
+  try {
+    const tok = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch(SUPABASE_URL + "/functions/v1/transcribe", { method: "POST",
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok }, body: JSON.stringify({ message_id: m.id }) });
+    r = await res.json().catch(() => ({}));
+  } catch (e) { r = { error: "network" }; }
+  trBusy.delete(m.id);
+  if (typeof r.text === "string") { transcripts.set(m.id, r.text); trHidden.delete(m.id); }
+  else toast(r.error === "limit" ? T("На сегодня расшифровок хватит — попробуйте завтра") : r.error === "too long" ? T("Слишком длинное сообщение для расшифровки") : r.error === "busy" ? T("Сервис расшифровки занят — попробуйте через минуту") : T("Не получилось расшифровать"));
+  repaintKeep();
 }
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */

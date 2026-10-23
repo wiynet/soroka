@@ -1535,3 +1535,11 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Поиск: тап по человеку сразу открывает чат с переходом (preOpenChat до ответа сервера; есть чат — без запросов).
 -- Все анимации ×1/0.85: CSS-анимации и переходы — playbackRate, Element.animate — длительность; связанные таймеры — aMs().
 -- Перерисовки после въезда/выезда чата — в requestIdleCallback.
+
+-- ===== Расшифровка голосовых и свои фоны профиля (миграция mestario_transcripts_custom_profile_bg, функция transcribe) =====
+-- public.message_transcripts(message_id, chat_id, body, by_user): читают участники чата (private.is_chat_member), пишет
+-- только функция transcribe (Gemini, ключ из private.ai_config). Готовый текст отдаётся всем без повторного
+-- распознавания; лимит 60 новых в сутки на человека, до 10 минут, до 15 МБ. Кнопка «Аа» у голосовых и «кружков».
+-- profiles.profile_bg: новые градиенты aurora/sunset/ocean/night/candy/forest и своя картинка 'img:<id>/<файл>' в бакете
+-- avatars (webp до 1 МБ, ≤1280 px); set_profile_bg проверяет, что файл есть и лежит в папке самого человека. Как и цвета —
+-- с премиумом или админам. Ограничение profiles_profile_bg_ok заменило старое.
