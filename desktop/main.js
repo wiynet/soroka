@@ -21,6 +21,8 @@ function createWindow() {
   Menu.setApplicationMenu(null);
   // чужие ссылки открываются в обычном браузере, свои — в окне приложения
   win.webContents.setWindowOpenHandler(({ url }) => {
+    // «Войти через браузер»: страницу подтверждения открываем в обычном браузере, где человек уже вошёл
+    if (url.includes("#approve-")) { shell.openExternal(url); return { action: "deny" }; }
     if (isOwn(url)) { win.loadURL(url); return { action: "deny" }; }
     if (/^https?:|^mailto:|^tel:/.test(url)) shell.openExternal(url);
     return { action: "deny" };

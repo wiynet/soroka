@@ -1714,6 +1714,13 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   @keyframes ctx-out2 { to { opacity: 0; transform: scale(.7); } }
 }
 
+/* вход через браузер */
+.ho-btn { width: 100%; margin-top: 4px; }
+.ho-btn[hidden] { display: none; }
+.ho-code { font-size: 40px; font-weight: 800; letter-spacing: .3em; text-align: center; padding: 10px 0 4px; font-variant-numeric: tabular-nums; }
+.ho-state { text-align: center; }
+.ho-warn { font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--ink); }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1923,7 +1930,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=64f2d2f1fa"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e490702f1a"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2384,6 +2391,7 @@ void main() {
       <div class="error" id="loginErr"></div>
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
+      <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
     </form>
 
     <form id="signupForm" data-view="signup" novalidate hidden>
@@ -3668,6 +3676,29 @@ void main() {
 </dialog>
 
 <!-- ПИН-код: поставить, сменить, отключить -->
+<!-- вход через браузер: приложение ждёт подтверждения -->
+<dialog id="dlgHoWait">
+  <div class="dlg">
+    <h2>Вход через браузер</h2>
+    <div class="small muted">В браузере открылась страница Mestario. Если вы там уже вошли, проверьте код и нажмите «Подтвердить вход».</div>
+    <div class="ho-code" id="hoCode">····</div>
+    <div class="small muted ho-state" id="hoState">Ждём подтверждения…</div>
+    <div class="actions"><button class="btn ghost" type="button" id="hoCancel">Отмена</button><button class="btn" type="button" id="hoReopen">Открыть браузер ещё раз</button></div>
+  </div>
+</dialog>
+<!-- вход через браузер: подтверждение на сайте -->
+<dialog id="dlgHoApprove">
+  <div class="dlg">
+    <h2>Войти в приложение?</h2>
+    <div class="small muted" id="haDevice"></div>
+    <div class="ho-code" id="haCode">····</div>
+    <div class="small muted">Проверьте, что в приложении показан тот же код.</div>
+    <div class="ho-warn">Подтверждайте, только если сами нажали «Войти через браузер» в приложении Mestario. Если ссылку прислал кто-то другой — нажмите «Отклонить»: иначе он получит доступ к вашему аккаунту.</div>
+    <div class="error" id="haErr"></div>
+    <div class="actions"><button class="btn ghost" type="button" id="haNo">Отклонить</button><button class="btn" type="button" id="haYes">Подтвердить вход</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgPinSet">
   <form class="dlg" id="pinSetForm" novalidate>
     <h2 id="psHead">ПИН-код</h2>
@@ -10199,6 +10230,102 @@ function pushUp(id) {
   }
 }
 
+/* ---------- вход в приложение через браузер, где уже выполнен вход ---------- */
+const HO_URL = SUPABASE_URL + "/functions/v1/login-handoff";
+const IN_ELECTRON = /Electron/i.test(navigator.userAgent);
+async function hoCall(body, token) {
+  try {
+    const r = await fetch(HO_URL, { method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (token || SUPABASE_KEY) }, body: JSON.stringify(body) });
+    return await r.json().catch(() => ({}));
+  } catch (e) { return { error: "network" }; }
+}
+// короткий код из номера запроса: одинаковый в приложении и в браузере — чтобы убедиться, что это тот же запрос
+function hoCode(id) { let n = 0; for (const ch of String(id).replace(/-/g, "")) n = (n * 16 + parseInt(ch, 16)) % 10000; return String(n).padStart(4, "0"); }
+function hoDevice() {
+  const ua = navigator.userAgent;
+  const kind = IN_ELECTRON ? T("Программа для Windows") : /iPhone|iPad|iPod/i.test(ua) ? T("Приложение на iPhone") : /Android/i.test(ua) ? T("Приложение на Android") : T("Приложение");
+  const model = (/Android [\d.]+; ([^;)]+)/.exec(ua) || [])[1];
+  return model && !/^wv$|^K$/.test(model) ? kind + " · " + model.trim() : kind;
+}
+let ho = null;
+function hoOpen() {
+  if (!ho) return;
+  const url = PUBLIC_SITE + "#approve-" + ho.id;
+  if (IN_ELECTRON) window.open(url, "_blank");   // программа отдаёт такие ссылки обычному браузеру
+  else location.href = url;                       // приложение на телефоне открывает чужой адрес в системном браузере
+}
+async function loginViaBrowser() {
+  const b = $("loginBrowser");
+  b.disabled = true;
+  const r = await hoCall({ action: "create", device: hoDevice() });
+  b.disabled = false;
+  if (!r.id || !r.secret) { $("loginErr").textContent = r.error === "busy" ? T("Слишком много попыток. Подождите минуту.") : T("Не получилось. Проверьте интернет и попробуйте ещё раз."); return; }
+  ho = { id: r.id, secret: r.secret, until: Date.now() + 5 * 60 * 1000, busy: false };
+  $("hoCode").textContent = hoCode(r.id);
+  $("hoState").textContent = T("Ждём подтверждения…");
+  $("dlgHoWait").showModal();
+  hoOpen();
+  hoTick();
+}
+async function hoTick() {
+  if (!ho || ho.busy) return;
+  if (Date.now() > ho.until) { $("hoState").textContent = T("Время вышло. Закройте окно и попробуйте снова."); ho = null; return; }
+  ho.busy = true;
+  const cur = ho;
+  const r = await hoCall({ action: "take", id: cur.id, secret: cur.secret });
+  cur.busy = false;
+  if (ho !== cur) return;
+  if (r.status === "approved" && r.token_hash) {
+    $("hoState").textContent = T("Подтверждено — входим…");
+    ho = null;
+    const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: "magiclink" });
+    if (error) { $("hoState").textContent = T("Не получилось войти. Попробуйте ещё раз."); return; }
+    $("dlgHoWait").close();
+    return;
+  }
+  if (r.status === "declined") { $("hoState").textContent = T("Вход отклонён в браузере."); ho = null; return; }
+  if (r.status === "used" || r.status === "expired" || r.status === "missing" || r.status === "failed") { $("hoState").textContent = T("Запрос больше не действует. Попробуйте снова."); ho = null; return; }
+  clearTimeout(cur.t);
+  cur.t = setTimeout(hoTick, 2500);
+}
+$("loginBrowser").hidden = !(IN_APP || IN_ELECTRON);
+$("loginBrowser").addEventListener("click", loginViaBrowser);
+$("hoReopen").addEventListener("click", () => { if (ho) hoOpen(); else $("dlgHoWait").close(); });
+$("hoCancel").addEventListener("click", () => { if (ho) clearTimeout(ho.t); ho = null; $("dlgHoWait").close(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ho) { clearTimeout(ho.t); hoTick(); } });   // вернулись из браузера — проверяем сразу
+
+// на сайте: страница подтверждения по ссылке #approve-<номер>
+let haId = null;
+async function showApprove(id) {
+  haId = id;
+  $("haErr").textContent = "";
+  $("haDevice").textContent = T("Загрузка…");
+  $("haCode").textContent = hoCode(id);
+  $("haYes").disabled = $("haNo").disabled = true;
+  $("dlgHoApprove").showModal();
+  const tok = (await sb.auth.getSession()).data.session?.access_token;
+  const r = await hoCall({ action: "info", id }, tok);
+  if (r.status !== "pending") {
+    $("haDevice").textContent = r.status === "approved" || r.status === "used" ? T("Этот запрос уже подтверждён.") : r.status === "declined" ? T("Этот запрос отклонён.") : T("Запрос устарел или не найден. Нажмите «Войти через браузер» в приложении ещё раз.");
+    return;
+  }
+  const mins = Math.max(0, Math.round((Date.now() - new Date(r.created_at)) / 60000));
+  $("haDevice").textContent = (r.device || T("Приложение")) + " · " + (mins ? T("запрошено ") + mins + T(" мин назад") : T("запрошено только что"));
+  $("haYes").disabled = $("haNo").disabled = false;
+}
+async function decideApprove(ok) {
+  if (!haId) return;
+  $("haYes").disabled = $("haNo").disabled = true;
+  const tok = (await sb.auth.getSession()).data.session?.access_token;
+  const r = await hoCall({ action: "decide", id: haId, ok }, tok);
+  if (r.result !== "ok") { $("haErr").textContent = r.result === "expired" ? T("Время вышло — начните вход в приложении заново.") : T("Не получилось. Попробуйте ещё раз."); return; }
+  haId = null;
+  $("dlgHoApprove").close();
+  toast(ok ? T("Вход подтверждён — вернитесь в приложение") : T("Вход отклонён"));
+}
+$("haYes").addEventListener("click", () => decideApprove(true));
+$("haNo").addEventListener("click", () => decideApprove(false));
+
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 // клавиатуру на экране сами не открываем: поле ввода получает фокус автоматически только там, где есть мышь
 function canAutoFocus() { return !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches); }
@@ -11476,7 +11603,8 @@ async function handleLink() {
   const hash = decodeURIComponent(location.hash || "");
   if (hash.length < 3 || !state.started) return;
   let m;
-  if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
+  if ((m = /^#approve-([0-9a-f-]{36})$/.exec(hash))) showApprove(m[1]);
+  else if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
   else if ((m = /^#gift-(\d{1,12})$/.exec(hash))) openGiftView(Number(m[1]));
   else if ((m = /^#([a-z]{2,20})-(\d{1,7})$/i.exec(hash))) openGiftView({ type: m[1].toLowerCase(), number: Number(m[2]) });
   else if ((m = /^#join-([0-9a-f]{16,64})$/.exec(hash))) {
