@@ -4961,6 +4961,7 @@ async function loadChats() {
     ttl: c.msg_ttl || null, slow: Number(c.slow_seconds) || 0, linksNew: !!c.links_new_block,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
+  if (Array.isArray(counts.data)) closeReadNotes();
   renderList();
   if (state.activeId) renderHead();
   saveChatsSoon();
@@ -5954,11 +5955,28 @@ function onMember(p) {
     const was = c.reads.get(n.user_id), now = Number(n.last_read_id) || 0;
     if (was !== now) {
       c.reads.set(n.user_id, now);
+      // я дочитал этот чат на другом устройстве: здесь снимаем счётчик и уведомления
+      if (n.user_id === state.me.id && now > was) { closeNotes([n.chat_id]); reloadSoon(); return; }
       if (n.chat_id === state.activeId && n.user_id !== state.me.id) { const keep = $("msgs").scrollTop; renderMsgs(); $("msgs").scrollTop = keep; }
       return;
     }
   }
   reloadSoon();
+}
+// уведомления чата убираем, как только он прочитан — здесь или на другом устройстве
+function closeNotes(chatIds) {
+  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
+  const ids = new Set(chatIds);
+  navigator.serviceWorker.ready.then((r) => r.getNotifications()).then((list) => {
+    for (const n of list) if (ids.has(n.tag)) n.close();
+  }).catch(() => {});
+}
+// после загрузки списка чатов: уведомления чатов без непрочитанного больше не нужны
+function closeReadNotes() {
+  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.ready.then((r) => r.getNotifications()).then((list) => {
+    for (const n of list) if (state.chats.has(n.tag) && !state.unread.has(n.tag)) n.close();
+  }).catch(() => {});
 }
 const markReadSoon = debounce(() => {
   const c = state.chats.get(state.activeId);
@@ -5966,6 +5984,7 @@ const markReadSoon = debounce(() => {
   const last = lastRealId();
   if (!last || (c.reads.get(state.me.id) || 0) >= last) return;
   c.reads.set(state.me.id, last);
+  closeNotes([c.id]);
   sb.rpc("mark_read", { p_chat: c.id, p_message: last }).then(() => {});
 }, 400);
 // сообщения, на которые отвечают, могут быть не загружены: дотягиваем их отдельно
