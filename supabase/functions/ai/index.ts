@@ -72,9 +72,9 @@ function genCfg(model: string, extra: Record<string, unknown> = {}) {
 }
 const thinkRejected = (status: number, err: string) => status === 400 && /think/i.test(err);
 // потоковый ответ: текст приходит кусками, onText получает всё накопленное
-async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void) {
+async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void, sys = SYSTEM) {
   const body = (gc: any) => JSON.stringify({
-    systemInstruction: { parts: [{ text: SYSTEM }] },
+    systemInstruction: { parts: [{ text: sys }] },
     contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
     generationConfig: gc,
   });
@@ -118,7 +118,7 @@ async function streamModel(k: string, model: string, turns: Turn[], onText: (t: 
   full = full.trim();
   return { ok: !!full, status: 200, text: full, err: full ? "" : "empty" };
 }
-async function callModel(k: string, model: string, text: string | Turn[], vertex: boolean) {
+async function callModel(k: string, model: string, text: string | Turn[], vertex: boolean, sys = SYSTEM, maxTok = 4096) {
   const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
   const url = vertex
     ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodeURIComponent(k)}`
@@ -127,17 +127,17 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
     method: "POST",
     headers: vertex ? { "content-type": "application/json" } : { "content-type": "application/json", "x-goog-api-key": k },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM }] },
+      systemInstruction: { parts: [{ text: sys }] },
       contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
       generationConfig: gc,
     }),
-  }, 30000);
+  }, maxTok > 4096 ? 60000 : 30000);
   let r: Response;
-  try { r = await send(genCfg(model, { maxOutputTokens: 4096, temperature: 0.7 })); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+  try { r = await send(genCfg(model, { maxOutputTokens: maxTok, temperature: 0.7 })); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
   let j = await r.json().catch(() => ({}));
   if (!r.ok && thinkRejected(r.status, JSON.stringify(j))) {
     noThink.add(model);
-    try { r = await send({ maxOutputTokens: 4096, temperature: 0.7 }); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+    try { r = await send({ maxOutputTokens: maxTok, temperature: 0.7 }); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
     j = await r.json().catch(() => ({}));
   }
   if (!r.ok) return { ok: false, status: r.status, err: JSON.stringify(j).slice(0, 300) };
@@ -147,7 +147,7 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
 // у каждой модели свой бесплатный лимит: исчерпанную пропускаем 30 минут и идём к следующей,
 // а если кончились все — отвечает запасной бесплатный ИИ (Pollinations)
 const blocked = new Map<string, number>();
-async function ask(text: string | Turn[], onText?: (t: string) => void) {
+async function ask(text: string | Turn[], onText?: (t: string) => void, sys = SYSTEM, maxTok = 4096) {
   const k = await key();
   let last: any = { ok: false, status: 503, err: "no key" };
   if (k) {
@@ -158,7 +158,7 @@ async function ask(text: string | Turn[], onText?: (t: string) => void) {
       for (const m of list) {
         if (Date.now() - started > 35000) break;   // общий предел: дальше — запасной ИИ, а не бесконечный перебор
         const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
-        const res: any = onText && !vertex ? await streamModel(k, m, turns, onText) : await callModel(k, m, text, vertex);
+        const res: any = onText && !vertex ? await streamModel(k, m, turns, onText, sys) : await callModel(k, m, text, vertex, sys, maxTok);
         // модель, которая не отвечает или недоступна ключу, на время пропускаем — не тратим на неё секунды
         if (!res.ok && res.status !== 429 && (res.status === 404 || res.status === 403 || res.status === 504)) blocked.set(m, Date.now() + 10 * 60_000);
         if (res.ok) { useVertex = vertex; return { ...res, model: m, vertex }; }
@@ -168,10 +168,10 @@ async function ask(text: string | Turn[], onText?: (t: string) => void) {
       if (any429) break;   // ключ принят, просто лимиты — адрес Vertex не поможет
     }
   }
-  const fb = await pollinationsText(text);
+  const fb = await pollinationsText(text, sys);
   return fb.ok ? fb : last;
 }
-async function pollinationsText(text: string | Turn[]) {
+async function pollinationsText(text: string | Turn[], sys = SYSTEM) {
   try {
     const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
     const ctl = new AbortController();
@@ -179,7 +179,7 @@ async function pollinationsText(text: string | Turn[]) {
     const r = await fetch("https://text.pollinations.ai/openai", {
       method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: SYSTEM },
+      body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys },
         ...turns.map((t) => ({ role: t.role === "model" ? "assistant" : "user", content: t.text }))] }),
     });
     clearTimeout(tm);
@@ -512,6 +512,104 @@ async function botReply(messageId: number) {
   }
   return "ok";
 }
+
+// ---------- боты пользователей: ответы ИИ и помощник конструктора ----------
+function botVars(t: string, p: any, mest: number) {
+  return String(t || "").replaceAll("{name}", p?.display_name || "").replaceAll("{username}", p?.username ? "@" + p.username : "")
+    .replaceAll("{mest}", String(mest || 0)).replaceAll("{id}", p?.num != null ? String(p.num) : "")
+    .replaceAll("{date}", new Date(Date.now() + 4 * 3600_000).toISOString().slice(0, 10).split("-").reverse().join("."));
+}
+async function botAiReply(messageId: number) {
+  const { data: ctx } = await sb.rpc("bot_ai_context", { p_message: messageId });
+  if (!ctx || ctx.matched) return "skip";
+  const cfg = ctx.config || {};
+  if (!cfg.ai || !cfg.ai.on || cfg.deleted) return "off";
+  const { data: claimed } = await sb.rpc("ai_claim", { p_message: messageId });
+  if (!claimed) return "dup";
+  const [{ data: m }, { data: who }, { data: w }] = await Promise.all([
+    sb.from("messages").select("id,chat_id,sender_id,body,file_path,file_type,voice_secs,video_secs").eq("id", messageId).maybeSingle(),
+    sb.from("profiles").select("display_name,username,num").eq("id", ctx.sender).maybeSingle(),
+    sb.from("wallets").select("balance").eq("user_id", ctx.sender).maybeSingle(),
+  ]);
+  const mest = Number(w?.balance || 0);
+  const unknown = async () => {
+    const u = cfg.unknown;
+    if (!u || !u.text) return;
+    const mk: any = {}; if (u.kb) mk.kb = u.kb; if (u.inline) mk.inline = u.inline; if (u.hide) mk.hide = true;
+    await sb.from("messages").insert({ chat_id: ctx.chat, sender_id: ctx.bot, body: botVars(u.text, who, mest).slice(0, 4000), markup: Object.keys(mk).length ? mk : null });
+  };
+  const { data: ok } = await sb.rpc("bot_ai_take", { p_owner: ctx.owner, p_kind: "reply" });
+  if (!ok) { await unknown(); return "limit"; }
+  let question = String(m?.body || "").trim();
+  if (!question && m && m.file_path && (m.voice_secs != null || m.video_secs != null)) question = await voiceText(m);
+  if (!question || /^\[без слов\]$/i.test(question)) { await unknown(); return "empty"; }
+  const { data: hist } = await sb.from("messages").select("id,sender_id,body").eq("chat_id", ctx.chat).is("deleted_at", null)
+    .lte("id", messageId).order("id", { ascending: false }).limit(12);
+  const turns: Turn[] = [];
+  for (const x of (hist || []).reverse()) {
+    const text = x.id === messageId ? question : String(x.body || "");
+    if (!text) continue;
+    const role = x.sender_id === ctx.bot ? "model" : "user";
+    if (turns.length && turns[turns.length - 1].role === role) turns[turns.length - 1].text += "\n" + text;
+    else turns.push({ role, text });
+  }
+  while (turns.length && turns[0].role === "model") turns.shift();
+  if (!turns.length) turns.push({ role: "user", text: question });
+  const buttons = [...new Set(((cfg.cmds || []) as any[]).map((c) => String(c.on || "").split("|")[0].trim()).filter(Boolean))].slice(0, 60);
+  const sys = `Ты — бот «${ctx.name}» (@${ctx.username}) в мессенджере Mestario. Собеседника зовут ${who?.display_name || "пользователь"}, у него ${mest} Mest.
+Отвечай кратко и по делу, на языке собеседника, обычным текстом без Markdown (без ** и #). Не выдумывай фактов. Не помогай с опасными, незаконными или вредными просьбами.
+${buttons.length ? "У бота есть кнопки и команды: " + buttons.join(", ") + ". Если вопрос про них — предложи нажать нужную кнопку." : ""}
+${cfg.ai.prompt ? "Инструкция владельца бота (характер, знания, правила):\n" + String(cfg.ai.prompt).slice(0, 3000) : ""}`;
+  let live: number | null = null, shown = "", lastPush = 0, chain: Promise<unknown> = Promise.resolve();
+  const onText = (full: string) => {
+    const now = Date.now();
+    if (now - lastPush < (live ? 700 : 250) || full.length < 12) return;
+    lastPush = now;
+    const text = plain(full).slice(0, 3900) + " ▍";
+    if (text === shown) return;
+    shown = text;
+    chain = chain.then(async () => {
+      if (live == null) { const { data } = await sb.from("messages").insert({ chat_id: ctx.chat, sender_id: ctx.bot, body: text }).select("id").single(); live = data ? data.id : null; }
+      else await sb.from("messages").update({ body: text }).eq("id", live);
+    }).catch(() => {});
+  };
+  const r: any = await ask(turns, onText, sys);
+  await chain;
+  if (!r || !r.ok) {
+    if (live != null) await sb.from("messages").update({ body: "Не получилось ответить — попробуйте ещё раз." }).eq("id", live);
+    else await unknown();
+    return "failed";
+  }
+  const out = plain(r.text).slice(0, 4000) || "…";
+  if (live != null) await sb.from("messages").update({ body: out }).eq("id", live);
+  else await sb.from("messages").insert({ chat_id: ctx.chat, sender_id: ctx.bot, body: out });
+  return "ok";
+}
+const GEN_SYS = `Ты помогаешь собрать бота в конструкторе мессенджера Mestario (как боты Telegram, но без кода).
+Верни ТОЛЬКО JSON без пояснений и без \`\`\`, вида:
+{"start":{"text":"...","kb":[["Кнопка 1","Кнопка 2"]],"inline":[[{"t":"Сайт","u":"https://..."}]]},
+ "cmds":[{"on":"Кнопка 1|синоним|/команда","text":"...","kb":[["..."]],"inline":[[{"t":"Ещё","s":"Кнопка 2"}]],"hide":false}],
+ "unknown":{"text":"..."},"ai":{"on":false,"prompt":"..."}}
+Правила: start — ответ на «Начать»; cmds — ответы на нажатие кнопки или текст (варианты через |); unknown — если ничего не подошло.
+kb — клавиатура над полем ввода: до 10 рядов по 4 кнопки, текст кнопки до 40 символов. inline — кнопки под сообщением: {"t":"текст","u":"https://..."} (ссылка) или {"t":"текст","s":"текст команды"}.
+У каждой кнопки клавиатуры и каждой inline-кнопки с "s" должна быть команда с таким "on". Обычно повторяй главное меню (kb) в ответах, чтобы клавиатура не пропадала.
+В текстах можно использовать {name} (имя человека), {username}, {mest} (его баланс Mest), {id}, {date}. Бот не умеет платить, хранить данные и считать — только отвечать текстом и кнопками; для свободных ответов есть ИИ ("ai").
+Если дан текущий бот — сохрани его и измени по задаче. Не больше 80 команд. Пиши на языке задачи.`;
+async function botGen(uid: string, input: any) {
+  const id = String(input.bot || "");
+  const { data: b } = await sb.from("bots").select("id,owner,config").eq("id", id).maybeSingle();
+  if (!b || b.owner !== uid) return { error: "not owner", status: 403 };
+  const { data: ok } = await sb.rpc("bot_ai_take", { p_owner: uid, p_kind: "gen" });
+  if (!ok) return { error: "no access", status: 402 };
+  const task = String(input.request || "").trim().slice(0, 2000);
+  if (!task) return { error: "empty", status: 400 };
+  const cur = input.config && typeof input.config === "object" ? JSON.stringify(input.config).slice(0, 60000) : "";
+  const r: any = await ask((cur ? "Текущий бот:\n" + cur + "\n\n" : "") + "Задача: " + task, undefined, GEN_SYS, 16384);
+  if (!r || !r.ok) return { error: r?.status === 429 ? "busy" : "ai", status: 502 };
+  const raw = String(r.text);
+  const a = raw.indexOf("{"), z = raw.lastIndexOf("}");
+  try { return { config: JSON.parse(raw.slice(a, z + 1)) }; } catch (_) { return { error: "bad json", status: 502 }; }
+}
 function plural(n: number) {
   const a = n % 10, b = n % 100;
   return a === 1 && b !== 11 ? "кредит" : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? "кредита" : "кредитов";
@@ -521,6 +619,31 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const input = await req.json().catch(() => ({}));
+    // бот пользователя: ответ ИИ, когда готовой команды нет (вызывает база с секретом или приложение собеседника)
+    if (input.bot_message) {
+      const id = Number(input.bot_message);
+      if (input.client) {
+        const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+        const { data: au } = await sb.auth.getUser(jwt);
+        const { data: mm } = await sb.from("messages").select("sender_id").eq("id", id).maybeSingle();
+        if (!au?.user?.id || !mm || mm.sender_id !== au.user.id) return reply({ error: "forbidden" }, 403);
+        const job = botAiReply(id).catch((e) => console.error("botAiReply", e));
+        // @ts-ignore: EdgeRuntime есть в среде Supabase
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) { EdgeRuntime.waitUntil(job); return reply({ queued: true }); }
+        return reply({ result: await job });
+      }
+      const { data: pc } = await sb.rpc("push_server_config");
+      if (!pc || req.headers.get("x-hook-secret") !== pc.hook_secret) return reply({ error: "forbidden" }, 403);
+      return reply({ result: await botAiReply(id) });
+    }
+    // помощник конструктора: собрать или изменить бота по описанию (владелец, с доступом к ИИ для ботов)
+    if (input.bot_gen) {
+      const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const { data: au } = await sb.auth.getUser(jwt);
+      if (!au?.user?.id) return reply({ error: "auth" }, 401);
+      const g: any = await botGen(au.user.id, input);
+      return reply(g, g.status || 200);
+    }
     // сообщение боту @ai из самого приложения (если запрос из базы завис): только своё сообщение
     if (input.message_id && input.client) {
       const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");

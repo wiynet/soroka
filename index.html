@@ -1762,6 +1762,14 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .be-mini.x { color: var(--danger); }
 .be-row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .btn.danger { color: var(--danger); }
+.be-ai { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent); }
+.be-ai textarea { width: 100%; min-height: 60px; resize: vertical; }
+#beFilter { width: 100%; margin-bottom: 8px; }
+.be-reply .be-fold { flex: none; }
+.be-reply.closed > :not(.be-top) { display: none; }
+.be-reply.closed { padding: 6px 10px; }
+.be-reply.miss { display: none; }
 .ho-warn { font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--ink); }
 
 .dust-canvas { position: fixed; z-index: 80; pointer-events: none; }
@@ -3370,14 +3378,26 @@ void main() {
       </div>
     </div>
     <div class="hint">В тексте ответа можно вставлять: <span class="be-vars" id="beVars"></span></div>
+    <div class="set-label">ИИ для бота</div>
+    <div class="be-ai">
+      <div class="small" id="beAiStatus">…</div>
+      <div class="be-row-actions" id="beAiBuy"></div>
+      <label class="be-sub"><input type="checkbox" id="beAiOn"> ИИ отвечает сам, если ни одна команда не подошла</label>
+      <textarea id="beAiPrompt" maxlength="3000" placeholder="Характер и знания бота: кто он, о чём рассказывает, как общается. Например: «Ты продавец магазина кроссовок, отвечай дружелюбно, цены: …»"></textarea>
+      <div class="be-sub">Помощник: опишите, что должен уметь бот, — ИИ сам соберёт или переделает команды и кнопки.</div>
+      <textarea id="beGenText" maxlength="2000" placeholder="Например: «бот-викторина про футбол с 5 вопросами и кнопками ответов» или «добавь раздел Помощь и кнопку Сайт»"></textarea>
+      <button class="btn ghost" type="button" id="beGen">✨ Собрать с ИИ</button>
+    </div>
     <div class="set-label">Приветствие — ответ на «Начать» (/start)</div>
     <div id="beStart"></div>
-    <div class="set-label">Кнопки и команды</div>
-    <div class="hint">Бот отвечает, когда человек нажимает кнопку или пишет её текст (или команду вроде /help).</div>
+    <div class="set-label">Кнопки и команды <span class="muted" id="beCount"></span></div>
+    <div class="hint">Бот отвечает, когда человек нажимает кнопку или пишет её текст (или команду вроде /help). Несколько вариантов — через «|»: <b>Привет|Здравствуй|/hi</b>.</div>
+    <input id="beFilter" placeholder="Найти команду…" autocomplete="off">
     <div id="beCmds"></div>
     <div class="be-row-actions">
       <button class="btn ghost" type="button" id="beAddCmd">+ Команда</button>
       <button class="btn ghost" type="button" id="beFromKb" title="Создать команды для кнопок клавиатуры, у которых ещё нет ответа">Ответы для всех кнопок</button>
+      <button class="btn ghost" type="button" id="beFold">Свернуть все</button>
     </div>
     <div class="set-label">Если бот не понял</div>
     <div id="beUnknown"></div>
@@ -6260,7 +6280,7 @@ function onChanged(m) {
   if (!state.started) return;
   // ИИ печатает ответ: его сообщение дописывается несколько раз в секунду — меняем только этот пузырь,
   // без перерисовки чата и без перезагрузки списка
-  if (!m.deleted_at && m.chat_id === state.activeId && isAiChat(state.chats.get(m.chat_id)) && m.sender_id !== state.me.id) {
+  if (!m.deleted_at && m.chat_id === state.activeId && (isAiChat(state.chats.get(m.chat_id)) || botOf(state.chats.get(m.chat_id))) && m.sender_id !== state.me.id) {
     const i = state.msgs.findIndex((x) => x.id === m.id);
     const old = i >= 0 && $("msgs").querySelector('.msg[data-id="' + m.id + '"]');
     if (old && !old.closest(".mrow")) {
@@ -6783,6 +6803,7 @@ async function deliverOne(t, someSent) {
     dropTemp(t);
     touchChat(data);
     if ((data.body || data.voice_secs != null || data.video_secs != null) && isAiChat(state.chats.get(chatId))) { aiThinking(chatId); aiKick(data.id); }
+    else if (botOf(state.chats.get(chatId))) botKickSoon(data.id, chatId);
     if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else addMsg(data); }
     return true;
   } catch (e) {
@@ -10956,6 +10977,20 @@ function paintBotKb() {
   }
   kb.hidden = false;
 }
+// запасной запуск ИИ бота: если база не достучалась до функции, через 3 с без ответа бота просит само приложение
+function botKickSoon(id, chatId) {
+  setTimeout(async () => {
+    const bot = botOf(state.chats.get(chatId));
+    if (!bot || (state.activeId === chatId && state.msgs.some((m) => m.sender_id === bot.id && m.id > id))) return;
+    try {
+      const tok = (await sb.auth.getSession()).data.session?.access_token;
+      if (!tok) return;
+      fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST", keepalive: true,
+        headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok },
+        body: JSON.stringify({ bot_message: id, client: true }) }).catch(() => {});
+    } catch (e) {}
+  }, 3000);
+}
 $("btnBotKb").addEventListener("click", () => { botKbHidden = !botKbHidden; paintBotKb(); });
 $("botStart").addEventListener("click", () => {
   $("botStartWrap").hidden = true; $("composer").hidden = false; botStartHid = false;
@@ -11063,7 +11098,9 @@ function beReply(r, kind) {
   if (kind === "cmd") {
     on = h("input", { maxlength: "60", placeholder: T("Кнопка или команда, например «Мои монеточки» или /help") });
     on.value = r.on || "";
-    top.append(on, h("button", { class: "be-mini x", type: "button", title: T("Удалить команду"), onclick: () => box.remove() }, "✕"));
+    on.placeholder = T("Кнопка или команда: «Мои монеточки», /help, варианты через |");
+    top.append(h("button", { class: "be-mini be-fold", type: "button", title: T("Свернуть или развернуть"), onclick: () => box.classList.toggle("closed") }, "▾"),
+      on, h("button", { class: "be-mini x", type: "button", title: T("Удалить команду"), onclick: () => { box.remove(); beCount(); } }, "✕"));
     box.append(top);
   }
   const ta = h("textarea", { maxlength: "3000", placeholder: kind === "unknown" ? T("Например: Не понял 🤔 Нажмите кнопку ниже") : T("Текст ответа бота") });
@@ -11099,16 +11136,96 @@ function openBotEdit(b) {
   $("beErr").textContent = "";
   paintBeAv();
   $("beStart").replaceChildren(beReply(cfg.start || { text: T("Привет, {name}!") }, "start"));
-  $("beCmds").replaceChildren(...(cfg.cmds || []).map((c) => beReply(c, "cmd")));
-  $("beUnknown").replaceChildren(beReply(cfg.unknown || {}, "unknown"));
-  $("dlgBotEdit").showModal();
+  beFill(cfg);
+  $("beFilter").value = "";
+  $("beGenText").value = "";
+  if (!$("dlgBotEdit").open) $("dlgBotEdit").showModal();
+  paintBeAi();
 }
+function beFill(cfg) {
+  const many = (cfg.cmds || []).length > 6;
+  $("beStart").replaceChildren(beReply(cfg.start || { text: T("Привет, {name}!") }, "start"));
+  $("beCmds").replaceChildren(...(cfg.cmds || []).map((c) => { const r = beReply(c, "cmd"); if (many) r.classList.add("closed"); return r; }));
+  $("beUnknown").replaceChildren(beReply(cfg.unknown || {}, "unknown"));
+  $("beAiOn").checked = !!(cfg.ai && cfg.ai.on);
+  $("beAiPrompt").value = (cfg.ai && cfg.ai.prompt) || "";
+  beCount();
+}
+function beCount() { $("beCount").textContent = "· " + $("beCmds").children.length + " / 200"; }
+// доступ к ИИ для ботов: пробные 3 дня с премиумом, дальше — за Mest
+var beAiInfo = null;
+async function paintBeAi() {
+  const st = $("beAiStatus"), buy = $("beAiBuy");
+  st.textContent = T("Проверяем доступ…"); buy.replaceChildren();
+  const { data, error } = await sb.rpc("bot_ai_status");
+  if (error || !data) { st.textContent = T("Не удалось узнать доступ к ИИ"); return; }
+  beAiInfo = data;
+  const until = data.until ? new Date(data.until) : null;
+  st.textContent = data.admin ? T("ИИ для ботов: без ограничений (админ)")
+    : until ? T("ИИ для ботов включён до ") + dFmt.format(until) + T(" ") + tFmt.format(until) + T(". До 300 ответов ИИ в сутки на все ваши боты.")
+    : T("ИИ для ботов не подключён: бот отвечает только по командам. С премиумом — 3 дня бесплатно, дальше за Mest.");
+  if (data.admin) return;
+  if (data.trial) buy.append(h("button", { class: "btn", type: "button", onclick: async () => {
+    const { error: e } = await sb.rpc("bot_ai_trial");
+    if (e) { toast(/used/.test(e.message || "") ? T("Пробный период уже использован") : T("Пробный период — только с премиумом")); return; }
+    toast(T("ИИ для ботов включён на 3 дня")); paintBeAi();
+  } }, T("🎁 3 дня бесплатно (премиум)")));
+  for (const [d, label] of [[1, T("1 день")], [7, T("7 дней")], [30, T("30 дней")]]) {
+    const price = data.prices && data.prices[String(d)];
+    buy.append(h("button", { class: "btn ghost", type: "button", onclick: async () => {
+      const { data: r, error: e } = await sb.rpc("bot_ai_buy", { p_days: d });
+      if (e) { toast(/insufficient|not enough|balance|funds/i.test(e.message || "") ? T("Не хватает Mest") : T("Не получилось оплатить")); return; }
+      toast(T("ИИ для ботов продлён · осталось Mest: ") + (r && r.balance != null ? r.balance : "…"));
+      if (typeof refreshMe === "function") refreshMe();
+      paintBeAi();
+    } }, (until ? T("+") : "") + label + " · " + price + " Mest"));
+  }
+}
+$("beFilter").addEventListener("input", () => {
+  const q = $("beFilter").value.trim().toLowerCase();
+  for (const r of $("beCmds").children) {
+    const t = ((r.querySelector("input") || {}).value || "") + " " + ((r.querySelector("textarea") || {}).value || "");
+    r.classList.toggle("miss", !!q && !t.toLowerCase().includes(q));
+    if (q) r.classList.remove("closed");
+  }
+});
+$("beFold").addEventListener("click", () => {
+  const kids = [...$("beCmds").children], close = kids.some((r) => !r.classList.contains("closed"));
+  for (const r of kids) r.classList.toggle("closed", close);
+  $("beFold").textContent = close ? T("Развернуть все") : T("Свернуть все");
+});
+// помощник: ИИ собирает или переделывает бота по описанию; результат попадает в конструктор, сохраняет человек
+$("beGen").addEventListener("click", async () => {
+  if (!beBot) return;
+  const task = $("beGenText").value.trim();
+  if (!task) { $("beGenText").focus(); toast(T("Опишите, что должен уметь бот")); return; }
+  if (beAiInfo && !beAiInfo.admin && !beAiInfo.until) { toast(T("Сначала подключите ИИ для ботов — кнопки выше")); return; }
+  const b = $("beGen");
+  b.disabled = true; b.textContent = T("ИИ собирает бота…");
+  try {
+    const tok = (await sb.auth.getSession()).data.session?.access_token;
+    const r = await fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST",
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok },
+      body: JSON.stringify({ bot_gen: true, bot: beBot.id, request: task, config: beRead() }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.config) { toast(j.error === "no access" ? T("ИИ для ботов не подключён или исчерпан дневной лимит (40 сборок)") : j.error === "busy" ? T("ИИ перегружен — попробуйте через минуту") : T("Не получилось — попробуйте описать иначе")); return; }
+    const c = j.config;
+    if (!c.ai && $("beAiOn").checked) c.ai = { on: true, prompt: $("beAiPrompt").value };
+    beFill(c);
+    toast(T("Готово! Проверьте команды и нажмите «Сохранить»"));
+  } catch (e) { toast(T("Нет связи — попробуйте ещё раз")); }
+  finally { b.disabled = false; b.textContent = T("✨ Собрать с ИИ"); }
+});
 function beRead() {
-  const cfg = { start: $("beStart").firstChild.read(), cmds: [...$("beCmds").children].map((x) => x.read()).filter((c) => c.on && c.text), unknown: $("beUnknown").firstChild.read() };
+  const cfg = { start: $("beStart").firstChild.read(), cmds: [...$("beCmds").children].map((x) => x.read()).filter((c) => c.on && c.text).slice(0, 200), unknown: $("beUnknown").firstChild.read() };
   if (!cfg.unknown.text) delete cfg.unknown;
+  cfg.ai = { on: $("beAiOn").checked, prompt: $("beAiPrompt").value.trim() };
   return cfg;
 }
-$("beAddCmd").addEventListener("click", () => { const r = beReply({}, "cmd"); $("beCmds").append(r); r.querySelector("input").focus(); });
+$("beAddCmd").addEventListener("click", () => {
+  if ($("beCmds").children.length >= 200) { toast(T("Не больше 200 команд")); return; }
+  const r = beReply({}, "cmd"); $("beCmds").append(r); beCount(); r.querySelector(".be-top input").focus();
+});
 // для кнопок клавиатуры без ответа — заготовки команд
 $("beFromKb").addEventListener("click", () => {
   const cfg = beRead();
@@ -11121,6 +11238,7 @@ $("beFromKb").addEventListener("click", () => {
     have.add(k); n++;
     $("beCmds").append(beReply({ on: t, text: "" }, "cmd"));
   }
+  beCount();
   toast(n ? T("Добавлено команд: ") + n + T(" — впишите ответы") : T("У всех кнопок уже есть ответы"));
 });
 $("beName").addEventListener("input", paintBeAv);
