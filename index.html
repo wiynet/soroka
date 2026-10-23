@@ -1341,8 +1341,15 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
 @media (max-width: 760px) {
   #app { grid-template-columns: minmax(0, 1fr); }
   .sidebar { border-right: 0; }
-  #app:not(.chat-open) .pane { display: none; }
-  #app.chat-open .sidebar { display: none; }
+  /* оба экрана всегда отрисованы и лежат стопкой: вход и выход меняют только сдвиг, без пересчёта раскладки */
+  #app { position: relative; overflow: hidden; display: block; }
+  #app > .sidebar { position: absolute; inset: 0; z-index: 0; }
+  #app > .peek-dim { position: absolute; inset: 0; z-index: 1; display: block; background: rgb(0 0 0 / .32); opacity: 0; pointer-events: none; }
+  #app > .pane { position: absolute; inset: 0; z-index: 2; background: var(--bg); transform: translate3d(100%, 0, 0); visibility: hidden; box-shadow: -14px 0 34px rgb(0 0 0 / .28); }
+  #app.chat-open > .pane { transform: none; visibility: visible; }
+  #app.chat-open > .sidebar { transform: translate3d(-28%, 0, 0); }
+  #app.chat-open > .peek-dim { opacity: 1; }
+  #app > .pane, #app > .sidebar, #app > .peek-dim { will-change: transform, opacity; backface-visibility: hidden; }
   #back { display: grid; }
   .msg { max-width: 86%; }
 }
@@ -1689,6 +1696,11 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 /* ---------- переходы «как в Telegram»: страницы и окна на весь экран въезжают и уезжают целиком ---------- */
 .set-page { overflow-x: hidden; }
+.peek-dim { display: none; }
+/* перерисованные строки и сообщения, которые уже были на экране, не проигрывают анимацию появления заново */
+.keep .avatar img, .keep .count, .keep .dot, .keep .pip, .keep .fwd, .keep .views, .keep .react, .keep .gift-card .em,
+.keep .gift .em, .keep .gw-card .em, .keep .code-card, .keep .geo-pin, .keep .ttl-mark, .keep .chip, .keep .lvl,
+.keep .rib, .keep .from, .keep .cap, .keep .pinb, .row.keep, .row.keep .avatar, .mrow.keep { animation: none !important; }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes tg-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: none; } }
   @keyframes tg-in-left { from { transform: translate3d(-25%, 0, 0); opacity: .55; } to { transform: none; opacity: 1; } }
@@ -2716,6 +2728,7 @@ void main() {
     </nav>
   </aside>
 
+  <div class="peek-dim" id="peekDim" aria-hidden="true"></div>
   <main class="pane">
     <div class="placeholder" id="placeholder">Выберите чат слева или найдите человека по юзернейму, чтобы написать ему.</div>
     <div id="conv" hidden>
@@ -4462,7 +4475,6 @@ async function startApp() {
   // список чатов с прошлого раза показываем сразу, свежий подгружается следом
   if (!state.chats.size && loadChatsSnap()) renderList(); else if (!state.chats.size) paintSkeleton();
   await loadChats();
-  await renderList();
   loadFolders();
   claimDaily();
   refreshAiCredits();
@@ -4863,7 +4875,14 @@ function searchHome(chats) {
 // список перерисовывается не чаще одного раза за кадр: пачка событий подряд не дёргает интерфейс
 let listWait = null;
 function renderList() {
-  if (!listWait) listWait = new Promise((res) => requestAnimationFrame(() => { listWait = null; renderListNow().then(res, res); }));
+  if (!listWait) listWait = new Promise((res) => {
+    const go = () => {
+      const a = document.getElementById("app");
+      if (a && a.classList.contains("enter") && a.querySelector("#chatList .row:not(.skel)")) { setTimeout(go, 200); return; }
+      requestAnimationFrame(() => { listWait = null; renderListNow().then(res, res); });
+    };
+    go();
+  });
   return listWait;
 }
 async function renderListNow() {
@@ -5437,6 +5456,10 @@ function renderMsgs(newId) {
   }
   const before = msgsBefore();
   $("msgs").replaceChildren(...kids);
+  if (before && before.length) {
+    const had = new Set(before.map((x) => x.id));
+    for (const n of $("msgs").querySelectorAll(".msg[data-id]")) if (had.has(n.dataset.id)) { n.classList.add("keep"); const r = n.closest(".mrow"); if (r) r.classList.add("keep"); }
+  }
   msgsGone(before);
   if (newId && flyFrom && Date.now() - flyFrom.t < 1500) {
     const n = $("msgs").querySelector('.msg.mine[data-id="' + newId + '"]');
@@ -9961,54 +9984,64 @@ function playSound(kind) {
 /* ---------- плавное открытие чата и возврат смахиванием вправо (чат, страницы настроек, окна на весь экран) ---------- */
 const PEEK = 0.28, SWIPE_EASE = "cubic-bezier(.2,.8,.2,1)", OPEN_EASE = "cubic-bezier(.22,.9,.28,1)";
 function phoneLayout() { return innerWidth <= 760; }
-function peekEls() { return { app: $("app"), pane: document.querySelector("#app > .pane"), side: document.querySelector("#app > .sidebar") }; }
-function peekReset() {
-  const { app, pane, side } = peekEls();
-  for (const el of [pane, side]) { el.getAnimations().forEach((a) => a.cancel()); el.style.transform = ""; el.style.filter = ""; }
-  app.classList.remove("peek");
+// На телефоне оба экрана (список и чат) нарисованы всегда и лежат друг над другом. При входе и выходе меняется
+// только их сдвиг и затемнение — без пересчёта раскладки, поэтому ничего не дёргается.
+const PANE_OPEN = { pane: 0, side: -PEEK * 100, dim: 1 }, PANE_SHUT = { pane: 100, side: 0, dim: 0 };
+function peekEls() { return { app: $("app"), pane: document.querySelector("#app > .pane"), side: document.querySelector("#app > .sidebar"), dim: $("peekDim") }; }
+function paneFrames(a, b) {
+  const t = (v) => ({ pane: "translate3d(" + v.pane + "%,0,0)", side: "translate3d(" + v.side + "%,0,0)", dim: String(v.dim) });
+  const x = t(a), y = t(b);
+  return { pane: [{ transform: x.pane }, { transform: y.pane }], side: [{ transform: x.side }, { transform: y.side }], dim: [{ opacity: x.dim }, { opacity: y.dim }] };
 }
-function peekStart() {
-  const { app, pane, side } = peekEls();
-  for (const el of [pane, side]) el.getAnimations().forEach((a) => a.cancel());
-  app.classList.add("peek");
+function paneStop() {
+  const { pane, side, dim } = peekEls();
+  for (const el of [pane, side, dim]) { el.getAnimations().forEach((a) => a.cancel()); el.style.transform = ""; el.style.opacity = ""; }
 }
+// положение при перетаскивании: k = 0 — чат открыт, k = 1 — закрыт
+function paneAt(k) {
+  const { pane, side, dim } = peekEls();
+  pane.style.transform = "translate3d(" + k * 100 + "%,0,0)";
+  side.style.transform = "translate3d(" + PANE_OPEN.side * (1 - k) + "%,0,0)";
+  dim.style.opacity = String(1 - k);
+}
+function paneRun(from, to, ms, ease, done) {
+  const { pane, side, dim } = peekEls(), f = paneFrames(from, to), o = { duration: ms, easing: ease, fill: "forwards" };
+  pane.animate(f.pane, o); dim.animate(f.dim, o);
+  side.animate(f.side, o).onfinish = done;
+}
+function peekStart() { paneStop(); }
+let paneDrag = { raf: 0, k: 0 };
 function peekAt(dx) {
-  const { pane, side } = peekEls(), w = pane.clientWidth || innerWidth, k = Math.min(1, Math.max(0, dx / w));
-  pane.style.transform = "translateX(" + dx + "px)";
-  side.style.transform = "translateX(" + (-PEEK * 100 * (1 - k)) + "%)";
-  side.style.filter = "brightness(" + (0.8 + 0.2 * k) + ")";
+  const w = peekEls().pane.clientWidth || innerWidth;
+  paneDrag.k = Math.min(1, Math.max(0, dx / w));
+  if (!paneDrag.raf) paneDrag.raf = requestAnimationFrame(() => { paneDrag.raf = 0; paneAt(paneDrag.k); });
 }
-// открытие: чат въезжает справа, список чатов немного уходит влево и темнеет
+function kNow(dx) { cancelAnimationFrame(paneDrag.raf); paneDrag.raf = 0; return Math.min(1, Math.max(0, dx / (peekEls().pane.clientWidth || innerWidth))); }
+const mix = (k) => ({ pane: 100 * k, side: PANE_OPEN.side * (1 - k), dim: 1 - k });
+// открытие: чат въезжает справа, список немного уходит влево под затемнение
 function chatSlideIn() {
   if (!phoneLayout() || !motionOK() || $("app").classList.contains("enter")) return;
-  const { pane, side } = peekEls();
-  peekStart();
-  pane.style.transform = "translateX(100%)";
+  paneStop();
+  paneAt(1);   // до первого кадра чат стоит за правым краем, пока рисуется переписка
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    pane.style.transform = "";
     slideBusy = true; slidePending = false;
-    const done = () => { slideBusy = false; if (slidePending) { slidePending = false; repaintKeep(); } };
-    setTimeout(done, 420);   // на случай, если анимацию прервали
-    pane.animate([{ transform: "translate3d(100%,0,0)" }, { transform: "translate3d(0,0,0)" }], { duration: 330, easing: OPEN_EASE });
-    side.animate([{ transform: "none", filter: "brightness(1)" }, { transform: "translateX(-" + PEEK * 100 + "%)", filter: "brightness(.8)" }], { duration: 330, easing: OPEN_EASE })
-      .onfinish = () => { if ($("app").classList.contains("chat-open")) peekReset(); done(); };
+    const done = () => { if (!slideBusy) return; slideBusy = false; if (slidePending) { slidePending = false; repaintKeep(); } };
+    setTimeout(done, 460);
+    paneStop();
+    paneRun(PANE_SHUT, PANE_OPEN, 340, OPEN_EASE, () => { if ($("app").classList.contains("chat-open")) paneStop(); done(); });
   }));
 }
-// назад: чат уезжает вправо с того места, где его отпустили
+// назад: чат уезжает вправо с того места, где его отпустили; список выезжает из-под него
 function chatBack(dx) {
-  if (!motionOK()) { peekReset(); closeChat(true); return; }
-  const { app, pane, side } = peekEls(), w = pane.clientWidth || innerWidth, k = Math.min(1, dx / w);
-  if (!app.classList.contains("peek")) peekStart();
-  const dur = Math.max(140, 300 * (1 - k));
-  pane.animate([{ transform: "translateX(" + dx + "px)" }, { transform: "translateX(100%)" }], { duration: dur, easing: SWIPE_EASE, fill: "forwards" });
-  side.animate([{ transform: "translateX(" + (-PEEK * 100 * (1 - k)) + "%)", filter: "brightness(" + (0.8 + 0.2 * k) + ")" }, { transform: "none", filter: "brightness(1)" }], { duration: dur, easing: SWIPE_EASE, fill: "forwards" })
-    .onfinish = () => { closeChat(true); peekReset(); };
+  if (!phoneLayout() || !motionOK()) { paneStop(); closeChat(true); return; }
+  const k = kNow(dx);
+  paneStop();
+  paneRun(mix(k), PANE_SHUT, Math.max(150, 300 * (1 - k)), k ? "cubic-bezier(.2,.75,.3,1)" : "cubic-bezier(.32,.72,0,1)", () => { closeChat(true); paneStop(); });
 }
 function chatStay(dx) {
-  const { pane, side } = peekEls(), w = pane.clientWidth || innerWidth, k = Math.min(1, dx / w);
-  pane.animate([{ transform: "translateX(" + dx + "px)" }, { transform: "none" }], { duration: 220, easing: SWIPE_EASE, fill: "forwards" });
-  side.animate([{ transform: "translateX(" + (-PEEK * 100 * (1 - k)) + "%)" }, { transform: "translateX(-" + PEEK * 100 + "%)" }], { duration: 220, easing: SWIPE_EASE, fill: "forwards" })
-    .onfinish = peekReset;
+  const k = kNow(dx);
+  paneStop();
+  paneRun(mix(k), PANE_OPEN, 240, "cubic-bezier(.2,.9,.3,1)", paneStop);
 }
 // общий жест: палец ведёт вправо — экран едет за ним; отпустили дальше трети или резко — уходим назад
 function swipeBack(target, o) {
@@ -10209,10 +10242,11 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
 const listCounts = new Map();
 function flipList(list, paint) {
   const ok = motionOK() && !document.hidden && list.offsetParent && !$("app").classList.contains("enter");
-  const before = new Map();
-  if (ok) for (const r of list.children) if (r.dataset.cid) before.set(r.dataset.cid, r.getBoundingClientRect().top);
+  const before = new Map(), had = new Set();
+  for (const r of list.children) if (r.dataset.cid) { had.add(r.dataset.cid); if (ok) before.set(r.dataset.cid, r.getBoundingClientRect().top); }
   paint();
   const rows = [...list.children].filter((r) => r.dataset.cid);
+  for (const r of rows) if (had.has(r.dataset.cid)) r.classList.add("keep");
   for (const r of rows) {
     const c = r.querySelector(".count:not(.at)"), was = listCounts.get(r.dataset.cid), now = c ? c.textContent : "";
     if (ok && c && was !== undefined && was !== now) c.classList.add("bump");
