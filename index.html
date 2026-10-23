@@ -1636,6 +1636,16 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
     #app.back .sidebar { animation: slide-back .22s var(--ease) both; }
   }
 }
+/* покупка ИИ-кредитов */
+.ai-buy-btn { flex: none; border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--accent); }
+.ai-buy-btn[hidden] { display: none; }
+.ab-bal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ab-bal > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
+.ab-bal b { font-size: 20px; }
+.ab-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ab-chips button { border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; }
+.ab-chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1845,7 +1855,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=cbeb80e7a4"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=421f1d0e24"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2659,6 +2669,7 @@ void main() {
           <div class="name" id="convName"></div>
           <div class="small muted" id="convSub"></div>
         </button>
+        <button class="ai-buy-btn" id="btnAiBuy" type="button" title="Купить ИИ-кредиты за Mest" hidden>+ Кредиты</button>
         <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
         <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
       </header>
@@ -3553,6 +3564,19 @@ void main() {
 </dialog>
 
 <!-- ИИ-помощник: один вопрос в сутки для премиума -->
+<!-- покупка ИИ-кредитов за Mest: 1 Mest = 1 кредит -->
+<dialog id="dlgAiBuy">
+  <form class="dlg" id="abForm" novalidate>
+    <h2 class="ai-h"><span class="ai-ico" id="abIco"></span>ИИ-кредиты</h2>
+    <div class="ab-bal"><div><span class="small muted">Кредиты</span><b id="abCred">0</b></div><div><span class="small muted">На счёте</span><b id="abMest">0 Mest</b></div></div>
+    <div class="small muted">1 Mest = 1 ИИ-кредит. Помощник тратит 1 кредит за каждую секунду работы над ответом.</div>
+    <div class="ab-chips" id="abChips"></div>
+    <label class="field"><span>Сколько кредитов</span><input class="input" id="abAmt" type="number" inputmode="numeric" min="1" max="100000" step="1" value="50"></label>
+    <div class="error" id="abErr" role="alert"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button><button class="btn" type="submit" id="abGo">Купить</button></div>
+  </form>
+</dialog>
+
 <dialog id="dlgAi">
   <div class="dlg">
     <h2 class="ai-h"><span class="ai-ico" id="aiIco"></span>ИИ-помощник<span class="ai-cred" id="aiCred"></span></h2>
@@ -4876,6 +4900,7 @@ function renderHead() {
   $("convSub").textContent = c.is_channel ? subsText(n) : c.is_group ? n + " " + plural(n, T("участник"), T("участника"), T("участников")) : (o ? fmtSeen(o) : T("заметки для себя"));
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
   if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
+  $("btnAiBuy").hidden = !isAiChat(c) || !!state.isAdmin;
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
   $("convSub").classList.toggle("typing", !!ty && c.is_group);
@@ -9331,7 +9356,7 @@ function cacheChanged(m) {
 }
 
 /* ---------- ИИ-помощник: один вопрос — один ИИ-кредит ---------- */
-$("aiIco").append(icon("ai"));
+$("aiIco").append(icon("ai")); $("abIco").append(icon("ai"));
 const AI_SELLER = "boss";   // кредиты пока продаёт он
 // **жирный** из ответа показываем жирным, остальное — как есть
 function aiText(t) {
@@ -9680,6 +9705,53 @@ function geoCard(m) {
       h("span", {}, lat.toFixed(5) + ", " + lng.toFixed(5) + (m.geo_acc ? T(" · точность ~") + m.geo_acc + T(" м") : ""))),
     h("div", { class: "geo-btns" }, btn(gmapsUrl(lat, lng), "Google Maps"), btn(wazeUrl(lat, lng), "Waze")));
 }
+
+/* ---------- покупка ИИ-кредитов за Mest (1 Mest = 1 кредит) ---------- */
+const AB_PACKS = [10, 50, 100, 300, 1000];
+async function openAiBuy() {
+  const d = $("dlgAiBuy");
+  $("abErr").textContent = "";
+  $("abCred").textContent = nf.format(aiCredits);
+  $("abMest").textContent = "…";
+  paintAbChips();
+  d.showModal();
+  const [w] = await Promise.all([sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle(), refreshAiCredits()]);
+  state.balance = w.data ? Number(w.data.balance) : 0;
+  $("abMest").textContent = coins(state.balance);
+  $("abCred").textContent = nf.format(aiCredits);
+  abCheck();
+}
+function paintAbChips() {
+  const v = Number($("abAmt").value) || 0;
+  $("abChips").replaceChildren(...AB_PACKS.map((n) => h("button", { type: "button", "aria-pressed": String(v === n), onclick: () => { $("abAmt").value = n; paintAbChips(); abCheck(); } }, nf.format(n))));
+}
+function abCheck() {
+  const n = Math.floor(Number($("abAmt").value) || 0), bal = Number(state.balance) || 0;
+  const bad = n < 1 || n > 100000;
+  $("abGo").disabled = bad || n > bal;
+  $("abGo").textContent = bad ? T("Купить") : T("Купить за ") + coins(n);
+  $("abErr").textContent = !bad && n > bal ? T("Не хватает Mest: на счёте ") + coins(bal) : "";
+}
+$("abAmt").addEventListener("input", () => { paintAbChips(); abCheck(); });
+$("btnAiBuy").addEventListener("click", openAiBuy);
+$("abForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const n = Math.floor(Number($("abAmt").value) || 0);
+  if (n < 1) return;
+  $("abGo").disabled = true;
+  const { data, error } = await sb.rpc("buy_ai_credits", { p_amount: n });
+  if (error) {
+    const m = error.message || "";
+    $("abErr").textContent = /insufficient/.test(m) ? T("Не хватает Mest.") : /not allowed/.test(m) ? T("Сейчас покупка недоступна.") : T("Не получилось. Попробуйте ещё раз.");
+    abCheck();
+    return;
+  }
+  aiCredits = Number(data.credits) || 0;
+  state.balance = Number(data.balance) || 0;
+  $("dlgAiBuy").close();
+  toast(T("Готово: +") + credText(n) + T(". Теперь у вас ") + credText(aiCredits));
+  refreshAiCredits();
+});
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }

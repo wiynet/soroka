@@ -254,7 +254,7 @@ async function botReply(messageId: number) {
   if (!unlimited) {
     balance = Number((await sb.rpc("ai_balance", { p_user: m.sender_id })).data) || 0;
     if (balance < 1) {
-      await say("У вас нет ИИ-кредитов. Я списываю 1 кредит за каждую секунду работы над ответом.\nКупить кредиты можно у @boss.");
+      await say("У вас нет ИИ-кредитов. Я списываю 1 кредит за каждую секунду работы над ответом.\nКупить кредиты можно за Mest: кнопка «+ Кредиты» вверху этого чата (1 Mest = 1 кредит).");
       return "no credits";
     }
   }

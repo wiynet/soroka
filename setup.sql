@@ -1461,3 +1461,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- :root[data-glass="liquid"]: полупрозрачные панели, меню, окна, пузыри с размытием и бликом; настройка «Жидкое стекло»
 -- (Авто/Вкл/Выкл, settings.glass). «Авто» включает его в приложении для iPhone (capacitor://).
 -- iOS-сборка выбирает Xcode 26, если он есть на сборщике, — системные элементы получают стиль iOS 26.
+
+-- ===== Покупка ИИ-кредитов за Mest (миграция mestario_buy_ai_credits) =====
+-- public.buy_ai_credits(p_amount int) → {credits, balance}: 1 Mest = 1 кредит, 1..100000, списание через private.spend
+-- (запись в coin_ledger «ИИ-кредиты: N»), начисление в private.ai_credits + private.ai_credit_log (reason 'buy').
+-- Клиент: кнопка «+ Кредиты» в шапке чата с @ai (кроме админов) → окно dlgAiBuy. Бот при нуле кредитов отсылает к ней (ai v10).
