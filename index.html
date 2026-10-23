@@ -2897,6 +2897,7 @@ void main() {
         </div>
         <button class="ai-buy-btn" id="btnAiBuy" type="button" title="Купить ИИ-кредиты за Mest" hidden>+ Кредиты</button>
         <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
+        <button class="icon-btn" id="btnBotEdit" type="button" title="Настроить бота" aria-label="Настроить бота" hidden></button>
         <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
       </header>
       <div class="find-bar" id="findBar" hidden>
@@ -2957,6 +2958,10 @@ void main() {
     <button class="pick" type="button" id="myProfileRow">
       <span id="myProfileAv"></span>
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
+    </button>
+    <button class="pick" type="button" id="myBotsRow">
+      <span class="ico">🤖</span>
+      <span><b>Мои боты</b><span class="small muted">Создать бота или изменить своих: команды, кнопки, ИИ</span></span>
     </button>
 
     <div class="set-label">Аватарка</div>
@@ -3672,6 +3677,7 @@ void main() {
       <div class="u-acts">
         <button class="btn" type="button" id="uWrite">Написать</button>
         <button class="btn ghost" type="button" id="uGift">Подарить</button>
+        <button class="btn ghost" type="button" id="uBotEdit" hidden>⚙ Настроить бота</button>
       </div>
     </div>
     <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
@@ -4767,6 +4773,7 @@ async function startApp() {
   const idbReady = idbLoadAll();   // сохранённая переписка — чтобы чаты открывались сразу
   await loadChats();
   loadFolders();
+  loadMyBots().then(() => { if (state.activeId) renderHead(); }).catch(() => {});
   claimDaily();
   refreshAiCredits();
   idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
@@ -5357,6 +5364,7 @@ function renderHead() {
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
   if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
   $("btnAiBuy").hidden = !isAiChat(c) || !!state.isAdmin;
+  { const bt = botOf(c); $("btnBotEdit").hidden = !(bt && myBots.some((b) => b.id === bt.id)); }
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
   $("convSub").classList.toggle("typing", !!ty && c.is_group);
@@ -7801,8 +7809,9 @@ function paintUser(p) {
   $("uNoBio").hidden = true;
   const me = p.id === state.me.id;
   $("uWrite").hidden = me;
-  $("uGift").hidden = !!p.banned_at;
+  $("uGift").hidden = !!p.banned_at || !!p.is_bot;
   $("uEdit").hidden = $("uAddStory").hidden = !me;
+  $("uBotEdit").hidden = !(p.is_bot && myBots.some((b) => b.id === p.id));
   paintStoryRing();
 }
 function showUserTab(name) {
@@ -11067,6 +11076,17 @@ async function openBots() {
     : [h("div", { class: "small muted" }, T("У вас пока нет ботов. Придумайте название и юзернейм — бот сразу получит кнопки «Старт» и «Мои монеточки», дальше всё меняется в конструкторе."))]));
 }
 $("newBot").addEventListener("click", () => { $("dlgNew").close(); openBots(); });
+// изменить бота можно в любой момент: из чата с ним, из его профиля и из настроек («Мои боты»)
+async function editBotById(id) {
+  let b = myBots.find((x) => x.id === id);
+  if (!b) { await loadMyBots(); b = myBots.find((x) => x.id === id); }
+  if (!b) { toast(T("Это не ваш бот")); return; }
+  openBotEdit(b);
+}
+$("btnBotEdit").append(icon("gear"));
+$("btnBotEdit").addEventListener("click", () => { const bt = botOf(state.chats.get(state.activeId)); if (bt) editBotById(bt.id); });
+$("uBotEdit").addEventListener("click", () => { if (viewed) { const id = viewed.id; $("dlgUser").close(); editBotById(id); } });
+$("myBotsRow").addEventListener("click", () => { if ($("dlgSettings").open) $("dlgSettings").close(); openBots(); });
 $("botNewUser").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""); });
 $("botNewForm").addEventListener("submit", async (e) => {
   e.preventDefault();
