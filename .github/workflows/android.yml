@@ -45,6 +45,8 @@ jobs:
       - name: Разрешения, версия, иконки
         working-directory: app/android/app
         run: |
+          # своя главная активность: просит у системы максимальную частоту экрана (90/120/144 Гц)
+          cp ../../MainActivity.java src/main/java/top/mestario/app/MainActivity.java
           M=src/main/AndroidManifest.xml
           sed -i 's#</manifest>#  <uses-permission android:name="android.permission.CAMERA" />\n  <uses-permission android:name="android.permission.RECORD_AUDIO" />\n  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />\n  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>#' $M
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" build.gradle

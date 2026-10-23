@@ -45,6 +45,8 @@ jobs:
           add NSLocationWhenInUseUsageDescription "Местоположение нужно, чтобы отправить его в чат"
           add NSPhotoLibraryUsageDescription "Доступ к фото нужен, чтобы отправлять их в чаты"
           add NSPhotoLibraryAddUsageDescription "Чтобы сохранять фото из чатов"
+          # ProMotion: разрешаем приложению 120 Гц на iPhone с таким экраном
+          /usr/libexec/PlistBuddy -c "Add :CADisableMinimumFrameDurationOnPhone bool true" $P 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :CADisableMinimumFrameDurationOnPhone true" $P
           ICON=$(find App/Assets.xcassets/AppIcon.appiconset -name "*.png" | head -1)
           echo "icon: $ICON"
           sips -z 1024 1024 ../../../icon-512.png --out "$ICON"

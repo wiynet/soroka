@@ -2251,7 +2251,7 @@ void main() {
     raf = 0;
     if (dead || !seen()) return;
     if (!gl) { init(); if (!gl) return; }
-    if (now - last >= 30) { last = now; draw(now); }   // около 30 кадров в секунду: плавно и бережёт батарею
+    draw(now);   // каждый кадр экрана: 60 Гц — 60 кадров, 120 Гц — 120; скорость движения от частоты не зависит (считается по времени)
     if (!still) raf = requestAnimationFrame(frame);
   }
   function kick() { if (!raf && !dead) raf = requestAnimationFrame(frame); }
@@ -9705,10 +9705,14 @@ function introRender(t) {
     if (v.num != null) el.textContent = String(Math.round(v.num));
   }
 }
-function introFrame() {
+let introLastT = 0;
+function introFrame(now) {
   const root = $("intro");
   const target = Math.max(0, Math.min(1, root.scrollTop / INTRO_SCROLL)) * introTl.total;
-  introCur += (target - introCur) * .12;          // мягкое догоняние, как scrub
+  // мягкое догоняние, как scrub; доля шага зависит от времени кадра, а не от их числа — на 60 и 120 Гц одинаково по скорости
+  const dt = introLastT && now ? Math.min(100, now - introLastT) : 16.7;
+  introLastT = now || 0;
+  introCur += (target - introCur) * (1 - Math.pow(1 - .12, dt / 16.7));
   if (Math.abs(target - introCur) < .002) introCur = target;
   introRender(introCur);
   $("introHint").style.opacity = root.scrollTop > 40 ? "0" : "1";
