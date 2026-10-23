@@ -118,7 +118,7 @@ async function streamModel(k: string, model: string, turns: Turn[], onText: (t: 
   full = full.trim();
   return { ok: !!full, status: 200, text: full, err: full ? "" : "empty" };
 }
-async function callModel(k: string, model: string, text: string | Turn[], vertex: boolean, sys = SYSTEM, maxTok = 4096) {
+async function callModel(k: string, model: string, text: string | Turn[], vertex: boolean, sys = SYSTEM, maxTok = 4096, opts: { json?: boolean; think?: boolean } = {}) {
   const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
   const url = vertex
     ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodeURIComponent(k)}`
@@ -133,11 +133,14 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
     }),
   }, maxTok > 4096 ? 60000 : 30000);
   let r: Response;
-  try { r = await send(genCfg(model, { maxOutputTokens: maxTok, temperature: 0.7 })); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+  const base: any = { maxOutputTokens: maxTok, temperature: opts.think ? 0.4 : 0.7 };
+  if (opts.json) base.responseMimeType = "application/json";
+  // обычный чат — без «размышления» (быстро); сборка бота — с размышлением (точнее)
+  try { r = await send(opts.think ? base : genCfg(model, base)); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
   let j = await r.json().catch(() => ({}));
   if (!r.ok && thinkRejected(r.status, JSON.stringify(j))) {
     noThink.add(model);
-    try { r = await send({ maxOutputTokens: maxTok, temperature: 0.7 }); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
+    try { r = await send(base); } catch (e) { return { ok: false, status: 504, err: "timeout" }; }
     j = await r.json().catch(() => ({}));
   }
   if (!r.ok) return { ok: false, status: r.status, err: JSON.stringify(j).slice(0, 300) };
@@ -147,7 +150,7 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
 // у каждой модели свой бесплатный лимит: исчерпанную пропускаем 30 минут и идём к следующей,
 // а если кончились все — отвечает запасной бесплатный ИИ (Pollinations)
 const blocked = new Map<string, number>();
-async function ask(text: string | Turn[], onText?: (t: string) => void, sys = SYSTEM, maxTok = 4096) {
+async function ask(text: string | Turn[], onText?: (t: string) => void, sys = SYSTEM, maxTok = 4096, opts: { json?: boolean; think?: boolean } = {}) {
   const k = await key();
   let last: any = { ok: false, status: 503, err: "no key" };
   if (k) {
@@ -156,9 +159,9 @@ async function ask(text: string | Turn[], onText?: (t: string) => void, sys = SY
     for (const vertex of useVertex ? [true] : [false, true]) {
       let any429 = false;
       for (const m of list) {
-        if (Date.now() - started > 35000) break;   // общий предел: дальше — запасной ИИ, а не бесконечный перебор
+        if (Date.now() - started > (opts.think ? 80000 : 35000)) break;   // общий предел: дальше — запасной ИИ, а не бесконечный перебор
         const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
-        const res: any = onText && !vertex ? await streamModel(k, m, turns, onText, sys) : await callModel(k, m, text, vertex, sys, maxTok);
+        const res: any = onText && !vertex ? await streamModel(k, m, turns, onText, sys) : await callModel(k, m, text, vertex, sys, maxTok, opts);
         // модель, которая не отвечает или недоступна ключу, на время пропускаем — не тратим на неё секунды
         if (!res.ok && res.status !== 429 && (res.status === 404 || res.status === 403 || res.status === 504)) blocked.set(m, Date.now() + 10 * 60_000);
         if (res.ok) { useVertex = vertex; return { ...res, model: m, vertex }; }
@@ -585,16 +588,23 @@ ${cfg.ai.prompt ? "Инструкция владельца бота (харак�
   else await sb.from("messages").insert({ chat_id: ctx.chat, sender_id: ctx.bot, body: out });
   return "ok";
 }
-const GEN_SYS = `Ты помогаешь собрать бота в конструкторе мессенджера Mestario (как боты Telegram, но без кода).
-Верни ТОЛЬКО JSON без пояснений и без \`\`\`, вида:
+const GEN_SYS = `Ты — опытный помощник конструктора ботов мессенджера Mestario (как боты Telegram, но без кода). Ты собираешь и аккуратно правишь бота по просьбам владельца.
+Верни ТОЛЬКО JSON вида {"summary":"...","config":{...}}.
+summary — 1–3 коротких предложения по-русски: что именно ты сделал или изменил (или почему не смог).
+config — ПОЛНЫЙ бот:
 {"start":{"text":"...","kb":[["Кнопка 1","Кнопка 2"]],"inline":[[{"t":"Сайт","u":"https://..."}]]},
- "cmds":[{"on":"Кнопка 1|синоним|/команда","text":"...","kb":[["..."]],"inline":[[{"t":"Ещё","s":"Кнопка 2"}]],"hide":false}],
- "unknown":{"text":"..."},"ai":{"on":false,"prompt":"..."}}
-Правила: start — ответ на «Начать»; cmds — ответы на нажатие кнопки или текст (варианты через |); unknown — если ничего не подошло.
-kb — клавиатура над полем ввода: до 10 рядов по 4 кнопки, текст кнопки до 40 символов. inline — кнопки под сообщением: {"t":"текст","u":"https://..."} (ссылка) или {"t":"текст","s":"текст команды"}.
-У каждой кнопки клавиатуры и каждой inline-кнопки с "s" должна быть команда с таким "on". Обычно повторяй главное меню (kb) в ответах, чтобы клавиатура не пропадала.
-В текстах можно использовать {name} (имя человека), {username}, {mest} (его баланс Mest), {id}, {date}. Бот не умеет платить, хранить данные и считать — только отвечать текстом и кнопками; для свободных ответов есть ИИ ("ai").
-Если дан текущий бот — сохрани его и измени по задаче. Не больше 80 команд. Пиши на языке задачи.`;
+ "cmds":[{"on":"Кнопка 1|синоним|/команда|~слово","desc":"что делает (для меню)","text":"...","kb":[["..."]],"inline":[[{"t":"Ещё","s":"Кнопка 2"}]],"hide":false,"pay":0,"paid":"...","nomenu":false}],
+ "unknown":{"text":"...","kb":[["..."]]},"ai":{"on":false,"prompt":"..."}}
+Как работает движок (используй только это):
+• start — ответ на «Начать» и /start. cmds — ответы: сообщение совпадает с одним из вариантов "on" (через |) без учёта регистра, эмодзи и знаков; вариант с «~» срабатывает, если сообщение СОДЕРЖИТ эти слова (~привет). unknown — если ничего не подошло.
+• kb — клавиатура над полем ввода (до 10 рядов по 4 кнопки, до 40 символов); нажатие кнопки = отправка её текста. Клавиатура остаётся, пока другой ответ не задаст новую, поэтому повторяй главное меню в ответах. hide:true — убрать клавиатуру.
+• inline — кнопки под сообщением: {"t":"текст","u":"https://..."} (ссылка) или {"t":"текст","s":"текст команды"}.
+• У КАЖДОЙ кнопки (kb и inline с "s") ОБЯЗАТЕЛЬНО есть команда, чей "on" содержит ровно этот текст. Проверь это перед ответом.
+• desc — короткое описание для меню команд (его видят пользователи); nomenu:true — не показывать в меню.
+• Переменные в тексте: {name} {username} {mest} (баланс Mest человека) {id} {date} {time} {bot} {random:1..6} (случайное число) {random:да|нет|может} (случайный вариант).
+• pay — цена в Mest (1–100000): под ответом появится кнопка «Оплатить N Mest», деньги уходят владельцу бота; paid — текст после оплаты (можно {pay}). Используй для «купить», «VIP», «донат», «товар».
+• Бот НЕ умеет начислять Mest, запоминать данные, считать очки, ставки и выигрыши — не обещай этого в текстах (никаких «вам начислено», «ваш счёт»). Для игр используй {random}, для свободных разговоров — ai.on и ai.prompt.
+Правила правки: если дан текущий бот — сохрани всё, о чём не просили, и измени только нужное; не удаляй команды без просьбы. Учитывай прошлые просьбы из истории. Не больше 120 команд. Пиши на языке владельца, дружелюбно, с уместными эмодзи.`;
 async function botGen(uid: string, input: any) {
   const id = String(input.bot || "");
   const { data: b } = await sb.from("bots").select("id,owner,config").eq("id", id).maybeSingle();
@@ -603,12 +613,21 @@ async function botGen(uid: string, input: any) {
   if (!ok) return { error: "no access", status: 402 };
   const task = String(input.request || "").trim().slice(0, 2000);
   if (!task) return { error: "empty", status: 400 };
-  const cur = input.config && typeof input.config === "object" ? JSON.stringify(input.config).slice(0, 60000) : "";
-  const r: any = await ask((cur ? "Текущий бот:\n" + cur + "\n\n" : "") + "Задача: " + task, undefined, GEN_SYS, 16384);
+  const cur = input.config && typeof input.config === "object" ? JSON.stringify(input.config).slice(0, 80000) : "";
+  const hist = (Array.isArray(input.history) ? input.history : []).slice(-6)
+    .map((h: any) => "• " + String(h.request || "").slice(0, 400) + (h.summary ? " → " + String(h.summary).slice(0, 300) : "")).join("\n");
+  const prompt = (hist ? "Прошлые просьбы владельца и что ты сделал:\n" + hist + "\n\n" : "") +
+    (cur ? "Текущий бот (JSON):\n" + cur + "\n\n" : "Бот пока пустой.\n\n") + "Новая просьба владельца: " + task;
+  const r: any = await ask(prompt, undefined, GEN_SYS, 32768, { json: true, think: true });
   if (!r || !r.ok) return { error: r?.status === 429 ? "busy" : "ai", status: 502 };
   const raw = String(r.text);
   const a = raw.indexOf("{"), z = raw.lastIndexOf("}");
-  try { return { config: JSON.parse(raw.slice(a, z + 1)) }; } catch (_) { return { error: "bad json", status: 502 }; }
+  try {
+    const j = JSON.parse(raw.slice(a, z + 1));
+    const config = j && j.config && typeof j.config === "object" ? j.config : j;
+    if (!config || typeof config !== "object" || (!config.start && !config.cmds)) return { error: "bad json", status: 502 };
+    return { config, summary: String((j && j.summary) || "").slice(0, 600) };
+  } catch (_) { return { error: "bad json", status: 502 }; }
 }
 function plural(n: number) {
   const a = n % 10, b = n % 100;

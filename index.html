@@ -1786,6 +1786,25 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .be-mini.x { color: var(--danger); }
 .be-row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .btn.danger { color: var(--danger); }
+.bot-menu-btn { flex: none; align-self: center; border: 0; border-radius: 16px; padding: 8px 12px; background: var(--accent); color: var(--accent-ink); font: 600 13px/1 inherit; cursor: pointer; }
+.bot-menu { max-height: 46vh; overflow-y: auto; background: var(--panel); border-top: 1px solid var(--line); padding: 6px; display: grid; gap: 2px; animation: greet-in .22s ease both; }
+.bot-menu button { display: flex; gap: 10px; align-items: baseline; text-align: left; width: 100%; border: 0; background: none; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); font: inherit; }
+.bot-menu button:hover, .bot-menu button:active { background: var(--panel-2); }
+.bot-menu b { color: var(--accent); white-space: nowrap; }
+.bot-menu span { color: var(--muted); font-size: 13px; }
+.bot-menu .bm-head { padding: 6px 12px 2px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.bot-inline button.pay { background: color-mix(in srgb, #2fbf71 22%, var(--panel-2)); color: #1f9d5b; }
+.bot-inline button.pay.sure { background: #2fbf71; color: #fff; }
+.be-cmdx { display: grid; gap: 6px; grid-template-columns: 1fr auto; align-items: center; }
+.be-cmdx input { min-width: 0; }
+.be-pay { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.be-pay input[type="number"] { width: 110px; }
+.be-pay input.pd { flex: 1 1 200px; }
+.be-log { display: grid; gap: 6px; }
+.be-log .lg { border-radius: 12px; padding: 8px 10px; background: var(--panel-2); font-size: 13px; display: grid; gap: 4px; }
+.be-log .lg q { quotes: none; font-weight: 600; }
+.be-log .lg .sm { color: var(--muted); }
+.be-sales { font-size: 13px; color: var(--muted); margin: -4px 0 8px; }
 .be-ai { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 8px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent); }
 .be-ai textarea { width: 100%; min-height: 60px; resize: vertical; }
@@ -2930,10 +2949,12 @@ void main() {
         <span><b>Изменение:</b> <span id="editText"></span></span>
         <button class="link" id="editCancel" type="button">Отмена</button>
       </div>
+      <div class="bot-menu" id="botMenu" hidden></div>
       <div class="bot-kb" id="botKb" hidden></div>
       <div class="bot-start-wrap" id="botStartWrap" hidden><button class="btn bot-start" type="button" id="botStart">Начать</button></div>
       <form class="composer" id="composer">
         <input type="file" id="fileInput" multiple hidden>
+        <button class="bot-menu-btn" id="btnBotMenu" type="button" title="Команды бота" aria-label="Команды бота" hidden>☰ Меню</button>
         <button class="icon-btn" id="btnAttach" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить фото или файл"></button>
         <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
         <button class="icon-btn" id="btnBotKb" type="button" title="Клавиатура бота" aria-label="Клавиатура бота" hidden></button>
@@ -3402,6 +3423,7 @@ void main() {
 <dialog id="dlgBotEdit" class="bot-edit-dlg">
   <div class="dlg">
     <h2 id="beTitle">Конструктор бота</h2>
+    <div class="be-sales" id="beSales"></div>
     <div class="be-head">
       <button type="button" class="be-av" id="beAv" title="Сменить аватарку бота" aria-label="Сменить аватарку бота"></button>
       <input type="file" id="beAvFile" accept="image/*" hidden>
@@ -3420,6 +3442,7 @@ void main() {
       <div class="be-sub">Помощник: опишите, что должен уметь бот, — ИИ сам соберёт или переделает команды и кнопки.</div>
       <textarea id="beGenText" maxlength="2000" placeholder="Например: «бот-викторина про футбол с 5 вопросами и кнопками ответов» или «добавь раздел Помощь и кнопку Сайт»"></textarea>
       <button class="btn ghost" type="button" id="beGen">✨ Собрать с ИИ</button>
+      <div class="be-log" id="beGenLog"></div>
     </div>
     <div class="set-label">Приветствие — ответ на «Начать» (/start)</div>
     <div id="beStart"></div>
@@ -10997,15 +11020,16 @@ function botSend(text) {
 }
 function botInline(m) {
   const box = h("div", { class: "bot-inline" });
-  for (const row of m.markup.inline.slice(0, 8)) {
-    if (!Array.isArray(row)) continue;
-    box.append(h("div", { class: "kb-row" }, ...row.slice(0, 3).map((b) => h("button", { type: "button", class: b.u ? "url" : "",
+  m.markup.inline.slice(0, 8).forEach((row, ri) => {
+    if (!Array.isArray(row)) return;
+    box.append(h("div", { class: "kb-row" }, ...row.slice(0, 4).map((b, ci) => h("button", { type: "button", class: b.pay ? "pay" : b.u ? "url" : "",
       onclick: (e) => {
         e.stopPropagation();
+        if (b.pay) return botPayClick(e.currentTarget, m, ri, ci, b);
         if (b.u) { if (/^https?:\/\//i.test(b.u)) window.open(b.u, "_blank", "noopener"); }
         else botSend(b.s || b.t);
       } }, String(b.t || "").slice(0, 40)))));
-  }
+  });
   return box;
 }
 var botKbHidden = false, botStartHid = false;
@@ -11017,6 +11041,8 @@ function renderHeadComposer(c) {
 function paintBotKb() {
   const c = state.chats.get(state.activeId), bot = botOf(c);
   const kb = $("botKb"), btn = $("btnBotKb"), start = $("botStartWrap");
+  $("btnBotMenu").hidden = !bot;
+  if (!bot) $("botMenu").hidden = true;
   if (!bot) { kb.hidden = true; btn.hidden = true; start.hidden = true; if (botStartHid) { botStartHid = false; if (c) renderHeadComposer(c); } return; }
   // клавиатура — из последнего сообщения бота, где она задана (или убрана)
   let rows = null;
@@ -11044,6 +11070,49 @@ function paintBotKb() {
   }
   kb.hidden = false;
 }
+
+// оплата кнопкой бота: второе нажатие подтверждает; сумму и получателя проверяет база
+async function botPayClick(btn, m, ri, ci, b) {
+  if (m.sender_id === state.me.id) return;
+  if (!btn.classList.contains("sure")) {
+    btn.classList.add("sure"); btn.textContent = T("Точно оплатить ") + b.pay + " Mest?";
+    setTimeout(() => { if (document.contains(btn)) { btn.classList.remove("sure"); btn.textContent = b.t; } }, 4000);
+    return;
+  }
+  btn.disabled = true;
+  const { data, error } = await sb.rpc("bot_pay", { p_message: m.id, p_row: ri, p_col: ci });
+  btn.disabled = false; btn.classList.remove("sure"); btn.textContent = b.t;
+  if (error) { const em = error.message || ""; toast(/insufficient/.test(em) ? T("Не хватает Mest") : /already/.test(em) ? T("Уже оплачено") : T("Не получилось оплатить")); return; }
+  toast(T("Оплачено ") + data.amount + T(" Mest · осталось ") + data.balance);
+  playSound && playSound("send");
+  if (typeof refreshMe === "function") refreshMe();
+}
+// меню команд бота: список того, что умеет бот, с описаниями — для тех, кто им пользуется
+const botMenus = new Map();
+async function loadBotMenu(id, force) {
+  if (!force && botMenus.has(id) && Date.now() - botMenus.get(id).at < 60000) return botMenus.get(id).list;
+  const { data } = await sb.rpc("bot_menu", { p_bot: id });
+  const list = Array.isArray(data) ? data.filter((x) => x && x.cmd) : [];
+  botMenus.set(id, { list, at: Date.now() });
+  return list;
+}
+async function toggleBotMenu() {
+  const box = $("botMenu");
+  if (!box.hidden) { box.hidden = true; return; }
+  const bot = botOf(state.chats.get(state.activeId));
+  if (!bot) return;
+  box.replaceChildren(h("div", { class: "bm-head" }, T("Загрузка…")));
+  box.hidden = false;
+  const list = await loadBotMenu(bot.id, true);
+  const pick = (t) => { box.hidden = true; botSend(t); };
+  box.replaceChildren(h("div", { class: "bm-head" }, T("Команды бота")),
+    h("button", { type: "button", onclick: () => pick("/start") }, h("b", {}, "/start"), h("span", {}, T("начать сначала"))),
+    ...list.map((x) => h("button", { type: "button", onclick: () => pick(x.cmd) }, h("b", {}, x.cmd),
+      h("span", {}, (x.desc || "") + (x.pay ? (x.desc ? " · " : "") + x.pay + " Mest" : "")))),
+    ...(list.length ? [] : [h("div", { class: "bm-head" }, T("Владелец ещё не добавил команды"))]));
+}
+$("btnBotMenu").addEventListener("click", (e) => { e.stopPropagation(); toggleBotMenu(); });
+document.addEventListener("pointerdown", (e) => { const b = $("botMenu"); if (!b.hidden && !b.contains(e.target) && e.target !== $("btnBotMenu")) b.hidden = true; });
 // запасной запуск ИИ бота: если база не достучалась до функции, через 3 с без ответа бота просит само приложение
 function botKickSoon(id, chatId) {
   setTimeout(async () => {
@@ -11125,7 +11194,7 @@ $("botNewForm").addEventListener("submit", async (e) => {
 
 // конструктор
 var beBot = null, beAvatar = null;
-const BOT_VARS = [["{name}", "имя человека"], ["{username}", "его @юзернейм"], ["{mest}", "его Mest"], ["{id}", "его номер"], ["{date}", "сегодняшняя дата"]];
+const BOT_VARS = [["{name}", "имя человека"], ["{username}", "его @юзернейм"], ["{mest}", "его Mest"], ["{id}", "его номер"], ["{date}", "сегодняшняя дата"], ["{time}", "время"], ["{bot}", "имя бота"], ["{random:1..6}", "случайное число от 1 до 6"], ["{random:да|нет}", "случайный вариант"]];
 var beLastText = null;
 $("beVars").replaceChildren(...BOT_VARS.map(([v, d]) => h("button", { type: "button", title: T(d), onclick: () => {
   const ta = beLastText && document.contains(beLastText) ? beLastText : $("dlgBotEdit").querySelector("textarea");
@@ -11186,13 +11255,26 @@ function beReply(r, kind) {
   ta.addEventListener("focus", () => { beLastText = ta; });
   const kb = beKbEditor(r.kb, false), il = beKbEditor(r.inline, true);
   const hide = h("input", { type: "checkbox" }); hide.checked = !!r.hide;
+  let desc = null, inMenu = null, pay = null, paid = null;
+  if (kind === "cmd") {
+    desc = h("input", { maxlength: "80", placeholder: T("Описание для меню: что делает команда") }); desc.value = r.desc || "";
+    inMenu = h("input", { type: "checkbox" }); inMenu.checked = !r.nomenu;
+    pay = h("input", { type: "number", min: "0", max: "100000", step: "1", placeholder: T("Цена, Mest") }); pay.value = r.pay ? String(r.pay) : "";
+    paid = h("input", { class: "pd", maxlength: "3000", placeholder: T("Ответ после оплаты: Спасибо! Оплачено {pay} Mest") }); paid.value = r.paid || "";
+    box.append(h("div", { class: "be-cmdx" }, desc, h("label", { class: "be-sub" }, inMenu, T("в меню"))));
+  }
   box.append(ta,
     h("div", { class: "be-sub" }, T("Клавиатура над полем ввода:")), kb,
     h("div", { class: "be-sub" }, T("Кнопки под сообщением:")), il,
-    h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")));
+    h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")),
+    ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут вам")), h("div", { class: "be-pay" }, pay, paid)] : []));
   box.read = () => {
     const o = { text: ta.value.trim() };
     if (on) o.on = on.value.trim();
+    if (desc && desc.value.trim()) o.desc = desc.value.trim();
+    if (inMenu && !inMenu.checked) o.nomenu = true;
+    const pv = pay ? Math.floor(Number(pay.value) || 0) : 0;
+    if (pv >= 1 && pv <= 100000) { o.pay = pv; if (paid.value.trim()) o.paid = paid.value.trim(); }
     const k = kb.read(), i = il.read();
     if (k.length) o.kb = k;
     if (i.length) o.inline = i;
@@ -11217,6 +11299,9 @@ function openBotEdit(b) {
   beFill(cfg);
   $("beFilter").value = "";
   $("beGenText").value = "";
+  beGenHist = []; paintGenLog();
+  $("beSales").textContent = "";
+  sb.rpc("bot_sales", { p_bot: b.id }).then(({ data }) => { if (data && data.count && beBot && beBot.id === b.id) $("beSales").textContent = T("Продажи: ") + data.count + T(" · получено ") + data.total + " Mest"; });
   if (!$("dlgBotEdit").open) $("dlgBotEdit").showModal();
   paintBeAi();
 }
@@ -11272,6 +11357,18 @@ $("beFold").addEventListener("click", () => {
   for (const r of kids) r.classList.toggle("closed", close);
   $("beFold").textContent = close ? T("Развернуть все") : T("Свернуть все");
 });
+// история просьб к помощнику: что он сделал, и отмена последнего шага
+var beGenHist = [];
+function paintGenLog() {
+  const log = $("beGenLog");
+  log.replaceChildren(...beGenHist.slice(-5).map((x, i, arr) => h("div", { class: "lg" },
+    h("q", {}, x.request), h("span", { class: "sm" }, "🤖 " + x.summary),
+    i === arr.length - 1 ? h("button", { class: "link", type: "button", onclick: () => {
+      const last = beGenHist.pop(); if (last) { beFill(last.before); paintGenLog(); toast(T("Отменено — вернул как было до этой просьбы")); }
+    } }, T("↶ Отменить этот шаг")) : null)));
+  $("beGenText").placeholder = beGenHist.length ? T("Что поправить? Например: «сделай кнопки в два ряда» или «добавь цену 50 Mest к VIP»")
+    : T("Например: «бот-викторина про футбол с 5 вопросами и кнопками ответов» или «добавь раздел Помощь и кнопку Сайт»");
+}
 // помощник: ИИ собирает или переделывает бота по описанию; результат попадает в конструктор, сохраняет человек
 $("beGen").addEventListener("click", async () => {
   if (!beBot) return;
@@ -11279,18 +11376,22 @@ $("beGen").addEventListener("click", async () => {
   if (!task) { $("beGenText").focus(); toast(T("Опишите, что должен уметь бот")); return; }
   if (beAiInfo && !beAiInfo.admin && !beAiInfo.until) { toast(T("Сначала подключите ИИ для ботов — кнопки выше")); return; }
   const b = $("beGen");
-  b.disabled = true; b.textContent = T("ИИ собирает бота…");
+  b.disabled = true; b.textContent = T("ИИ думает… (до минуты)");
   try {
     const tok = (await sb.auth.getSession()).data.session?.access_token;
+    const before = beRead();
     const r = await fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST",
       headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok },
-      body: JSON.stringify({ bot_gen: true, bot: beBot.id, request: task, config: beRead() }) });
+      body: JSON.stringify({ bot_gen: true, bot: beBot.id, request: task, config: before, history: beGenHist.map((x) => ({ request: x.request, summary: x.summary })) }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.config) { toast(j.error === "no access" ? T("ИИ для ботов не подключён или исчерпан дневной лимит (40 сборок)") : j.error === "busy" ? T("ИИ перегружен — попробуйте через минуту") : T("Не получилось — попробуйте описать иначе")); return; }
+    if (!r.ok || !j.config) { toast(j.error === "bad json" ? T("ИИ ответил непонятно — попробуйте переформулировать") : j.error === "no access" ? T("ИИ для ботов не подключён или исчерпан дневной лимит (40 сборок)") : j.error === "busy" ? T("ИИ перегружен — попробуйте через минуту") : T("Не получилось — попробуйте описать иначе")); return; }
     const c = j.config;
     if (!c.ai && $("beAiOn").checked) c.ai = { on: true, prompt: $("beAiPrompt").value };
     beFill(c);
-    toast(T("Готово! Проверьте команды и нажмите «Сохранить»"));
+    beGenHist.push({ request: task, summary: j.summary || T("Готово"), before });
+    paintGenLog();
+    $("beGenText").value = "";
+    toast(T("Готово! Проверьте и нажмите «Сохранить». Можно попросить поправить"));
   } catch (e) { toast(T("Нет связи — попробуйте ещё раз")); }
   finally { b.disabled = false; b.textContent = T("✨ Собрать с ИИ"); }
 });
