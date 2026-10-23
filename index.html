@@ -1769,6 +1769,10 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   .msg { transition: box-shadow .18s, opacity .18s, transform .22s var(--ease); }
 }
 
+/* покой: после нескольких секунд без касаний фоновые «вечные» анимации замирают — видеокарта не работает впустую */
+:root.calm .tabbar, :root.calm .star, :root.calm .worn, :root.calm .gem, :root.calm .nft::after, :root.calm .coin.big,
+:root.calm .orb, :root.calm .sparks i, :root.calm[data-wall="crystal"] .pane::before, :root.calm .home-arrow { animation-play-state: paused !important; }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -2286,6 +2290,7 @@ void main() {
    Рисуем только когда фон выбран и виден; при скрытой вкладке цикл стоит. */
 (function () {
   var cv = document.getElementById("bgfx"), root = document.documentElement;
+  var coarse = window.matchMedia && matchMedia("(pointer: coarse)").matches;
   var gl = null, U = {}, raf = 0, last = 0, t0 = performance.now(), dead = false;
   var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   function fail() { dead = true; root.classList.add("nogl"); }
@@ -2333,7 +2338,10 @@ void main() {
     if (dead || !seen()) return;
     if (!gl) { init(); if (!gl) return; }
     // каждый кадр экрана (60/120 Гц); в облегчённом режиме — около 30 кадров, чтобы не грелся телефон
-    if (!root.hasAttribute("data-lite") || now - last >= 32) { last = now; draw(now); }
+    // фон медленный — на глаз одинаков при любой частоте: на ПК — каждый кадр, на телефоне ~40 к/с,
+    // в облегчённом режиме ~30; когда человек ничего не делает, фон замирает (экран и батарея отдыхают)
+    var gap = root.hasAttribute("data-lite") ? 32 : coarse ? 24 : 0;
+    if (!root.classList.contains("calm") && now - last >= gap) { last = now; draw(now); }
     if (!still) raf = requestAnimationFrame(frame);
   }
   function kick() { if (!raf && !dead) raf = requestAnimationFrame(frame); }
@@ -4753,7 +4761,7 @@ function saveChatsSnap() {
     localStorage.setItem(chatsKey(), JSON.stringify({ t: Date.now(), chats, unread: [...state.unread] }));
   } catch (e) {}
 }
-const saveChatsSoon = debounce(() => (window.requestIdleCallback || setTimeout)(saveChatsSnap, { timeout: 2000 }), 1500);
+const saveChatsSoon = debounce(() => (window.requestIdleCallback || setTimeout)(saveChatsSnap, { timeout: 4000 }), 5000);
 function loadChatsSnap() {
   try {
     const j = JSON.parse(localStorage.getItem(chatsKey()) || "null");
@@ -4816,6 +4824,25 @@ function chatRow(c) {
   return row;
 }
 let hoverChat = null;
+// готовые строки списка: если у чата ничего не изменилось, при перерисовке берём ту же строку, а не строим заново
+// (не перезагружаются аватарки, не мигают счётчики, меньше работы на каждом новом сообщении)
+const rowCache = new Map();
+function rowSig(c) {
+  const o = !c.is_group ? other(c) : null;
+  const who = o ? [o.id, o.display_name, o.avatar_path, o.verified, o.premium_until, o.name_hue, o.worn_type, o.worn_number, o.is_admin, o.is_chief, o.hide_crown, o.hide_tick, o.badge_style, o.badge_path, o.banned_at].join("|") : "";
+  return [c.id, chatTitle(c), c.avatar_path, c.last_text, c.last_sender, c.last_text ? listTime(c.last_at) : "", state.unread.get(c.id) || 0,
+    mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.id === state.activeId ? 1 : 0, c.is_channel ? 1 : 0,
+    o && storyUsers.has(o.id) ? ((storyFeed.get(o.id) || {}).seen ? "s" : "S") : "", who,
+    c.is_group && c.last_sender ? memberName(c, c.last_sender) : "", window.SOROKA_LANG].join("¦");
+}
+function chatRowCached(c) {
+  const sig = rowSig(c), hit = rowCache.get(c.id);
+  if (hit && hit.sig === sig) return hit.el;
+  const el = chatRow(c);
+  rowCache.set(c.id, { sig, el });
+  if (rowCache.size > 600) rowCache.delete(rowCache.keys().next().value);
+  return el;
+}
 function pinMark() { const k = icon("pin"); k.classList.add("pinm"); k.setAttribute("aria-label", T("Закреплён")); return k; }
 // чат, удалённый «у себя», не виден в списке, пока в нём не появится новое сообщение
 function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt)); }
@@ -5021,12 +5048,12 @@ async function renderListNow() {
       if (archView) {
         flipList(list, () => list.replaceChildren(h("button", { class: "row", type: "button", onclick: () => { archView = false; renderList(); } },
           h("span", { class: "arch-ico" }, icon("back")), h("span", { class: "txt" }, h("span", { class: "name" }, T("Архив")), h("span", { class: "sub" }, h("span", {}, T("Назад к чатам"))))),
-          ...arch.map(chatRow)));
+          ...arch.map(chatRowCached)));
       } else {
         // своя папка показывает и архивные чаты; «Личные», «Группы», «Каналы» — только из основного списка
         const ft = folderTab, pool = ft.startsWith("f") ? chats.filter((c) => inFolder(c, ft)) : main.filter((c) => inFolder(c, ft));
         const pins = pool.filter((c) => c.pinAt).sort((a, b) => (a.pinAt < b.pinAt ? 1 : -1));
-        const rows = [...pins.map(chatRow), ...pool.filter((c) => !c.pinAt).map(chatRow)];
+        const rows = [...pins.map(chatRowCached), ...pool.filter((c) => !c.pinAt).map(chatRowCached)];
         if (!rows.length) rows.push(h("div", { class: "empty-note" }, ft.startsWith("f") ? T("В папке пока нет чатов. Нажмите на неё правой кнопкой мыши или удерживайте, чтобы изменить.") : T("Здесь пока пусто.")));
         flipList(list, () => list.replaceChildren(...(arch.length && ft === "all" ? [archiveRow(arch)] : []), ...rows));
       }
@@ -9738,18 +9765,31 @@ async function fetchPage(id) {
   return { msgs: data.slice().reverse().filter(notExpired), hasMore: data.length === PAGE };
 }
 let prefetching = false;
+const prefetchedAt = new Map();
+// в памяти держим переписку не больше чем 40 чатов (остальное лежит в IndexedDB и подгружается при открытии)
+function trimMsgCache() {
+  if (msgCache.size <= 40) return;
+  const order = [...msgCache.keys()].map((id) => [id, (state.chats.get(id) || {}).last_at || ""]).sort((a, b) => (a[1] < b[1] ? -1 : 1));
+  for (const [id] of order.slice(0, msgCache.size - 40)) if (id !== state.activeId) msgCache.delete(id);
+}
 async function prefetchChats() {
   if (prefetching || !state.started) return;
   prefetching = true;
   try {
     // свежая переписка для всех чатов: сначала те, где кэша нет или он устарел (пришли новые сообщения)
-    const stale = (c) => { const e = msgCache.get(c.id); if (!e) return true; const last = e.msgs[e.msgs.length - 1]; return !last || new Date(c.last_at) > new Date(last.created_at); };
+    const stale = (c) => {
+      if (Date.now() - (prefetchedAt.get(c.id) || 0) < 600000) return false;   // недавно уже проверяли
+      const e = msgCache.get(c.id); if (!e) return true;
+      const last = e.msgs[e.msgs.length - 1];
+      return !last || new Date(c.last_at) - new Date(last.created_at) > 2000;
+    };
     const list = [...state.chats.values()].filter((c) => !chatHidden(c) && c.last_text && c.id !== state.activeId && stale(c))
       .sort((a, b) => ((a.pinAt ? 0 : 1) - (b.pinAt ? 0 : 1)) || (a.last_at < b.last_at ? 1 : -1)).slice(0, 60);
     for (let i = 0; i < list.length; i += 4) {   // по 4 запроса за раз, чтобы не мешать остальному
       if (!state.started) return;
       const part = list.slice(i, i + 4), got = await Promise.all(part.map((c) => fetchPage(c.id)));
-      got.forEach((g, k) => { const id = part[k].id; if (g && id !== state.activeId) { msgCache.set(id, g); idbSaveChat(id); } });
+      got.forEach((g, k) => { const id = part[k].id; prefetchedAt.set(id, Date.now()); if (g && id !== state.activeId) { msgCache.set(id, g); idbSaveChat(id); } });
+      trimMsgCache();
     }
   } finally { prefetching = false; }
 }
@@ -10442,8 +10482,12 @@ function holdBlur() {
 }
 
 /* новое сообщение внизу: переписка плавно сдвигается вверх на его высоту, само оно выезжает снизу (как в Telegram) */
+let pushUpAt = 0;
 function pushUp(id) {
   if (!motionOK() || document.hidden) return;
+  const now = performance.now();
+  if (now - pushUpAt < 320) return;   // сообщения сыплются пачкой — не дёргаем переписку на каждое
+  pushUpAt = now;
   const box = $("msgs"), node = box.querySelector('.msg[data-id="' + id + '"]');
   if (!node) return;
   const outer = node.closest(".mrow") || node, kids = [...box.children], idx = kids.indexOf(outer);
@@ -10737,6 +10781,19 @@ $("selDel").addEventListener("click", async () => {
   else if (mine.length < list.length) toast(T("Чужие сообщения не удалены — у вас нет на это прав"));
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && selMode) selEnd(); });
+
+// покой: 8 секунд без касаний, клавиш и прокрутки — фоновые эффекты замирают; любое действие — снова оживают
+(function () {
+  const root = document.documentElement;
+  let t = 0;
+  const wake = () => {
+    if (root.classList.contains("calm")) root.classList.remove("calm");
+    clearTimeout(t);
+    t = setTimeout(() => root.classList.add("calm"), 8000);
+  };
+  for (const ev of ["pointerdown", "keydown", "wheel", "touchstart", "scroll"]) addEventListener(ev, wake, { passive: true, capture: true });
+  wake();
+})();
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 // клавиатуру на экране сами не открываем: поле ввода получает фокус автоматически только там, где есть мышь
