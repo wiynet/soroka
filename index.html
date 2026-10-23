@@ -1725,6 +1725,43 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
 .ho-link { word-break: break-all; user-select: all; -webkit-user-select: all; padding: 6px 8px; border-radius: 8px; background: var(--panel-2); }
 .ho-state { text-align: center; }
+/* боты: клавиатура над полем ввода, кнопки под сообщением, конструктор */
+.bot-kb { display: grid; gap: 6px; padding: 8px 10px 4px; background: var(--panel); border-top: 1px solid var(--line); max-height: 40vh; overflow-y: auto; }
+.bot-kb .kb-row { display: flex; gap: 6px; }
+.bot-kb button, .bot-inline button { flex: 1 1 0; min-width: 0; padding: 10px 8px; border: 0; border-radius: 12px; background: var(--panel-2); color: var(--ink);
+  font: 500 14px/1.2 var(--font, inherit); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: transform .12s, filter .12s; }
+.bot-kb button:active, .bot-inline button:active { transform: scale(.96); filter: brightness(.95); }
+.bot-inline { display: grid; gap: 4px; margin-top: 6px; }
+.bot-inline .kb-row { display: flex; gap: 4px; }
+.bot-inline button { background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); color: var(--accent); font-weight: 600; padding: 8px; }
+.bot-inline button.url::after { content: " ↗"; opacity: .7; }
+.bot-start-wrap { padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--panel); border-top: 1px solid var(--line); }
+.bot-start { width: 100%; padding: 13px; font-size: 16px; }
+#btnBotKb[aria-pressed="true"] { color: var(--accent); }
+.bot-list { display: grid; gap: 6px; margin-bottom: 10px; }
+.bot-list .bot-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: var(--panel-2); }
+.bot-list .bot-item > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; }
+.bot-list .bot-item b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bot-new { display: grid; gap: 8px; }
+.bot-edit-dlg .dlg { max-width: 640px; }
+.be-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.be-av { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 0; padding: 0; background: var(--panel-2); cursor: pointer; overflow: hidden; display: grid; place-items: center; font-size: 26px; }
+.be-av .avatar { width: 64px; height: 64px; }
+.be-fields { flex: 1; display: grid; gap: 6px; min-width: 0; }
+.be-vars button { border: 0; background: var(--panel-2); color: var(--accent); border-radius: 8px; padding: 2px 7px; margin: 2px; font: 600 12px/1.4 ui-monospace, monospace; cursor: pointer; }
+.be-reply { border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 8px; display: grid; gap: 8px; background: color-mix(in srgb, var(--panel-2) 40%, transparent); }
+.be-reply .be-top { display: flex; gap: 6px; align-items: center; }
+.be-reply .be-top input { flex: 1; min-width: 0; }
+.be-reply textarea { width: 100%; min-height: 64px; resize: vertical; }
+.be-sub { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.be-kb { display: grid; gap: 6px; }
+.be-kb .be-krow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.be-kb .be-krow input { flex: 1 1 110px; min-width: 90px; padding: 7px 10px; border-radius: 10px; }
+.be-kb .be-krow input.u { flex-basis: 150px; }
+.be-mini { border: 0; background: var(--panel-2); color: var(--ink); border-radius: 10px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 13px; }
+.be-mini.x { color: var(--danger); }
+.be-row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.btn.danger { color: var(--danger); }
 .ho-warn { font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--ink); }
 
 .dust-canvas { position: fixed; z-index: 80; pointer-events: none; }
@@ -2860,10 +2897,13 @@ void main() {
         <span><b>Изменение:</b> <span id="editText"></span></span>
         <button class="link" id="editCancel" type="button">Отмена</button>
       </div>
+      <div class="bot-kb" id="botKb" hidden></div>
+      <div class="bot-start-wrap" id="botStartWrap" hidden><button class="btn bot-start" type="button" id="botStart">Начать</button></div>
       <form class="composer" id="composer">
         <input type="file" id="fileInput" multiple hidden>
         <button class="icon-btn" id="btnAttach" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить фото или файл"></button>
         <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
+        <button class="icon-btn" id="btnBotKb" type="button" title="Клавиатура бота" aria-label="Клавиатура бота" hidden></button>
         <button class="icon-btn" id="btnStk" type="button" title="Стикеры" aria-label="Стикеры"></button>
         <div class="stk-panel" id="stkPanel" hidden>
           <div class="stk-tabs" id="stkTabs"></div>
@@ -3297,7 +3337,56 @@ void main() {
     <h2>Создать</h2>
     <button class="pick" type="button" id="newGroup"><span class="ico" id="icoGroup"></span><span><b>Группа</b><span class="small muted">Общий чат: пишут все участники</span></span></button>
     <button class="pick" type="button" id="newChannel"><span class="ico" id="icoChannel"></span><span><b>Канал</b><span class="small muted">Пишете только вы, остальные читают. Найти и подписаться может любой</span></span></button>
+    <button class="pick" type="button" id="newBot"><span class="ico" id="icoBot">🤖</span><span><b>Бот</b><span class="small muted">Свой бот с кнопками и ответами — собирается в конструкторе, без кода</span></span></button>
     <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button></div>
+  </div>
+</dialog>
+
+<!-- боты: список своих ботов и создание -->
+<dialog id="dlgBots">
+  <div class="dlg">
+    <h2>Мои боты</h2>
+    <div class="bot-list" id="botList"></div>
+    <form class="bot-new" id="botNewForm" novalidate>
+      <div class="set-label">Новый бот</div>
+      <input id="botNewName" maxlength="64" placeholder="Название, например «Монетка»" autocomplete="off">
+      <input id="botNewUser" maxlength="31" placeholder="юзернейм, на конце bot: monetka_bot" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="error" id="botNewErr"></div>
+      <button class="btn" type="submit" id="botNewBtn">Создать бота</button>
+    </form>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+<!-- конструктор бота -->
+<dialog id="dlgBotEdit" class="bot-edit-dlg">
+  <div class="dlg">
+    <h2 id="beTitle">Конструктор бота</h2>
+    <div class="be-head">
+      <button type="button" class="be-av" id="beAv" title="Сменить аватарку бота" aria-label="Сменить аватарку бота"></button>
+      <input type="file" id="beAvFile" accept="image/*" hidden>
+      <div class="be-fields">
+        <input id="beName" maxlength="64" placeholder="Название бота">
+        <input id="beAbout" maxlength="200" placeholder="Описание (видно в профиле бота)">
+      </div>
+    </div>
+    <div class="hint">В тексте ответа можно вставлять: <span class="be-vars" id="beVars"></span></div>
+    <div class="set-label">Приветствие — ответ на «Начать» (/start)</div>
+    <div id="beStart"></div>
+    <div class="set-label">Кнопки и команды</div>
+    <div class="hint">Бот отвечает, когда человек нажимает кнопку или пишет её текст (или команду вроде /help).</div>
+    <div id="beCmds"></div>
+    <div class="be-row-actions">
+      <button class="btn ghost" type="button" id="beAddCmd">+ Команда</button>
+      <button class="btn ghost" type="button" id="beFromKb" title="Создать команды для кнопок клавиатуры, у которых ещё нет ответа">Ответы для всех кнопок</button>
+    </div>
+    <div class="set-label">Если бот не понял</div>
+    <div id="beUnknown"></div>
+    <div class="error" id="beErr"></div>
+    <div class="actions">
+      <button class="btn ghost danger" type="button" id="beDelete">Удалить бота</button>
+      <button class="btn ghost" type="button" id="beOpen">Открыть чат</button>
+      <button class="btn" type="button" id="beSave">Сохранить</button>
+    </div>
   </div>
 </dialog>
 
@@ -3971,7 +4060,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://soroka.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username)";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -4004,6 +4093,7 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const ICONS = {
+  kbd: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></g>',
   send: '<path d="M4 12l16-8-6 16-3-7-7-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
   clip: '<path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.600-8.6a3.300 3.300 0 014.700 4.700l-8.500 8.500a1.700 1.700 0 01-2.400-2.400l7.800-7.800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   back: '<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -4211,6 +4301,7 @@ function isOnline(p) { return !!(p && !p.banned_at && (p.username === "ai" || (p
 function fmtSeen(p) {
   if (!p) return "";
   if (p.banned_at) return T("аккаунт заблокирован");
+  if (p.is_bot) return T("бот");
   if (isOnline(p)) return T("в сети");
   if (p.hide_seen && isPremium(p)) return T("был(а) недавно");   // время в сети скрыто
   if (!p.last_seen_at) return T("не в сети");
@@ -5227,6 +5318,7 @@ function renderHead() {
   $("convWho").disabled = !c.is_group && !o;
   $("convWho").style.cursor = c.is_group || o ? "pointer" : "default";
   $("convWho").title = c.is_channel ? T("О канале") : c.is_group ? T("Участники группы") : o ? T("Открыть профиль") : "";
+  paintBotKb();
 }
 async function openChat(id) {
   if (searchMode) setSearchMode(false);   // открыли чат — поиск закрывается
@@ -5234,7 +5326,7 @@ async function openChat(id) {
   if (!c) return;
   cacheActive();   // переписка, из которой ушли, остаётся в памяти — вернуться в неё можно мгновенно
   state.activeId = id;
-  state.msgs = []; state.hasMore = false;
+  state.msgs = []; state.hasMore = false; state.msgsReady = null;
   state.unread.delete(id);
   mentionChats.delete(id);
   setPending(null);
@@ -5262,7 +5354,7 @@ async function openChat(id) {
   const cached = msgCache.get(id);
   if (cached) {
     state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
-    state.hasMore = cached.hasMore;
+    state.hasMore = cached.hasMore; state.msgsReady = id;
     renderMsgs(); paintPin(); scrollDown();
     ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
     if (canAutoFocus()) $("text").focus();
@@ -5271,6 +5363,7 @@ async function openChat(id) {
   if (state.activeId !== id) return;
   if (!fresh) { if (!cached) $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Не удалось загрузить сообщения."))); return; }
   msgCache.set(id, fresh);
+  state.msgsReady = id;
   if (cached) {
     const sig = (list) => list.map((m) => m.id + ":" + (m.edited_at || "")).join(",");
     if (sig(fresh.msgs) === sig(state.msgs.filter((m) => !isTemp(m)))) return;
@@ -5578,6 +5671,7 @@ function msgNode(m, group) {
     ticks = badge(read ? "check2" : "check1", "ticks", read ? T("Прочитано") : T("Не прочитано"));
     if (read) ticks.classList.add("read");
   }
+  if (m.markup && Array.isArray(m.markup.inline) && !temp) el.append(botInline(m));
   el.append(h("span", { class: "meta" },
     !temp && h("button", { class: "dots", type: "button", title: T("Действия с сообщением"), "aria-label": T("Действия с сообщением"), onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
     st && st.views != null && h("span", { class: "views", title: T("Сколько подписчиков прочитали пост") }, icon("eye"), String(st.views)),
@@ -5657,6 +5751,7 @@ function renderMsgs(newId) {
   const before = msgsBefore();
   $("msgs").replaceChildren(...kids);
   if (selMode) paintSel();
+  paintBotKb();
   if (before && before.length) {
     const had = new Set(before.map((x) => x.id));
     for (const n of $("msgs").querySelectorAll(".msg[data-id]")) if (had.has(n.dataset.id)) { n.classList.add("keep"); const r = n.closest(".mrow"); if (r) r.classList.add("keep"); }
@@ -6175,6 +6270,7 @@ function onChanged(m) {
       node.classList.add("keep");
       old.replaceWith(node);
       if (stick) box.scrollTop = box.scrollHeight;
+      paintBotKb();
       if (!/ ▍$/.test(m.body || "")) { reloadSoon(); refreshAiCredits(); }   // ответ готов — обновим список и кредиты
       return;
     }
@@ -10800,6 +10896,271 @@ async function aiKick(id) {
       body: JSON.stringify({ message_id: id, client: true }) });
   } catch (e) {}
 }
+
+
+/* ---------- боты пользователей: конструктор без кода ---------- */
+// бот — отдельный аккаунт; отвечает база по настройкам: приветствие, команды (текст кнопки или /команда), ответ «не понял».
+// У ответа — текст с переменными, клавиатура над полем ввода (kb) и кнопки под сообщением (inline: ссылка или команда).
+function botOf(c) { const o = c && !c.is_group ? other(c) : null; return o && o.is_bot ? o : null; }
+function botSend(text) {
+  const chatId = state.activeId;
+  if (!chatId || !String(text || "").trim()) return;
+  sendFiles(chatId, [], String(text).slice(0, 4000), null);
+}
+function botInline(m) {
+  const box = h("div", { class: "bot-inline" });
+  for (const row of m.markup.inline.slice(0, 8)) {
+    if (!Array.isArray(row)) continue;
+    box.append(h("div", { class: "kb-row" }, ...row.slice(0, 3).map((b) => h("button", { type: "button", class: b.u ? "url" : "",
+      onclick: (e) => {
+        e.stopPropagation();
+        if (b.u) { if (/^https?:\/\//i.test(b.u)) window.open(b.u, "_blank", "noopener"); }
+        else botSend(b.s || b.t);
+      } }, String(b.t || "").slice(0, 40)))));
+  }
+  return box;
+}
+var botKbHidden = false, botStartHid = false;
+// вернуть поле ввода по обычным правилам чата (после кнопки «Начать» в чате с ботом)
+function renderHeadComposer(c) {
+  const o = other(c), blockedHere = !c.is_group && !!o && state.blocked.has(o.id);
+  $("composer").hidden = !((!c.is_channel || !!myRole(c)) && !blockedHere);
+}
+function paintBotKb() {
+  const c = state.chats.get(state.activeId), bot = botOf(c);
+  const kb = $("botKb"), btn = $("btnBotKb"), start = $("botStartWrap");
+  if (!bot) { kb.hidden = true; btn.hidden = true; start.hidden = true; if (botStartHid) { botStartHid = false; if (c) renderHeadComposer(c); } return; }
+  // клавиатура — из последнего сообщения бота, где она задана (или убрана)
+  let rows = null;
+  for (let i = state.msgs.length - 1; i >= 0; i--) {
+    const m = state.msgs[i];
+    if (m.sender_id !== bot.id || !m.markup) continue;
+    if (m.markup.hide) break;
+    if (Array.isArray(m.markup.kb)) { rows = m.markup.kb; break; }
+  }
+  // переписки ещё нет — вместо поля ввода большая кнопка «Начать», как в Telegram
+  // переписка загружена и пуста — вместо поля ввода большая кнопка «Начать»
+  const can = botStartHid || !$("composer").hidden;
+  const fresh = can && state.msgsReady === state.activeId && !state.hasMore && !state.msgs.length;
+  start.hidden = !fresh;
+  if (fresh) { $("composer").hidden = true; botStartHid = true; }
+  else if (botStartHid) { $("composer").hidden = false; botStartHid = false; }
+  btn.hidden = !rows || fresh;
+  btn.setAttribute("aria-pressed", String(!!rows && !botKbHidden));
+  if (!btn.firstChild) btn.append(icon("kbd"));
+  if (!rows || botKbHidden || fresh) { kb.hidden = true; return; }
+  const sig = JSON.stringify(rows);
+  if (kb.dataset.sig !== sig) {
+    kb.dataset.sig = sig;
+    kb.replaceChildren(...rows.map((row) => h("div", { class: "kb-row" }, ...row.map((t) => h("button", { type: "button", onclick: () => botSend(t) }, t)))));
+  }
+  kb.hidden = false;
+}
+$("btnBotKb").addEventListener("click", () => { botKbHidden = !botKbHidden; paintBotKb(); });
+$("botStart").addEventListener("click", () => {
+  $("botStartWrap").hidden = true; $("composer").hidden = false; botStartHid = false;
+  botSend("/start");
+});
+
+// список своих ботов
+var myBots = [];
+async function loadMyBots() {
+  const { data: rows } = await sb.from("bots").select("id,config,created_at").order("created_at");
+  const live = (rows || []).filter((b) => !(b.config && b.config.deleted));
+  const ids = live.map((b) => b.id);
+  const profs = ids.length ? ((await sb.from("profiles").select(PF).in("id", ids)).data || []) : [];
+  myBots = live.map((b) => ({ ...b, p: profs.find((x) => x.id === b.id) })).filter((b) => b.p);
+  return myBots;
+}
+async function openBots() {
+  $("botNewErr").textContent = "";
+  $("botList").replaceChildren(h("div", { class: "small muted" }, T("Загрузка…")));
+  if (!$("dlgBots").open) $("dlgBots").showModal();
+  await loadMyBots();
+  $("botList").replaceChildren(...(myBots.length ? myBots.map((b) => h("div", { class: "bot-item" },
+    avatar(b.p.display_name, b.p.id, true, b.p.avatar_path),
+    h("span", {}, h("b", {}, b.p.display_name), h("span", { class: "small muted" }, "@" + b.p.username)),
+    h("button", { class: "be-mini", type: "button", onclick: () => { $("dlgBots").close(); startDirect(b.p.id, b.p); } }, T("Чат")),
+    h("button", { class: "be-mini", type: "button", onclick: () => { $("dlgBots").close(); openBotEdit(b); } }, T("Настроить"))))
+    : [h("div", { class: "small muted" }, T("У вас пока нет ботов. Придумайте название и юзернейм — бот сразу получит кнопки «Старт» и «Мои монеточки», дальше всё меняется в конструкторе."))]));
+}
+$("newBot").addEventListener("click", () => { $("dlgNew").close(); openBots(); });
+$("botNewUser").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""); });
+$("botNewForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("botNewName").value.trim();
+  let user = $("botNewUser").value.trim().toLowerCase();
+  if (user && !/bot$/.test(user)) user += user.endsWith("_") ? "bot" : "_bot";
+  const err = $("botNewErr");
+  if (!name) { err.textContent = T("Введите название бота"); return; }
+  if (!/^[a-z][a-z0-9_]{1,28}bot$/.test(user)) { err.textContent = T("Юзернейм: латиница, цифры и _, от 5 символов, в конце — bot (например monetka_bot)"); return; }
+  $("botNewBtn").disabled = true;
+  const { data: id, error } = await sb.rpc("bot_create", { p_username: user, p_name: name });
+  $("botNewBtn").disabled = false;
+  if (error) {
+    const m = error.message || "";
+    err.textContent = /taken|duplicate|reserved/.test(m) ? T("Этот юзернейм уже занят") : /bot limit/.test(m) ? T("Достигнут предел: 5 ботов (с премиумом — 20)") : /bad username/.test(m) ? T("Неподходящий юзернейм") : T("Не получилось создать бота");
+    return;
+  }
+  $("botNewForm").reset();
+  toast(T("Бот @") + user + T(" создан"));
+  await loadMyBots();
+  const b = myBots.find((x) => x.id === id);
+  $("dlgBots").close();
+  if (b) openBotEdit(b);
+});
+
+// конструктор
+var beBot = null, beAvatar = null;
+const BOT_VARS = [["{name}", "имя человека"], ["{username}", "его @юзернейм"], ["{mest}", "его Mest"], ["{id}", "его номер"], ["{date}", "сегодняшняя дата"]];
+var beLastText = null;
+$("beVars").replaceChildren(...BOT_VARS.map(([v, d]) => h("button", { type: "button", title: T(d), onclick: () => {
+  const ta = beLastText && document.contains(beLastText) ? beLastText : $("dlgBotEdit").querySelector("textarea");
+  if (!ta) return;
+  const a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
+  ta.value = ta.value.slice(0, a) + v + ta.value.slice(z); ta.focus(); ta.selectionStart = ta.selectionEnd = a + v.length;
+} }, v)));
+function beKbEditor(rows, inline) {
+  // inline: кнопки под сообщением (текст + ссылка или команда); иначе — клавиатура (только текст)
+  const wrap = h("div", { class: "be-kb" });
+  const addRow = (row) => {
+    const r = h("div", { class: "be-krow" });
+    const addBtn = (b) => {
+      if (r.querySelectorAll(".be-cell").length >= (inline ? 3 : 4)) return;
+      const cell = h("span", { class: "be-cell", style: "display:contents" });
+      const t = h("input", { class: "t", maxlength: "40", placeholder: inline ? T("Текст кнопки") : T("Кнопка") });
+      t.value = inline ? (b && b.t) || "" : b || "";
+      cell.append(t);
+      if (inline) {
+        const u = h("input", { class: "u", maxlength: "300", placeholder: T("https://ссылка или команда") });
+        u.value = (b && (b.u || b.s)) || "";
+        cell.append(u);
+      }
+      cell.append(h("button", { class: "be-mini x", type: "button", title: T("Убрать кнопку"), onclick: () => { cell.remove(); if (!r.querySelector(".be-cell")) r.remove(); } }, "✕"));
+      r.insertBefore(cell, plus);
+    };
+    const plus = h("button", { class: "be-mini", type: "button", title: T("Добавить кнопку в этот ряд"), onclick: () => addBtn(null) }, "+");
+    r.append(plus);
+    for (const b of row || [null]) addBtn(b);
+    wrap.insertBefore(r, addRowBtn);
+  };
+  const addRowBtn = h("button", { class: "be-mini", type: "button", onclick: () => { if (wrap.querySelectorAll(".be-krow").length < (inline ? 8 : 10)) addRow(null); } }, inline ? T("+ ряд кнопок под сообщением") : T("+ ряд клавиатуры"));
+  wrap.append(addRowBtn);
+  for (const row of rows || []) addRow(row);
+  wrap.read = () => [...wrap.querySelectorAll(".be-krow")].map((r) => [...r.querySelectorAll(".be-cell")].map((c) => {
+    const t = c.querySelector(".t").value.trim();
+    if (!inline) return t;
+    const v = (c.querySelector(".u").value || "").trim();
+    return t ? (/^https?:\/\//i.test(v) ? { t, u: v } : v ? { t, s: v } : { t }) : null;
+  }).filter((x) => x)).filter((r) => r.length);
+  return wrap;
+}
+function beReply(r, kind) {
+  r = r || {};
+  const box = h("div", { class: "be-reply" });
+  const top = h("div", { class: "be-top" });
+  let on = null;
+  if (kind === "cmd") {
+    on = h("input", { maxlength: "60", placeholder: T("Кнопка или команда, например «Мои монеточки» или /help") });
+    on.value = r.on || "";
+    top.append(on, h("button", { class: "be-mini x", type: "button", title: T("Удалить команду"), onclick: () => box.remove() }, "✕"));
+    box.append(top);
+  }
+  const ta = h("textarea", { maxlength: "3000", placeholder: kind === "unknown" ? T("Например: Не понял 🤔 Нажмите кнопку ниже") : T("Текст ответа бота") });
+  ta.value = r.text || "";
+  ta.addEventListener("focus", () => { beLastText = ta; });
+  const kb = beKbEditor(r.kb, false), il = beKbEditor(r.inline, true);
+  const hide = h("input", { type: "checkbox" }); hide.checked = !!r.hide;
+  box.append(ta,
+    h("div", { class: "be-sub" }, T("Клавиатура над полем ввода:")), kb,
+    h("div", { class: "be-sub" }, T("Кнопки под сообщением:")), il,
+    h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")));
+  box.read = () => {
+    const o = { text: ta.value.trim() };
+    if (on) o.on = on.value.trim();
+    const k = kb.read(), i = il.read();
+    if (k.length) o.kb = k;
+    if (i.length) o.inline = i;
+    if (hide.checked) o.hide = true;
+    return o;
+  };
+  return box;
+}
+function paintBeAv() {
+  const p = beBot.p;
+  $("beAv").replaceChildren(avatar($("beName").value || p.display_name, p.id, "lg", beAvatar === null ? p.avatar_path : beAvatar || null));
+}
+function openBotEdit(b) {
+  beBot = b; beAvatar = null;
+  const cfg = b.config || {};
+  $("beTitle").textContent = T("Конструктор · @") + b.p.username;
+  $("beName").value = b.p.display_name || "";
+  $("beAbout").value = b.p.bio || "";
+  $("beErr").textContent = "";
+  paintBeAv();
+  $("beStart").replaceChildren(beReply(cfg.start || { text: T("Привет, {name}!") }, "start"));
+  $("beCmds").replaceChildren(...(cfg.cmds || []).map((c) => beReply(c, "cmd")));
+  $("beUnknown").replaceChildren(beReply(cfg.unknown || {}, "unknown"));
+  $("dlgBotEdit").showModal();
+}
+function beRead() {
+  const cfg = { start: $("beStart").firstChild.read(), cmds: [...$("beCmds").children].map((x) => x.read()).filter((c) => c.on && c.text), unknown: $("beUnknown").firstChild.read() };
+  if (!cfg.unknown.text) delete cfg.unknown;
+  return cfg;
+}
+$("beAddCmd").addEventListener("click", () => { const r = beReply({}, "cmd"); $("beCmds").append(r); r.querySelector("input").focus(); });
+// для кнопок клавиатуры без ответа — заготовки команд
+$("beFromKb").addEventListener("click", () => {
+  const cfg = beRead();
+  const have = new Set([...$("beCmds").children].map((x) => (x.read().on || "").toLowerCase()));
+  const all = [cfg.start, ...cfg.cmds, cfg.unknown].filter(Boolean).flatMap((r) => (r.kb || []).flat().concat((r.inline || []).flat().filter((b) => !b.u).map((b) => b.s || b.t)));
+  let n = 0;
+  for (const t of all) {
+    const k = t.toLowerCase();
+    if (have.has(k) || ["/start", "start", "старт", "начать"].includes(k)) continue;   // на «Старт» отвечает приветствие
+    have.add(k); n++;
+    $("beCmds").append(beReply({ on: t, text: "" }, "cmd"));
+  }
+  toast(n ? T("Добавлено команд: ") + n + T(" — впишите ответы") : T("У всех кнопок уже есть ответы"));
+});
+$("beName").addEventListener("input", paintBeAv);
+$("beAv").addEventListener("click", () => $("beAvFile").click());
+$("beAvFile").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  toast(T("Загружаем аватарку…"));
+  const path = await imageToAvatarPath(f);
+  if (!path) { toast(T("Не удалось загрузить картинку")); return; }
+  beAvatar = path; paintBeAv();
+});
+$("beSave").addEventListener("click", async () => {
+  if (!beBot) return;
+  const cfg = beRead();
+  if (!cfg.start.text) { $("beErr").textContent = T("Напишите текст приветствия"); return; }
+  $("beSave").disabled = true;
+  const { error } = await sb.rpc("bot_update", { p_bot: beBot.id, p_name: $("beName").value.trim(), p_about: $("beAbout").value.trim(), p_avatar: beAvatar, p_config: cfg });
+  $("beSave").disabled = false;
+  if (error) { $("beErr").textContent = /too big/.test(error.message || "") ? T("Слишком много текста и кнопок") : T("Не получилось сохранить"); return; }
+  toast(T("Бот сохранён — изменения работают сразу"));
+  await loadMyBots();
+  const b = myBots.find((x) => x.id === beBot.id);
+  if (b) beBot = b;
+  loadChats();
+});
+$("beOpen").addEventListener("click", () => { if (!beBot) return; const p = beBot.p; $("dlgBotEdit").close(); startDirect(p.id, p); });
+$("beDelete").addEventListener("click", async () => {
+  if (!beBot) return;
+  const b = $("beDelete");
+  if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = T("Точно удалить?"); setTimeout(() => { b.dataset.sure = ""; b.textContent = T("Удалить бота"); }, 3500); return; }
+  b.dataset.sure = ""; b.textContent = T("Удалить бота");
+  const { error } = await sb.rpc("bot_delete", { p_bot: beBot.id });
+  if (error) { toast(T("Не получилось удалить бота")); return; }
+  $("dlgBotEdit").close();
+  toast(T("Бот удалён"));
+  beBot = null;
+  loadChats();
+});
 
 /* ---------- выбор нескольких сообщений: удалить или переслать сразу пачкой ---------- */
 let selMode = false, selArmed = false;
