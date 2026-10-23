@@ -1721,6 +1721,8 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .ho-state { text-align: center; }
 .ho-warn { font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--ink); }
 
+.dust-canvas { position: fixed; z-index: 80; pointer-events: none; }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1930,7 +1932,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e490702f1a"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4d49b76717"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3850,6 +3852,20 @@ void main() {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
 "use strict";
+/* ---------- все анимации чуть медленнее (на ~18%): CSS-анимации, переходы и анимации из кода ---------- */
+const ANIM_RATE = 0.85;
+function aMs(ms) { return Math.round(ms / ANIM_RATE); }
+(function () {
+  const slow = (e, pick) => { const t = e.target; if (!t || !t.getAnimations) return; for (const a of t.getAnimations()) if (pick(a) && a.playbackRate === 1) a.playbackRate = ANIM_RATE; };
+  document.addEventListener("animationstart", (e) => slow(e, (a) => a.animationName === e.animationName), true);
+  document.addEventListener("transitionrun", (e) => slow(e, (a) => a.transitionProperty === e.propertyName), true);
+  const native = Element.prototype.animate;
+  Element.prototype.animate = function (k, o) {
+    if (typeof o === "number") o = o / ANIM_RATE;
+    else if (o && typeof o.duration === "number") o = { ...o, duration: o.duration / ANIM_RATE, delay: (o.delay || 0) / ANIM_RATE };
+    return native.call(this, k, o);
+  };
+})();
 /* ---------- настройки ---------- */
 const SUPABASE_URL = "https://zgjptlyhflfwbnmzpdsa.supabase.co";
 // Публичный ключ: его можно держать в коде сайта, доступ к данным ограничивают правила в базе.
@@ -4144,10 +4160,11 @@ function toast(text) {
   toastTimer = setTimeout(() => {
     if (!motionOK()) { t.hidden = true; return; }
     t.classList.add("out");
-    toastTimer = setTimeout(() => { t.hidden = true; t.classList.remove("out"); }, 200);
+    toastTimer = setTimeout(() => { t.hidden = true; t.classList.remove("out"); }, aMs(200));
   }, 4000);
 }
 function flash(el, ms, cls) {
+  ms = aMs(ms);
   cls = cls || "fresh";
   el.classList.remove(cls);
   void el.offsetWidth;
@@ -4505,11 +4522,12 @@ async function startApp() {
   giftTypes().then(() => { renderList(); if (state.activeId) { renderHead(); if (state.msgs.some((m) => m.gift_type)) renderMsgs(); } });
   // список чатов с прошлого раза показываем сразу, свежий подгружается следом
   if (!state.chats.size && loadChatsSnap()) renderList(); else if (!state.chats.size) paintSkeleton();
+  const idbReady = idbLoadAll();   // сохранённая переписка — чтобы чаты открывались сразу
   await loadChats();
   loadFolders();
   claimDaily();
   refreshAiCredits();
-  setTimeout(prefetchChats, 200);
+  idbReady.then(() => setTimeout(prefetchChats, 200));
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
   flash($("chatList"), 900);
@@ -4665,8 +4683,8 @@ function chatsKey() { return "mestario.chats." + (state.me && state.me.id); }
 function saveChatsSnap() {
   if (!state.started || !state.me) return;
   try {
-    const chats = [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1)).slice(0, 60)
-      .map((c) => ({ ...c, reads: [...c.reads], admins: [...c.admins] }));
+    const chats = [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1))
+      .map((c) => ({ ...c, members: c.members.slice(0, 200), reads: [...c.reads], admins: [...c.admins] }));
     localStorage.setItem(chatsKey(), JSON.stringify({ t: Date.now(), chats, unread: [...state.unread] }));
   } catch (e) {}
 }
@@ -4743,7 +4761,7 @@ function closeCtx() {
   holdBlur();
   if (ctxEl) {
     const el = ctxEl; ctxEl = null;
-    if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), 130); } else el.remove();
+    if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), aMs(150)); } else el.remove();
   } for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); }
 function chatCtxBind(row, c) {
   row.addEventListener("contextmenu", (e) => { e.preventDefault(); openChatCtx(c, e.clientX, e.clientY, row); });
@@ -4886,7 +4904,7 @@ function searchHome(chats) {
     if (x.kind === "chat") { const c = state.chats.get(x.id); if (!c) return null; const r = chatRow(c); r.addEventListener("click", () => setSearchMode(false)); return r; }
     if (x.kind === "user" && x.p && x.p.id) {
       const known = chatPerson(x.p.id) || x.p;
-      return personRow(known, () => { recentAdd(x); showUser(known); });
+      return personRow(known, () => { recentAdd(x); openPersonChat(known); });
     }
     if (x.kind === "chan" && x.ch && x.ch.id) {
       const ch = x.ch, mineNow = state.chats.get(ch.id);
@@ -4957,7 +4975,7 @@ async function renderListNow() {
     const kids = [];
     // всё, на что нажали в результатах, запоминается в «Недавних»
     if (found.length) kids.push(h("div", { class: "list-label" }, T("Чаты")), ...found.map((c) => { const r = chatRow(c); r.addEventListener("click", () => recentAdd({ kind: "chat", id: c.id })); return r; }));
-    if (people.length) kids.push(h("div", { class: "list-label" }, T("Люди")), ...people.map((p) => personRow(p, () => { recentAdd({ kind: "user", id: p.id, p: litePerson(p) }); showUser(p); })));
+    if (people.length) kids.push(h("div", { class: "list-label" }, T("Люди")), ...people.map((p) => personRow(p, () => { recentAdd({ kind: "user", id: p.id, p: litePerson(p) }); openPersonChat(p); })));
     if (chans && chans.length) kids.push(h("div", { class: "list-label" }, T("Каналы и группы")), ...chans.map((ch) =>
       h("button", { class: "row", type: "button", onclick: () => { recentAdd({ kind: "chan", id: ch.id, ch }); showChannel(ch); } },
         avatar(ch.title, ch.id, true, ch.avatar_path),
@@ -5026,12 +5044,42 @@ $("search").addEventListener("focus", () => setSearchMode(true));
 $("searchClose").addEventListener("click", () => setSearchMode(false));
 $("search").addEventListener("keydown", (e) => { if (e.key === "Escape") setSearchMode(false); });
 
-async function startDirect(userId) {
+async function startDirect(userId, person) {
+  // чат с этим человеком уже есть — открываем сразу, без запросов
+  const ex = userId !== state.me.id && [...state.chats.values()].find((c) => !c.is_group && other(c) && other(c).id === userId);
+  if (ex) { $("search").value = ""; openChat(ex.id); return; }
+  if (person) preOpenChat(person);   // переход начинается сразу, пока сервер создаёт чат
   const { data, error } = await sb.rpc("open_direct_chat", { other: userId });
-  if (error) { toast(T("Не удалось открыть чат")); return; }
+  if (error) { toast(T("Не удалось открыть чат")); if (person && !state.activeId) closeChat(); return; }
   $("search").value = "";
+  if (!state.chats.has(data) && person) {
+    state.chats.set(data, { id: data, is_group: false, is_channel: false, description: "", created_by: state.me.id, title: null,
+      last_at: new Date().toISOString(), last_text: null, last_sender: null, members: [state.profile, person].filter(Boolean),
+      reads: new Map(), avatar_path: null, admins: new Set(), muted: false, pinAt: null, archived: false, hiddenAt: null, cleared: 0,
+      pinned: null, username: null, is_private: false, comments_off: false, ttl: null, slow: 0, linksNew: false });
+    openChat(data);
+    loadChats();
+    return;
+  }
   await loadChats();
   openChat(data);
+}
+// из поиска: чат с человеком открывается сразу с анимацией перехода
+function openPersonChat(p) {
+  if (typeof setSearchMode === "function") setSearchMode(false);
+  startDirect(p.id, p);
+}
+// шапка и пустая переписка показываются до ответа сервера — чтобы переход не ждал сети
+function preOpenChat(p) {
+  $("convAvatar").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
+  $("convName").replaceChildren(p.display_name);
+  $("convSub").textContent = p.username ? "@" + p.username : "";
+  $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Открываем чат…")));
+  $("placeholder").hidden = true;
+  $("conv").hidden = false;
+  const wasOpen = $("app").classList.contains("chat-open");
+  $("app").classList.add("chat-open");
+  if (!wasOpen) chatSlideIn();
 }
 
 /* ---------- переписка ---------- */
@@ -5094,7 +5142,7 @@ async function openChat(id) {
   if (!wasOpen) chatSlideIn();
   renderHead();
   // на телефоне список под чатом перерисуем после въезда — чтобы анимация не спотыкалась
-  if (!wasOpen && phoneLayout()) setTimeout(renderList, 420); else renderList();
+  if (!wasOpen && phoneLayout()) setTimeout(renderList, aMs(420)); else renderList();
   const pendingHere = () => outbox.filter((t) => t.chat_id === id && !t.done);   // недоставленное остаётся видно
   // переписка уже загружена заранее: показываем сразу, а свежую версию сверяем в фоне
   const cached = msgCache.get(id);
@@ -5140,7 +5188,9 @@ function closeChat(quiet) {
   $("conv").hidden = true; $("placeholder").hidden = false;
   $("app").classList.remove("chat-open");
   if (quiet !== true) flash($("app"), 300, "back");
-  renderList();
+  // после анимации выхода список обновляем, когда телефон свободен, — чтобы конец анимации не споткнулся
+  if (quiet === true && window.requestIdleCallback) requestIdleCallback(() => renderList(), { timeout: 500 });
+  else renderList();
 }
 $("back").addEventListener("click", () => { if (phoneLayout()) chatBack(0); else closeChat(); });
 
@@ -5496,7 +5546,7 @@ function renderMsgs(newId) {
     const n = $("msgs").querySelector('.msg.mine[data-id="' + newId + '"]');
     if (n) { flyFrom.start = performance.now(); flyFrom.id = newId; flying = flyFrom; flyIn(n, flying, 0); }
     flyFrom = null;
-  } else if (flying && performance.now() - flying.start < FLY_MS) {
+  } else if (flying && performance.now() - flying.start < aMs(FLY_MS)) {
     // сообщение ушло на сервер и перерисовалось с настоящим номером — продолжаем полёт с того же места
     const all = $("msgs").querySelectorAll(".msg.mine"), n = all[all.length - 1];
     if (n) flyIn(n, flying, performance.now() - flying.start);
@@ -6459,6 +6509,7 @@ function sendFiles(chatId, files, body, extra, onQueued) {
   noteFlyFrom();
   if (state.activeId === chatId) { state.msgs.push(...temps); renderMsgs(temps[temps.length - 1].id); scrollDown(); pushUp(temps[temps.length - 1].id); }
   flash($("btnSend"), 420, "fly");
+  playSound("send");
   if (onQueued) onQueued();
   const run = sendChain.then(() => deliver(temps));
   sendChain = run.catch(() => {});
@@ -9523,6 +9574,48 @@ function cacheActive() {
   const real = state.msgs.filter((m) => !isTemp(m));
   if (!real.length && !msgCache.has(state.activeId)) return;
   msgCache.set(state.activeId, { msgs: real.slice(-PAGE * 2), hasMore: state.hasMore || real.length > PAGE * 2 });
+  idbSaveChat(state.activeId);
+}
+/* переписка хранится на устройстве (IndexedDB) до выхода из аккаунта: чаты открываются сразу, даже без сети */
+let idbConn = null;
+function idb() {
+  if (idbConn) return idbConn;
+  idbConn = new Promise((res) => {
+    try {
+      const rq = indexedDB.open("mestario", 1);
+      rq.onupgradeneeded = () => { try { rq.result.createObjectStore("msgs"); } catch (e) {} };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = rq.onblocked = () => res(null);
+    } catch (e) { res(null); }
+  });
+  return idbConn;
+}
+async function idbSaveChat(id) {
+  const e = msgCache.get(id), db = await idb();
+  if (!e || !db || !state.me) return;
+  try { db.transaction("msgs", "readwrite").objectStore("msgs").put({ u: state.me.id, chat: id, msgs: e.msgs.slice(-PAGE * 2), hasMore: !!e.hasMore || e.msgs.length > PAGE * 2, t: Date.now() }, state.me.id + ":" + id); } catch (x) {}
+}
+const idbSaveSoon = new Map();
+function idbTouch(id) { clearTimeout(idbSaveSoon.get(id)); idbSaveSoon.set(id, setTimeout(() => { idbSaveSoon.delete(id); idbSaveChat(id); }, 1200)); }
+async function idbLoadAll() {
+  const db = await idb();
+  if (!db || !state.me) return;
+  const me = state.me.id;
+  await new Promise((res) => {
+    try {
+      const rq = db.transaction("msgs").objectStore("msgs").getAll();
+      rq.onsuccess = () => {
+        for (const v of rq.result || []) if (v && v.u === me && v.chat && !msgCache.has(v.chat) && v.chat !== state.activeId) msgCache.set(v.chat, { msgs: (v.msgs || []).filter(notExpired), hasMore: !!v.hasMore });
+        res();
+      };
+      rq.onerror = () => res();
+    } catch (e) { res(); }
+  });
+}
+async function idbClear() {
+  const db = await idb();
+  if (!db) return;
+  try { db.transaction("msgs", "readwrite").objectStore("msgs").clear(); } catch (e) {}
 }
 async function fetchPage(id) {
   const c = state.chats.get(id);
@@ -9536,12 +9629,14 @@ async function prefetchChats() {
   if (prefetching || !state.started) return;
   prefetching = true;
   try {
-    const list = [...state.chats.values()].filter((c) => !chatHidden(c) && !c.archived && c.last_text && !msgCache.has(c.id) && c.id !== state.activeId)
-      .sort((a, b) => ((a.pinAt ? 0 : 1) - (b.pinAt ? 0 : 1)) || (a.last_at < b.last_at ? 1 : -1)).slice(0, 20);
+    // свежая переписка для всех чатов: сначала те, где кэша нет или он устарел (пришли новые сообщения)
+    const stale = (c) => { const e = msgCache.get(c.id); if (!e) return true; const last = e.msgs[e.msgs.length - 1]; return !last || new Date(c.last_at) > new Date(last.created_at); };
+    const list = [...state.chats.values()].filter((c) => !chatHidden(c) && c.last_text && c.id !== state.activeId && stale(c))
+      .sort((a, b) => ((a.pinAt ? 0 : 1) - (b.pinAt ? 0 : 1)) || (a.last_at < b.last_at ? 1 : -1)).slice(0, 60);
     for (let i = 0; i < list.length; i += 4) {   // по 4 запроса за раз, чтобы не мешать остальному
       if (!state.started) return;
       const part = list.slice(i, i + 4), got = await Promise.all(part.map((c) => fetchPage(c.id)));
-      got.forEach((g, k) => { const id = part[k].id; if (g && !msgCache.has(id) && id !== state.activeId) msgCache.set(id, g); });
+      got.forEach((g, k) => { const id = part[k].id; if (g && id !== state.activeId) { msgCache.set(id, g); idbSaveChat(id); } });
     }
   } finally { prefetching = false; }
 }
@@ -9550,6 +9645,7 @@ function cacheIncoming(m) {
   if (!e || e.msgs.some((x) => x.id === m.id)) return;
   e.msgs.push(m);
   e.msgs.sort((a, b) => a.id - b.id);
+  idbTouch(m.chat_id);
 }
 function cacheChanged(m) {
   const e = msgCache.get(m.chat_id);
@@ -9557,6 +9653,7 @@ function cacheChanged(m) {
   const i = e.msgs.findIndex((x) => x.id === m.id);
   if (i < 0) return;
   if (m.deleted_at) e.msgs.splice(i, 1); else e.msgs[i] = m;
+  idbTouch(m.chat_id);
 }
 
 /* ---------- ИИ-помощник: один вопрос — один ИИ-кредит ---------- */
@@ -9994,14 +10091,28 @@ function sndTone(t0, freq, dur, vol, type, glide) {
   o.connect(g); g.connect(sndBus);
   o.start(t0); o.stop(t0 + dur + 0.05);
 }
+function sndWhoosh(t0, dur, vol) {
+  const n = Math.floor(sndCtx.sampleRate * dur), buf = sndCtx.createBuffer(1, n, sndCtx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = sndCtx.createBufferSource(), bp = sndCtx.createBiquadFilter(), g = sndCtx.createGain();
+  src.buffer = buf; bp.type = "bandpass"; bp.Q.value = 1.4;
+  bp.frequency.setValueAtTime(700, t0); bp.frequency.exponentialRampToValueAtTime(3200, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp); bp.connect(g); g.connect(sndBus);
+  src.start(t0); src.stop(t0 + dur + 0.02);
+}
 // «сообщение» — короткая капля из двух нот; «уведомление» — те же ноты и третья выше, чуть громче и длиннее
 function playSound(kind) {
   if (settings.sounds === false || !sndCtx || sndCtx.state !== "running") return;
   const now = performance.now();
-  if (now - sndLast < 600) return;   // пачка сообщений подряд — один звук
+  if (kind !== "send" && now - sndLast < 600) return;   // пачка сообщений подряд — один звук
   sndLast = now;
   const t = sndCtx.currentTime + 0.01;
-  if (kind === "notify") {
+  if (kind === "send") {
+    // «вжух»: короткий шорох, уходящий вверх, и лёгкий щелчок в конце
+    sndWhoosh(t, 0.16, 0.13);
+    sndTone(t + 0.05, 1046, 0.09, 0.06, "sine", 1568);
+  } else if (kind === "notify") {
     sndTone(t, 784, 0.22, 0.2, "sine", 1046);
     sndTone(t + 0.1, 1175, 0.3, 0.16, "sine");
     sndTone(t + 0.21, 1568, 0.45, 0.1, "triangle");
@@ -10056,8 +10167,15 @@ function chatSlideIn() {
   paneAt(1);   // до первого кадра чат стоит за правым краем, пока рисуется переписка
   requestAnimationFrame(() => requestAnimationFrame(() => {
     slideBusy = true; slidePending = false;
-    const done = () => { if (!slideBusy) return; slideBusy = false; if (slidePending) { slidePending = false; repaintKeep(); } };
-    setTimeout(done, 460);
+    const done = () => {
+      if (!slideBusy) return;
+      slideBusy = false;
+      if (!slidePending) return;
+      slidePending = false;
+      // отложенную перерисовку — в свободный момент, чтобы конец въезда не споткнулся
+      if (window.requestIdleCallback) requestIdleCallback(() => repaintKeep(), { timeout: 400 }); else repaintKeep();
+    };
+    setTimeout(done, aMs(460));
     paneStop();
     paneRun(PANE_SHUT, PANE_OPEN, 340, OPEN_EASE, () => { if ($("app").classList.contains("chat-open")) paneStop(); done(); });
   }));
@@ -10207,7 +10325,7 @@ function holdBlur() {
   if (!holdLayer) return;
   const l = holdLayer; holdLayer = null;
   l.classList.add("out");
-  setTimeout(() => l.remove(), 200);
+  setTimeout(() => l.remove(), aMs(200));
 }
 
 /* новое сообщение внизу: переписка плавно сдвигается вверх на его высоту, само оно выезжает снизу (как в Telegram) */
@@ -10326,6 +10444,59 @@ async function decideApprove(ok) {
 $("haYes").addEventListener("click", () => decideApprove(true));
 $("haNo").addEventListener("click", () => decideApprove(false));
 
+/* ---------- удаление «в песок»: элемент стирается слева направо, а на его месте разлетаются песчинки ---------- */
+function dustAway(el, ms) {
+  return new Promise((done) => {
+    const r = el.getBoundingClientRect();
+    if (!motionOK() || !r.width || !r.height || r.bottom < 0 || r.top > innerHeight) return done();
+    ms = ms || 620;
+    const pad = 90, dpr = Math.min(2, devicePixelRatio || 1);
+    const cv = document.createElement("canvas");
+    cv.className = "dust-canvas";
+    const W = r.width + pad * 2, H = r.height + pad * 2;
+    cv.width = W * dpr; cv.height = H * dpr;
+    Object.assign(cv.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: W + "px", height: H + "px" });
+    document.body.append(cv);
+    const g = cv.getContext("2d");
+    g.scale(dpr, dpr);
+    // цвета песка: фон пузыря или строки и цвет текста
+    const box = el.matches(".msg, .row") ? el : el.querySelector(".msg, .row") || el;
+    const cs = getComputedStyle(box);
+    let bg = cs.backgroundColor;
+    if (!bg || /rgba\(0, 0, 0, 0\)|transparent/.test(bg)) bg = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#6ab";
+    const fg = cs.color || "#888";
+    const step = Math.max(3, Math.round(Math.sqrt((r.width * r.height) / 1400)));
+    const parts = [];
+    for (let y = 0; y < r.height; y += step) for (let x = 0; x < r.width; x += step) {
+      parts.push({ x: x + pad, y: y + pad, c: Math.random() < 0.18 ? fg : bg, s: step * (0.55 + Math.random() * 0.5),
+        at: (x / r.width) * ms * 0.55 + Math.random() * 60, vx: 0.04 + Math.random() * 0.12, vy: -(0.02 + Math.random() * 0.09), life: 380 + Math.random() * 420 });
+    }
+    const t0 = performance.now();
+    el.style.willChange = "clip-path";
+    const frame = (now) => {
+      const t = now - t0;
+      const sweep = Math.min(1, t / (ms * 0.55));
+      el.style.clipPath = "inset(0 0 0 " + (sweep * 100).toFixed(1) + "%)";
+      g.clearRect(0, 0, W, H);
+      let alive = 0;
+      for (const p of parts) {
+        const lt = t - p.at;
+        if (lt < 0) { alive++; continue; }
+        if (lt > p.life) continue;
+        alive++;
+        const k = lt / p.life;
+        g.globalAlpha = 1 - k;
+        g.fillStyle = p.c;
+        g.fillRect(p.x + p.vx * lt + Math.sin(lt / 90 + p.y) * 2, p.y + p.vy * lt - k * k * 10, p.s * (1 - k * 0.5), p.s * (1 - k * 0.5));
+      }
+      if (alive || t < ms * 0.55) requestAnimationFrame(frame);
+      else { cv.remove(); done(); }
+    };
+    requestAnimationFrame(frame);
+    setTimeout(() => { if (cv.isConnected) cv.remove(); done(); }, ms + 1500);
+  });
+}
+
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
 // клавиатуру на экране сами не открываем: поле ввода получает фокус автоматически только там, где есть мышь
 function canAutoFocus() { return !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches); }
@@ -10346,11 +10517,11 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
       this.classList.add("shut");
       this.getAnimations().forEach((a) => a.cancel());
       this.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translate(" + dx + "px," + dy + "px) scale(.3)" }], { duration: 210, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards" });
-      this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); this.getAnimations().forEach((a) => a.cancel()); close.call(this, v); }, 200);
+      this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); this.getAnimations().forEach((a) => a.cancel()); close.call(this, v); }, aMs(200));
       return;
     }
     this.classList.add("shut");
-    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, 170);
+    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, aMs(170));
   };
   window.__dlgCloseNow = (d) => { if (d._shut) { clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); } close.call(d); };
   const revive = (d) => { if (!d._shut) return false; clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); return true; };
@@ -10369,9 +10540,21 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
 const listCounts = new Map();
 function flipList(list, paint) {
   const ok = motionOK() && !document.hidden && list.offsetParent && !$("app").classList.contains("enter");
-  const before = new Map(), had = new Set();
-  for (const r of list.children) if (r.dataset.cid) { had.add(r.dataset.cid); if (ok) before.set(r.dataset.cid, r.getBoundingClientRect().top); }
+  const before = new Map(), had = new Set(), oldEls = new Map();
+  for (const r of list.children) if (r.dataset.cid) { had.add(r.dataset.cid); if (ok) { const rc = r.getBoundingClientRect(); before.set(r.dataset.cid, rc.top); oldEls.set(r.dataset.cid, { el: r, rc }); } }
   paint();
+  if (ok) {
+    const now = new Set([...list.children].map((r) => r.dataset.cid).filter(Boolean));
+    // рассыпаются только действительно удалённые чаты — не те, что ушли из-за смены папки или поиска
+    const gone = [...oldEls.keys()].filter((id) => !now.has(id) && (!state.chats.has(id) || chatHidden(state.chats.get(id))));
+    if (gone.length && gone.length <= 3) for (const id of gone) {
+      const { el, rc } = oldEls.get(id), ghost = el.cloneNode(true);
+      ghost.classList.add("keep", "dust-ghost");
+      Object.assign(ghost.style, { position: "fixed", left: rc.left + "px", top: rc.top + "px", width: rc.width + "px", height: rc.height + "px", margin: "0", zIndex: "40", pointerEvents: "none", background: "var(--panel)" });
+      document.body.append(ghost);
+      dustAway(ghost, 700).then(() => ghost.remove());
+    }
+  }
   const rows = [...list.children].filter((r) => r.dataset.cid);
   for (const r of rows) if (had.has(r.dataset.cid)) r.classList.add("keep");
   for (const r of rows) {
@@ -10416,7 +10599,7 @@ function flyIn(node, from, elapsed) {
       { transform: "translate(" + dx * .15 + "px," + dy * .1 + "px) scale(1.03)", opacity: 1, offset: .7 },
       { transform: "none", opacity: 1 },
     ], { duration: FLY_MS, easing: "cubic-bezier(.2,.9,.25,1)" });
-    if (elapsed) a.currentTime = Math.min(elapsed + 16, FLY_MS);
+    if (elapsed) a.currentTime = Math.min(elapsed + 16, aMs(FLY_MS));
   });
 }
 // удалённое сообщение не исчезает мгновенно, а сжимается и растворяется
@@ -10444,12 +10627,16 @@ function msgsGone(before) {
     el.classList.remove("new");
     el.style.pointerEvents = "none";
     box.insertBefore(el, anchor && anchor.parentNode === box ? anchor : null);
-    const hgt = el.offsetHeight;
-    el.style.overflow = "hidden";
-    el.animate([
-      { opacity: 1, transform: "scale(1)", height: hgt + "px" },
-      { opacity: 0, transform: "scale(.8)", height: "0px", marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" },
-    ], { duration: 320, easing: "cubic-bezier(.4,0,.2,1)" }).onfinish = () => el.remove();
+    // сначала сообщение рассыпается в песок, потом место под ним плавно схлопывается
+    dustAway(el).then(() => {
+      if (!el.isConnected) return;
+      const hgt = el.offsetHeight;
+      el.style.overflow = "hidden";
+      el.animate([
+        { height: hgt + "px" },
+        { height: "0px", marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" },
+      ], { duration: 260, easing: "cubic-bezier(.4,0,.2,1)" }).onfinish = () => el.remove();
+    });
   }
 }
 // «волна» от пальца или курсора на кнопках и строках
@@ -11583,6 +11770,7 @@ async function logout() {
   if (sub) await savePush(sub, false).catch(() => {});
   state.adding = false; $("authBack").hidden = true;
   try { localStorage.removeItem(chatsKey()); } catch (e) {}   // снимок списка чатов не оставляем на устройстве
+  idbClear();   // и сохранённую переписку тоже
   sb.auth.signOut({ scope: "local" });   // выходим только на этом устройстве
 }
 $("btnMute").addEventListener("click", async () => {
