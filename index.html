@@ -1293,6 +1293,9 @@ textarea.input { resize: vertical; min-height: 72px; }
 @keyframes greet-wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20%, 40% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
 @keyframes greet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 :root.calm .greet-card .em, :root.calm .greet-card img, :root[data-lite] .greet-card .em { animation-play-state: paused; }
+.greet-preview { display: grid; place-items: center; padding: 14px 0 10px; border-radius: 18px; margin: 8px 0; background: var(--panel-2); }
+.greet-preview .greet-card { animation: none; margin: 0; }
+#dlgGreet input { width: 100%; margin-bottom: 6px; }
 .greet-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; margin-bottom: 6px; }
 .greet-pick button { aspect-ratio: 1; border: 2px solid transparent; border-radius: 14px; background: var(--panel-2); font-size: 30px; cursor: pointer; padding: 4px; display: grid; place-items: center; }
 .greet-pick button[aria-pressed="true"] { border-color: var(--accent); }
@@ -2959,6 +2962,10 @@ void main() {
       <span id="myProfileAv"></span>
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
     </button>
+    <button class="pick" type="button" id="myGreetRow">
+      <span class="ico">👋</span>
+      <span><b>Моё приветствие</b><span class="small muted">Заголовок, текст и стикер, которые видят другие в пустом чате с вами</span></span>
+    </button>
     <button class="pick" type="button" id="myBotsRow">
       <span class="ico">🤖</span>
       <span><b>Мои боты</b><span class="small muted">Создать бота или изменить своих: команды, кнопки, ИИ</span></span>
@@ -3783,16 +3790,20 @@ void main() {
 </dialog>
 
 <!-- набор стикеров: просмотр -->
-<!-- приветствие в пустом чате: свой стикер или эмодзи -->
+<!-- своё приветствие: его видят другие в пустом чате с вами -->
 <dialog id="dlgGreet">
   <div class="dlg">
-    <h2>Приветствие</h2>
-    <div class="small muted">Его видно в пустом чате — нажатие сразу отправляет приветствие собеседнику.</div>
+    <h2>Моё приветствие</h2>
+    <div class="small muted">Его увидят другие, когда откроют пустой чат с вами. Нажатие на стикер отправит его вам.</div>
+    <div class="greet-preview" id="greetPrev"></div>
+    <input id="greetTitle" maxlength="60" placeholder="Заголовок: Здесь пока ничего нет…">
+    <input id="greetText" maxlength="160" placeholder="Подзаголовок: Отправьте сообщение или нажмите на приветствие ниже.">
     <div class="set-label">Эмодзи</div>
     <div class="greet-pick" id="greetEmoji"></div>
     <div class="set-label">Мои стикеры</div>
     <div class="greet-pick stk" id="greetStk"></div>
-    <div class="actions"><button class="btn ghost" type="button" data-close>Готово</button></div>
+    <div class="error" id="greetErr"></div>
+    <div class="actions"><button class="btn ghost" type="button" id="greetReset">Как было</button><button class="btn ghost" type="button" data-close>Отмена</button><button class="btn" type="button" id="greetSave">Сохранить</button></div>
   </div>
 </dialog>
 <dialog id="dlgPack">
@@ -4119,7 +4130,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://soroka.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot,intro";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -12100,51 +12111,75 @@ $("adSiteBtn").addEventListener("click", (e) => {
 });
 
 
-/* ---------- пустой чат: карточка «Здесь пока ничего нет…» с приветствием ---------- */
+/* ---------- пустой чат: карточка с приветствием собеседника ---------- */
+// приветствие задаёт сам человек (profiles.intro: заголовок, подзаголовок, эмодзи или стикер) — его видят те, кто открыл пустой чат с ним
 const GREET_EMOJI = ["👋", "🫡", "😊", "🤝", "✌️", "🙌", "🥰", "😎", "🤗", "🔥", "💫", "🐱"];
-function greetNow() { const g = settings.greet; return g && (g.t === "emoji" || g.t === "sticker") ? g : { t: "emoji", v: "👋" }; }
+const GREET_TITLE = "Здесь пока ничего нет…", GREET_TEXT = "Отправьте сообщение или нажмите на приветствие ниже.";
 function greetFits(c) {
   if (!c || isAiChat(c) || botOf(c) || state.msgsReady !== state.activeId) return false;
   if (c.is_channel && !myRole(c)) return false;
   const o = !c.is_group ? other(c) : null;
   return !(o && state.blocked.has(o.id));
 }
-function greetCard() {
-  const g = greetNow();
-  const go = h("button", { class: "greet-go", type: "button", title: T("Отправить приветствие"), "aria-label": T("Отправить приветствие"), onclick: () => sendGreet() },
-    g.t === "sticker" ? h("img", { src: avatarUrl(g.path), alt: "" }) : h("span", { class: "em" }, g.v));
+function introOf(c) { const o = c && !c.is_group ? other(c) : null; return (o && o.id !== state.me.id && !hiddenFor(o.id) && o.intro) || null; }
+function greetCardFrom(g, onSend, link) {
+  g = g || {};
+  const go = h("button", { class: "greet-go", type: "button", title: T("Отправить приветствие"), "aria-label": T("Отправить приветствие"), onclick: onSend },
+    g.sticker && g.path ? h("img", { src: avatarUrl(g.path), alt: "" }) : h("span", { class: "em" }, g.emoji || "👋"));
   return h("div", { class: "greet-card" },
-    h("b", {}, T("Здесь пока ничего нет…")),
-    h("span", { class: "small" }, T("Отправьте сообщение или нажмите на приветствие ниже.")),
-    go,
-    h("button", { class: "link greet-pick-btn", type: "button", onclick: openGreetPicker }, T("Выбрать своё приветствие")));
+    h("b", {}, g.title || T(GREET_TITLE)),
+    h("span", { class: "small" }, g.text || T(GREET_TEXT)),
+    go, link || null);
 }
-function sendGreet() {
-  const chatId = state.activeId, g = greetNow();
+function greetCard() {
+  const c = state.chats.get(state.activeId), g = introOf(c);
+  return greetCardFrom(g, () => sendGreet(g),
+    h("button", { class: "link greet-pick-btn", type: "button", onclick: openGreetPicker }, T("Настроить своё приветствие")));
+}
+function sendGreet(g) {
+  const chatId = state.activeId;
   if (!chatId) return;
-  if (g.t === "sticker") sendSticker({ id: g.id });
-  else sendFiles(chatId, [], g.v, null);
+  if (g && g.sticker) sendSticker({ id: g.sticker });
+  else sendFiles(chatId, [], (g && g.emoji) || "👋", null);
 }
-function setGreet(g) {
-  settings.greet = g;
-  try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
-  paintGreetPicker();
-  if (state.activeId && !state.msgs.length) renderMsgs();
-}
+// редактор своего приветствия
+let greetDraft = null;
 function paintGreetPicker() {
-  const g = greetNow();
-  $("greetEmoji").replaceChildren(...GREET_EMOJI.map((v) => h("button", { type: "button", "aria-pressed": String(g.t === "emoji" && g.v === v), onclick: () => setGreet({ t: "emoji", v }) }, v)));
+  const g = greetDraft;
+  $("greetPrev").replaceChildren(greetCardFrom({ ...g, title: $("greetTitle").value.trim(), text: $("greetText").value.trim() }, () => {}));
+  $("greetEmoji").replaceChildren(...GREET_EMOJI.map((v) => h("button", { type: "button", "aria-pressed": String(!g.sticker && (g.emoji || "👋") === v),
+    onclick: () => { greetDraft = { ...greetDraft, emoji: v, sticker: null, path: null }; paintGreetPicker(); } }, v)));
   const all = stk.packs.flatMap((p) => stk.items.get(p.id) || []).slice(0, 120);
-  $("greetStk").replaceChildren(...(all.length ? all.map((x) => h("button", { type: "button", "aria-pressed": String(g.t === "sticker" && g.id === x.id),
-    onclick: () => setGreet({ t: "sticker", id: x.id, path: x.file_path }) }, h("img", { src: avatarUrl(x.file_path), alt: "", loading: "lazy" })))
+  $("greetStk").replaceChildren(...(all.length ? all.map((x) => h("button", { type: "button", "aria-pressed": String(g.sticker === x.id),
+    onclick: () => { greetDraft = { ...greetDraft, sticker: x.id, path: x.file_path, emoji: null }; paintGreetPicker(); } }, h("img", { src: avatarUrl(x.file_path), alt: "", loading: "lazy" })))
     : [h("div", { class: "small muted", style: "grid-column:1/-1" }, T("Своих стикеров пока нет — добавьте набор в панели стикеров."))]));
 }
 async function openGreetPicker() {
+  const mine = (state.profile && state.profile.intro) || {};
+  greetDraft = { ...mine };
+  $("greetTitle").value = mine.title || "";
+  $("greetText").value = mine.text || "";
+  $("greetErr").textContent = "";
   $("dlgGreet").showModal();
   $("greetStk").replaceChildren(h("div", { class: "small muted", style: "grid-column:1/-1" }, T("Загружаем…")));
   paintGreetPicker();
   if (!stk.loaded) { await loadStickers(); paintGreetPicker(); }
 }
+$("greetTitle").addEventListener("input", paintGreetPicker);
+$("greetText").addEventListener("input", paintGreetPicker);
+$("greetReset").addEventListener("click", () => { greetDraft = {}; $("greetTitle").value = ""; $("greetText").value = ""; paintGreetPicker(); });
+$("greetSave").addEventListener("click", async () => {
+  const g = greetDraft || {};
+  $("greetSave").disabled = true;
+  const { data, error } = await sb.rpc("set_intro", { p_title: $("greetTitle").value.trim(), p_text: $("greetText").value.trim(),
+    p_emoji: g.sticker ? null : (g.emoji || ""), p_sticker: g.sticker || null });
+  $("greetSave").disabled = false;
+  if (error) { $("greetErr").textContent = /sticker/.test(error.message || "") ? T("Этот стикер удалён — выберите другой") : T("Не получилось сохранить"); return; }
+  state.profile = Object.assign({}, state.profile, { intro: data || null });
+  $("dlgGreet").close();
+  toast(T("Приветствие сохранено — его видят в пустом чате с вами"));
+});
+$("myGreetRow").addEventListener("click", () => openGreetPicker());
 
 /* ---------- стикеры ---------- */
 const stk = { packs: [], items: new Map(), cur: null, loaded: false };
