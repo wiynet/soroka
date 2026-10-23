@@ -244,6 +244,11 @@ async function botReply(messageId: number) {
   if (!bot || !m || m.deleted_at || m.sender_id === bot) return "skip";
   const { data: chat } = await sb.from("chats").select("id,is_group").eq("id", m.chat_id).maybeSingle();
   if (!chat || chat.is_group) return "skip";
+  const { data: members } = await sb.from("chat_members").select("user_id").eq("chat_id", m.chat_id);
+  if (!(members || []).some((x: any) => x.user_id === bot)) return "skip";
+  // отвечаем ровно один раз: запустить могут и база, и само приложение
+  const { data: claimed } = await sb.rpc("ai_claim", { p_message: m.id });
+  if (!claimed) return "dup";
   const say = (body: string) => sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: body.slice(0, 4000) });
 
   const { data: u } = await sb.from("profiles").select("is_admin,banned_at,deleted_at").eq("id", m.sender_id).maybeSingle();
@@ -346,7 +351,18 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const input = await req.json().catch(() => ({}));
-    // сообщение боту @ai: вызывает только база, с секретом
+    // сообщение боту @ai из самого приложения (если запрос из базы завис): только своё сообщение
+    if (input.message_id && input.client) {
+      const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const { data: au } = await sb.auth.getUser(jwt);
+      const { data: mm } = await sb.from("messages").select("sender_id").eq("id", Number(input.message_id)).maybeSingle();
+      if (!au?.user?.id || !mm || mm.sender_id !== au.user.id) return reply({ error: "forbidden" }, 403);
+      const job = botReply(Number(input.message_id)).catch((e) => console.error("botReply", e));
+      // @ts-ignore: EdgeRuntime есть в среде Supabase — ответ продолжает готовиться, даже если приложение закрыли
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) { EdgeRuntime.waitUntil(job); return reply({ queued: true }); }
+      return reply({ result: await job });
+    }
+    // сообщение боту @ai: вызывает база, с секретом
     if (input.message_id) {
       const { data: pc } = await sb.rpc("push_server_config");
       if (!pc || req.headers.get("x-hook-secret") !== pc.hook_secret) return reply({ error: "forbidden" }, 403);

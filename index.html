@@ -1743,6 +1743,16 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .upage .u-hero.pbg-img { background-size: cover; background-position: center; }
 .pbg-sw.own { background: var(--panel-2); font-size: 18px; }
 
+/* ---------- производительность: «вечные» эффекты работают только когда нужны; на слабых устройствах — облегчённый режим ---------- */
+.sbar:not(:focus-within)::before, .sbar:not(:focus-within)::after { animation-play-state: paused !important; }
+:root[data-lite] .tabbar, :root[data-lite] .star, :root[data-lite] .worn, :root[data-lite] .nft::after, :root[data-lite] .gem,
+:root[data-lite] .coin.big, :root[data-lite] .orb, :root[data-lite] .sparks i, :root[data-lite] .sbar::before, :root[data-lite] .sbar::after { animation: none !important; }
+:root[data-lite][data-wall="crystal"] .pane::before { animation: none !important; }
+:root[data-lite] .hold-layer, :root[data-lite] dialog::backdrop, :root[data-lite] #dlgMsg::backdrop, :root[data-lite] .day,
+:root[data-lite] .tabbar, :root[data-lite] #viewer::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+:root[data-lite] .tabbar { background: var(--panel-2) !important; }
+:root[data-lite] .hold-layer { background: rgb(0 0 0 / .45); }
+
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
   --lg-tint: color-mix(in srgb, var(--panel) 46%, transparent);
@@ -1835,18 +1845,9 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   @keyframes boot-breathe { 50% { transform: scale(1.05); } }
   @keyframes boot-bar { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
   /* появление интерфейса после заставки: части выезжают по очереди */
-  #app.enter .side-head { animation: rise .45s var(--ease) both; }
-  #app.enter #getApps { animation: rise .45s var(--ease) .03s both; }
-  #app.enter #storyBar { animation: rise .45s var(--ease) .06s both; }
-  #app.enter .sbar { animation: rise .45s var(--ease) .12s both; }
-  #app.enter #folderBar { animation: rise .45s var(--ease) .18s both; }
-  #app.enter #chatList > * { animation: from-left .45s var(--ease) both; }
-  #app.enter #chatList > :nth-child(1) { animation-delay: .2s; } #app.enter #chatList > :nth-child(2) { animation-delay: .24s; }
-  #app.enter #chatList > :nth-child(3) { animation-delay: .28s; } #app.enter #chatList > :nth-child(4) { animation-delay: .32s; }
-  #app.enter #chatList > :nth-child(5) { animation-delay: .36s; } #app.enter #chatList > :nth-child(6) { animation-delay: .4s; }
-  #app.enter #chatList > :nth-child(7) { animation-delay: .44s; } #app.enter #chatList > :nth-child(n+8) { animation-delay: .48s; }
-  #app.enter .pane { animation: fade-in .6s .15s both; }
-  #app.enter .tabbar { animation: tabbar-in .55s cubic-bezier(.34, 1.56, .64, 1) .3s both; }
+  /* вход: весь экран проявляется одним мягким движением (один слой — без нагрузки и мельтешения) */
+  #app.enter { animation: app-in .42s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes app-in { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes tabbar-in { from { opacity: 0; transform: translateY(40px) scale(.9); } }
   /* закрытие окон, меню и подсказок */
   dialog.shut { animation: dlg-out .17s var(--ease) both !important; pointer-events: none; }
@@ -1925,7 +1926,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
 })();
 /* Настройки оформления хранятся на этом устройстве. */
 (function () {
-  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "crystal", bubble: "round", font: "wide", lang: "ru", glass: "auto" };
+  var s = { theme: "system", hue: 190, size: "m", enterSends: true, wall: "crystal", bubble: "round", font: "wide", lang: "ru", glass: "auto", lite: "auto" };
   try { Object.assign(s, JSON.parse(localStorage.getItem("soroka.settings") || "{}")); } catch (e) {}
   // прежние узоры (точки, сетка, линии) заменены цветными фонами
   if (["crystal", "live", "glow", "sunset", "aurora", "ocean", "candy", "space", "neon", "none"].indexOf(s.wall) < 0) s.wall = "live";
@@ -1941,6 +1942,9 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     r.setAttribute("data-size", s.size === "s" || s.size === "l" ? s.size : "m");
     r.setAttribute("data-wall", s.wall);
     r.setAttribute("data-bubble", s.bubble === "sharp" ? "sharp" : "round");
+    // слабое устройство (мало памяти или ядер): облегчённый режим без тяжёлых фоновых эффектов
+    var weak = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+    if (s.lite === "on" || (s.lite !== "off" && weak)) r.setAttribute("data-lite", ""); else r.removeAttribute("data-lite");
     // «жидкое стекло»: само включается в приложении для iPhone, вручную — в настройках оформления
     var glass = s.glass === "on" || (s.glass !== "off" && location.protocol === "capacitor:");
     r.setAttribute("data-glass", glass ? "liquid" : "none");
@@ -1952,7 +1956,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f636405f25"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=58fa24aa66"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2312,7 +2316,8 @@ void main() {
     raf = 0;
     if (dead || !seen()) return;
     if (!gl) { init(); if (!gl) return; }
-    draw(now);   // каждый кадр экрана: 60 Гц — 60 кадров, 120 Гц — 120; скорость движения от частоты не зависит (считается по времени)
+    // каждый кадр экрана (60/120 Гц); в облегчённом режиме — около 30 кадров, чтобы не грелся телефон
+    if (!root.hasAttribute("data-lite") || now - last >= 32) { last = now; draw(now); }
     if (!still) raf = requestAnimationFrame(frame);
   }
   function kick() { if (!raf && !dead) raf = requestAnimationFrame(frame); }
@@ -2663,6 +2668,14 @@ void main() {
           <button type="button" role="radio" data-v="off">Выкл</button>
         </div>
         <p class="small muted" style="margin:-4px 0 0">Полупрозрачные панели с размытием и бликами, как в iOS 26. «Авто» — включено в приложении для iPhone.</p>
+
+        <div class="set-label">Облегчённый режим</div>
+        <div class="seg" data-key="lite" role="radiogroup" aria-label="Облегчённый режим">
+          <button type="button" role="radio" data-v="auto">Авто</button>
+          <button type="button" role="radio" data-v="on">Вкл</button>
+          <button type="button" role="radio" data-v="off">Выкл</button>
+        </div>
+        <p class="small muted" style="margin:-4px 0 0">Без размытия и фоновых эффектов — плавнее на слабых телефонах и компьютерах. «Авто» включает его сам, если устройству тяжело.</p>
     
         </div>
         <div data-page="chat" hidden>
@@ -4555,7 +4568,7 @@ async function startApp() {
   loadFolders();
   claimDaily();
   refreshAiCredits();
-  idbReady.then(() => setTimeout(prefetchChats, 200));
+  idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
   flash($("chatList"), 900);
@@ -4716,7 +4729,7 @@ function saveChatsSnap() {
     localStorage.setItem(chatsKey(), JSON.stringify({ t: Date.now(), chats, unread: [...state.unread] }));
   } catch (e) {}
 }
-const saveChatsSoon = debounce(saveChatsSnap, 1500);
+const saveChatsSoon = debounce(() => (window.requestIdleCallback || setTimeout)(saveChatsSnap, { timeout: 2000 }), 1500);
 function loadChatsSnap() {
   try {
     const j = JSON.parse(localStorage.getItem(chatsKey()) || "null");
@@ -6582,7 +6595,7 @@ async function deliverOne(t, someSent) {
     }
     dropTemp(t);
     touchChat(data);
-    if (data.body && isAiChat(state.chats.get(chatId))) aiThinking(chatId);
+    if (data.body && isAiChat(state.chats.get(chatId))) { aiThinking(chatId); aiKick(data.id); }
     if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else addMsg(data); }
     return true;
   } catch (e) {
@@ -10609,6 +10622,18 @@ async function toggleTranscript(m) {
   if (typeof r.text === "string") { transcripts.set(m.id, r.text); trHidden.delete(m.id); }
   else toast(r.error === "limit" ? T("На сегодня расшифровок хватит — попробуйте завтра") : r.error === "too long" ? T("Слишком длинное сообщение для расшифровки") : r.error === "busy" ? T("Сервис расшифровки занят — попробуйте через минуту") : T("Не получилось расшифровать"));
   repaintKeep();
+}
+
+// ИИ: ответ запускает само приложение — напрямую, без цепочки через базу (она иногда зависает).
+// Сервер отвечает на каждое сообщение ровно один раз, даже если сработают оба пути.
+async function aiKick(id) {
+  try {
+    const tok = (await sb.auth.getSession()).data.session?.access_token;
+    if (!tok) return;
+    await fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST", keepalive: true,
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + tok },
+      body: JSON.stringify({ message_id: id, client: true }) });
+  } catch (e) {}
 }
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
