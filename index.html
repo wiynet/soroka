@@ -1276,6 +1276,27 @@ textarea.input { resize: vertical; min-height: 72px; }
 .av-make canvas { width: 76px; height: 76px; flex: none; border-radius: 50%; }
 .av-make-body { flex: 1; min-width: 0; display: grid; gap: 10px; }
 .empty-note { padding: 28px 18px; color: var(--muted); text-align: center; }
+/* пустой чат: карточка с приветствием, как в Telegram */
+.greet-card { margin: auto; width: min(312px, 86%); padding: 22px 20px 16px; border-radius: 22px; text-align: center; display: grid; justify-items: center; gap: 6px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); box-shadow: 0 8px 30px rgb(0 0 0 / .14); animation: greet-in .45s var(--ease, ease) both; }
+.greet-card b { font-size: 15px; color: var(--ink); }
+.greet-card .small { color: var(--muted); max-width: 240px; line-height: 1.35; }
+.greet-card .greet-go { margin-top: 8px; width: 132px; height: 132px; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 24px;
+  display: grid; place-items: center; transition: transform .18s; -webkit-tap-highlight-color: transparent; }
+.greet-card .greet-go:active { transform: scale(.9); }
+.greet-card .greet-go .em { font-size: 92px; line-height: 1; display: inline-block; transform-origin: 70% 80%; animation: greet-wave 2.6s ease-in-out .5s infinite; }
+.greet-card .greet-go img { width: 128px; height: 128px; object-fit: contain; animation: greet-bob 3s ease-in-out infinite; }
+.greet-card .greet-pick-btn { margin-top: 4px; font-size: 12px; }
+#msgs:has(> .greet-card) { display: flex; flex-direction: column; justify-content: center; }
+@keyframes greet-in { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+@keyframes greet-wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20%, 40% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes greet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+:root.calm .greet-card .em, :root.calm .greet-card img, :root[data-lite] .greet-card .em { animation-play-state: paused; }
+.greet-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; margin-bottom: 6px; }
+.greet-pick button { aspect-ratio: 1; border: 2px solid transparent; border-radius: 14px; background: var(--panel-2); font-size: 30px; cursor: pointer; padding: 4px; display: grid; place-items: center; }
+.greet-pick button[aria-pressed="true"] { border-color: var(--accent); }
+.greet-pick img { width: 100%; height: 100%; object-fit: contain; }
 
 /* ---------- conversation ---------- */
 .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -3756,6 +3777,18 @@ void main() {
 </dialog>
 
 <!-- набор стикеров: просмотр -->
+<!-- приветствие в пустом чате: свой стикер или эмодзи -->
+<dialog id="dlgGreet">
+  <div class="dlg">
+    <h2>Приветствие</h2>
+    <div class="small muted">Его видно в пустом чате — нажатие сразу отправляет приветствие собеседнику.</div>
+    <div class="set-label">Эмодзи</div>
+    <div class="greet-pick" id="greetEmoji"></div>
+    <div class="set-label">Мои стикеры</div>
+    <div class="greet-pick stk" id="greetStk"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Готово</button></div>
+  </div>
+</dialog>
 <dialog id="dlgPack">
   <div class="dlg">
     <h2 id="pkTitle"></h2>
@@ -4093,7 +4126,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const state = {
   me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), giveaways: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
   chats: new Map(), activeId: null, msgs: [], hasMore: false, loadingMore: false,
-  unread: new Map(), pendingFiles: [], channel: null, urls: new Map(), blocked: new Set(), names: new Map(), pins: new Map(), stats: new Map(), typingCh: null, typing: null,
+  unread: new Map(), pendingFiles: [], channel: null, urls: new Map(), blocked: new Set(), blockedMe: new Set(), names: new Map(), pins: new Map(), stats: new Map(), typingCh: null, typing: null,
   picker: { mode: "create", selected: new Map(), exclude: new Set() },
 };
 
@@ -4317,11 +4350,14 @@ async function squareWebp(file, side, cover) {
 function muteMark() { const k = icon("belloff"); k.classList.add("kind"); k.style.marginLeft = "5px"; k.setAttribute("aria-label", T("Без уведомлений")); return k; }
 function kindIcon(name) { const k = icon(name); k.classList.add("kind"); return k; }
 // ИИ-помощник @ai работает круглосуточно, поэтому всегда «в сети»
-function isOnline(p) { return !!(p && !p.banned_at && (p.username === "ai" || (p.last_seen_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000))); }
+// заблокировали друг друга (в любую сторону): аватарка и время в сети скрыты, статус — «неизвестно»
+function hiddenFor(id) { return !!id && (state.blocked.has(id) || state.blockedMe.has(id)); }
+function isOnline(p) { return !!(p && !p.banned_at && !hiddenFor(p.id) && (p.username === "ai" || (p.last_seen_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000))); }
 function fmtSeen(p) {
   if (!p) return "";
   if (p.banned_at) return T("аккаунт заблокирован");
   if (p.is_bot) return T("бот");
+  if (hiddenFor(p.id)) return T("неизвестно");
   if (isOnline(p)) return T("в сети");
   if (p.hide_seen && isPremium(p)) return T("был(а) недавно");   // время в сети скрыто
   if (!p.last_seen_at) return T("не в сети");
@@ -4338,6 +4374,7 @@ function avatarUrl(path) {
   return SUPABASE_URL + "/storage/v1/object/public/avatars/" + path.split("/").map(encodeURIComponent).join("/");
 }
 function avatar(name, seed, small, path) {
+  if (path && hiddenFor(seed)) path = null;
   let n = 0;
   for (const ch of String(seed || name)) n = (n * 31 + ch.codePointAt(0)) % 360;
   const letters = String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => [...w][0] || "").join("").toUpperCase();
@@ -4781,7 +4818,7 @@ function stopApp() {
   $("btnAdmin").hidden = true;
   outbox.length = 0;
   storyFeed = new Map(); storyUsers = new Set(); storyFeedKey = ""; storyUsersAt = 0; storyBarSig = ""; $("storyBar").replaceChildren();
-  state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear(); state.blocked.clear();
+  state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear(); state.blocked.clear(); state.blockedMe.clear();
   mentionChats.clear(); folders = []; dailyKey = ""; closeMention(); msgCache.clear();
   $("dlgSettings").close();
   vpnLink = null; $("vpnLink").value = ""; $("vpnLink").hidden = true;
@@ -5738,7 +5775,8 @@ function renderMsgs(newId) {
   if (slideBusy && !newId) { slidePending = true; return; }   // перерисуем сразу после въезда
   const kids = [];
   if (state.hasMore) kids.push(h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")));
-  if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, isAiChat(state.chats.get(state.activeId))
+  if (!state.msgs.length && greetFits(state.chats.get(state.activeId))) kids.push(greetCard());
+  else if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, isAiChat(state.chats.get(state.activeId))
     ? T("Это ИИ-помощник Mestario. Напишите вопрос — ответ придёт сюда же, можно уточнять. За каждую секунду работы списывается 1 ИИ-кредит.")
     : T("Здесь пока пусто. Напишите первое сообщение.")));
   let prev = "";
@@ -8704,12 +8742,21 @@ $("uBan").addEventListener("click", async () => {
 async function loadBlocked() {
   const { data } = await sb.from("user_blocks").select("blocked_id");
   state.blocked = new Set((Array.isArray(data) ? data : []).map((r) => r && r.blocked_id).filter(Boolean));
+  const me = await sb.rpc("who_blocked_me");
+  state.blockedMe = new Set((Array.isArray(me.data) ? me.data : []).map((r) => (r && typeof r === "object" ? r.who_blocked_me : r)).filter(Boolean));
+  rowCache && rowCache.clear && rowCache.clear();
+  renderList();
   if (state.activeId) renderHead();
 }
+// вернулись в приложение — обновим, кто кого заблокировал (раз в минуту, не чаще)
+let blockedAt = 0;
+document.addEventListener("visibilitychange", () => { if (!document.hidden && state.started && Date.now() - blockedAt > 60000) { blockedAt = Date.now(); loadBlocked(); } });
 async function setBlocked(user, on) {
   const { error } = await sb.rpc("block_user", { p_user: user.id, p_on: on });
   if (error) { toast(T("Не удалось изменить чёрный список")); return false; }
   if (on) state.blocked.add(user.id); else state.blocked.delete(user.id);
+  if (typeof rowCache !== "undefined" && rowCache.clear) rowCache.clear();
+  renderList();
   toast(on ? user.display_name + T(" заблокирован(а)") : user.display_name + T(" разблокирован(а)"));
   if (state.activeId) renderHead();
   if (viewed && viewed.id === user.id && $("dlgUser").open) paintUser(viewed);
@@ -12031,6 +12078,53 @@ $("adSiteBtn").addEventListener("click", (e) => {
   siteArmed = false;
   setSiteClosed(closing, e.currentTarget);
 });
+
+
+/* ---------- пустой чат: карточка «Здесь пока ничего нет…» с приветствием ---------- */
+const GREET_EMOJI = ["👋", "🫡", "😊", "🤝", "✌️", "🙌", "🥰", "😎", "🤗", "🔥", "💫", "🐱"];
+function greetNow() { const g = settings.greet; return g && (g.t === "emoji" || g.t === "sticker") ? g : { t: "emoji", v: "👋" }; }
+function greetFits(c) {
+  if (!c || isAiChat(c) || botOf(c) || state.msgsReady !== state.activeId) return false;
+  if (c.is_channel && !myRole(c)) return false;
+  const o = !c.is_group ? other(c) : null;
+  return !(o && state.blocked.has(o.id));
+}
+function greetCard() {
+  const g = greetNow();
+  const go = h("button", { class: "greet-go", type: "button", title: T("Отправить приветствие"), "aria-label": T("Отправить приветствие"), onclick: () => sendGreet() },
+    g.t === "sticker" ? h("img", { src: avatarUrl(g.path), alt: "" }) : h("span", { class: "em" }, g.v));
+  return h("div", { class: "greet-card" },
+    h("b", {}, T("Здесь пока ничего нет…")),
+    h("span", { class: "small" }, T("Отправьте сообщение или нажмите на приветствие ниже.")),
+    go,
+    h("button", { class: "link greet-pick-btn", type: "button", onclick: openGreetPicker }, T("Выбрать своё приветствие")));
+}
+function sendGreet() {
+  const chatId = state.activeId, g = greetNow();
+  if (!chatId) return;
+  if (g.t === "sticker") sendSticker({ id: g.id });
+  else sendFiles(chatId, [], g.v, null);
+}
+function setGreet(g) {
+  settings.greet = g;
+  try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
+  paintGreetPicker();
+  if (state.activeId && !state.msgs.length) renderMsgs();
+}
+function paintGreetPicker() {
+  const g = greetNow();
+  $("greetEmoji").replaceChildren(...GREET_EMOJI.map((v) => h("button", { type: "button", "aria-pressed": String(g.t === "emoji" && g.v === v), onclick: () => setGreet({ t: "emoji", v }) }, v)));
+  const all = stk.packs.flatMap((p) => stk.items.get(p.id) || []).slice(0, 120);
+  $("greetStk").replaceChildren(...(all.length ? all.map((x) => h("button", { type: "button", "aria-pressed": String(g.t === "sticker" && g.id === x.id),
+    onclick: () => setGreet({ t: "sticker", id: x.id, path: x.file_path }) }, h("img", { src: avatarUrl(x.file_path), alt: "", loading: "lazy" })))
+    : [h("div", { class: "small muted", style: "grid-column:1/-1" }, T("Своих стикеров пока нет — добавьте набор в панели стикеров."))]));
+}
+async function openGreetPicker() {
+  $("dlgGreet").showModal();
+  $("greetStk").replaceChildren(h("div", { class: "small muted", style: "grid-column:1/-1" }, T("Загружаем…")));
+  paintGreetPicker();
+  if (!stk.loaded) { await loadStickers(); paintGreetPicker(); }
+}
 
 /* ---------- стикеры ---------- */
 const stk = { packs: [], items: new Map(), cur: null, loaded: false };
