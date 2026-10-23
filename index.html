@@ -1667,7 +1667,19 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 @media (max-width: 760px) {
   #app { position: relative; overflow: hidden; }
   #app.peek .sidebar { display: flex !important; position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-  #app.peek .pane { position: relative; z-index: 1; background: var(--bg); box-shadow: -14px 0 34px rgb(0 0 0 / .28); }
+  #app.peek .pane { position: relative; z-index: 1; background: var(--bg); box-shadow: -14px 0 34px rgb(0 0 0 / .28); will-change: transform; }
+  #app.peek .sidebar { will-change: transform, filter; }
+}
+
+/* долгое нажатие: «вдавливание», размытый фон и приподнятая копия */
+.hold-layer { position: fixed; inset: 0; z-index: 59; background: rgb(0 0 0 / .3); -webkit-backdrop-filter: blur(9px) saturate(120%); backdrop-filter: blur(9px) saturate(120%); }
+.hold-layer .hold-clone { pointer-events: none; z-index: 1; box-shadow: 0 16px 44px rgb(0 0 0 / .38); border-radius: 16px; }
+.hold-layer .row.hold-clone { background: var(--panel); }
+#dlgMsg::backdrop { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+@media (prefers-reduced-motion: no-preference) {
+  .row.pressing, .msg.pressing, #folderBar button.pressing, .sb-item.pressing, .gift.tile.pressing { transform: scale(.965); transition: transform .36s cubic-bezier(.3,.7,.4,1); }
+  .hold-layer { animation: fade-in .22s both; }
+  .hold-layer.out { animation: fade-out .18s both; }
 }
 
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
@@ -3967,6 +3979,7 @@ function badgeClick(el, kind) {
     const r = el.getBoundingClientRect(), w = ctxEl.offsetWidth;
     ctxEl.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
     ctxEl.style.top = Math.min(r.bottom + 6, innerHeight - ctxEl.offsetHeight - 8) + "px";
+    ctxPop(ctxEl, r.left + r.width / 2, r.bottom);
   });
 }
 async function setBadgeHidden(kind, hide) {
@@ -4664,6 +4677,7 @@ function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date
 /* ---------- меню чата в списке: правая кнопка мыши или долгое нажатие ---------- */
 let ctxEl = null, archView = false;
 function closeCtx() {
+  holdBlur();
   if (ctxEl) {
     const el = ctxEl; ctxEl = null;
     if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), 130); } else el.remove();
@@ -4709,6 +4723,7 @@ function openChatCtx(c, x, y, row) {
   const w = ctxEl.offsetWidth, hh = ctxEl.offsetHeight;
   ctxEl.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
   ctxEl.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + "px";
+  ctxPop(ctxEl, x, y);
   if (row) row.classList.add("held");
 }
 document.addEventListener("pointerdown", (e) => { if (ctxEl && !ctxEl.contains(e.target)) closeCtx(); }, true);
@@ -5008,7 +5023,8 @@ async function openChat(id) {
   $("app").classList.add("chat-open");
   if (!wasOpen) chatSlideIn();
   renderHead();
-  renderList();
+  // на телефоне список под чатом перерисуем после въезда — чтобы анимация не спотыкалась
+  if (!wasOpen && phoneLayout()) setTimeout(renderList, 420); else renderList();
   const pendingHere = () => outbox.filter((t) => t.chat_id === id && !t.done);   // недоставленное остаётся видно
   // переписка уже загружена заранее: показываем сразу, а свежую версию сверяем в фоне
   const cached = msgCache.get(id);
@@ -5992,6 +6008,7 @@ $("btnAttach").addEventListener("click", (e) => {
   const r = $("btnAttach").getBoundingClientRect();
   ctxEl.style.left = Math.max(8, r.left) + "px";
   ctxEl.style.top = Math.max(8, r.top - ctxEl.offsetHeight - 6) + "px";
+  ctxPop(ctxEl, r.left + r.width / 2, r.top);
 });
 $("fileInput").addEventListener("change", (e) => pickFiles(e.target.files));
 $("attachRemove").addEventListener("click", () => setPending(null));
@@ -6613,6 +6630,12 @@ function openMsgMenu(m, group) {
   $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
   $("maReport").hidden = m.sender_id === state.me.id || !!m.event_kind;
   $("dlgMsg").showModal();
+  // окно действий «вырастает» из пальца, сообщение под ним коротко приподнимается
+  const pr = lastPress, held = takePress();
+  if (held && pr && motionOK()) {
+    held.animate([{ transform: "scale(.965)" }, { transform: "scale(1.04)", offset: 0.55 }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1)" });
+    growFrom($("dlgMsg"), pr.x, pr.y);
+  }
 }
 $("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
 $("maPin").addEventListener("click", () => {
@@ -9089,8 +9112,20 @@ function placeCtx(el, x, y) {
   ctxEl = el;
   (document.querySelector("dialog[open]") || document.body).append(el);
   const w = el.offsetWidth, hh = el.offsetHeight;
-  el.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
-  el.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + "px";
+  const left = Math.max(8, Math.min(x, innerWidth - w - 8)), top = Math.max(8, Math.min(y, innerHeight - hh - 8));
+  el.style.left = left + "px";
+  el.style.top = top + "px";
+  ctxPop(el, x, y);
+}
+// меню вырастает из точки, откуда его вызвали; если держали палец на строке или сообщении — фон размывается
+function ctxPop(el, x, y) {
+  if (!motionOK() || !el.isConnected) return;
+  const left = parseFloat(el.style.left) || 0, top = parseFloat(el.style.top) || 0, w = el.offsetWidth, hh = el.offsetHeight;
+  el.style.transformOrigin = Math.max(0, Math.min(w, x - left)) + "px " + Math.max(0, Math.min(hh, y - top)) + "px";
+  el.animate([{ opacity: 0, transform: "scale(.4)" }, { opacity: 1, transform: "scale(1.03)", offset: 0.65 }, { opacity: 1, transform: "scale(1)" }],
+    { duration: 300, easing: "cubic-bezier(.2,.9,.3,1)" });
+  const held = takePress();
+  if (held && el.parentNode === document.body) holdFocus(held);
 }
 
 /* ---------- упоминания @ник ---------- */
@@ -9875,7 +9910,7 @@ function playSound(kind) {
 }
 
 /* ---------- плавное открытие чата и возврат смахиванием вправо (чат, страницы настроек, окна на весь экран) ---------- */
-const PEEK = 0.28, SWIPE_EASE = "cubic-bezier(.2,.8,.2,1)";
+const PEEK = 0.28, SWIPE_EASE = "cubic-bezier(.2,.8,.2,1)", OPEN_EASE = "cubic-bezier(.22,.9,.28,1)";
 function phoneLayout() { return innerWidth <= 760; }
 function peekEls() { return { app: $("app"), pane: document.querySelector("#app > .pane"), side: document.querySelector("#app > .sidebar") }; }
 function peekReset() {
@@ -9899,9 +9934,13 @@ function chatSlideIn() {
   if (!phoneLayout() || !motionOK() || $("app").classList.contains("enter")) return;
   const { pane, side } = peekEls();
   peekStart();
-  pane.animate([{ transform: "translateX(100%)" }, { transform: "none" }], { duration: 360, easing: SWIPE_EASE });
-  side.animate([{ transform: "none", filter: "brightness(1)" }, { transform: "translateX(-" + PEEK * 100 + "%)", filter: "brightness(.8)" }], { duration: 360, easing: SWIPE_EASE })
-    .onfinish = () => { if ($("app").classList.contains("chat-open")) peekReset(); };
+  pane.style.transform = "translateX(100%)";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    pane.style.transform = "";
+    pane.animate([{ transform: "translateX(100%)" }, { transform: "none" }], { duration: 330, easing: OPEN_EASE });
+    side.animate([{ transform: "none", filter: "brightness(1)" }, { transform: "translateX(-" + PEEK * 100 + "%)", filter: "brightness(.8)" }], { duration: 330, easing: OPEN_EASE })
+      .onfinish = () => { if ($("app").classList.contains("chat-open")) peekReset(); };
+  }));
 }
 // назад: чат уезжает вправо с того места, где его отпустили
 function chatBack(dx) {
@@ -9987,6 +10026,71 @@ for (const d of document.querySelectorAll("dialog.full:not(.story-view)")) {
       d.style.transform = ""; d.style.transition = "";
     },
   });
+}
+
+/* ---------- долгое нажатие: элемент «вдавливается», меню вырастает из пальца, фон размывается ---------- */
+let pressEl = null, pressTimer = 0, lastPress = null;
+function unpress() { clearTimeout(pressTimer); if (pressEl) pressEl.classList.remove("pressing"); }
+document.addEventListener("touchstart", (e) => {
+  unpress(); pressEl = null;
+  if (e.touches.length !== 1 || !motionOK()) return;
+  const t = e.target.closest(".row:not(.skel), .msg, #folderBar button, .sb-item, .gift.tile");
+  if (!t) return;
+  const p = e.touches[0];
+  pressEl = t; lastPress = { el: t, x: p.clientX, y: p.clientY, at: performance.now() };
+  pressTimer = setTimeout(() => t.classList.add("pressing"), 130);
+}, { passive: true, capture: true });
+document.addEventListener("touchmove", (e) => {
+  if (!lastPress || !pressEl) return;
+  const p = e.touches[0];
+  if (Math.abs(p.clientX - lastPress.x) > 10 || Math.abs(p.clientY - lastPress.y) > 10) { unpress(); pressEl = null; lastPress = null; }
+}, { passive: true, capture: true });
+// палец отпустили: меню, открытое долгим нажатием, уже забрало элемент; обычный тап не должен «приподнять» его позже
+for (const ev of ["touchend", "touchcancel"]) document.addEventListener(ev, () => { unpress(); pressEl = null; lastPress = null; }, { passive: true, capture: true });
+// то, на что держали палец (если меню открылось именно долгим нажатием)
+function takePress() {
+  const p = lastPress;
+  lastPress = null;
+  if (!p || performance.now() - p.at > 1500) return null;
+  let el = p.el;
+  // список и переписка часто перерисовываются: находим ту же строку или сообщение заново
+  if (!el.isConnected) el = el.dataset.cid ? document.querySelector('#chatList [data-cid="' + el.dataset.cid + '"]')
+    : el.dataset.id ? document.querySelector('#msgs .msg[data-id="' + el.dataset.id + '"]') : null;
+  if (!el) return null;
+  el.classList.remove("pressing");
+  return el;
+}
+function growFrom(d, x, y) {
+  const r = d.getBoundingClientRect();
+  if (!r.width) return;
+  const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+  d.animate([
+    { opacity: 0, transform: "translate(" + dx + "px," + dy + "px) scale(.3)" },
+    { opacity: 1, transform: "translate(" + dx * 0.04 + "px," + dy * 0.04 + "px) scale(1.02)", offset: 0.7 },
+    { opacity: 1, transform: "none" },
+  ], { duration: 340, easing: "cubic-bezier(.2,.9,.3,1)" });
+}
+let holdLayer = null;
+function holdFocus(el) {
+  holdBlur();
+  const r = el.getBoundingClientRect();
+  if (!r.width || r.bottom < 0 || r.top > innerHeight) return;
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id"));
+  clone.removeAttribute("id");
+  clone.classList.remove("pressing", "held", "new", "hv-now");
+  clone.classList.add("hold-clone");
+  Object.assign(clone.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", transform: "" });
+  const layer = h("div", { class: "hold-layer", "aria-hidden": "true", onclick: () => closeCtx() }, clone);
+  document.body.append(layer);
+  clone.animate([{ transform: "scale(.965)" }, { transform: "scale(1.035)", offset: 0.55 }, { transform: "scale(1.01)" }], { duration: 380, easing: "cubic-bezier(.2,.9,.3,1)", fill: "forwards" });
+  holdLayer = layer;
+}
+function holdBlur() {
+  if (!holdLayer) return;
+  const l = holdLayer; holdLayer = null;
+  l.classList.add("out");
+  setTimeout(() => l.remove(), 200);
 }
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
@@ -10979,6 +11083,7 @@ $("schedForm").addEventListener("submit", (e) => {
     const r = b.getBoundingClientRect();
     ctxEl.style.left = Math.max(8, Math.min(r.right - ctxEl.offsetWidth, innerWidth - ctxEl.offsetWidth - 8)) + "px";
     ctxEl.style.top = Math.max(8, r.top - ctxEl.offsetHeight - 6) + "px";
+    ctxPop(ctxEl, r.left + r.width / 2, r.top);
   };
   b.addEventListener("contextmenu", (e) => { e.preventDefault(); menu(); });
   let t = 0, held = false;
