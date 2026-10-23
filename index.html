@@ -4371,7 +4371,7 @@ function watchBan() {
 $("banSupport").addEventListener("click", () => { $("banNew").hidden = true; openSupport(); });
 $("supQuick").addEventListener("click", (e) => {
   const b = e.target.closest("[data-q]"); if (!b) return;
-  $("supText").value = T(b.dataset.q); $("supText").focus();
+  $("supText").value = T(b.dataset.q); if (canAutoFocus()) $("supText").focus();
 });
 $("banLogout").addEventListener("click", () => logout());
 async function createProfile(username, name) {
@@ -5009,7 +5009,7 @@ async function openChat(id) {
     state.hasMore = cached.hasMore;
     renderMsgs(); paintPin(); scrollDown();
     ensureReplies(); loadScheduled(); markReadSoon();
-    if (matchMedia("(min-width: 761px)").matches) $("text").focus();
+    if (canAutoFocus()) $("text").focus();
   } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
   const fresh = await fetchPage(id);
   if (state.activeId !== id) return;
@@ -5035,7 +5035,7 @@ async function openChat(id) {
   ensureReplies();
   loadScheduled();
   markReadSoon();
-  if (matchMedia("(min-width: 761px)").matches) $("text").focus();
+  if (canAutoFocus()) $("text").focus();
 }
 function closeChat() {
   if (recorder) stopRecording(false);
@@ -6937,7 +6937,7 @@ async function openSupport() {
   $("supChat").replaceChildren(h("div", { class: "b bot" }, T("Загружаем…")));
   $("dlgSupport").showModal();
   await loadSupport();
-  if (matchMedia("(min-width: 761px)").matches) $("supText").focus();
+  if (canAutoFocus()) $("supText").focus();
 }
 $("supForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -9333,7 +9333,7 @@ function openFolderEdit(f, withChat) {
     return row;
   }) : [h("div", { class: "empty-note" }, T("Чатов пока нет."))]));
   $("dlgFolder").showModal();
-  if (!f) $("fdName").focus();
+  if (!f && canAutoFocus()) $("fdName").focus();
 }
 $("fdCancel").addEventListener("click", () => $("dlgFolder").close());
 $("folderForm").addEventListener("submit", async (e) => {
@@ -9867,6 +9867,8 @@ function playSound(kind) {
 }
 
 /* ---------- анимации: закрытие окон, перестановки в списке, полёт и удаление сообщений, «волна» от нажатия ---------- */
+// клавиатуру на экране сами не открываем: поле ввода получает фокус автоматически только там, где есть мышь
+function canAutoFocus() { return !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches); }
 function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
 // окна закрываются с анимацией; пока окно «уезжает», оно считается закрытым, и его можно сразу открыть снова
 (function () {
@@ -9881,7 +9883,15 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
     this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, 170);
   };
   const revive = (d) => { if (!d._shut) return false; clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); return true; };
-  P.showModal = function () { if (revive(this)) return; return showModal.call(this); };
+  const noKb = (d) => {
+    if (canAutoFocus()) return;
+    const a = document.activeElement;
+    if (a && d.contains(a) && a.matches("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([data-autofocus]), textarea:not([data-autofocus]), [contenteditable]")) {
+      a.blur();
+      try { d.focus({ preventScroll: true }); } catch (e) {}
+    }
+  };
+  P.showModal = function () { if (revive(this)) return; const r = showModal.call(this); noKb(this); return r; };
   P.show = function () { if (revive(this)) return; return show.call(this); };
 })();
 // список чатов: поднявшийся наверх чат плавно переезжает, новые строки выезжают, счётчик непрочитанных «подпрыгивает»
@@ -10753,7 +10763,7 @@ function openPollForm() {
   $("pollForm").reset(); $("pollErr").textContent = "";
   $("pollOpts").replaceChildren(pollOptRow(), pollOptRow());
   $("dlgPoll").showModal();
-  $("pollQ").focus();
+  if (canAutoFocus()) $("pollQ").focus();
 }
 $("pollAdd").addEventListener("click", () => {
   if ($("pollOpts").children.length >= 10) { toast(T("Не больше 10 вариантов")); return; }
