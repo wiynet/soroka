@@ -1833,6 +1833,9 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .call-mine { display: flex; align-items: center; gap: 10px; background: rgb(255 255 255 / .1); border-radius: 14px; padding: 8px 10px; font-size: 14px; z-index: 1; }
 .call-mine video { width: 96px; height: 56px; object-fit: cover; border-radius: 8px; background: #000; }
 .call-mine .btn { padding: 6px 12px; font-size: 13px; }
+.call-mine-t { display: flex; flex-direction: column; gap: 2px; }
+.call-mine-t small { font-size: 12px; opacity: .75; }
+.call-mine-t small .link { color: #9fe3ff; font-size: 12px; padding: 0; }
 .call-btns { display: flex; gap: 22px; justify-content: center; z-index: 1; }
 .call-act { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; opacity: .95; }
 .call-act.in, .call-ui.incoming .call-act:not(.in) { display: none; }
@@ -2923,6 +2926,7 @@ void main() {
         <div class="feat"><span class="pico red" aria-hidden="true">🎲</span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
         <div class="feat"><span class="pico grey" aria-hidden="true">👁</span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">👥</span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
+        <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках экран идёт в 1080p и 30 кадров/с вместо 720p и 10 кадров/с.</span></div>
         <div class="feat"><span class="pico sky" aria-hidden="true">🌌</span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
         <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
         <div class="feat"><span class="pico violet" aria-hidden="true">🛡</span><b>VPN-подписка</b><span>Своя ссылка для подключения VPN через приложение Happ.</span></div>
@@ -3489,11 +3493,11 @@ void main() {
   </div>
   <div class="call-mine" id="callMine" hidden>
     <video id="callMineVid" playsinline autoplay muted></video>
-    <span>Вы показываете экран</span>
+    <span class="call-mine-t">Вы показываете экран<small id="callQ"></small></span>
     <button class="btn ghost" type="button" id="callStopMine">Остановить</button>
   </div>
   <div class="call-btns">
-    <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span>Микрофон</span></div>
+    <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span id="callMuteLbl">Микрофон</span></div>
     <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
     <div class="call-act"><button class="call-b red" id="callHang" type="button" title="Завершить" aria-label="Завершить"></button><span>Завершить</span></div>
     <div class="call-act in"><button class="call-b red" id="callDecline" type="button" title="Отклонить" aria-label="Отклонить"></button><span>Отклонить</span></div>
@@ -11755,7 +11759,11 @@ function callPaint() {
   $("callMine").hidden = !call.screen;
   $("callMute").classList.toggle("on", !!call.muted);
   $("callMute").replaceChildren(icon(call.muted ? "micoff" : "mic"));
-  $("callMute").title = call.muted ? T("Включить микрофон") : T("Выключить микрофон");
+  $("callMute").title = !call.mic ? T("Микрофона нет — нажмите, чтобы подключить") : call.muted ? T("Включить микрофон") : T("Выключить микрофон");
+  $("callMuteLbl").textContent = !call.mic ? T("Без микрофона") : T("Микрофон");
+  $("callQ").hidden = !call.screen;
+  $("callQ").textContent = callHQ() ? T("Высокое качество · Премиум") : T("Обычное качество · ");
+  if (!callHQ()) $("callQ").append(h("button", { class: "link", type: "button", onclick: () => { call.min = true; callPaint(); $("btnSettings").click(); showSetPage("premium"); paintPremiumPage(); } }, T("HD с Премиумом")));
   $("callShareWrap").hidden = !callShareOk || call.status !== "active";
   $("callShare").classList.toggle("on", !!call.screen);
   $("callShare").title = call.screen ? T("Остановить показ экрана") : T("Показать экран");
@@ -11776,13 +11784,27 @@ function callJoin() {
     setTimeout(() => { if (!done) { done = true; resolve(false); } }, 8000);
   });
 }
-async function callMic() {
+// микрофон не обязателен: без него можно слушать собеседника и смотреть его экран
+async function callMic(loud) {
   try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no media");
     return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   } catch (e) {
-    toast(e && e.name === "NotAllowedError" ? T("Нет доступа к микрофону — разрешите его в настройках браузера") : T("Микрофон не найден"));
+    const denied = e && e.name === "NotAllowedError";
+    toast(loud ? (denied ? T("Нет доступа к микрофону — разрешите его в настройках браузера") : T("Микрофон не найден"))
+      : (denied ? T("Без микрофона: вас не слышно, но вы слышите собеседника. Включить — кнопкой «Микрофон»") : T("Микрофона нет — вы в звонке только слушаете")));
     return null;
   }
+}
+// включить микрофон уже во время звонка (если заходили без него)
+async function callMicLater() {
+  const mic = await callMic(true);
+  if (!mic || !call || call.ended) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
+  call.mic = mic;
+  if (call.at) await call.at.sender.replaceTrack(mic.getAudioTracks()[0]).catch(() => {});
+  call.muted = false;
+  callSend({ t: "mute", on: false });
+  callPaint();
 }
 function callPc() {
   const pc = new RTCPeerConnection({ iceServers: call.ice || [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -11799,6 +11821,7 @@ function callPc() {
       clearTimeout(call.dropT); clearTimeout(call.connT);
       if (call.status !== "active") {
         call.status = "active"; call.started = Date.now(); callStopTones();
+        if (!call.mic || call.muted) callSend({ t: "mute", on: true });
         call.tick = setInterval(callPaint, 1000);
         call.ping = setInterval(() => sb.rpc("call_ping", { p_call: call && call.id }).then(() => {}), 20000);
       }
@@ -11810,7 +11833,8 @@ function callPc() {
   };
   // заранее договариваемся и о видео: показ экрана потом включается без пересогласования
   if (call.role === "out") {
-    call.mic.getTracks().forEach((t) => pc.addTrack(t, call.mic));
+    const mt = call.mic && call.mic.getAudioTracks()[0];
+    call.at = mt ? pc.addTransceiver(mt, { direction: "sendrecv", streams: [call.mic] }) : pc.addTransceiver("audio", { direction: "sendrecv" });
     call.vt = pc.addTransceiver("video", { direction: "sendrecv" });
   }
   // если за 30 секунд не соединились — дальше ждать бессмысленно
@@ -11837,8 +11861,10 @@ async function onCallSig(m) {
       call.peerDev = m.from; clearInterval(call.readyT);
       const pc = callPc();
       await pc.setRemoteDescription(m.sdp);
-      call.mic.getTracks().forEach((t) => pc.addTrack(t, call.mic));
-      call.vt = pc.getTransceivers().find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "video");
+      const tx = pc.getTransceivers();
+      call.at = tx.find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "audio");
+      call.vt = tx.find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "video");
+      if (call.at) { call.at.direction = "sendrecv"; const mt = call.mic && call.mic.getAudioTracks()[0]; if (mt) await call.at.sender.replaceTrack(mt); }
       if (call.vt) call.vt.direction = "sendrecv";
       await pc.setLocalDescription(await pc.createAnswer());
       callSend({ t: "answer", sdp: pc.localDescription.toJSON() });
@@ -11864,12 +11890,12 @@ async function startCall(c) {
   const peer = other(c);
   call = { role: "out", status: "ringing", chat: c.id, peer, note: T("Подключаем микрофон…") };
   callPaint();
-  const mic = await callMic();
-  if (!mic) { call = null; callPaint(); return; }
-  call.mic = mic; call.note = "";
+  const mic = await callMic(false);
+  if (!call) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
+  call.mic = mic; call.muted = !mic; call.note = "";
   const { data, error } = await sb.rpc("call_start", { p_chat: c.id });
   if (error || !data) {
-    mic.getTracks().forEach((t) => t.stop()); call = null; callPaint();
+    if (mic) mic.getTracks().forEach((t) => t.stop()); call = null; callPaint();
     const m = (error && error.message) || "";
     toast(/blocked/.test(m) ? T("Позвонить нельзя: вы или собеседник в чёрном списке") : /too many/.test(m) ? T("Слишком много звонков подряд — подождите немного") : /cannot call/.test(m) ? T("Этому собеседнику позвонить нельзя") : T("Не получилось позвонить"));
     return;
@@ -11896,10 +11922,9 @@ async function acceptCall() {
   if (!call || call.role !== "in" || call.status !== "ringing") return;
   callStopTones();
   call.note = T("Подключаем микрофон…"); callPaint();
-  const mic = await callMic();
+  const mic = await callMic(false);
   if (!call) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
-  if (!mic) { hangUp(); return; }
-  call.mic = mic;
+  call.mic = mic; call.muted = !mic;
   const { data, error } = await sb.rpc("call_accept", { p_call: call.id, p_device: CALL_DEV });
   if (error || !data) { callFinish(T("Звонок уже завершён")); return; }
   call.ice = data.ice; call.status = "connecting"; call.note = ""; clearTimeout(call.ringT);
@@ -11934,8 +11959,10 @@ function callFinish(note) {
   $("callUi").classList.add("ended");
   setTimeout(() => { if (call === c) { call = null; $("callUi").classList.remove("ended"); callPaint(); } }, 1600);
 }
+function callHQ() { return !!(state.profile && (isPremium(state.profile) || state.isAdmin)); }
 function callToggleMute() {
-  if (!call || !call.mic) return;
+  if (!call) return;
+  if (!call.mic) { callMicLater(); return; }
   call.muted = !call.muted;
   call.mic.getAudioTracks().forEach((t) => { t.enabled = !call.muted; });
   callSend({ t: "mute", on: call.muted });
@@ -11944,14 +11971,22 @@ function callToggleMute() {
 async function callToggleShare() {
   if (!call || call.status !== "active" || !call.vt) return;
   if (call.screen) { callStopShare(); return; }
+  const hq = callHQ();
+  // качество показа: обычное — до 720p и 10 кадров/с; с премиумом — до 1080p, 30 кадров/с и в 4 раза больше поток
+  const q = hq ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { ideal: 30, max: 30 } } : { width: { max: 1280 }, height: { max: 720 }, frameRate: { ideal: 10, max: 10 } };
   let s;
-  try { s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } }, audio: false }); }
+  try { s = await navigator.mediaDevices.getDisplayMedia({ video: q, audio: false }); }
   catch (e) { if (e && e.name !== "NotAllowedError" && e.name !== "AbortError") toast(T("Не получилось показать экран")); return; }
   if (!call || call.status !== "active") { s.getTracks().forEach((t) => t.stop()); return; }
   const tr = s.getVideoTracks()[0];
-  try { tr.contentHint = "detail"; } catch (e) {}
+  try { tr.contentHint = hq ? "detail" : "motion"; } catch (e) {}
+  try { await tr.applyConstraints(q); } catch (e) {}
   await call.vt.sender.replaceTrack(tr);
-  try { const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}]; p.encodings[0].maxBitrate = 2500000; await call.vt.sender.setParameters(p); } catch (e) {}
+  try {
+    const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
+    p.encodings[0].maxBitrate = hq ? 4000000 : 1000000; p.encodings[0].maxFramerate = hq ? 30 : 10;
+    await call.vt.sender.setParameters(p);
+  } catch (e) {}
   call.screen = s;
   $("callMineVid").srcObject = s;
   tr.addEventListener("ended", callStopShare);
