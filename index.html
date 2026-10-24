@@ -4825,11 +4825,12 @@ async function paintLoginCode() {
 /* ---------- код из письма: подтверждение регистрации и вход с кодом ---------- */
 let codeCtx = null, codeTimer = 0;
 function openCode(mode, email, lead, from) {
-  codeCtx = { mode, email, from: from || (mode === "signup" ? "signup" : "login") };
-  $("codeTitle").textContent = mode === "signup" ? T("Подтвердите почту") : T("Код для входа");
-  $("codeText").replaceChildren(lead || (mode === "signup" ? T("Мы отправили код на ") : T("Для этого аккаунта включён вход с кодом. Мы отправили код на ")),
+  const reg = mode === "signup" || mode === "signup2";
+  codeCtx = { mode, email, from: from || (reg ? "signup" : "login") };
+  $("codeTitle").textContent = reg ? T("Подтвердите почту") : T("Код для входа");
+  $("codeText").replaceChildren(lead || (reg ? T("Мы отправили код на ") : T("Для этого аккаунта включён вход с кодом. Мы отправили код на ")),
     h("b", {}, email), ". " + T("Письмо приходит за минуту — если его нет, загляните в «Спам»."));
-  $("codeGo").textContent = mode === "signup" ? T("Создать аккаунт") : T("Войти");
+  $("codeGo").textContent = reg ? T("Создать аккаунт") : T("Войти");
   $("codeIn").value = "";
   showAuth("code");
   codeCooldown();
@@ -4863,7 +4864,7 @@ $("codeForm").addEventListener("submit", (e) => {
     state.codeGate = false;   // после кода — обычный вход
     const { error } = await sb.auth.verifyOtp({ email: codeCtx.email, token, type: codeCtx.mode === "signup" ? "signup" : "email" });
     if (error) {
-      if (codeCtx.mode === "login") state.codeGate = true;
+      if (codeCtx.mode !== "signup") state.codeGate = true;
       const m = String(error.message || "");
       $("codeErr").textContent = /expired|invalid|not found/i.test(m) ? T("Неверный или устаревший код. Проверьте письмо или отправьте код ещё раз.") : authError(error);
       return;
@@ -4903,17 +4904,24 @@ $("signupForm").addEventListener("submit", (e) => {
     const free = await sb.rpc("username_available", { u: username });
     if (free.error) { err.textContent = authError(free.error); return; }
     if (!free.data) { err.textContent = T("Юзернейм @") + username + T(" уже занят."); return; }
+    state.codeGate = true;   // приложение откроется только после кода из письма
     const { data, error } = await sb.auth.signUp({
       email, password,
       options: { data: { username, display_name: name }, emailRedirectTo: HERE },
     });
-    if (error) { err.textContent = authError(error); return; }
+    if (error) { state.codeGate = false; err.textContent = authError(error); return; }
     if (data.user && data.user.identities && data.user.identities.length === 0) {
+      state.codeGate = false;
       err.textContent = T("Эта почта уже зарегистрирована. Войдите или восстановите пароль.");
       return;
     }
     try { sessionStorage.setItem("mestario.newacc", "1"); } catch (e2) {}
-    if (!data.session) openCode("signup", email);
+    if (!data.session) { openCode("signup", email); return; }
+    // в Supabase выключено «подтверждение почты» и вход уже выдан — всё равно подтверждаем почту кодом
+    await sb.auth.signOut({ scope: "local" }).catch(() => {});
+    const r = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    openCode("signup2", email);
+    if (r.error) $("codeErr").textContent = authError(r.error);
   });
 });
 

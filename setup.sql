@@ -1710,3 +1710,5 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   Серверная защита: public.custom_access_token_hook — вход только по паролю для таких аккаунтов не выдаёт токен
 --   ('code_required'). Включается в Supabase: Authentication → Hooks → Customize Access Token → Postgres → public.custom_access_token_hook.
 -- Шаблоны писем с кодом {{ .Token }}: tools/email-templates (вставляются в Authentication → Emails → Templates).
+-- Если в Supabase выключено «Confirm email» (signUp сразу выдаёт вход), сайт всё равно подтверждает почту кодом:
+--   выходит и шлёт код через signInWithOtp (шаблон «Magic link or OTP»), аккаунт открывается только после кода.
