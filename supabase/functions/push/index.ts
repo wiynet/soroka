@@ -86,10 +86,11 @@ async function sendFor(messageId: number) {
     targets = targets.filter((u) => u === m.sender_id || (readOf.get(u) || 0) < m.id);
     if (!targets.length) return "nobody";
     // кто сейчас в сети на каком-то устройстве — даём ему 3 секунды прочитать там; прочитал — на остальные не шлём
-    const { data: seen } = await sb.from("profiles").select("id,last_seen_at").in("id", targets);
-    const online = (seen ?? []).filter((x: any) => x.id !== m.sender_id && x.last_seen_at && Date.now() - new Date(x.last_seen_at).getTime() < 150_000).map((x: any) => x.id);
+    // (присутствие хранится отдельно и есть даже у тех, кто скрыл «в сети»)
+    const { data: act } = await sb.rpc("push_active", { p_users: targets.filter((u) => u !== m.sender_id), p_secs: 150 });
+    const online: string[] = Array.isArray(act) ? act : [];
     if (online.length) {
-      await sleep(3000);
+      await sleep(3500);
       const { data: again } = await sb.from("chat_members").select("user_id,last_read_id").eq("chat_id", m.chat_id).in("user_id", online);
       const read = new Set((again ?? []).filter((x: any) => (Number(x.last_read_id) || 0) >= m.id).map((x: any) => x.user_id));
       targets = targets.filter((u) => !read.has(u));

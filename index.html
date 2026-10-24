@@ -6445,6 +6445,7 @@ function onIncoming(m) {
 }
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden || !state.started) return;
+  sb.rpc("touch_presence").then(() => {});
   // После сна телефона часть событий могла потеряться: догружаем.
   if (state.activeId) state.unread.delete(state.activeId);
   markReadSoon();

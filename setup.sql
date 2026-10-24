@@ -1678,3 +1678,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.bot_deposit(p_bot, p_amount): владелец пополняет кошелёк бота без комиссии (private.bot_deposits).
 -- bot_sales добавляет deposited и paid_out. Переменные {give} и {bank} (фонд бота). Сайт: кнопка «Пополнить бота»,
 --   поля выплаты в команде, вопрос «Сохранить изменения?» при выходе из конструктора. ИИ-помощник (ai v17) знает про ставки.
+
+-- ===== Присутствие для уведомлений (миграция push_presence_private) =====
+-- private.presence(user_id, at): touch_presence и mark_read отмечают активность всегда — даже у тех, кто скрыл «в сети»
+--   (их last_seen_at = null, поэтому раньше функция push считала их не в сети и не ждала прочтения на другом устройстве).
+-- public.push_active(users, secs) — только service_role. Функция push (v9) ждёт 3,5 с прочтения у активных.
