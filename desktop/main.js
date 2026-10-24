@@ -3,8 +3,8 @@
 const { app, BrowserWindow, shell, session, Menu } = require("electron");
 const path = require("path");
 
-const SITE = "https://soroka.lol/";
-const OWN = ["https://soroka.lol", "https://www.soroka.lol", "https://mestario.top", "https://www.mestario.top"];
+const SITE = "https://mestario.lol/";
+const OWN = ["https://mestario.lol", "https://www.mestario.lol", "https://soroka.lol", "https://www.soroka.lol", "https://mestario.top", "https://www.mestario.top"];
 const isOwn = (url) => OWN.some((o) => url === o || url.startsWith(o + "/")) || url.startsWith("file:");
 
 app.setAppUserModelId("top.mestario.desktop");   // имя и иконка в уведомлениях Windows

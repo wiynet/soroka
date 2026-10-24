@@ -6,7 +6,7 @@
 <title>Mestario</title>
 <script>
 // сайт всегда по https: вход хранится отдельно для http и https (ссылка «Войти через браузер» из программы приходит по http)
-if (location.protocol === "http:" && /(^|\.)(soroka\.lol|mestario\.top)$/.test(location.hostname)) location.replace("https:" + location.href.slice(5));
+if (location.protocol === "http:" && /(^|\.)(soroka\.lol|mestario\.top|mestario\.lol)$/.test(location.hostname)) location.replace("https:" + location.href.slice(5));
 /* Android-приложение: если приложение уже скачало свежий интерфейс с сайта, показываем его вместо встроенного.
    Если прошлый запуск свежей версии сломался (не дошёл до отметки «ok»), возвращаемся к встроенной. */
 (function () {
@@ -3378,7 +3378,7 @@ void main() {
     </div>
     <div class="muted">Так Mestario открывается на весь экран, без адресной строки, и может присылать уведомления о новых сообщениях.</div>
     <ol class="home-steps">
-      <li id="homeStep0" hidden>Откройте <b>mestario.top</b> в Safari: в этом браузере добавить на экран нельзя.</li>
+      <li id="homeStep0" hidden>Откройте <b>mestario.lol</b> в Safari: в этом браузере добавить на экран нельзя.</li>
       <li>Нажмите кнопку <b>«Поделиться»</b> <span class="home-share" id="homeShare"></span> внизу экрана.</li>
       <li>Выберите <b>«На экран „Домой“»</b>.</li>
       <li>Нажмите <b>«Добавить»</b> и откройте Mestario с новой иконки.</li>
@@ -4166,7 +4166,7 @@ const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 // внутри Android-приложения страница открыта как https://localhost — ссылки и письма должны вести на настоящий сайт
 const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Android/i.test(navigator.userAgent);
-const PUBLIC_SITE = "https://soroka.lol/";
+const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
 const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot,intro";
@@ -4473,7 +4473,7 @@ function randomId() {
   (window.crypto || window.msCrypto).getRandomValues(b);
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
-const SITE = IN_APP ? PUBLIC_SITE : /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://mestario.top/";
+const SITE = IN_APP ? PUBLIC_SITE : /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://mestario.lol/";
 async function copyText(text, ok) {
   try { await navigator.clipboard.writeText(text); toast(ok || T("Скопировано")); }
   catch (e) { toast(T("Не удалось скопировать. Ссылка: ") + text); }
@@ -5529,7 +5529,7 @@ function linkify(text) {
 }
 // ссылки на саму Mestario (подарок, чат, канал) открываются прямо здесь, без новой вкладки
 function ownLink(url) {
-  try { const u = new URL(url); return /^(www\.)?soroka\.lol$/i.test(u.hostname) ? u.hash.length > 2 || /^\/[\w@-]{3,80}$/.test(u.pathname) : u.hash.length > 2 && u.origin + u.pathname === SITE; } catch (e) { return false; }
+  try { const u = new URL(url); return /^(www\.)?(soroka\.lol|mestario\.top|mestario\.lol)$/i.test(u.hostname) ? u.hash.length > 2 || /^\/[\w@-]{3,80}$/.test(u.pathname) : u.hash.length > 2 && u.origin + u.pathname === SITE; } catch (e) { return false; }
 }
 function followOwn(url) {
   const u = new URL(url), hash = u.hash.length > 2 ? u.hash : "#" + u.pathname.slice(1);
@@ -11991,7 +11991,7 @@ async function paintNotify() {
   const box = $("setNotify"), hint = $("notifyHint");
   if (!pushSupported) {
     box.checked = false; box.disabled = true;
-    hint.textContent = location.protocol !== "https:" ? T("Уведомления работают только на https://mestario.top.") : T("Этот браузер не поддерживает уведомления. На iPhone они работают, если добавить Mestario на экран «Домой».");
+    hint.textContent = location.protocol !== "https:" ? T("Уведомления работают только на https://mestario.lol.") : T("Этот браузер не поддерживает уведомления. На iPhone они работают, если добавить Mestario на экран «Домой».");
     return;
   }
   const sub = await pushSub().catch(() => null);
@@ -12240,7 +12240,7 @@ const DOCS_DATE = { ru: "Редакция от 11 октября 2026 года",
 const DOCS = {
   terms: {
     ru: ["Пользовательское соглашение", [
-      ["1. Что это за документ", "Это соглашение между вами и администрацией мессенджера «Mestario» (сайт mestario.top). Создавая аккаунт или пользуясь Mestario, вы принимаете его условия. Если вы с ними не согласны, не пользуйтесь сервисом."],
+      ["1. Что это за документ", "Это соглашение между вами и администрацией мессенджера «Mestario» (сайт mestario.lol). Создавая аккаунт или пользуясь Mestario, вы принимаете его условия. Если вы с ними не согласны, не пользуйтесь сервисом."],
       ["2. Аккаунт", "Для регистрации нужны почта, пароль, имя и юзернейм. Указывайте свою почту: через неё восстанавливается доступ.\nВы отвечаете за сохранность пароля и за всё, что делается из вашего аккаунта. Не передавайте аккаунт другим людям.\nПользоваться Mestario можно с возраста, с которого закон вашей страны разрешает самостоятельно пользоваться такими сервисами; если вы младше — только с согласия родителей."],
       ["3. Что можно и чего нельзя", "Mestario предназначена для личного общения, групп и каналов. Запрещённое поведение перечислено в «Правилах» — они являются частью этого соглашения."],
       ["4. Ваши материалы", "Сообщения, фото, видео, истории и другие материалы остаются вашими. Вы разрешаете Mestario хранить их и показывать тем, кому вы их отправили или открыли, — это нужно, чтобы сервис работал.\nЗа содержание материалов отвечает тот, кто их отправил."],
@@ -12250,7 +12250,7 @@ const DOCS = {
       ["8. Изменения", "Соглашение может обновляться. Актуальная редакция всегда доступна в этом окне; о существенных изменениях мы сообщаем в канале обновлений. Продолжая пользоваться Mestario, вы соглашаетесь с новой редакцией."],
       ["9. Связь", "Вопросы и жалобы — через поддержку: Настройки → Поддержка."]]],
     en: ["Terms of Use", [
-      ["1. About this document", "This is an agreement between you and the administration of the Mestario messenger (mestario.top). By creating an account or using Mestario you accept these terms. If you do not agree, please do not use the service."],
+      ["1. About this document", "This is an agreement between you and the administration of the Mestario messenger (mestario.lol). By creating an account or using Mestario you accept these terms. If you do not agree, please do not use the service."],
       ["2. Your account", "To sign up you need an email, a password, a name and a username. Use your own email: it is how access is restored.\nYou are responsible for keeping your password safe and for everything done from your account. Do not hand your account to other people.\nYou may use Mestario from the age at which the law of your country lets you use such services on your own; if you are younger, only with your parents' consent."],
       ["3. What is and isn't allowed", "Mestario is meant for private chats, groups and channels. Prohibited behaviour is listed in the Rules, which are part of these terms."],
       ["4. Your content", "Messages, photos, videos, stories and other content remain yours. You allow Mestario to store them and show them to the people you sent or opened them to — the service cannot work otherwise.\nWhoever sends content is responsible for it."],
