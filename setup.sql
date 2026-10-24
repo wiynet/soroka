@@ -1683,3 +1683,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- private.presence(user_id, at): touch_presence и mark_read отмечают активность всегда — даже у тех, кто скрыл «в сети»
 --   (их last_seen_at = null, поэтому раньше функция push считала их не в сети и не ждала прочтения на другом устройстве).
 -- public.push_active(users, secs) — только service_role. Функция push (v9) ждёт 3,5 с прочтения у активных.
+
+-- ===== Страница нового пароля reset.html =====
+-- Ссылка из письма «Сброс пароля» ведёт на mestario.lol/reset.html (redirectTo), а не в само приложение:
+--   новый пароль с повтором и показом, проверка надёжности; устаревшая ссылка — сразу форма «прислать новую».
+-- В Supabase → Authentication → URL Configuration должен быть разрешён https://mestario.lol/** (иначе ссылка уйдёт на Site URL).

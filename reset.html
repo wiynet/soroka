@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Новый пароль · Mestario</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b7284">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script>
+/* та же тема, что выбрана в Mestario на этом устройстве */
+(function () {
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem("soroka.settings") || "{}") || {}; } catch (e) {}
+  var r = document.documentElement;
+  if (s.theme === "light" || s.theme === "dark") r.setAttribute("data-theme", s.theme);
+  r.style.setProperty("--h", String(Number(s.hue) || 190));
+  window.RESET_LANG = s.lang === "en" ? "en" : "ru";
+  r.lang = window.RESET_LANG;
+})();
+</script>
+<style>
+:root {
+  --h: 190;
+  --bg: #f3f5f6; --panel: #ffffff; --panel-2: #e9eef0; --line: #d6dee2;
+  --ink: #131c22; --muted: #5d6b74;
+  --accent: hsl(var(--h) 85% 28%); --accent-ink: #ffffff;
+  --danger: #b3261e; --ok: #1f9d57;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
+    --ink: #e7eef1; --muted: #8c9ba5;
+    --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
+    --danger: #ff8a80; --ok: #4cd184;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1317; --panel: #131c22; --panel-2: #1c2830; --line: #26343d;
+  --ink: #e7eef1; --muted: #8c9ba5;
+  --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%);
+  --danger: #ff8a80; --ok: #4cd184;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font: 15px/1.45 var(--font); color: var(--ink); background: var(--bg);
+  min-height: 100vh; min-height: 100dvh; display: grid; place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  background-image: radial-gradient(60rem 30rem at 50% -10%, hsl(var(--h) 70% 50% / .14), transparent 70%);
+}
+.card {
+  width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 22px; padding: 28px 24px 24px; box-shadow: 0 18px 50px -24px rgb(0 0 0 / .35);
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.brand img { width: 44px; height: 44px; border-radius: 12px; display: block; }
+.brand b { font-size: 19px; letter-spacing: -.01em; }
+h1 { font-size: 22px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -.01em; }
+p { margin: 0 0 18px; color: var(--muted); }
+p b { color: var(--ink); font-weight: 600; word-break: break-all; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.field { position: relative; margin-bottom: 14px; }
+input {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--panel-2);
+  border: 1px solid transparent; border-radius: 12px; padding: 12px 46px 12px 14px; outline: none;
+  transition: border-color .15s, background .15s;
+}
+input[type="email"] { padding-right: 14px; }
+input:focus { border-color: var(--accent); background: var(--panel); }
+.eye {
+  position: absolute; right: 6px; bottom: 6px; width: 36px; height: 36px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center;
+}
+.eye:hover { background: var(--line); color: var(--ink); }
+.eye svg { width: 20px; height: 20px; }
+.meter { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; margin: -6px 0 6px; }
+.meter i { display: block; height: 100%; width: 0; background: var(--danger); transition: width .2s, background .2s; }
+.hint { font-size: 13px; color: var(--muted); min-height: 18px; margin-bottom: 14px; }
+.err { color: var(--danger); font-size: 14px; min-height: 20px; margin: 2px 0 10px; }
+.btn {
+  width: 100%; font: inherit; font-weight: 600; font-size: 16px; border: 0; border-radius: 12px;
+  padding: 13px 16px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+  transition: filter .15s, opacity .15s;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .6; cursor: default; }
+.btn.ghost { background: var(--panel-2); color: var(--ink); margin-top: 10px; }
+.spin { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .7s linear infinite; }
+@keyframes s { to { transform: rotate(360deg); } }
+.big { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 16px; }
+.big.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.big.bad { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.big.mail { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.big svg { width: 28px; height: 28px; }
+.loading { display: grid; place-items: center; padding: 30px 0; color: var(--muted); }
+.loading .spin { width: 28px; height: 28px; }
+.foot { text-align: center; margin-top: 18px; font-size: 14px; }
+.foot a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand"><img src="/icon-192.png" alt="" width="44" height="44"><b>Mestario</b></div>
+
+  <!-- проверяем ссылку из письма -->
+  <section id="vLoading" class="loading" aria-live="polite"><div class="spin" aria-hidden="true"></div></section>
+
+  <!-- новый пароль -->
+  <form id="vNew" hidden novalidate>
+    <h1 data-t="newTitle">Придумайте новый пароль</h1>
+    <p id="newFor" data-t="newText">Не короче 8 символов. После сохранения вы сразу войдёте в аккаунт.</p>
+    <div class="field">
+      <label for="p1" data-t="pass">Новый пароль</label>
+      <input id="p1" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="eye" type="button" data-for="p1" aria-label="Показать пароль"></button>
+    </div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="hint" id="strength"></div>
+    <div class="field">
+      <label for="p2" data-t="pass2">Повторите пароль</label>
+      <input id="p2" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="eye" type="button" data-for="p2" aria-label="Показать пароль"></button>
+    </div>
+    <div class="err" id="newErr" role="alert"></div>
+    <button class="btn" type="submit" id="newBtn"><span data-t="save">Сохранить пароль</span></button>
+  </form>
+
+  <!-- готово -->
+  <section id="vDone" hidden>
+    <div class="big ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1 data-t="doneTitle">Пароль изменён</h1>
+    <p data-t="doneText">Теперь входите с новым паролем на всех устройствах.</p>
+    <a class="btn" href="/" data-t="open">Открыть Mestario</a>
+  </section>
+
+  <!-- запросить ссылку (зашли без ссылки или она устарела) -->
+  <form id="vAsk" hidden novalidate>
+    <div class="big bad" id="askBad" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg></div>
+    <h1 id="askTitle" data-t="askTitle">Восстановление пароля</h1>
+    <p id="askText" data-t="askText">Укажите почту аккаунта — пришлём ссылку, по которой можно задать новый пароль.</p>
+    <div class="field">
+      <label for="mail" data-t="mail">Почта</label>
+      <input id="mail" type="email" autocomplete="email" inputmode="email" required>
+    </div>
+    <div class="err" id="askErr" role="alert"></div>
+    <button class="btn" type="submit" id="askBtn"><span data-t="send">Отправить ссылку</span></button>
+    <div class="foot"><a href="/" data-t="back">Вернуться ко входу</a></div>
+  </form>
+
+  <!-- письмо отправлено -->
+  <section id="vSent" hidden>
+    <div class="big mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg></div>
+    <h1 data-t="sentTitle">Проверьте почту</h1>
+    <p><span data-t="sentText">Мы отправили ссылку на</span> <b id="sentTo"></b>. <span data-t="sentText2">Откройте письмо и нажмите на ссылку. Если письма нет — загляните в «Спам».</span></p>
+    <button class="btn ghost" type="button" id="again" disabled></button>
+    <div class="foot"><a href="/" data-t="back">Вернуться ко входу</a></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  "use strict";
+  var SUPABASE_URL = "https://zgjptlyhflfwbnmzpdsa.supabase.co";
+  // публичный ключ сайта (тот же, что в index.html): доступ к данным ограничен правилами базы
+  var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnanB0bHloZmxmd2JubXpwZHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NjM3NjcsImV4cCI6MjEwNzAzOTc2N30.HfSRmQ6Cxcs7i8lrPXWixxB08z8cs_Z2mwOD7G0EeiM";
+  var EN = window.RESET_LANG === "en";
+  var TX = {
+    newTitle: "Create a new password", newText: "At least 8 characters. You will be signed in right after saving.",
+    pass: "New password", pass2: "Repeat password", save: "Save password",
+    doneTitle: "Password changed", doneText: "From now on, sign in with the new password on all devices.", open: "Open Mestario",
+    askTitle: "Reset password", askText: "Enter your account email and we will send a link to set a new password.",
+    mail: "Email", send: "Send link", back: "Back to sign in",
+    sentTitle: "Check your email", sentText: "We sent a link to", sentText2: "Open the email and tap the link. If it is not there, check Spam."
+  };
+  var L = function (ru, en) { return EN ? en : ru; };
+  if (EN) {
+    document.title = "New password · Mestario";
+    document.querySelectorAll("[data-t]").forEach(function (el) { var k = el.getAttribute("data-t"); if (TX[k]) el.textContent = TX[k]; });
+  }
+  var $ = function (id) { return document.getElementById(id); };
+  var views = ["vLoading", "vNew", "vDone", "vAsk", "vSent"];
+  function show(id) { views.forEach(function (v) { $(v).hidden = v !== id; }); var f = $(id).querySelector("input"); if (f) setTimeout(function () { f.focus(); }, 50); }
+
+  if (!window.supabase || !window.supabase.createClient) {
+    $("vLoading").innerHTML = "<p>" + L("Не удалось загрузить страницу. Проверьте интернет и обновите её.", "Could not load the page. Check your connection and reload.") + "</p>";
+    return;
+  }
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // что пришло в адресе: ссылка восстановления (#access_token…&type=recovery или ?code=…) или ошибка (ссылка устарела)
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  var query = new URLSearchParams(location.search);
+  var fromLink = hash.get("type") === "recovery" || query.has("code") || hash.has("access_token");
+  var linkErr = hash.get("error_description") || query.get("error_description") || hash.get("error") || query.get("error");
+  var recovered = false;
+
+  sb.auth.onAuthStateChange(function (event) {
+    if (event === "PASSWORD_RECOVERY") { recovered = true; setTimeout(openNew, 0); }
+  });
+
+  function cleanUrl() { try { history.replaceState(null, "", location.pathname); } catch (e) {} }
+  var opened = false;
+  function openNew() {
+    if (opened) return; opened = true;
+    cleanUrl();
+    sb.auth.getUser().then(function (r) {
+      var mail = r && r.data && r.data.user && r.data.user.email;
+      if (mail) $("newFor").textContent = L("Аккаунт ", "Account ") + mail + L(". Пароль — не короче 8 символов; после сохранения вы сразу войдёте.", ". At least 8 characters; you will be signed in after saving.");
+    });
+    show("vNew");
+  }
+  function askView(bad) {
+    cleanUrl();
+    $("askBad").hidden = !bad;
+    if (bad) {
+      $("askTitle").textContent = L("Ссылка устарела", "The link has expired");
+      $("askText").textContent = L("Ссылка из письма действует один раз и недолго. Укажите почту — пришлём новую.", "A reset link works once and only for a short time. Enter your email and we will send a new one.");
+    }
+    show("vAsk");
+  }
+
+  // ждём, пока библиотека разберёт ссылку из адреса, и решаем, что показать
+  setTimeout(function () {
+    if (linkErr) { askView(true); return; }
+    if (!fromLink) { askView(false); return; }
+    sb.auth.getSession().then(function (r) {
+      if (recovered || (r.data && r.data.session)) openNew(); else askView(true);
+    }).catch(function () { askView(true); });
+  }, fromLink ? 600 : 0);
+
+  // показать / скрыть пароль
+  var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  document.querySelectorAll(".eye").forEach(function (b) {
+    b.innerHTML = EYE;
+    b.setAttribute("aria-label", L("Показать пароль", "Show password"));
+    b.addEventListener("click", function () {
+      var i = $(b.getAttribute("data-for")), on = i.type === "password";
+      i.type = on ? "text" : "password";
+      b.innerHTML = on ? EYE_OFF : EYE;
+      b.setAttribute("aria-label", on ? L("Скрыть пароль", "Hide password") : L("Показать пароль", "Show password"));
+    });
+  });
+
+  // насколько надёжен пароль
+  $("p1").addEventListener("input", function () {
+    var p = $("p1").value, s = 0;
+    if (p.length >= 8) s++;
+    if (p.length >= 12) s++;
+    if (/[a-zа-яё]/.test(p) && /[A-ZА-ЯЁ]/.test(p)) s++;
+    if (/\d/.test(p)) s++;
+    if (/[^\w\sа-яёА-ЯЁ]/.test(p)) s++;
+    var lv = !p ? 0 : p.length < 8 ? 1 : s <= 2 ? 2 : s <= 3 ? 3 : 4;
+    var m = $("meter");
+    m.style.width = [0, 20, 45, 72, 100][lv] + "%";
+    m.style.background = lv <= 1 ? "var(--danger)" : lv === 2 ? "#e0a12b" : "var(--ok)";
+    $("strength").textContent = !p ? "" : p.length < 8 ? L("Ещё ", "") + (8 - p.length) + L(" симв. до минимума", " more characters needed")
+      : [L("", ""), "", L("Простой — добавьте цифры или заглавные буквы", "Weak — add digits or capitals"), L("Хороший пароль", "Good password"), L("Надёжный пароль", "Strong password")][lv];
+    $("newErr").textContent = "";
+  });
+  $("p2").addEventListener("input", function () { $("newErr").textContent = ""; });
+
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    btn.innerHTML = on ? '<span class="spin" aria-hidden="true"></span>' : "<span>" + label + "</span>";
+  }
+
+  $("vNew").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var p1 = $("p1").value, p2 = $("p2").value, err = $("newErr");
+    if (p1.length < 8) { err.textContent = L("Пароль должен быть не короче 8 символов.", "The password must be at least 8 characters."); $("p1").focus(); return; }
+    if (p1 !== p2) { err.textContent = L("Пароли не совпадают.", "Passwords do not match."); $("p2").focus(); return; }
+    var btn = $("newBtn"), label = L("Сохранить пароль", "Save password");
+    busy(btn, true);
+    sb.auth.updateUser({ password: p1 }).then(function (r) {
+      busy(btn, false, label);
+      if (r.error) {
+        var m = String(r.error.message || "") + " " + String(r.error.code || "");
+        err.textContent = /same|different from the old/i.test(m) ? L("Новый пароль совпадает со старым — придумайте другой.", "The new password is the same as the old one.")
+          : /weak|short|characters/i.test(m) ? L("Пароль слишком простой — сделайте его длиннее или сложнее.", "The password is too weak.")
+          : /session|jwt|expired|not authenticated|missing/i.test(m) ? L("Ссылка устарела — запросите новую ниже.", "The link has expired — request a new one.")
+          : L("Не получилось сохранить пароль. Попробуйте ещё раз.", "Could not save the password. Try again.");
+        if (/session|jwt|expired|not authenticated|missing/i.test(m)) setTimeout(function () { askView(true); }, 1600);
+        return;
+      }
+      show("vDone");
+    }).catch(function () { busy(btn, false, label); err.textContent = L("Нет связи — попробуйте ещё раз.", "No connection — try again."); });
+  });
+
+  // новая ссылка на почту
+  var lastMail = "", timer = null;
+  function sendLink(mail, btn, label, errEl) {
+    busy(btn, true);
+    return sb.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + "/reset.html" }).then(function (r) {
+      busy(btn, false, label);
+      if (r.error) {
+        var m = String(r.error.message || "");
+        errEl.textContent = /rate|seconds|too many/i.test(m) ? L("Слишком часто — подождите минуту и попробуйте снова.", "Too many requests — wait a minute and try again.")
+          : L("Не получилось отправить письмо. Проверьте почту и попробуйте ещё раз.", "Could not send the email. Check the address and try again.");
+        return false;
+      }
+      return true;
+    }).catch(function () { busy(btn, false, label); errEl.textContent = L("Нет связи — попробуйте ещё раз.", "No connection — try again."); return false; });
+  }
+  function countdown() {
+    var b = $("again"), left = 60;
+    clearInterval(timer);
+    b.disabled = true;
+    var tick = function () {
+      if (left <= 0) { clearInterval(timer); b.disabled = false; b.textContent = L("Отправить ещё раз", "Send again"); return; }
+      b.textContent = L("Отправить ещё раз через ", "Send again in ") + left + L(" с", " s"); left--;
+    };
+    tick(); timer = setInterval(tick, 1000);
+  }
+  $("vAsk").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var mail = $("mail").value.trim(), err = $("askErr");
+    err.textContent = "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { err.textContent = L("Введите почту полностью, например name@mail.ru.", "Enter a full email address."); $("mail").focus(); return; }
+    sendLink(mail, $("askBtn"), L("Отправить ссылку", "Send link"), err).then(function (ok) {
+      if (!ok) return;
+      lastMail = mail; $("sentTo").textContent = mail; show("vSent"); countdown();
+    });
+  });
+  $("again").addEventListener("click", function () {
+    var b = $("again");
+    sendLink(lastMail, b, L("Отправить ещё раз", "Send again"), { set textContent(v) { b.textContent = v; } }).then(function (ok) { if (ok) countdown(); });
+  });
+})();
+</script>
+</body>
+</html>

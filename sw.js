@@ -41,7 +41,8 @@ self.addEventListener("fetch", (e) => {
   const ask = req.mode === "navigate" ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req);
   e.respondWith(
     ask.then((res) => {
-      if (res.ok && (req.mode === "navigate" || /\.(png|webmanifest)$/.test(url.pathname))) {
+      // в кэш как «главная» кладём только саму Mestario, а не отдельные страницы вроде reset.html
+      if (res.ok && ((req.mode === "navigate" && (url.pathname === "/" || url.pathname === "/index.html")) || /\.(png|webmanifest)$/.test(url.pathname))) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req.mode === "navigate" ? "/" : req, copy));
       }

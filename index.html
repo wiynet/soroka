@@ -4657,7 +4657,8 @@ $("signupForm").addEventListener("submit", (e) => {
 $("resetForm").addEventListener("submit", (e) => {
   e.preventDefault();
   busy(e.target, async () => {
-    const { error } = await sb.auth.resetPasswordForEmail($("resetEmail").value.trim(), { redirectTo: HERE });
+    // ссылка из письма ведёт на отдельную страницу нового пароля (reset.html)
+    const { error } = await sb.auth.resetPasswordForEmail($("resetEmail").value.trim(), { redirectTo: new URL("reset.html", HERE).href });
     if (error) $("resetErr").textContent = authError(error); else showAuth("resetsent");
   });
 });
