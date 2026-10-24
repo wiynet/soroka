@@ -1804,6 +1804,55 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .be-log .lg { border-radius: 12px; padding: 8px 10px; background: var(--panel-2); font-size: 13px; display: grid; gap: 4px; }
 .be-log .lg q { quotes: none; font-weight: 600; }
 .be-log .lg .sm { color: var(--muted); }
+/* звонок */
+.call-ui { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom)); color: #fff;
+  background: radial-gradient(120% 80% at 50% 0%, hsl(var(--h) 55% 30%), #071014 70%); animation: call-in .25s var(--ease); }
+@keyframes call-in { from { opacity: 0; transform: scale(1.02); } }
+.call-top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.call-enc { font-size: 12px; opacity: .65; text-align: center; }
+.call-ib { width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgb(255 255 255 / .1); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.call-ib svg { width: 22px; height: 22px; }
+#callFull { visibility: hidden; }
+.call-ui.sharing-remote #callFull { visibility: visible; }
+.call-who { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; margin-top: 6vh; }
+.call-av .avatar { width: 112px !important; height: 112px !important; font-size: 42px !important; box-shadow: 0 0 0 0 hsl(var(--h) 70% 60% / .5); }
+.call-ui.incoming .call-av .avatar { animation: call-pulse 1.6s infinite; }
+@keyframes call-pulse { 0% { box-shadow: 0 0 0 0 hsl(var(--h) 70% 60% / .55); } 100% { box-shadow: 0 0 0 26px hsl(var(--h) 70% 60% / 0); } }
+.call-name { font-size: 24px; font-weight: 600; margin-top: 10px; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-status { font-size: 15px; opacity: .8; font-variant-numeric: tabular-nums; }
+.call-peer-muted { font-size: 13px; opacity: .75; }
+.call-video { position: absolute; left: 0; right: 0; top: 64px; height: calc(100% - 204px); width: 100%; object-fit: contain; background: #000; }
+.call-ui.sharing-remote .call-who { margin: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 10px; position: absolute; z-index: 1;
+  top: calc(max(14px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px);
+  background: rgb(0 0 0 / .55); padding: 6px 14px 6px 6px; border-radius: 999px; }
+.call-ui.sharing-remote .call-video { top: calc(max(14px, env(safe-area-inset-top)) + 104px); height: calc(100% - max(14px, env(safe-area-inset-top)) - 104px - 140px); }
+.call-ui.sharing-remote .call-peer-muted { width: 100%; font-size: 12px; }
+.call-ui.sharing-remote .call-av .avatar { width: 36px !important; height: 36px !important; font-size: 15px !important; }
+.call-ui.sharing-remote .call-name { font-size: 16px; margin: 0; }
+.call-mine { display: flex; align-items: center; gap: 10px; background: rgb(255 255 255 / .1); border-radius: 14px; padding: 8px 10px; font-size: 14px; z-index: 1; }
+.call-mine video { width: 96px; height: 56px; object-fit: cover; border-radius: 8px; background: #000; }
+.call-mine .btn { padding: 6px 12px; font-size: 13px; }
+.call-btns { display: flex; gap: 22px; justify-content: center; z-index: 1; }
+.call-act { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; opacity: .95; }
+.call-act.in, .call-ui.incoming .call-act:not(.in) { display: none; }
+.call-ui.incoming .call-act.in { display: flex; }
+.call-b { width: 62px; height: 62px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; color: #fff; background: rgb(255 255 255 / .16); transition: transform .12s, background .15s; }
+.call-b:active { transform: scale(.94); }
+.call-b svg { width: 28px; height: 28px; }
+.call-b.on { background: #fff; color: #10181c; }
+.call-b.red { background: #e5484d; }
+.call-b.red svg { transform: rotate(135deg); }
+.call-b.green { background: #2fb36b; }
+.call-ui.incoming #callAccept svg { animation: call-wiggle 1.2s infinite; }
+@keyframes call-wiggle { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(-14deg); } 20%, 40% { transform: rotate(14deg); } }
+.call-ui.ended .call-btns { opacity: .35; pointer-events: none; }
+.call-bar { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 44; display: flex; align-items: center; gap: 10px;
+  border: 0; border-radius: 999px; padding: 8px 16px; background: #2fb36b; color: #fff; font: inherit; font-size: 14px; cursor: pointer; box-shadow: 0 8px 24px -10px rgb(0 0 0 / .5); max-width: calc(100% - 32px); }
+.call-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: call-blink 1s infinite alternate; }
+@keyframes call-blink { to { opacity: .3; } }
+.call-bar span:not(.dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg .call-again { display: block; margin-top: 4px; font-size: 13px; }
 .be-sales { font-size: 13px; color: var(--muted); margin: -4px 0 8px; }
 .be-sales:empty { display: none; }
 .be-wallet { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--text); }
@@ -2922,6 +2971,7 @@ void main() {
           <button class="btn danger sel-b" type="button" id="selDel">Удалить</button>
         </div>
         <button class="ai-buy-btn" id="btnAiBuy" type="button" title="Купить ИИ-кредиты за Mest" hidden>+ Кредиты</button>
+        <button class="icon-btn" id="btnCall" type="button" title="Позвонить" aria-label="Позвонить" hidden></button>
         <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
         <button class="icon-btn" id="btnBotEdit" type="button" title="Настроить бота" aria-label="Настроить бота" hidden></button>
         <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
@@ -3423,6 +3473,35 @@ void main() {
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
+<!-- звонок -->
+<div class="call-ui" id="callUi" hidden role="dialog" aria-label="Звонок">
+  <div class="call-top">
+    <button class="call-ib" id="callMin" type="button" title="Свернуть — звонок продолжится" aria-label="Свернуть звонок"></button>
+    <span class="call-enc">🔒 Звонок напрямую между устройствами</span>
+    <button class="call-ib" id="callFull" type="button" title="Экран собеседника во весь экран" aria-label="Во весь экран"></button>
+  </div>
+  <video id="callVideo" class="call-video" playsinline autoplay muted hidden></video>
+  <div class="call-who">
+    <div class="call-av" id="callAv"></div>
+    <div class="call-name" id="callName"></div>
+    <div class="call-status" id="callStatus"></div>
+    <div class="call-peer-muted" id="callPeerMuted" hidden>🔇 У собеседника выключен микрофон</div>
+  </div>
+  <div class="call-mine" id="callMine" hidden>
+    <video id="callMineVid" playsinline autoplay muted></video>
+    <span>Вы показываете экран</span>
+    <button class="btn ghost" type="button" id="callStopMine">Остановить</button>
+  </div>
+  <div class="call-btns">
+    <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span>Микрофон</span></div>
+    <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
+    <div class="call-act"><button class="call-b red" id="callHang" type="button" title="Завершить" aria-label="Завершить"></button><span>Завершить</span></div>
+    <div class="call-act in"><button class="call-b red" id="callDecline" type="button" title="Отклонить" aria-label="Отклонить"></button><span>Отклонить</span></div>
+    <div class="call-act in"><button class="call-b green" id="callAccept" type="button" title="Принять" aria-label="Принять"></button><span>Принять</span></div>
+  </div>
+  <audio id="callAudio" autoplay></audio>
+</div>
+<button class="call-bar" id="callBar" type="button" hidden><span class="dot"></span><span id="callBarText"></span><b>Вернуться</b></button>
 <!-- конструктор бота -->
 <dialog id="dlgBotEdit" class="bot-edit-dlg">
   <div class="dlg">
@@ -4261,6 +4340,11 @@ const ICONS = {
   chart: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></g>',
   folder: '<path d="M3.500 6.500a2 2 0 012-2h4l2 2.500h7a2 2 0 012 2v8.500a2 2 0 01-2 2h-13a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
   file: '<path d="M7 3h7l4 4v14H7z M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  phone: '<path d="M6.6 3.5h2.8l1.5 4-2 1.300a11 11 0 006.300 6.300l1.300-2 4 1.500v2.800A2 2 0 0118.500 20 15.500 15.500 0 014 5.500a2 2 0 012-2z" fill="currentColor"/>',
+  screen: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.500" width="18" height="12" rx="2"/><path d="M8.500 20h7M12 16.500V20M12 13V8M9.500 10.500L12 8l2.500 2.500"/></g>',
+  micoff: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10.500V6a3 3 0 00-5.800-1M9 9v3a3 3 0 004.600 2.500M18 11.500a6 6 0 01-1 3.300M6 11.500a6 6 0 009.300 5M12 17.500V21M4 4l16 16"/></g>',
+  down: '<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/>',
+  full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
 };
 function icon(name) {
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -4830,6 +4914,7 @@ async function startApp() {
   idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
+  checkIncomingCall();
   flash($("chatList"), 900);
   if (state.channel) sb.removeChannel(state.channel);
   state.channel = sb.channel("inbox")
@@ -4840,6 +4925,7 @@ async function startApp() {
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, (p) => onChatRow(p.new))
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments" }, (p) => onComment(p.new))
     .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, (p) => onTicket(p))
+    .on("postgres_changes", { event: "*", schema: "public", table: "calls" }, (p) => onCallRow(p.new))
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -4866,6 +4952,7 @@ async function tick() {
   loadChats();
 }
 function stopApp() {
+  if (typeof call !== "undefined" && call) hangUp();
   if (state.channel) { sb.removeChannel(state.channel); state.channel = null; }
   clearInterval(state.timer);
   state.started = false;
@@ -5416,6 +5503,7 @@ function renderHead() {
   $("convSub").classList.toggle("on", !c.is_group && isOnline(o));
   if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
   $("btnAiBuy").hidden = !isAiChat(c) || !!state.isAdmin;
+  $("btnCall").hidden = !canCall(c) || !window.RTCPeerConnection;
   { const bt = botOf(c); $("btnBotEdit").hidden = !(bt && myBots.some((b) => b.id === bt.id)); }
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
@@ -5789,6 +5877,7 @@ function msgNode(m, group) {
     if (read) ticks.classList.add("read");
   }
   if (m.markup && Array.isArray(m.markup.inline) && !temp) el.append(botInline(m));
+  if (m.call_id && !temp && canCall(c)) el.append(h("button", { class: "link call-again", type: "button", onclick: () => startCall(c) }, mine ? T("Позвонить ещё раз") : T("Перезвонить")));
   el.append(h("span", { class: "meta" },
     !temp && h("button", { class: "dots", type: "button", title: T("Действия с сообщением"), "aria-label": T("Действия с сообщением"), onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
     st && st.views != null && h("span", { class: "views", title: T("Сколько подписчиков прочитали пост") }, icon("eye"), String(st.views)),
@@ -6447,6 +6536,7 @@ function onIncoming(m) {
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden || !state.started) return;
   sb.rpc("touch_presence").then(() => {});
+  checkIncomingCall();
   // После сна телефона часть событий могла потеряться: догружаем.
   if (state.activeId) state.unread.delete(state.activeId);
   markReadSoon();
@@ -11608,6 +11698,324 @@ $("beDelete").addEventListener("click", async () => {
   beBot = null;
   loadChats();
 });
+
+/* ---------- аудиозвонки 1:1 и демонстрация экрана ----------
+   Звонок — строка в public.calls (видна только двоим), сообщение «📞 Звонок» в чате (по нему приходит push).
+   Соединение напрямую между устройствами (WebRTC); обмен служебными данными — Realtime-канал call-<id>. */
+const CALL_DEV = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now();
+const callShareOk = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+var call = null;
+function canCall(c) {
+  if (!c || c.is_group) return false;
+  const o = other(c);
+  return !!(o && !o.is_bot && o.username !== "ai" && !o.banned_at && !state.blocked.has(o.id) && !(state.blockedMe && state.blockedMe.has(o.id)));
+}
+// звуки звонка: свой маленький синтезатор (гудки и мелодия), без файлов
+let callAC = null;
+function callTone(freqs, dur, vol) {
+  try {
+    if (!callAC) callAC = new (window.AudioContext || window.webkitAudioContext)();
+    if (callAC.state === "suspended") callAC.resume().catch(() => {});
+    const t = callAC.currentTime + 0.02;
+    for (const f of freqs) {
+      const o = callAC.createOscillator(), g = callAC.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.03);
+      g.gain.setValueAtTime(vol, t + dur - 0.05); g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(callAC.destination); o.start(t); o.stop(t + dur + 0.02);
+    }
+  } catch (e) {}
+}
+function callTones(kind) {
+  if (!call) return;
+  clearInterval(call.toneT);
+  if (kind === "back") {          // длинный гудок, пока у собеседника звонит
+    const beep = () => callTone([425], 1.0, 0.07);
+    beep(); call.toneT = setInterval(beep, 4000);
+  } else if (kind === "ring") {   // входящий: короткая мелодия и вибрация
+    const ring = () => { callTone([880, 1320], 0.18, 0.06); setTimeout(() => callTone([988, 1480], 0.22, 0.06), 230); if (navigator.vibrate) try { navigator.vibrate([300, 200, 300]); } catch (e) {} };
+    ring(); call.toneT = setInterval(ring, 2200);
+  }
+}
+function callStopTones() { if (call) clearInterval(call.toneT); if (navigator.vibrate) try { navigator.vibrate(0); } catch (e) {} }
+function callFmt(s) { s = Math.max(0, Math.floor(s)); const h_ = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h_ ? h_ + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+
+function callPaint() {
+  const ui = $("callUi"), bar = $("callBar");
+  if (!call) { ui.hidden = true; bar.hidden = true; document.body.classList.remove("in-call"); return; }
+  const p = call.peer || {};
+  $("callAv").replaceChildren(avatar(p.display_name || "?", p.id || "x", "lg", p.avatar_path));
+  $("callName").textContent = p.display_name || T("Собеседник");
+  const st = call.note || (call.status === "active" ? callFmt((Date.now() - call.started) / 1000)
+    : call.status === "connecting" ? T("Соединение…") : call.role === "in" ? T("Входящий звонок") : T("Вызов…"));
+  $("callStatus").textContent = st;
+  ui.classList.toggle("incoming", call.role === "in" && call.status === "ringing");
+  ui.classList.toggle("sharing-remote", !!call.remoteScreen);
+  $("callVideo").hidden = !call.remoteScreen;
+  $("callMine").hidden = !call.screen;
+  $("callMute").classList.toggle("on", !!call.muted);
+  $("callMute").replaceChildren(icon(call.muted ? "micoff" : "mic"));
+  $("callMute").title = call.muted ? T("Включить микрофон") : T("Выключить микрофон");
+  $("callShareWrap").hidden = !callShareOk || call.status !== "active";
+  $("callShare").classList.toggle("on", !!call.screen);
+  $("callShare").title = call.screen ? T("Остановить показ экрана") : T("Показать экран");
+  $("callPeerMuted").hidden = !call.peerMuted;
+  ui.hidden = !!call.min;
+  bar.hidden = !call.min;
+  $("callBarText").textContent = (p.display_name || "") + " · " + st;
+  document.body.classList.toggle("in-call", true);
+}
+function callSend(msg) { if (call && call.ch) call.ch.send({ type: "broadcast", event: "sig", payload: { ...msg, from: CALL_DEV } }).catch(() => {}); }
+function callJoin() {
+  return new Promise((resolve) => {
+    const ch = sb.channel("call-" + call.id, { config: { broadcast: { self: false } } });
+    call.ch = ch;
+    ch.on("broadcast", { event: "sig" }, ({ payload }) => onCallSig(payload));
+    let done = false;
+    ch.subscribe((s) => { if (s === "SUBSCRIBED" && !done) { done = true; resolve(true); } });
+    setTimeout(() => { if (!done) { done = true; resolve(false); } }, 8000);
+  });
+}
+async function callMic() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) {
+    toast(e && e.name === "NotAllowedError" ? T("Нет доступа к микрофону — разрешите его в настройках браузера") : T("Микрофон не найден"));
+    return null;
+  }
+}
+function callPc() {
+  const pc = new RTCPeerConnection({ iceServers: call.ice || [{ urls: "stun:stun.l.google.com:19302" }] });
+  call.pc = pc; call.iceQ = [];
+  pc.onicecandidate = (e) => { if (e.candidate) callSend({ t: "ice", c: e.candidate.toJSON() }); };
+  pc.ontrack = (e) => {
+    if (e.track.kind === "audio") { const a = $("callAudio"); a.srcObject = e.streams[0] || new MediaStream([e.track]); a.play().catch(() => {}); }
+    else { const v = $("callVideo"); v.srcObject = new MediaStream([e.track]); v.play().catch(() => {}); }
+  };
+  pc.onconnectionstatechange = () => {
+    if (!call || call.pc !== pc) return;
+    const s = pc.connectionState;
+    if (s === "connected") {
+      clearTimeout(call.dropT); clearTimeout(call.connT);
+      if (call.status !== "active") {
+        call.status = "active"; call.started = Date.now(); callStopTones();
+        call.tick = setInterval(callPaint, 1000);
+        call.ping = setInterval(() => sb.rpc("call_ping", { p_call: call && call.id }).then(() => {}), 20000);
+      }
+      callPaint();
+    } else if (s === "disconnected") {
+      clearTimeout(call.dropT);
+      call.dropT = setTimeout(() => { if (call && call.pc === pc && pc.connectionState !== "connected") hangUp(T("Связь прервалась")); }, 12000);
+    } else if (s === "failed") hangUp(T("Не удалось соединиться"));
+  };
+  // заранее договариваемся и о видео: показ экрана потом включается без пересогласования
+  if (call.role === "out") {
+    call.mic.getTracks().forEach((t) => pc.addTrack(t, call.mic));
+    call.vt = pc.addTransceiver("video", { direction: "sendrecv" });
+  }
+  // если за 30 секунд не соединились — дальше ждать бессмысленно
+  call.connT = setTimeout(() => { if (call && call.pc === pc && pc.connectionState !== "connected") hangUp(T("Не удалось соединиться")); }, 30000);
+  return pc;
+}
+async function callFlushIce() {
+  const q = call.iceQ || []; call.iceQ = [];
+  for (const c of q) try { await call.pc.addIceCandidate(c); } catch (e) {}
+}
+async function onCallSig(m) {
+  if (!call || !m || m.from === CALL_DEV) return;
+  if (call.peerDev && m.from !== call.peerDev && m.t !== "ready") return;
+  try {
+    if (m.t === "ready" && call.role === "out") {
+      if (call.peerDev) return;              // уже соединяемся с другим устройством собеседника
+      call.peerDev = m.from;
+      call.status = "connecting"; callStopTones(); callPaint();
+      const pc = callPc();
+      await pc.setLocalDescription(await pc.createOffer());
+      callSend({ t: "offer", sdp: pc.localDescription.toJSON(), to: m.from });
+    } else if (m.t === "offer" && call.role === "in" && (!m.to || m.to === CALL_DEV)) {
+      if (call.pc) return;
+      call.peerDev = m.from; clearInterval(call.readyT);
+      const pc = callPc();
+      await pc.setRemoteDescription(m.sdp);
+      call.mic.getTracks().forEach((t) => pc.addTrack(t, call.mic));
+      call.vt = pc.getTransceivers().find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "video");
+      if (call.vt) call.vt.direction = "sendrecv";
+      await pc.setLocalDescription(await pc.createAnswer());
+      callSend({ t: "answer", sdp: pc.localDescription.toJSON() });
+      await callFlushIce();
+    } else if (m.t === "answer" && call.role === "out" && call.pc) {
+      await call.pc.setRemoteDescription(m.sdp);
+      await callFlushIce();
+    } else if (m.t === "ice" && m.c) {
+      if (call.pc && call.pc.remoteDescription) { try { await call.pc.addIceCandidate(m.c); } catch (e) {} }
+      else (call.iceQ = call.iceQ || []).push(m.c);
+    } else if (m.t === "screen") { call.remoteScreen = !!m.on; if (call.remoteScreen) call.min = false; callPaint(); }
+    else if (m.t === "mute") { call.peerMuted = !!m.on; callPaint(); }
+    else if (m.t === "bye") { callFinish(T("Звонок завершён")); }
+  } catch (e) { console.warn("call signal", e); }
+}
+function callPeerFrom(c, id) {
+  return (c && c.members.find((p) => p.id === id)) || null;
+}
+async function startCall(c) {
+  if (!canCall(c)) { toast(T("Этому собеседнику позвонить нельзя")); return; }
+  if (call) { call.min = false; callPaint(); toast(T("Сначала завершите текущий звонок")); return; }
+  if (!window.RTCPeerConnection) { toast(T("Этот браузер не поддерживает звонки")); return; }
+  const peer = other(c);
+  call = { role: "out", status: "ringing", chat: c.id, peer, note: T("Подключаем микрофон…") };
+  callPaint();
+  const mic = await callMic();
+  if (!mic) { call = null; callPaint(); return; }
+  call.mic = mic; call.note = "";
+  const { data, error } = await sb.rpc("call_start", { p_chat: c.id });
+  if (error || !data) {
+    mic.getTracks().forEach((t) => t.stop()); call = null; callPaint();
+    const m = (error && error.message) || "";
+    toast(/blocked/.test(m) ? T("Позвонить нельзя: вы или собеседник в чёрном списке") : /too many/.test(m) ? T("Слишком много звонков подряд — подождите немного") : /cannot call/.test(m) ? T("Этому собеседнику позвонить нельзя") : T("Не получилось позвонить"));
+    return;
+  }
+  call.id = data.id; call.ice = data.ice;
+  if (data.status === "busy") { callFinish(T("Абонент разговаривает")); return; }
+  callPaint(); callTones("back");
+  await callJoin();
+  // никто не взял трубку за 45 секунд
+  call.ringT = setTimeout(() => { if (call && call.status === "ringing") hangUp(T("Не отвечает")); }, 45000);
+}
+async function incomingCall(row) {
+  if (call || !row || row.callee !== state.me.id || row.status !== "ringing") return;
+  if (Date.now() - new Date(row.created_at).getTime() > 50000) return;
+  const c = state.chats.get(row.chat_id);
+  let peer = callPeerFrom(c, row.caller);
+  if (!peer) { const { data } = await sb.from("profiles").select(PF).eq("id", row.caller).maybeSingle(); peer = data; }
+  if (call || !peer || state.blocked.has(row.caller)) return;
+  call = { role: "in", status: "ringing", id: row.id, chat: row.chat_id, peer };
+  callPaint(); callTones("ring");
+  call.ringT = setTimeout(() => { if (call && call.id === row.id && call.status === "ringing") callFinish(T("Пропущенный звонок")); }, Math.max(5000, 52000 - (Date.now() - new Date(row.created_at).getTime())));
+}
+async function acceptCall() {
+  if (!call || call.role !== "in" || call.status !== "ringing") return;
+  callStopTones();
+  call.note = T("Подключаем микрофон…"); callPaint();
+  const mic = await callMic();
+  if (!call) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
+  if (!mic) { hangUp(); return; }
+  call.mic = mic;
+  const { data, error } = await sb.rpc("call_accept", { p_call: call.id, p_device: CALL_DEV });
+  if (error || !data) { callFinish(T("Звонок уже завершён")); return; }
+  call.ice = data.ice; call.status = "connecting"; call.note = ""; clearTimeout(call.ringT);
+  callPaint();
+  await callJoin();
+  // сообщаем звонящему, что готовы; повторяем, пока не придёт предложение соединения
+  let n = 0;
+  const ready = () => { if (!call || call.pc || ++n > 12) { clearInterval(call && call.readyT); return; } callSend({ t: "ready" }); };
+  ready(); call.readyT = setInterval(ready, 1500);
+  call.connT = setTimeout(() => { if (call && call.status !== "active") hangUp(T("Не удалось соединиться")); }, 35000);
+}
+function hangUp(note) {
+  if (!call) return;
+  const id = call.id;
+  callSend({ t: "bye" });
+  if (id) sb.rpc("call_end", { p_call: id }).then(() => {});
+  callFinish(note || (call.status === "active" ? T("Звонок завершён") : call.role === "in" ? T("Отклонено") : T("Отменено")));
+}
+function callFinish(note) {
+  if (!call) return;
+  const c = call;
+  callStopTones();
+  clearTimeout(c.ringT); clearTimeout(c.connT); clearTimeout(c.dropT); clearInterval(c.tick); clearInterval(c.ping); clearInterval(c.readyT);
+  if (c.screen) c.screen.getTracks().forEach((t) => t.stop());
+  if (c.mic) c.mic.getTracks().forEach((t) => t.stop());
+  try { if (c.pc) c.pc.close(); } catch (e) {}
+  if (c.ch) sb.removeChannel(c.ch);
+  $("callAudio").srcObject = null; $("callVideo").srcObject = null;
+  c.pc = null; c.ch = null; c.ended = true; c.remoteScreen = false; c.screen = null; c.min = false;
+  c.note = note || T("Звонок завершён"); c.status = "ended";
+  callPaint();
+  $("callUi").classList.add("ended");
+  setTimeout(() => { if (call === c) { call = null; $("callUi").classList.remove("ended"); callPaint(); } }, 1600);
+}
+function callToggleMute() {
+  if (!call || !call.mic) return;
+  call.muted = !call.muted;
+  call.mic.getAudioTracks().forEach((t) => { t.enabled = !call.muted; });
+  callSend({ t: "mute", on: call.muted });
+  callPaint();
+}
+async function callToggleShare() {
+  if (!call || call.status !== "active" || !call.vt) return;
+  if (call.screen) { callStopShare(); return; }
+  let s;
+  try { s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } }, audio: false }); }
+  catch (e) { if (e && e.name !== "NotAllowedError" && e.name !== "AbortError") toast(T("Не получилось показать экран")); return; }
+  if (!call || call.status !== "active") { s.getTracks().forEach((t) => t.stop()); return; }
+  const tr = s.getVideoTracks()[0];
+  try { tr.contentHint = "detail"; } catch (e) {}
+  await call.vt.sender.replaceTrack(tr);
+  try { const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}]; p.encodings[0].maxBitrate = 2500000; await call.vt.sender.setParameters(p); } catch (e) {}
+  call.screen = s;
+  $("callMineVid").srcObject = s;
+  tr.addEventListener("ended", callStopShare);
+  callSend({ t: "screen", on: true });
+  callPaint();
+}
+function callStopShare() {
+  if (!call || !call.screen) return;
+  call.screen.getTracks().forEach((t) => t.stop());
+  call.screen = null; $("callMineVid").srcObject = null;
+  if (call.vt) call.vt.sender.replaceTrack(null).catch(() => {});
+  callSend({ t: "screen", on: false });
+  callPaint();
+}
+function onCallRow(row) {
+  if (!row || !state.me) return;
+  if (call && call.id === row.id) {
+    if (["ended", "missed", "declined", "busy"].includes(row.status) && !call.ended) {
+      callFinish(row.status === "declined" ? T("Собеседник отклонил звонок") : row.status === "missed" && call.role === "in" ? T("Пропущенный звонок") : T("Звонок завершён"));
+    } else if (row.status === "active" && call.role === "in" && call.status === "ringing" && row.device && row.device !== CALL_DEV) {
+      callFinish(T("Принят на другом устройстве"));
+    }
+    return;
+  }
+  if (row.status === "ringing") incomingCall(row);
+}
+// открыли приложение по уведомлению о звонке — проверяем, не звонят ли прямо сейчас
+async function checkIncomingCall() {
+  if (call || !state.me) return;
+  const since = new Date(Date.now() - 50000).toISOString();
+  const { data } = await sb.from("calls").select("*").eq("callee", state.me.id).eq("status", "ringing").gt("created_at", since).order("created_at", { ascending: false }).limit(1);
+  if (data && data[0]) incomingCall(data[0]);
+}
+// закрыли вкладку посреди звонка — завершаем его на сервере
+window.addEventListener("pagehide", () => {
+  if (!call || !call.id || call.ended) return;
+  try {
+    callSend({ t: "bye" });
+    // страница закрывается: ждать ответа нельзя, поэтому токен берём из сохранённого входа и шлём запрос «вдогонку»
+    const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
+    const sess = JSON.parse(localStorage.getItem("sb-" + ref + "-auth-token") || "null");
+    const at = sess && (sess.access_token || (sess.currentSession && sess.currentSession.access_token));
+    if (at) fetch(SUPABASE_URL + "/rest/v1/rpc/call_end", { method: "POST", keepalive: true,
+      headers: { apikey: SUPABASE_KEY, authorization: "Bearer " + at, "content-type": "application/json" }, body: JSON.stringify({ p_call: call.id }) });
+  } catch (e) {}
+});
+$("btnCall").append(icon("phone"));
+$("btnCall").addEventListener("click", () => startCall(state.chats.get(state.activeId)));
+$("callAccept").append(icon("phone"));
+$("callAccept").addEventListener("click", acceptCall);
+$("callDecline").append(icon("phone"));
+$("callDecline").addEventListener("click", () => hangUp());
+$("callHang").append(icon("phone"));
+$("callHang").addEventListener("click", () => hangUp());
+$("callMute").addEventListener("click", callToggleMute);
+$("callShare").append(icon("screen"));
+$("callShare").addEventListener("click", callToggleShare);
+$("callStopMine").addEventListener("click", callStopShare);
+$("callMin").append(icon("down"));
+$("callMin").addEventListener("click", () => { if (call && !call.ended) { call.min = true; callPaint(); } });
+$("callBar").addEventListener("click", () => { if (call) { call.min = false; callPaint(); } });
+$("callVideo").addEventListener("dblclick", () => { const v = $("callVideo"); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
+$("callFull").append(icon("full"));
+$("callFull").addEventListener("click", () => { const v = $("callVideo"); if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
 
 /* ---------- выбор нескольких сообщений: удалить или переслать сразу пачкой ---------- */
 let selMode = false, selArmed = false;

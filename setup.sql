@@ -1688,3 +1688,12 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Ссылка из письма «Сброс пароля» ведёт на mestario.lol/reset.html (redirectTo), а не в само приложение:
 --   новый пароль с повтором и показом, проверка надёжности; устаревшая ссылка — сразу форма «прислать новую».
 -- В Supabase → Authentication → URL Configuration должен быть разрешён https://mestario.lol/** (иначе ссылка уйдёт на Site URL).
+
+-- ===== Аудиозвонки с показом экрана (миграции voice_calls, voice_calls_label_hours) =====
+-- public.calls: звонок 1:1 в личном чате (ringing → active → ended/missed/declined/busy), видна только двоим (RLS), в Realtime.
+-- RPC: call_start(chat) — проверки (не бот, не @ai, нет блокировки, ≤15 звонков за 10 мин, «занят»), строка + сообщение
+--   «📞 Звонок» (messages.call_id; по нему приходит push); call_accept(call, device); call_ping(call) раз в 20 с;
+--   call_end(call) — итог в сообщении: «📞 Звонок · 2:31», «Пропущенный», «Отклонённый».
+-- private.call_config.ice — серверы STUN (TURN можно добавить туда же позже, сайт менять не нужно).
+-- Сайт: WebRTC напрямую между устройствами, обмен SDP/ICE через Realtime-канал call-<id>; показ экрана —
+--   заранее согласованная видеодорожка (replaceTrack), без пересогласования. Windows-приложение отдаёт основной экран.

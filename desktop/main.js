@@ -1,6 +1,6 @@
 // Mestario для Windows: отдельное окно с мессенджером.
 // Открывает сайт (так обновления приходят сразу); без интернета показывает встроенную копию интерфейса.
-const { app, BrowserWindow, shell, session, Menu } = require("electron");
+const { app, BrowserWindow, shell, session, Menu, desktopCapturer } = require("electron");
 const path = require("path");
 
 const SITE = "https://mestario.lol/";
@@ -44,6 +44,12 @@ app.whenReady().then(() => {
   const allowed = ["media", "notifications", "geolocation", "clipboard-read", "clipboard-sanitized-write", "fullscreen", "display-capture", "pointerLock"];
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(allowed.includes(perm)));
   session.defaultSession.setPermissionCheckHandler((wc, perm) => allowed.includes(perm));
+  // показ экрана в звонке: в Electron браузерного окна выбора нет — отдаём весь основной экран
+  if (session.defaultSession.setDisplayMediaRequestHandler) {
+    session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
+      desktopCapturer.getSources({ types: ["screen"] }).then((src) => cb(src.length ? { video: src[0] } : {})).catch(() => cb({}));
+    }, { useSystemPicker: true });
+  }
   createWindow();
 });
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
