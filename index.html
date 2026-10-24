@@ -1833,6 +1833,18 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .call-mine { display: flex; align-items: center; gap: 10px; background: rgb(255 255 255 / .1); border-radius: 14px; padding: 8px 10px; font-size: 14px; z-index: 1; }
 .call-mine video { width: 96px; height: 56px; object-fit: cover; border-radius: 8px; background: #000; }
 .call-mine .btn { padding: 6px 12px; font-size: 13px; }
+.call-qpick { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); z-index: 3; width: min(360px, calc(100% - 32px));
+  background: #16232a; border: 1px solid rgb(255 255 255 / .12); border-radius: 18px; padding: 10px; display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 20px 50px -20px rgb(0 0 0 / .7); animation: call-in .18s var(--ease); }
+.cq-h { font-size: 13px; opacity: .75; padding: 4px 6px 2px; }
+.cq { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 1px solid transparent; border-radius: 12px; padding: 9px 12px;
+  background: rgb(255 255 255 / .06); color: #fff; font: inherit; cursor: pointer; }
+.cq b { font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.cq span { font-size: 12.5px; opacity: .72; }
+.cq.sel { border-color: hsl(var(--h) 70% 60%); background: hsl(var(--h) 60% 40% / .25); }
+.cq.locked { opacity: .7; }
+.cq-p { font-size: 11px !important; opacity: 1 !important; background: #7c4ddb; color: #fff; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+.cq-x { color: #9fe3ff; align-self: center; padding: 4px; }
 .call-mine-t { display: flex; flex-direction: column; gap: 2px; }
 .call-mine-t small { font-size: 12px; opacity: .75; }
 .call-mine-t small .link { color: #9fe3ff; font-size: 12px; padding: 0; }
@@ -2926,7 +2938,7 @@ void main() {
         <div class="feat"><span class="pico red" aria-hidden="true">🎲</span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
         <div class="feat"><span class="pico grey" aria-hidden="true">👁</span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">👥</span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
-        <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках экран идёт в 1080p и 30 кадров/с вместо 720p и 10 кадров/с.</span></div>
+        <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках можно выбрать качество «HD» (1080p, 30 кадров/с) и «Плавно» для видео и игр.</span></div>
         <div class="feat"><span class="pico sky" aria-hidden="true">🌌</span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
         <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
         <div class="feat"><span class="pico violet" aria-hidden="true">🛡</span><b>VPN-подписка</b><span>Своя ссылка для подключения VPN через приложение Happ.</span></div>
@@ -3496,6 +3508,7 @@ void main() {
     <span class="call-mine-t">Вы показываете экран<small id="callQ"></small></span>
     <button class="btn ghost" type="button" id="callStopMine">Остановить</button>
   </div>
+  <div class="call-qpick" id="callQPick" hidden></div>
   <div class="call-btns">
     <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span id="callMuteLbl">Микрофон</span></div>
     <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
@@ -11762,8 +11775,12 @@ function callPaint() {
   $("callMute").title = !call.mic ? T("Микрофона нет — нажмите, чтобы подключить") : call.muted ? T("Включить микрофон") : T("Выключить микрофон");
   $("callMuteLbl").textContent = !call.mic ? T("Без микрофона") : T("Микрофон");
   $("callQ").hidden = !call.screen;
-  $("callQ").textContent = callHQ() ? T("Высокое качество · Премиум") : T("Обычное качество · ");
-  if (!callHQ()) $("callQ").append(h("button", { class: "link", type: "button", onclick: () => { call.min = true; callPaint(); $("btnSettings").click(); showSetPage("premium"); paintPremiumPage(); } }, T("HD с Премиумом")));
+  if (call.screen) {
+    const q = SHARE_Q[call.shareKey] || SHARE_Q.std;
+    $("callQ").replaceChildren(T(q.t) + " · " + q.hh + "p, " + q.fps + T(" к/с") + " · ",
+      h("button", { class: "link", type: "button", onclick: () => callQPick((k) => { if (call && call.screen) shareApply(call.screen.getVideoTracks()[0], k).then(callPaint); }) }, T("Сменить")));
+  }
+  if (!call.screen || call.status !== "active") $("callQPick").hidden = true;
   $("callShareWrap").hidden = !callShareOk || call.status !== "active";
   $("callShare").classList.toggle("on", !!call.screen);
   $("callShare").title = call.screen ? T("Остановить показ экрана") : T("Показать экран");
@@ -11968,25 +11985,66 @@ function callToggleMute() {
   callSend({ t: "mute", on: call.muted });
   callPaint();
 }
+// качество показа экрана: выбирается перед показом и меняется на ходу; HD и «Плавно» — с премиумом
+const SHARE_Q = {
+  eco: { t: "Экономно", d: "480p · 5 кадров/с — для слабого интернета", w: 854, hh: 480, fps: 5, br: 400000 },
+  std: { t: "Обычное", d: "720p · 10 кадров/с — документы и сайты", w: 1280, hh: 720, fps: 10, br: 1000000 },
+  smooth: { t: "Плавно", d: "720p · 30 кадров/с — видео и игры", w: 1280, hh: 720, fps: 30, br: 2500000, prem: true },
+  hd: { t: "HD", d: "1080p · 30 кадров/с — максимальная чёткость", w: 1920, hh: 1080, fps: 30, br: 4000000, prem: true },
+};
+function shareQKey() { const k = settings.shareQ; return SHARE_Q[k] && (!SHARE_Q[k].prem || callHQ()) ? k : "std"; }
+function shareCons(q) { return { width: { max: q.w }, height: { max: q.hh }, frameRate: { ideal: q.fps, max: q.fps } }; }
+async function shareApply(tr, key) {
+  const q = SHARE_Q[key];
+  try { tr.contentHint = q.fps >= 30 ? "motion" : "detail"; } catch (e) {}
+  try { await tr.applyConstraints(shareCons(q)); } catch (e) {}
+  try {
+    const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
+    p.encodings[0].maxBitrate = q.br; p.encodings[0].maxFramerate = q.fps;
+    // если источник не уменьшился сам — уменьшаем при кодировании, чтобы качество точно было как выбрано
+    const sh = (tr.getSettings && tr.getSettings().height) || 0;
+    p.encodings[0].scaleResolutionDownBy = sh > q.hh ? sh / q.hh : 1;
+    await call.vt.sender.setParameters(p);
+  } catch (e) {}
+  call.shareKey = key;
+  // размер кадра становится известен не сразу — через секунду сверяем ещё раз
+  setTimeout(async () => {
+    if (!call || !call.screen || call.shareKey !== key) return;
+    try {
+      const sh = (tr.getSettings && tr.getSettings().height) || 0, p = call.vt.sender.getParameters();
+      if (!p.encodings || !p.encodings[0]) return;
+      const want = sh > q.hh ? sh / q.hh : 1;
+      if (Math.abs((p.encodings[0].scaleResolutionDownBy || 1) - want) > 0.01) { p.encodings[0].scaleResolutionDownBy = want; await call.vt.sender.setParameters(p); }
+    } catch (e) {}
+  }, 1000);
+}
+function callQPick(onPick) {
+  const box = $("callQPick"), cur = call && call.screen ? call.shareKey : shareQKey();
+  box.replaceChildren(h("div", { class: "cq-h" }, call && call.screen ? T("Качество показа") : T("В каком качестве показывать экран?")),
+    ...Object.entries(SHARE_Q).map(([k, q]) => {
+      const locked = q.prem && !callHQ();
+      return h("button", { class: "cq" + (k === cur ? " sel" : "") + (locked ? " locked" : ""), type: "button", onclick: () => {
+        if (locked) { toast(T("«") + T(q.t) + T("» — с Премиумом")); box.hidden = true; call.min = true; callPaint(); $("btnSettings").click(); showSetPage("premium"); paintPremiumPage(); return; }
+        settings.shareQ = k; try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {} box.hidden = true; onPick(k);
+      } }, h("b", {}, T(q.t), q.prem ? h("span", { class: "cq-p" }, "👑 Премиум") : null), h("span", {}, T(q.d)));
+    }),
+    h("button", { class: "link cq-x", type: "button", onclick: () => { box.hidden = true; } }, T("Отмена")));
+  box.hidden = false;
+}
 async function callToggleShare() {
   if (!call || call.status !== "active" || !call.vt) return;
   if (call.screen) { callStopShare(); return; }
-  const hq = callHQ();
-  // качество показа: обычное — до 720p и 10 кадров/с; с премиумом — до 1080p, 30 кадров/с и в 4 раза больше поток
-  const q = hq ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { ideal: 30, max: 30 } } : { width: { max: 1280 }, height: { max: 720 }, frameRate: { ideal: 10, max: 10 } };
+  callQPick(callStartShare);
+}
+async function callStartShare(key) {
+  if (!call || call.status !== "active" || call.screen) return;
   let s;
-  try { s = await navigator.mediaDevices.getDisplayMedia({ video: q, audio: false }); }
+  try { s = await navigator.mediaDevices.getDisplayMedia({ video: shareCons(SHARE_Q[key]), audio: false }); }
   catch (e) { if (e && e.name !== "NotAllowedError" && e.name !== "AbortError") toast(T("Не получилось показать экран")); return; }
   if (!call || call.status !== "active") { s.getTracks().forEach((t) => t.stop()); return; }
   const tr = s.getVideoTracks()[0];
-  try { tr.contentHint = hq ? "detail" : "motion"; } catch (e) {}
-  try { await tr.applyConstraints(q); } catch (e) {}
   await call.vt.sender.replaceTrack(tr);
-  try {
-    const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
-    p.encodings[0].maxBitrate = hq ? 4000000 : 1000000; p.encodings[0].maxFramerate = hq ? 30 : 10;
-    await call.vt.sender.setParameters(p);
-  } catch (e) {}
+  await shareApply(tr, key);
   call.screen = s;
   $("callMineVid").srcObject = s;
   tr.addEventListener("ended", callStopShare);
