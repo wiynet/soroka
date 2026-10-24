@@ -1845,6 +1845,19 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .cq.locked { opacity: .7; }
 .cq-p { font-size: 11px !important; opacity: 1 !important; background: #7c4ddb; color: #fff; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
 .cq-x { color: #9fe3ff; align-self: center; padding: 4px; }
+/* код из письма при регистрации и входе */
+#codeForm { display: grid; gap: 12px; }
+#codeForm[hidden] { display: none; }
+.code-head { text-align: center; display: grid; gap: 6px; justify-items: center; }
+.code-ico { font-size: 34px; line-height: 1; }
+.code-head b { font-size: 18px; }
+.code-head .small b { font-size: inherit; color: var(--ink); word-break: break-all; }
+.code-input { text-align: center; font-size: 28px !important; letter-spacing: .35em; font-variant-numeric: tabular-nums; padding: 12px 8px !important; }
+#codeResend[disabled] { opacity: .55; cursor: default; }
+/* вопрос про вход с кодом */
+.lc-card { text-align: center; }
+.lc-card .lc-ico { font-size: 40px; margin-bottom: 6px; }
+.lc-card ul { text-align: left; margin: 8px 0 14px; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
 .call-mine-t { display: flex; flex-direction: column; gap: 2px; }
 .call-mine-t small { font-size: 12px; opacity: .75; }
 .call-mine-t small .link { color: #9fe3ff; font-size: 12px; padding: 0; }
@@ -2683,6 +2696,18 @@ void main() {
       <p class="small muted" id="banNew" style="margin:0 0 10px" hidden>Поддержка ответила — откройте, чтобы прочитать.</p>
       <button class="btn ghost" type="button" id="banLogout" style="width:100%">Выйти из аккаунта</button>
     </div>
+    <form id="codeForm" data-view="code" novalidate hidden>
+      <div class="code-head">
+        <div class="code-ico" aria-hidden="true">✉️</div>
+        <b id="codeTitle">Код из письма</b>
+        <div class="small muted" id="codeText"></div>
+      </div>
+      <input class="input code-input" id="codeIn" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="000000" aria-label="Код из письма">
+      <div class="error" id="codeErr"></div>
+      <button class="btn go" type="submit"><span id="codeGo">Подтвердить</span><b aria-hidden="true">→</b></button>
+      <button class="link" type="button" id="codeResend" disabled>Отправить код ещё раз</button>
+      <button class="link" type="button" id="codeBack">Назад</button>
+    </form>
     <div data-view="confirm" hidden>
       <p style="margin:0 0 12px">Мы отправили письмо на <b id="confirmEmail"></b>. Откройте ссылку из письма, чтобы подтвердить почту, и затем войдите.</p>
       <button class="btn ghost" type="button" data-go="login">Ко входу</button>
@@ -2773,6 +2798,10 @@ void main() {
         <div class="set-label">Устройства</div>
         <div class="small muted">Где сейчас выполнен вход в этот аккаунт. Отключить можно устройство, которое вошло позже этого; более старое — только если оно не появлялось 30 дней.</div>
         <div id="devList" style="display:grid;gap:8px"></div>
+
+        <div class="set-label">Вход</div>
+        <label class="toggle"><input type="checkbox" id="setLoginCode"><span>Код из почты при входе</span></label>
+        <div class="small muted" id="loginCodeHint">После пароля нужно будет ввести код из письма. Так аккаунт не откроют, даже узнав пароль.</div>
 
         <div class="set-label">Почта</div>
         <form id="emailForm" novalidate style="display:grid;gap:10px">
@@ -3487,6 +3516,19 @@ void main() {
       <button class="btn" type="submit" id="botNewBtn">Создать бота</button>
     </form>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+<dialog id="dlgLoginCode">
+  <div class="dlg lc-card">
+    <div class="lc-ico" aria-hidden="true">🔐</div>
+    <h2>Защитить вход кодом?</h2>
+    <p class="muted" style="margin:0">При входе в аккаунт, кроме пароля, мы будем присылать на почту код.</p>
+    <ul>
+      <li>Даже если кто-то узнает пароль, без доступа к вашей почте он не войдёт.</li>
+      <li>Код нужен только при новом входе — на этом устройстве ничего не изменится.</li>
+      <li>Выключить можно в «Настройки → Безопасность».</li>
+    </ul>
+    <div class="actions"><button class="btn ghost" type="button" id="lcNo">Не сейчас</button><button class="btn" type="button" id="lcYes">Включить</button></div>
   </div>
 </dialog>
 <!-- звонок -->
@@ -4723,10 +4765,129 @@ watchUsername($("unUser"), $("unUserHint"));
 
 $("loginForm").addEventListener("submit", (e) => {
   e.preventDefault();
+  const email = $("loginEmail").value.trim();
   busy(e.target, async () => {
-    const { error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPass").value });
-    if (error) $("loginErr").textContent = authError(error);
+    // пока не ясно, нужен ли код из письма, приложение не открываем
+    state.codeGate = true;
+    let res;
+    try { res = await sb.auth.signInWithPassword({ email, password: $("loginPass").value }); }
+    catch (err) { res = { error: err }; }
+    const { data, error } = res;
+    if (error) {
+      const m = String(error.message || "");
+      if (/code_required/i.test(m)) { await sendLoginCode(email); return; }          // пароль верный, но включён вход с кодом
+      state.codeGate = false;
+      if (/Email not confirmed/i.test(m)) {                                           // зарегистрировался, но не подтвердил почту
+        await sb.auth.resend({ type: "signup", email }).catch(() => {});
+        openCode("signup", email, T("Почта ещё не подтверждена. Мы отправили новый код на "), "login");
+        return;
+      }
+      $("loginErr").textContent = authError(error);
+      return;
+    }
+    // вход прошёл: проверяем, не просил ли человек код при входе (если хук в Supabase ещё не включён)
+    let need = false;
+    try { const r = await sb.rpc("login_code_get"); need = !!(r.data && r.data.on); } catch (err) {}
+    if (need) { await sb.auth.signOut({ scope: "local" }).catch(() => {}); await sendLoginCode(email); return; }
+    state.codeGate = false;
+    if (data && data.session) onAuth("SIGNED_IN", data.session);
   });
+});
+/* ---------- вопрос после регистрации: включить ли код из почты при входе ---------- */
+async function askLoginCodeOnce() {
+  let fresh = false;
+  try { fresh = sessionStorage.getItem("mestario.newacc") === "1"; sessionStorage.removeItem("mestario.newacc"); } catch (e) {}
+  if (!fresh) return;
+  const { data } = await sb.rpc("login_code_get");
+  if (!data || data.asked || data.on) return;
+  setTimeout(() => { if (state.started && !document.querySelector("dialog[open]")) $("dlgLoginCode").showModal(); }, 1500);
+}
+$("lcYes").addEventListener("click", async () => {
+  $("lcYes").disabled = true;
+  const { error } = await sb.rpc("login_code_set", { p_on: true });
+  $("lcYes").disabled = false;
+  $("dlgLoginCode").close();
+  toast(error ? T("Не получилось включить — попробуйте в настройках безопасности") : T("Готово: при входе будем спрашивать код из почты"));
+});
+$("lcNo").addEventListener("click", () => { $("dlgLoginCode").close(); sb.rpc("login_code_asked").then(() => {}); });
+$("setLoginCode").addEventListener("change", async (e) => {
+  const on = e.target.checked;
+  e.target.disabled = true;
+  const { error } = await sb.rpc("login_code_set", { p_on: on });
+  e.target.disabled = false;
+  if (error) { e.target.checked = !on; toast(T("Не получилось сохранить")); return; }
+  toast(on ? T("Вход с кодом из почты включён") : T("Вход с кодом из почты выключен"));
+});
+async function paintLoginCode() {
+  const { data } = await sb.rpc("login_code_get");
+  $("setLoginCode").checked = !!(data && data.on);
+}
+/* ---------- код из письма: подтверждение регистрации и вход с кодом ---------- */
+let codeCtx = null, codeTimer = 0;
+function openCode(mode, email, lead, from) {
+  codeCtx = { mode, email, from: from || (mode === "signup" ? "signup" : "login") };
+  $("codeTitle").textContent = mode === "signup" ? T("Подтвердите почту") : T("Код для входа");
+  $("codeText").replaceChildren(lead || (mode === "signup" ? T("Мы отправили код на ") : T("Для этого аккаунта включён вход с кодом. Мы отправили код на ")),
+    h("b", {}, email), ". " + T("Письмо приходит за минуту — если его нет, загляните в «Спам»."));
+  $("codeGo").textContent = mode === "signup" ? T("Создать аккаунт") : T("Войти");
+  $("codeIn").value = "";
+  showAuth("code");
+  codeCooldown();
+  setTimeout(() => $("codeIn").focus(), 50);
+}
+function codeCooldown() {
+  const b = $("codeResend"); let left = 60;
+  clearInterval(codeTimer); b.disabled = true;
+  const tick = () => {
+    if (left <= 0) { clearInterval(codeTimer); b.disabled = false; b.textContent = T("Отправить код ещё раз"); return; }
+    b.textContent = T("Отправить код ещё раз · ") + left + T(" с"); left--;
+  };
+  tick(); codeTimer = setInterval(tick, 1000);
+}
+async function sendLoginCode(email) {
+  state.codeGate = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  openCode("login", email);
+  if (error) $("codeErr").textContent = authError(error);
+}
+$("codeIn").addEventListener("input", () => {
+  $("codeIn").value = $("codeIn").value.replace(/\D/g, "").slice(0, 10);
+  $("codeErr").textContent = "";
+});
+$("codeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!codeCtx) return;
+  const token = $("codeIn").value.trim();
+  if (token.length < 6) { $("codeErr").textContent = T("Введите код из письма полностью."); return; }
+  busy(e.target, async () => {
+    state.codeGate = false;   // после кода — обычный вход
+    const { error } = await sb.auth.verifyOtp({ email: codeCtx.email, token, type: codeCtx.mode === "signup" ? "signup" : "email" });
+    if (error) {
+      if (codeCtx.mode === "login") state.codeGate = true;
+      const m = String(error.message || "");
+      $("codeErr").textContent = /expired|invalid|not found/i.test(m) ? T("Неверный или устаревший код. Проверьте письмо или отправьте код ещё раз.") : authError(error);
+      return;
+    }
+    clearInterval(codeTimer);
+    codeCtx = null;
+  });
+});
+$("codeResend").addEventListener("click", async () => {
+  if (!codeCtx) return;
+  $("codeResend").disabled = true;
+  const { error } = codeCtx.mode === "signup"
+    ? await sb.auth.resend({ type: "signup", email: codeCtx.email, options: { emailRedirectTo: HERE } })
+    : await sb.auth.signInWithOtp({ email: codeCtx.email, options: { shouldCreateUser: false } });
+  if (error) { $("codeErr").textContent = authError(error); $("codeResend").disabled = false; return; }
+  toast(T("Новый код отправлен"));
+  codeCooldown();
+});
+$("codeBack").addEventListener("click", () => {
+  const from = codeCtx && codeCtx.from;
+  codeCtx = null; clearInterval(codeTimer); state.codeGate = false;
+  if (state.adding && state.me) { cancelAdding(); return; }
+  if (state.adding) { const next = accounts()[0]; if (next) { switchTo(next); return; } }
+  showAuth(from === "signup" ? "signup" : "login");
 });
 
 $("signupForm").addEventListener("submit", (e) => {
@@ -4751,7 +4912,8 @@ $("signupForm").addEventListener("submit", (e) => {
       err.textContent = T("Эта почта уже зарегистрирована. Войдите или восстановите пароль.");
       return;
     }
-    if (!data.session) { $("confirmEmail").textContent = email; showAuth("confirm"); }
+    try { sessionStorage.setItem("mestario.newacc", "1"); } catch (e2) {}
+    if (!data.session) openCode("signup", email);
   });
 });
 
@@ -4798,6 +4960,7 @@ sb.auth.onAuthStateChange((event, session) => {
   setTimeout(() => onAuth(event, session), 0);
 });
 function onAuth(event, session) {
+  if (state.codeGate && event !== "PASSWORD_RECOVERY") return;   // ждём код из письма — приложение ещё не открываем
   if (event === "PASSWORD_RECOVERY") {
     state.recovering = true;
     state.me = session ? session.user : null;
@@ -4932,6 +5095,7 @@ async function startApp() {
   [...$("chatList").children].forEach((el, i) => el.style.setProperty("--i", Math.min(i, 12)));
   handleLink();
   checkIncomingCall();
+  askLoginCodeOnce();
   flash($("chatList"), 900);
   if (state.channel) sb.removeChannel(state.channel);
   state.channel = sb.channel("inbox")
@@ -9372,7 +9536,7 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   const go = b.dataset.go;
   if (go === "coins") { showSetPage("coins"); loadCoinsPage(); return; }
   if (go === "privacy") { showSetPage("privacy"); paintBlockList(); return; }
-  if (go === "security") { showSetPage("security"); paintSecurity(); paintPinState(); return; }
+  if (go === "security") { showSetPage("security"); paintSecurity(); paintPinState(); paintLoginCode(); return; }
   if (go === "premium") { showSetPage("premium"); paintPremiumPage(); return; }
   if (SET_TITLES[go]) { showSetPage(go); return; }
   $("dlgSettings").close();

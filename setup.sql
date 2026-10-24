@@ -1701,3 +1701,12 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Показ экрана: обычный — до 720p, 10 кадров/с, 1 Мбит/с; с премиумом (и админам) — до 1080p, 30 кадров/с, 4 Мбит/с.
 -- Показ экрана: перед показом выбор качества — «Экономно» (480p, 5 к/с), «Обычное» (720p, 10 к/с),
 --   «Плавно» (720p, 30 к/с, премиум), «HD» (1080p, 30 к/с, премиум); меняется на ходу кнопкой «Сменить», выбор запоминается.
+
+-- ===== Регистрация и вход с кодом из почты (миграция login_email_code) =====
+-- Регистрация: после signUp вводится код из письма (verifyOtp type=signup); ссылка в письме тоже работает.
+-- Вход с кодом (по желанию): private.login_code(user_id, enabled, asked); RPC login_code_get / login_code_set / login_code_asked.
+--   После первой регистрации сайт один раз спрашивает «Защитить вход кодом?»; переключатель — Настройки → Безопасность.
+--   Сайт после пароля шлёт код (signInWithOtp, shouldCreateUser=false) и пускает только после кода.
+--   Серверная защита: public.custom_access_token_hook — вход только по паролю для таких аккаунтов не выдаёт токен
+--   ('code_required'). Включается в Supabase: Authentication → Hooks → Customize Access Token → Postgres → public.custom_access_token_hook.
+-- Шаблоны писем с кодом {{ .Token }}: tools/email-templates (вставляются в Authentication → Emails → Templates).
