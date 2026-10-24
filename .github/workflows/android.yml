@@ -1,4 +1,4 @@
-name: Android APK  # подпись: ~/.android/debug.keystore из кэша mestario-debug-key-v1
+name: Android APK  # подпись: ~/.android/debug.keystore из кэша mestario-debug-key-v1  # сборка с адресом mestario.lol
 on:
   push:
     branches: [main]

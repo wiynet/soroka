@@ -1,4 +1,4 @@
-name: iOS IPA
+name: iOS IPA  # сборка с адресом mestario.lol
 on:
   push:
     branches: [main]
