@@ -61,7 +61,7 @@ Supabase → Authentication → Emails → Templates. Для каждого пи
 
 ## Reset password
 
-**Subject:** `Новый пароль для Mestario`
+**Subject:** `Код для смены пароля Mestario: {{ .Token }}`
 
 **Body:**
 
@@ -71,7 +71,11 @@ Supabase → Authentication → Emails → Templates. Для каждого пи
     <tr><td style="padding:28px 28px 8px;text-align:center">
       <img src="https://mestario.lol/icon-192.png" width="52" height="52" alt="Mestario" style="border-radius:14px;display:inline-block">
       <div style="font-size:20px;font-weight:700;margin-top:10px">Смена пароля</div>
-      <div style="font-size:15px;line-height:1.5;color:#5d6b74;margin-top:8px">Нажмите кнопку ниже, чтобы придумать новый пароль. Ссылка работает один раз.</div>
+      <div style="font-size:15px;line-height:1.5;color:#5d6b74;margin-top:8px">Введите этот код в Mestario, чтобы задать новый пароль, или нажмите кнопку ниже.</div>
+    </td></tr>
+    <tr><td style="padding:18px 28px 14px;text-align:center">
+      <div style="display:inline-block;font-size:34px;font-weight:700;letter-spacing:8px;background:#e9eef0;border-radius:14px;padding:14px 18px 14px 26px;font-family:'SF Mono',Menlo,Consolas,monospace">{{ .Token }}</div>
+      <div style="font-size:13px;color:#8c9ba5;margin-top:8px">Код действует 1 час</div>
     </td></tr>
     <tr><td style="padding:4px 28px 8px;text-align:center">
       <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#0b7284;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:12px">Задать новый пароль</a>
@@ -81,7 +85,6 @@ Supabase → Authentication → Emails → Templates. Для каждого пи
   <div style="text-align:center;font-size:12px;color:#8c9ba5;margin-top:14px">Mestario · <a href="https://mestario.lol" style="color:#8c9ba5">mestario.lol</a></div>
 </div>
 ```
-
 
 ## Change email address
 

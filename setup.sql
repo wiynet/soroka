@@ -1714,3 +1714,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   выходит и шлёт код через signInWithOtp (шаблон «Magic link or OTP»), аккаунт открывается только после кода.
 -- Миграция login_code_default_on: код из почты при входе включён у всех по умолчанию (нет строки = включено);
 --   выключить — Настройки → Безопасность. Вопрос после регистрации больше не показывается (asked=true).
+-- Смена почты: пароль (check_my_password) + коды из писем на текущую и новую почту (verifyOtp type=email_change;
+--   в Supabase включено «Secure email change»). Забыл текущий пароль, но вошёл: код на почту (resetPasswordForEmail →
+--   verifyOtp type=recovery) → новый пароль, не выходя из приложения. Шаблоны «Reset password» и «Change email address»
+--   в Supabase теперь с кодом {{ .Token }}; длина кода — 6 цифр (Sign In / Providers → Email → Email OTP length).
