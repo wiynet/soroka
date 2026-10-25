@@ -1345,6 +1345,39 @@ html.kb .sv-foot { padding-bottom: 10px; }
 .composer .send { background: var(--accent); color: var(--accent-ink); }
 .composer .send:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.08); }
 .attach-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--panel); border-top: 1px solid var(--line); font-size: 14px; }
+.att-thumbs { display: flex; gap: 6px; flex: none; max-width: 60%; overflow-x: auto; }
+.att-thumbs[hidden] { display: none; }
+.att-th { position: relative; width: 44px; height: 44px; flex: none; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--panel-2); cursor: pointer; }
+.att-th img, .att-th video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.att-pen { position: absolute; right: 2px; bottom: 2px; font-size: 11px; line-height: 1; background: rgb(0 0 0 / .55); border-radius: 6px; padding: 2px 3px; }
+/* редактор фото и видео */
+#dlgMedia { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #0b0f12; color: #fff; }
+#dlgMedia::backdrop { background: #000; }
+.me { display: flex; flex-direction: column; height: 100%; padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); gap: 10px; box-sizing: border-box; }
+.me-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.me-top .link { color: #9fe3ff; }
+.me-top b { font-size: 16px; }
+.me-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+#meCanvas { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; width: auto; height: auto; touch-action: none; border-radius: 10px; box-shadow: 0 0 0 1px rgb(255 255 255 / .18); cursor: grab; background: #000; }
+.me-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / .6); font-weight: 600; border-radius: 10px; }
+.me-busy[hidden] { display: none; }
+.me-panel { display: grid; gap: 10px; min-height: 92px; align-content: start; }
+.me-row { display: flex; align-items: center; gap: 10px; }
+.me-row input[type="range"] { flex: 1; min-width: 0; accent-color: #4fc3f7; }
+.me-sp { justify-content: space-between; }
+.me-l { font-size: 13px; opacity: .8; min-width: 52px; }
+.me-chips, .me-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.me-chip { border: 1px solid rgb(255 255 255 / .2); background: rgb(255 255 255 / .08); color: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.me-chip.on { background: #fff; color: #0b0f12; }
+.me-chip[disabled] { opacity: .4; cursor: default; }
+.me-col { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .35); cursor: pointer; padding: 0; }
+.me-col.on { border-color: #fff; box-shadow: 0 0 0 3px rgb(79 195 247 / .6); }
+.me-hint { font-size: 12.5px; opacity: .7; }
+.me-now { font-variant-numeric: tabular-nums; font-size: 13px; }
+.me-tabs { display: flex; gap: 6px; justify-content: center; }
+.me-tabs button { flex: 1; max-width: 160px; border: 0; border-radius: 12px; padding: 10px 6px; background: rgb(255 255 255 / .08); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.me-tabs button.on { background: #fff; color: #0b0f12; font-weight: 600; }
+.me-tabs button[hidden] { display: none; }
 .attach-chip span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- dialogs ---------- */
@@ -3069,6 +3102,7 @@ void main() {
         <button class="link" id="recCancel" type="button">Отмена</button>
       </div>
       <div class="attach-chip" id="attachChip" hidden>
+        <div class="att-thumbs" id="attachThumbs"></div>
         <span id="attachName"></span>
         <button class="link" id="attachRemove" type="button">Убрать</button>
       </div>
@@ -3539,6 +3573,14 @@ void main() {
       <button class="btn" type="submit" id="botNewBtn">Создать бота</button>
     </form>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+<dialog id="dlgMedia" aria-label="Редактор">
+  <div class="me">
+    <div class="me-top"><button class="link" type="button" id="meCancel">Отмена</button><b id="meTitle">Изменить</b><button class="btn" type="button" id="meSave">Готово</button></div>
+    <div class="me-stage"><canvas id="meCanvas" width="2" height="2"></canvas><div class="me-busy" id="meBusy" hidden></div></div>
+    <div class="me-panel" id="mePanel"></div>
+    <div class="me-tabs" id="meTabs"><button type="button" data-tool="crop">✂️ Кадр</button><button type="button" data-tool="draw">🖌 Рисунок</button><button type="button" data-tool="time" id="meTimeTab">⏱ Время</button></div>
   </div>
 </dialog>
 <dialog id="dlgLoginCode">
@@ -6773,7 +6815,31 @@ function setPending(files) {
   $("attachName").textContent = !list.length ? "" : list.length === 1 ? list[0].name + " · " + fmtSize(list[0].size)
     : list.length + " " + plural(list.length, T("файл"), T("файла"), T("файлов")) + " · " + fmtSize(list.reduce((a, f) => a + f.size, 0)) + (list.every((f) => (f.type || "").startsWith("image/")) ? T(" · одним сообщением") : "");
   $("fileInput").value = "";
+  paintAttachThumbs();
   syncComposer();
+}
+// превью выбранных фото и видео; ✏️ — открыть редактор (обрезать, повернуть, порисовать, обрезать видео)
+let attachUrls = [];
+function paintAttachThumbs() {
+  attachUrls.forEach((u) => URL.revokeObjectURL(u)); attachUrls = [];
+  const box = $("attachThumbs");
+  box.replaceChildren(...state.pendingFiles.map((f, i) => {
+    if (!meCanEdit(f)) return null;
+    const u = URL.createObjectURL(f); attachUrls.push(u);
+    const prev = meIsVideo(f) ? h("video", { src: u + "#t=0.1", muted: true, preload: "metadata", playsinline: true }) : h("img", { src: u, alt: "" });
+    return h("button", { type: "button", class: "att-th", title: T("Изменить: обрезать, повернуть, порисовать"), "aria-label": T("Изменить ") + (f.name || ""),
+      onclick: () => editPending(i) }, prev, h("span", { class: "att-pen" }, "✏️"));
+  }).filter(Boolean));
+  box.hidden = !box.children.length;
+}
+async function editPending(i) {
+  const f = state.pendingFiles[i];
+  if (!f) return;
+  const out = await openMediaEditor(f, { audio: true, title: meIsVideo(f) ? T("Видео") : T("Фото"), save: T("Готово") });
+  if (!out || out === f) return;
+  if (out.size > MAX_FILE) { toast(T("Получилось больше 20 МБ — выберите отрезок короче")); return; }
+  const list = state.pendingFiles.slice(); list[i] = out;
+  setPending(list);
 }
 // добавляет файлы к уже выбранным (до 10 штук, каждый до 20 МБ)
 function pickFiles(files) {
@@ -8067,39 +8133,30 @@ function videoDuration(file) {
   });
 }
 $("pfBannerFile").addEventListener("change", async (e) => {
-  const f = e.target.files && e.target.files[0];
+  let f = e.target.files && e.target.files[0];
   e.target.value = "";
   if (!f) return;
-  const isVid = /^video\//.test(f.type) || /\.(mp4|webm|mov)$/i.test(f.name || "");
-  let blob = f, ext, type;
-  if (isVid) {
-    const d = await videoDuration(f);
-    if (isNaN(d)) { toast(T("Не получилось открыть видео — попробуйте MP4")); return; }
-    if (d > 5.4) { toast(T("Видео длиннее 5 секунд (") + d.toFixed(1) + T(" с). Обрежьте его и загрузите снова")); return; }
-    if (f.size > 6 * 1024 * 1024) { toast(T("Видео больше 6 МБ — сожмите его или сделайте короче")); return; }
-    type = /webm/.test(f.type) ? "video/webm" : /quicktime/.test(f.type) || /\.mov$/i.test(f.name || "") ? "video/quicktime" : "video/mp4";
-    ext = type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
-  } else if (!/^image\//.test(f.type)) { toast(T("Выберите фото или видео")); return; }
-  else if (await isAnimatedImage(f)) {
+  const isVid = meIsVideo(f);
+  if (!isVid && !/^image\//.test(f.type)) { toast(T("Выберите фото или видео")); return; }
+  let type, ext;
+  if (!isVid && await isAnimatedImage(f)) {
+    // GIF и анимированные картинки ставим как есть
     if (f.size > 6 * 1024 * 1024) { toast(T("Анимация больше 6 МБ")); return; }
     type = /gif/i.test(f.type) ? "image/gif" : "image/webp"; ext = type === "image/gif" ? "gif" : "webp";
   } else {
-    try {
-      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
-      const k = Math.min(1, 1600 / img.naturalWidth);
-      const cv = document.createElement("canvas");
-      cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
-      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-      URL.revokeObjectURL(img.src);
-      blob = null;
-      for (const q of [0.86, 0.75, 0.6]) { blob = await new Promise((r) => cv.toBlob(r, "image/webp", q)); if (blob && blob.size < 1500 * 1024) break; }
-      if (!blob) { toast(T("Не удалось обработать картинку")); return; }
-      type = "image/webp"; ext = "webp";
-    } catch (x) { toast(T("Не удалось открыть картинку")); return; }
+    // редактор: выбрать часть кадра под баннер, у видео — отрезок до 5 секунд, можно порисовать
+    const out = await openMediaEditor(f, { fixed: 3, out: isVid ? [1200, 400] : [1500, 500], maxDur: 5, audio: false, title: T("Баннер"), save: T("Готово") });
+    if (!out) return;
+    f = out;
+    if (meIsVideo(f)) {
+      type = /webm/.test(f.type) ? "video/webm" : /quicktime/.test(f.type) || /\.mov$/i.test(f.name || "") ? "video/quicktime" : "video/mp4";
+      ext = type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
+    } else { type = f.type || "image/jpeg"; ext = /png/.test(type) ? "png" : /webp/.test(type) ? "webp" : "jpg"; }
+    if (f.size > 6 * 1024 * 1024) { toast(T("Файл больше 6 МБ — выберите отрезок короче")); return; }
   }
   toast(isVid ? T("Загружаем видео…") : T("Загружаем баннер…"));
   const path = state.me.id + "/banner-" + Date.now() + "." + ext;
-  const up = await sb.storage.from("banners").upload(path, blob, { contentType: type, cacheControl: "31536000" });
+  const up = await sb.storage.from("banners").upload(path, f, { contentType: type, cacheControl: "31536000" });
   if (up.error) { toast(/size|large/i.test(up.error.message || "") ? T("Файл слишком большой") : T("Не удалось загрузить баннер")); return; }
   if (await setBanner(path)) toast(T("Баннер установлен"));
 });
@@ -12326,6 +12383,242 @@ $("callBar").addEventListener("click", () => { if (call) { call.min = false; cal
 $("callVideo").addEventListener("dblclick", () => { const v = $("callVideo"); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
 $("callFull").append(icon("full"));
 $("callFull").addEventListener("click", () => { const v = $("callVideo"); if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
+
+/* ---------- редактор фото и видео: обрезка кадра, поворот, рисование, обрезка видео по времени ---------- */
+const ME_ASPECTS = [["orig", "Оригинал"], [1, "1:1"], [4 / 3, "4:3"], [16 / 9, "16:9"], [9 / 16, "9:16"]];
+const ME_COLORS = ["#ffffff", "#111111", "#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#0a84ff", "#af52de"];
+let me_ = null;
+function meIsVideo(f) { return /^video\//.test(f.type || "") || /\.(mp4|webm|mov|m4v)$/i.test(f.name || ""); }
+function meCanEdit(f) { return meIsVideo(f) || (/^image\//.test(f.type || "") && !/gif|svg/.test(f.type || "")); }
+function meWait(el, ev, ms) { return new Promise((res) => { const t = setTimeout(() => res(false), ms || 15000); el.addEventListener(ev, () => { clearTimeout(t); res(true); }, { once: true }); }); }
+function meDims() {
+  const s = me_, rw = s.rot % 2 ? s.mh : s.mw, rh = s.rot % 2 ? s.mw : s.mh;
+  const A = s.fixed || (s.aspect === "orig" ? rw / rh : s.aspect);
+  let W, H;
+  if (s.out) { W = s.out[0]; H = s.out[1]; }
+  else { const L = Math.min(s.isVid ? 1280 : 2048, Math.max(rw, rh)); if (A >= 1) { W = L; H = L / A; } else { H = L; W = L * A; } }
+  W = Math.max(2, Math.round(W / 2) * 2); H = Math.max(2, Math.round(H / 2) * 2);
+  return { rw, rh, W, H, sc: Math.max(W / rw, H / rh) * s.zoom };
+}
+function meClamp() {
+  const s = me_, d = meDims();
+  const hx = d.W / (2 * d.sc), hy = d.H / (2 * d.sc);
+  s.cx = Math.min(Math.max(s.cx, hx), d.rw - hx); s.cy = Math.min(Math.max(s.cy, hy), d.rh - hy);
+  if (!isFinite(s.cx)) s.cx = d.rw / 2; if (!isFinite(s.cy)) s.cy = d.rh / 2;
+}
+function meDraw(ctx, d) {
+  const s = me_;
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, d.W, d.H);
+  ctx.save();
+  ctx.translate(d.W / 2, d.H / 2); ctx.scale(d.sc, d.sc); ctx.translate(-s.cx, -s.cy);
+  ctx.translate(d.rw / 2, d.rh / 2); ctx.rotate(s.rot * Math.PI / 2);
+  try { ctx.drawImage(s.media, -s.mw / 2, -s.mh / 2, s.mw, s.mh); } catch (e) {}
+  ctx.restore();
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const st of s.strokes) {
+    if (!st.pts.length) continue;
+    ctx.strokeStyle = st.c; ctx.lineWidth = st.w * d.W;
+    ctx.beginPath(); ctx.moveTo(st.pts[0][0] * d.W, st.pts[0][1] * d.H);
+    for (const p of st.pts.slice(1)) ctx.lineTo(p[0] * d.W, p[1] * d.H);
+    if (st.pts.length === 1) ctx.lineTo(st.pts[0][0] * d.W + 0.1, st.pts[0][1] * d.H);
+    ctx.stroke();
+  }
+}
+function meFrame() {
+  const s = me_;
+  if (!s || s.closed) return;
+  const cv = $("meCanvas"), d = meDims();
+  if (cv.width !== d.W || cv.height !== d.H) { cv.width = d.W; cv.height = d.H; }
+  if (s.isVid && !s.exporting) {
+    if (s.media.currentTime < s.t0 - 0.05 || s.media.currentTime > s.t1) s.media.currentTime = s.t0;
+    if (s.media.paused && !s.media.seeking) s.media.play().catch(() => {});
+    if (s.tool === "time") $("meNow").textContent = callFmt(s.media.currentTime);
+  }
+  meDraw(cv.getContext("2d"), d);
+  s.raf = requestAnimationFrame(meFrame);
+}
+function meFmt(t) { const m = Math.floor(t / 60), x = (t % 60).toFixed(1); return m + ":" + (x.length < 4 ? "0" : "") + x; }
+function mePanel() {
+  const s = me_, p = $("mePanel");
+  for (const b of $("meTabs").children) b.classList.toggle("on", b.dataset.tool === s.tool);
+  if (s.tool === "crop") {
+    const asp = s.fixed ? null : h("div", { class: "me-chips" }, ...ME_ASPECTS.map(([v, t]) => h("button", { type: "button", class: "me-chip" + (s.aspect === v ? " on" : ""),
+      onclick: () => { s.aspect = v; s.zoom = 1; s.dirty = true; meClamp(); mePanel(); } }, T(t))));
+    const zoom = h("input", { type: "range", min: "1", max: "4", step: "0.01", value: String(s.zoom), "aria-label": T("Масштаб") });
+    zoom.addEventListener("input", () => { s.zoom = Number(zoom.value); s.dirty = true; meClamp(); });
+    p.replaceChildren(...[asp,
+      h("div", { class: "me-row" }, h("span", { class: "me-l" }, "🔍"), zoom,
+        h("button", { type: "button", class: "me-chip", title: T("Повернуть"), onclick: () => { s.rot = (s.rot + 1) % 4; s.zoom = 1; s.dirty = true; const d = meDims(); s.cx = d.rw / 2; s.cy = d.rh / 2; meClamp(); mePanel(); } }, "⟳ " + T("Повернуть"))),
+      h("div", { class: "me-hint" }, T("Двигайте пальцем или мышкой, чтобы выбрать часть кадра"))].filter(Boolean));
+  } else if (s.tool === "draw") {
+    const size = h("input", { type: "range", min: "0.004", max: "0.05", step: "0.001", value: String(s.size), "aria-label": T("Толщина") });
+    size.addEventListener("input", () => { s.size = Number(size.value); });
+    p.replaceChildren(
+      h("div", { class: "me-colors" }, ...ME_COLORS.map((c) => { const b = h("button", { type: "button", class: "me-col" + (s.color === c ? " on" : ""), "aria-label": c, onclick: () => { s.color = c; mePanel(); } }); b.style.background = c; return b; })),
+      h("div", { class: "me-row" }, h("span", { class: "me-l" }, "✏️"), size,
+        h("button", { type: "button", class: "me-chip", disabled: !s.strokes.length, onclick: () => { s.strokes.pop(); mePanel(); } }, "↶ " + T("Назад")),
+        h("button", { type: "button", class: "me-chip", disabled: !s.strokes.length, onclick: () => { s.strokes = []; mePanel(); } }, T("Стереть всё"))),
+      h("div", { class: "me-hint" }, T("Рисуйте прямо на фото")));
+  } else if (s.tool === "time") {
+    const a = h("input", { type: "range", min: "0", max: String(s.dur), step: "0.1", value: String(s.t0), "aria-label": T("Начало") });
+    const b = h("input", { type: "range", min: "0", max: String(s.dur), step: "0.1", value: String(s.t1), "aria-label": T("Конец") });
+    const info = h("div", { class: "me-hint" });
+    const paint = () => {
+      info.textContent = T("С ") + meFmt(s.t0) + T(" до ") + meFmt(s.t1) + " · " + (s.t1 - s.t0).toFixed(1) + T(" с") + (s.maxDur ? T(" (не больше ") + s.maxDur + T(" с)") : "");
+    };
+    const fix = (moved) => {
+      const len = s.t1 - s.t0;
+      s.t0 = Number(a.value); s.t1 = Number(b.value);
+      // начало заехало за конец (или конец за начало) — сдвигаем весь отрезок, сохраняя длину
+      if (s.t1 - s.t0 < 0.5) {
+        if (moved === "a") { s.t1 = Math.min(s.dur, s.t0 + Math.max(0.5, len)); s.t0 = Math.min(s.t0, Math.max(0, s.t1 - 0.5)); }
+        else { s.t0 = Math.max(0, s.t1 - Math.max(0.5, len)); s.t1 = Math.max(s.t1, Math.min(s.dur, s.t0 + 0.5)); }
+      }
+      if (s.maxDur && s.t1 - s.t0 > s.maxDur) { if (moved === "a") s.t1 = s.t0 + s.maxDur; else s.t0 = s.t1 - s.maxDur; }
+      a.value = String(s.t0); b.value = String(s.t1); s.dirty = true; s.media.currentTime = s.t0; paint();
+    };
+    a.addEventListener("input", () => fix("a")); b.addEventListener("input", () => fix("b"));
+    paint();
+    p.replaceChildren(h("div", { class: "me-row" }, h("span", { class: "me-l" }, T("Начало")), a),
+      h("div", { class: "me-row" }, h("span", { class: "me-l" }, T("Конец")), b),
+      h("div", { class: "me-row me-sp" }, info, h("b", { id: "meNow", class: "me-now" }, "0:00")));
+  }
+}
+function mePoint(e) {
+  const cv = $("meCanvas"), r = cv.getBoundingClientRect();
+  return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height];
+}
+(function () {
+  const cv = $("meCanvas");
+  let drag = null;
+  cv.addEventListener("pointerdown", (e) => {
+    const s = me_; if (!s || s.exporting) return;
+    cv.setPointerCapture(e.pointerId);
+    const [x, y] = mePoint(e), d = meDims();
+    if (s.tool === "draw") { s.strokes.push({ c: s.color, w: s.size, pts: [[x / d.W, y / d.H]] }); s.dirty = true; drag = { draw: true }; }
+    else drag = { x, y };
+  });
+  cv.addEventListener("pointermove", (e) => {
+    const s = me_; if (!s || !drag) return;
+    const [x, y] = mePoint(e), d = meDims();
+    if (drag.draw) { s.strokes[s.strokes.length - 1].pts.push([x / d.W, y / d.H]); return; }
+    s.cx -= (x - drag.x) / d.sc; s.cy -= (y - drag.y) / d.sc; drag.x = x; drag.y = y; s.dirty = true; meClamp();
+  });
+  const up = () => { if (drag && drag.draw) mePanel(); drag = null; };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("wheel", (e) => {
+    const s = me_; if (!s || s.tool === "draw") return;
+    e.preventDefault(); s.zoom = Math.min(4, Math.max(1, s.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); s.dirty = true; meClamp();
+    if (s.tool === "crop") { const z = $("mePanel").querySelector('input[type="range"]'); if (z) z.value = String(s.zoom); }
+  }, { passive: false });
+  $("meTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tool]"); if (b && me_ && !me_.exporting) { me_.tool = b.dataset.tool; mePanel(); } });
+  $("meCancel").addEventListener("click", () => meClose(null));
+  $("dlgMedia").addEventListener("cancel", (e) => { e.preventDefault(); if (me_ && !me_.exporting) meClose(null); });
+  $("meSave").addEventListener("click", () => meExport());
+})();
+function meClose(result) {
+  const s = me_;
+  if (!s) return;
+  s.closed = true; cancelAnimationFrame(s.raf);
+  try { s.media.pause(); } catch (e) {}
+  if (s.actx) s.actx.close().catch(() => {});
+  URL.revokeObjectURL(s.url);
+  me_ = null;
+  $("dlgMedia").close();
+  s.resolve(result);
+}
+// открыть редактор; вернёт новый файл, исходный (если ничего не меняли) или null (отмена)
+// opts: { fixed: соотношение сторон (3 для баннера), out: [W, H], maxDur: сек, audio: true/false, title, save }
+async function openMediaEditor(file, opts) {
+  opts = opts || {};
+  if (me_) return null;
+  const isVid = meIsVideo(file), url = URL.createObjectURL(file);
+  let media;
+  if (isVid) {
+    media = document.createElement("video");
+    media.muted = true; media.playsInline = true; media.setAttribute("playsinline", ""); media.preload = "auto"; media.src = url;
+    if (!(await meWait(media, "loadeddata")) || !media.videoWidth) { URL.revokeObjectURL(url); toast(T("Не получилось открыть видео — попробуйте MP4")); return null; }
+  } else {
+    media = new Image(); media.src = url;
+    try { await media.decode(); } catch (e) { URL.revokeObjectURL(url); toast(T("Не получилось открыть картинку")); return null; }
+  }
+  const mw = isVid ? media.videoWidth : media.naturalWidth, mh = isVid ? media.videoHeight : media.naturalHeight;
+  const dur = isVid ? (isFinite(media.duration) ? media.duration : 0) : 0;
+  return new Promise((resolve) => {
+    me_ = { file, url, media, isVid, mw, mh, dur, rot: 0, aspect: "orig", fixed: opts.fixed || 0, out: opts.out || null, zoom: 1, cx: mw / 2, cy: mh / 2,
+      strokes: [], color: "#ff3b30", size: 0.012, tool: opts.maxDur && dur > opts.maxDur ? "time" : "crop", t0: 0, t1: opts.maxDur ? Math.min(dur, opts.maxDur) : dur,
+      maxDur: opts.maxDur || 0, audio: opts.audio !== false, dirty: !!opts.fixed || (!!opts.maxDur && dur > opts.maxDur), resolve };
+    meClamp();
+    $("meTitle").textContent = opts.title || T("Изменить");
+    $("meSave").textContent = opts.save || T("Готово");
+    $("meTimeTab").hidden = !isVid;
+    $("meBusy").hidden = true;
+    $("dlgMedia").showModal();
+    mePanel();
+    me_.raf = requestAnimationFrame(meFrame);
+  });
+}
+async function meExport() {
+  const s = me_;
+  if (!s || s.exporting) return;
+  const base = (s.file.name || "file").replace(/\.[^.]+$/, "");
+  if (!s.dirty && !s.strokes.length) { meClose(s.file); return; }
+  const d = meDims();
+  const cv = document.createElement("canvas"); cv.width = d.W; cv.height = d.H;
+  const ctx = cv.getContext("2d");
+  if (!s.isVid) {
+    meDraw(ctx, d);
+    const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.9));
+    if (!blob) { toast(T("Не удалось сохранить картинку")); return; }
+    meClose(new File([blob], base + ".jpg", { type: "image/jpeg" }));
+    return;
+  }
+  // видео: перерисовываем кадры выбранного отрезка в холст и записываем его заново
+  if (!window.MediaRecorder || !cv.captureStream) { toast(T("Этот браузер не умеет обрезать видео — попробуйте Chrome")); return; }
+  const mime = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t));
+  if (!mime) { toast(T("Этот браузер не умеет обрезать видео — попробуйте Chrome")); return; }
+  s.exporting = true;
+  const busy = $("meBusy"); busy.hidden = false; busy.textContent = T("Готовим видео…");
+  const stream = cv.captureStream(30);
+  if (s.audio) {
+    try {
+      s.actx = s.actx || new (window.AudioContext || window.webkitAudioContext)();
+      const src = s.actx.createMediaElementSource(s.media), dest = s.actx.createMediaStreamDestination();
+      src.connect(dest);
+      dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+      s.media.muted = false;   // звук идёт только в запись, в колонки не выводится
+    } catch (e) {}
+  }
+  const chunks = [];
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: s.out ? 2500000 : 3000000 });
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise((r) => { rec.onstop = r; });
+  s.media.pause();
+  s.media.currentTime = s.t0;
+  await meWait(s.media, "seeked", 5000);
+  rec.start(250);
+  await s.media.play().catch(() => {});
+  await new Promise((resolve) => {
+    const step = () => {
+      if (s.closed) return resolve();
+      meDraw(ctx, d);
+      const t = s.media.currentTime;
+      busy.textContent = T("Обрабатываем видео… ") + Math.max(0, t - s.t0).toFixed(1) + " / " + (s.t1 - s.t0).toFixed(1) + T(" с");
+      if (t >= s.t1 || s.media.ended) return resolve();
+      requestAnimationFrame(step);
+    };
+    step();
+  });
+  s.media.pause(); s.media.muted = true;
+  rec.stop();
+  await done;
+  if (s.closed) return;
+  const type = mime.split(";")[0], ext = /mp4/.test(type) ? "mp4" : "webm";
+  const blob = new Blob(chunks, { type });
+  s.exporting = false;
+  if (!blob.size) { busy.hidden = true; toast(T("Не удалось обработать видео")); return; }
+  meClose(new File([blob], base + "." + ext, { type }));
+}
 
 /* ---------- выбор нескольких сообщений: удалить или переслать сразу пачкой ---------- */
 let selMode = false, selArmed = false;
