@@ -860,7 +860,7 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .worn-btn { border: 0; padding: 0 2px; background: none; font: inherit; font-size: .95em; cursor: pointer; border-radius: 8px; }
 .worn-btn:hover { background: rgb(255 255 255 / .18); }
 .u-hero { position: relative; display: grid; justify-items: center; gap: 8px; align-self: stretch; }
-.u-hero > :not(.orbit):not(.pat):not(.u-banner) { position: relative; }
+.u-hero > :not(.orbit):not(.pat) { position: relative; }
 /* закреплённые подарки «парят» вокруг аватарки */
 .orbit { position: absolute; left: 0; right: 0; top: 0; height: 150px; pointer-events: none; }
 .u-hero.nftg .orbit { top: 18px; }
@@ -880,10 +880,11 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .u-hero.pbg .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .35), 0 10px 24px rgb(0 0 0 / .35); }
 .pbg-row { display: flex; gap: 10px; flex-wrap: wrap; }
 /* баннер профиля: полоса над аватаркой, аватарка чуть заходит на неё снизу */
-.u-banner { position: absolute; left: 0; right: 0; top: 0; height: calc(150px + env(safe-area-inset-top, 0px)); overflow: hidden; z-index: 0; background: #000; }
+.u-hero > .u-banner, .upage .u-hero > .u-banner { position: absolute; }
+.u-banner { position: absolute; left: 0; right: 0; top: 0; height: calc(170px + env(safe-area-inset-top, 0px)); overflow: hidden; z-index: 0; background: #000; }
 .u-banner img, .u-banner video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .u-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(0 0 0 / .28), transparent 40%, transparent 70%, rgb(0 0 0 / .18)); pointer-events: none; }
-.upage .u-hero.has-banner { padding-top: calc(104px + env(safe-area-inset-top, 0px)); }
+.upage .u-hero.has-banner { padding-top: calc(112px + env(safe-area-inset-top, 0px)); }
 .u-hero.has-banner .orbit { display: none; }
 .u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 4px var(--panel-2), 0 8px 20px rgb(0 0 0 / .3); }
 .u-hero.has-banner.nftg .avatar.lg { box-shadow: 0 0 0 4px rgb(255 255 255 / .35), 0 8px 20px rgb(0 0 0 / .35); }
@@ -1259,7 +1260,7 @@ button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 
 .msg { box-shadow: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent); }
 #auth { background-image: radial-gradient(60vmax 60vmax at 110% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%), radial-gradient(50vmax 50vmax at -10% 110%, color-mix(in srgb, hsl(calc(var(--h) + 70) 70% 50%) 16%, transparent), transparent 62%); }
 .side-head { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent); }
-.day { backdrop-filter: blur(6px); }
+
 .gem { display: inline-block; width: .95em; height: .95em; margin-left: 5px; vertical-align: -0.12em; color: var(--accent); flex: none; }
 .nft-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .nft-list.left { justify-content: flex-start; }
@@ -1353,7 +1354,7 @@ html.kb .sv-foot { padding-bottom: 10px; }
 /* редактор фото и видео */
 #dlgMedia { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #0b0f12; color: #fff; }
 #dlgMedia::backdrop { background: #000; }
-.me { display: flex; flex-direction: column; height: 100%; padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); gap: 10px; box-sizing: border-box; }
+.me-wrap { display: flex; flex-direction: column; height: 100%; padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); gap: 10px; box-sizing: border-box; }
 .me-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .me-top .link { color: #9fe3ff; }
 .me-top b { font-size: 16px; }
@@ -2016,13 +2017,13 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 :root[data-glass="liquid"] #folderBar button,
 :root[data-glass="liquid"] .sbar,
 :root[data-glass="liquid"] .composer textarea,
-:root[data-glass="liquid"] .pin-bar,
-:root[data-glass="liquid"] .day {
+:root[data-glass="liquid"] .pin-bar {
   background: var(--lg-shine), var(--lg-tint) !important;
   -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
   border-color: transparent !important;
   box-shadow: var(--lg-shadow) !important;
 }
+:root[data-glass="liquid"] .day { background: var(--lg-shine), var(--lg-tint-strong) !important; border-color: transparent !important; }
 :root[data-glass="liquid"] #toast { color: var(--ink); border-radius: 20px; }
 :root[data-glass="liquid"] .tabbar { border-radius: 30px; transform: none; background: var(--lg-shine), var(--lg-tint-strong) !important; }
 :root[data-glass="liquid"] .ctx { border-radius: 22px; background: var(--lg-shine), var(--lg-tint-strong) !important; }
@@ -2038,9 +2039,10 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 }
 :root[data-glass="liquid"] .composer textarea { border-radius: 22px; }
 /* чужие сообщения — стеклянные пузыри, свои — цветное стекло */
+/* размытие под каждым пузырём заставляло телефон заново размывать фон на каждом кадре прокрутки — его нет,
+   пузырь просто плотнее, чтобы текст читался так же */
 :root[data-glass="liquid"] .msg:not(.mine) {
-  background: var(--lg-shine), color-mix(in srgb, var(--theirs) 58%, transparent) !important;
-  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  background: var(--lg-shine), color-mix(in srgb, var(--theirs) 80%, transparent) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px var(--lg-edge), 0 4px 14px rgb(0 0 0 / .14);
 }
 :root[data-glass="liquid"] .msg.mine { box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 0 0 .5px rgb(255 255 255 / .2), 0 4px 14px rgb(0 0 0 / .16); }
@@ -3576,7 +3578,7 @@ void main() {
   </div>
 </dialog>
 <dialog id="dlgMedia" aria-label="Редактор">
-  <div class="me">
+  <div class="me-wrap">
     <div class="me-top"><button class="link" type="button" id="meCancel">Отмена</button><b id="meTitle">Изменить</b><button class="btn" type="button" id="meSave">Готово</button></div>
     <div class="me-stage"><canvas id="meCanvas" width="2" height="2"></canvas><div class="me-busy" id="meBusy" hidden></div></div>
     <div class="me-panel" id="mePanel"></div>
@@ -5420,13 +5422,13 @@ function pinMark() { const k = icon("pin"); k.classList.add("pinm"); k.setAttrib
 function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt)); }
 
 /* ---------- меню чата в списке: правая кнопка мыши или долгое нажатие ---------- */
-let ctxEl = null, archView = false;
+let ctxEl = null, archView = false, heldRows = false;
 function closeCtx() {
   holdBlur();
   if (ctxEl) {
     const el = ctxEl; ctxEl = null;
     if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), aMs(150)); } else el.remove();
-  } for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); }
+  } if (heldRows) { heldRows = false; for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); } }
 function chatCtxBind(row, c) {
   row.addEventListener("contextmenu", (e) => { e.preventDefault(); openChatCtx(c, e.clientX, e.clientY, row); });
   // на телефоне правой кнопки нет: то же меню по долгому нажатию
@@ -5469,13 +5471,14 @@ function openChatCtx(c, x, y, row) {
   ctxEl.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
   ctxEl.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + "px";
   ctxPop(ctxEl, x, y);
-  if (row) row.classList.add("held");
+  if (row) { row.classList.add("held"); heldRows = true; }
 }
 document.addEventListener("pointerdown", (e) => { if (ctxEl && !ctxEl.contains(e.target)) closeCtx(); }, true);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ctxEl) closeCtx(); });
 addEventListener("resize", closeCtx);
 addEventListener("blur", closeCtx);
-document.addEventListener("scroll", closeCtx, true);
+// прокрутка закрывает меню; если ничего не открыто — ничего не делаем (событие приходит на каждый кадр прокрутки)
+document.addEventListener("scroll", () => { if (ctxEl || holdLayer || heldRows) closeCtx(); }, { capture: true, passive: true });
 async function chatPin(c, on) {
   const { error } = await sb.rpc("set_chat_pinned", { p_chat: c.id, p_on: on });
   if (error) { toast(/too many/.test(error.message || "") ? T("Закрепить можно не больше пяти чатов") : T("Не удалось изменить закрепление")); return; }
@@ -5586,7 +5589,7 @@ function searchHome(chats) {
   return kids;
 }
 // список перерисовывается не чаще одного раза за кадр: пачка событий подряд не дёргает интерфейс
-let listWait = null;
+let listWait = null, archBack = null;
 function renderList() {
   if (!listWait) listWait = new Promise((res) => {
     const go = () => {
@@ -5618,16 +5621,16 @@ async function renderListNow() {
       const arch = chats.filter((c) => c.archived), main = chats.filter((c) => !c.archived);
       if (archView && !arch.length) archView = false;
       if (archView) {
-        flipList(list, () => list.replaceChildren(h("button", { class: "row", type: "button", onclick: () => { archView = false; renderList(); } },
-          h("span", { class: "arch-ico" }, icon("back")), h("span", { class: "txt" }, h("span", { class: "name" }, T("Архив")), h("span", { class: "sub" }, h("span", {}, T("Назад к чатам"))))),
-          ...arch.map(chatRowCached)));
+        if (!archBack || archBack.dataset.lang !== String(window.SOROKA_LANG)) { archBack = h("button", { class: "row", type: "button", onclick: () => { archView = false; renderList(); } },
+          h("span", { class: "arch-ico" }, icon("back")), h("span", { class: "txt" }, h("span", { class: "name" }, T("Архив")), h("span", { class: "sub" }, h("span", {}, T("Назад к чатам"))))); archBack.dataset.lang = String(window.SOROKA_LANG); }
+        flipList(list, () => syncKids(list, [archBack, ...arch.map(chatRowCached)]));
       } else {
         // своя папка показывает и архивные чаты; «Личные», «Группы», «Каналы» — только из основного списка
         const ft = folderTab, pool = ft.startsWith("f") ? chats.filter((c) => inFolder(c, ft)) : main.filter((c) => inFolder(c, ft));
         const pins = pool.filter((c) => c.pinAt).sort((a, b) => (a.pinAt < b.pinAt ? 1 : -1));
         const rows = [...pins.map(chatRowCached), ...pool.filter((c) => !c.pinAt).map(chatRowCached)];
         if (!rows.length) rows.push(h("div", { class: "empty-note" }, ft.startsWith("f") ? T("В папке пока нет чатов. Нажмите на неё правой кнопкой мыши или удерживайте, чтобы изменить.") : T("Здесь пока пусто.")));
-        flipList(list, () => list.replaceChildren(...(arch.length && ft === "all" ? [archiveRow(arch)] : []), ...rows));
+        flipList(list, () => syncKids(list, [...(arch.length && ft === "all" ? [archiveRow(arch)] : []), ...rows]));
       }
     }
     return;
@@ -6021,7 +6024,7 @@ function msgNode(m, group) {
   } else if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
       const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
-      const stick = nearBottom();
+      const stick = msgStick != null ? msgStick : nearBottom();
       img.addEventListener("load", () => { img.style.minHeight = "0"; img.style.minWidth = "0"; if (stick) scrollDown(); });
       img.addEventListener("click", () => { $("viewerImg").src = img.src; $("viewer").showModal(); });
       signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
@@ -6177,10 +6180,94 @@ function msgMenuBind(el, m, group) {
   el.addEventListener("click", (e) => { if (held) { held = false; e.preventDefault(); e.stopPropagation(); } }, true);
 }
 let slideBusy = false, slidePending = false;
+// Готовые узлы сообщений: при перерисовке берём тот же узел, если у сообщения ничего не изменилось.
+// Тогда фото не перезагружаются, анимации не стартуют заново, а новое сообщение не перестраивает всю переписку.
+const msgNodes = new Map();
+let msgNodesChat = null, msgStick = null;
+function userSig(p) {
+  return p ? [p.id, p.display_name, p.avatar_path, p.verified, p.is_admin, p.premium_until, p.name_hue, p.hide_crown, p.hide_tick,
+    p.badge_style, p.badge_path, p.worn_type, p.worn_number, p.worn_model, p.worn_backdrop].join("|") : "";
+}
+// подпись всего, от чего зависит вид сообщения; null — такие сообщения не кешируем (опросы, подарки, розыгрыши, неотправленные)
+function msgSig(m, group, c) {
+  if (isTemp(m) || m.poll_id || m.gift_type || m.event_kind || (m.giveaway_id && /^🎉/.test(m.body || ""))) return null;
+  const list = group || [m];
+  const parts = [window.SOROKA_LANG, state.me.id, list.map((x) => JSON.stringify(x)).join("\n")];
+  const mine = m.sender_id === state.me.id;
+  if (c) {
+    parts.push(c.is_group ? 1 : 0, c.is_channel ? 1 : 0, mine ? (m.id <= readUpTo(c) ? "r" : "u") : "");
+    if (c.is_group && !mine) parts.push(userSig(c.members.find((p) => p.id === m.sender_id)), c.created_by === m.sender_id ? "o" : c.admins.has(m.sender_id) ? "a" : "", !!state.giftModels);
+    if (c.is_channel) parts.push(JSON.stringify(state.stats.get(m.id) || null), c.comments_off ? 1 : 0);
+    if (m.call_id) parts.push(canCall(c) ? 1 : 0);
+    if (!mine && !c.is_group) parts.push(isAiChat(c) ? 1 : 0);
+    if (m.story_id && !c.is_group) parts.push(userSig(other(c)));
+  }
+  const rep = (group && group.find((x) => x.reply_to) || m).reply_to;
+  if (rep) {
+    const r = state.msgs.find((x) => x.id === rep) || state.replies.get(rep);
+    parts.push(r === null ? "x" : r ? [r.sender_id, r.deleted_at ? 1 : 0, r.body, r.file_type, r.file_name, r.sticker_id, r.gift_type, r.voice_secs, r.video_secs].join("|") + (c ? senderName(c, r.sender_id) : "") : "?");
+  }
+  if (m.forwarded_from) parts.push(state.names.get(m.forwarded_from) || "");
+  const rx = state.reacts.get(m.id);
+  if (rx && rx.size) parts.push(JSON.stringify([...rx]), state.reactPop === null || state.reactPop === undefined ? "" : String(state.reactPop).startsWith(m.id + "|") ? state.reactPop : "");
+  if (m.voice_secs != null || m.video_secs != null) parts.push(transcripts.get(m.id) || "", trBusy.has(m.id) ? 1 : 0, trHidden.has(m.id) ? 1 : 0);
+  // временные ссылки на файлы живут час: раз в 40 минут узел с файлом строится заново
+  if (m.file_path) parts.push(Math.floor(Date.now() / 2400000));
+  return parts.join("¦");
+}
+function msgNodeCached(m, group, c) {
+  const sig = msgSig(m, group, c), key = group ? group.map((x) => x.id).join(",") : String(m.id);
+  if (sig != null) {
+    const hit = msgNodes.get(key);
+    if (hit && hit.sig === sig) { if (!hit.el.isConnected) hit.el.classList.remove("new"); return hit.el; }
+  }
+  const el = msgNode(m, group);
+  if (sig != null) { msgNodes.set(key, { sig, el }); if (msgNodes.size > 1500) msgNodes.delete(msgNodes.keys().next().value); }
+  else msgNodes.delete(key);
+  return el;
+}
+// обёртка с аватаркой автора в группах — тоже переиспользуется
+const mrowCache = new WeakMap();
+function mrowFor(node, last, who, senderId) {
+  const sig = last ? "1" + userSig(who) : "0";
+  const hit = mrowCache.get(node);
+  if (hit && hit.sig === sig && (hit.el.isConnected ? node.parentNode === hit.el : true)) { if (node.parentNode !== hit.el) hit.el.append(node); return hit.el; }
+  const av = last
+    ? h("button", { class: "mav", type: "button", title: who ? who.display_name : T("Участник"), "aria-label": T("Профиль: ") + (who ? who.display_name : T("участник")), onclick: () => { if (who) showUser(who); } },
+        avatar(who ? who.display_name : "?", senderId, true, who && who.avatar_path))
+    : h("span", { class: "gap" });
+  const el = h("div", { class: "mrow" }, av, node);
+  mrowCache.set(node, { sig, el });
+  return el;
+}
+const dayCache = new Map();
+function dayNode(d, k) {
+  const label = dayLabel(d), hit = dayCache.get(k);
+  if (hit && hit.label === label) return hit.el;
+  const el = h("div", { class: "day" }, label);
+  dayCache.set(k, { label, el });
+  return el;
+}
+// меняет детей контейнера на нужный список, не трогая узлы, которые уже стоят на своих местах
+function syncKids(box, kids) {
+  const want = new Set(kids);
+  for (const n of [...box.childNodes]) if (!want.has(n)) n.remove();
+  let cur = box.firstChild;
+  for (const k of kids) {
+    if (cur === k) { cur = cur.nextSibling; continue; }
+    box.insertBefore(k, cur);
+  }
+}
+let moreBtn = null;
 function renderMsgs(newId) {
   if (slideBusy && !newId) { slidePending = true; return; }   // перерисуем сразу после въезда
+  if (msgNodesChat !== state.activeId) { msgNodes.clear(); dayCache.clear(); msgNodesChat = state.activeId; }
+  msgStick = nearBottom();   // один раз до изменений, а не для каждого фото (иначе браузер пересчитывает раскладку на каждом)
   const kids = [];
-  if (state.hasMore) kids.push(h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")));
+  if (state.hasMore) {
+    if (!moreBtn || moreBtn.dataset.lang !== String(window.SOROKA_LANG)) { moreBtn = h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")); moreBtn.dataset.lang = String(window.SOROKA_LANG); }
+    kids.push(moreBtn);
+  }
   if (!state.msgs.length && greetFits(state.chats.get(state.activeId))) kids.push(greetCard());
   else if (!state.msgs.length) kids.push(h("div", { class: "empty-note" }, isAiChat(state.chats.get(state.activeId))
     ? T("Это ИИ-помощник Mestario. Напишите вопрос — ответ придёт сюда же, можно уточнять. За каждую секунду работы списывается 1 ИИ-кредит.")
@@ -6190,7 +6277,7 @@ function renderMsgs(newId) {
   for (let i = 0; i < state.msgs.length; i++) {
     let m = state.msgs[i];
     const d = new Date(m.created_at), k = dayKey(d);
-    if (k !== prev) { kids.push(h("div", { class: "day" }, dayLabel(d))); prev = k; }
+    if (k !== prev) { kids.push(dayNode(d, k)); prev = k; }
     // подряд идущие фото одного альбома показываем одним сообщением
     let group = null;
     if (m.album_id && isPhoto(m)) {
@@ -6198,22 +6285,19 @@ function renderMsgs(newId) {
       while (state.msgs[j + 1] && state.msgs[j + 1].album_id === m.album_id && state.msgs[j + 1].sender_id === m.sender_id && isPhoto(state.msgs[j + 1])) j++;
       if (j > i) { group = state.msgs.slice(i, j + 1); i = j; m = state.msgs[j]; }
     }
-    const node = msgNode(m, group);
+    const node = msgNodeCached(m, group, chat);
     if (m.id === newId || (group && group.some((x) => x.id === newId))) node.classList.add("new");
     // в группах слева от чужих сообщений стоит аватарка автора: у последнего сообщения в серии подряд
     if (chat && chat.is_group && !chat.is_channel && m.sender_id !== state.me.id && !m.gift_type) {
       const next = state.msgs[i + 1];
       const last = !next || next.sender_id !== m.sender_id || next.gift_type || dayKey(new Date(next.created_at)) !== k;
       const who = chat.members.find((x) => x.id === m.sender_id);
-      const av = last
-        ? h("button", { class: "mav", type: "button", title: who ? who.display_name : T("Участник"), "aria-label": T("Профиль: ") + (who ? who.display_name : T("участник")), onclick: () => { if (who) showUser(who); } },
-            avatar(who ? who.display_name : "?", m.sender_id, true, who && who.avatar_path))
-        : h("span", { class: "gap" });
-      kids.push(h("div", { class: "mrow" }, av, node));
+      kids.push(mrowFor(node, last, who, m.sender_id));
     } else kids.push(node);
   }
+  msgStick = null;
   const before = msgsBefore();
-  $("msgs").replaceChildren(...kids);
+  syncKids($("msgs"), kids);
   if (selMode) paintSel();
   paintBotKb();
   if (before && before.length) {
@@ -12697,9 +12781,13 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && selMode)
 // покой: 8 секунд без касаний, клавиш и прокрутки — фоновые эффекты замирают; любое действие — снова оживают
 (function () {
   const root = document.documentElement;
-  let t = 0;
+  let t = 0, at = 0;
   const wake = () => {
-    if (root.classList.contains("calm")) root.classList.remove("calm");
+    // события прокрутки идут на каждый кадр — таймер переставляем не чаще раза в полсекунды
+    const now = Date.now(), calm = root.classList.contains("calm");
+    if (!calm && now - at < 500) return;
+    at = now;
+    if (calm) root.classList.remove("calm");
     clearTimeout(t);
     t = setTimeout(() => root.classList.add("calm"), 8000);
   };
@@ -12751,7 +12839,9 @@ const listCounts = new Map();
 function flipList(list, paint) {
   const ok = motionOK() && !document.hidden && list.offsetParent && !$("app").classList.contains("enter");
   const before = new Map(), had = new Set(), oldEls = new Map();
-  for (const r of list.children) if (r.dataset.cid) { had.add(r.dataset.cid); if (ok) { const rc = r.getBoundingClientRect(); before.set(r.dataset.cid, rc.top); oldEls.set(r.dataset.cid, { el: r, rc }); } }
+  // замеряем только строки на экране: анимировать то, чего не видно, — лишняя работа на телефоне
+  const vh = innerHeight;
+  for (const r of list.children) if (r.dataset.cid) { had.add(r.dataset.cid); if (ok) { const rc = r.getBoundingClientRect(); if (rc.bottom < -40 || rc.top > vh + 40) continue; before.set(r.dataset.cid, rc.top); oldEls.set(r.dataset.cid, { el: r, rc }); } }
   paint();
   if (ok) {
     const now = new Set([...list.children].map((r) => r.dataset.cid).filter(Boolean));
@@ -12777,13 +12867,16 @@ function flipList(list, paint) {
   let k = 0;
   for (const r of rows) {
     const top = before.get(r.dataset.cid);
+    if (top == null && had.has(r.dataset.cid)) continue;   // была за краем экрана
     if (top == null) {
       // новая строка; если сменился весь список (другая папка) — строки выезжают по очереди
       r.animate([{ opacity: 0, transform: "translateX(-16px)" }, { opacity: 1, transform: "none" }],
         { duration: 300, delay: shared ? 0 : Math.min(k++, 10) * 28, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards" });
       continue;
     }
-    const dy = top - r.getBoundingClientRect().top;
+    const nt = r.getBoundingClientRect().top;
+    if (nt > vh + 40) continue;
+    const dy = top - nt;
     if (Math.abs(dy) > 2) r.animate([{ transform: "translateY(" + dy + "px)" }, { transform: "none" }], { duration: 360, easing: "cubic-bezier(.2,.8,.3,1)" });
   }
 }
