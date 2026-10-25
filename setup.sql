@@ -1712,3 +1712,5 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Шаблоны писем с кодом {{ .Token }}: tools/email-templates (вставляются в Authentication → Emails → Templates).
 -- Если в Supabase выключено «Confirm email» (signUp сразу выдаёт вход), сайт всё равно подтверждает почту кодом:
 --   выходит и шлёт код через signInWithOtp (шаблон «Magic link or OTP»), аккаунт открывается только после кода.
+-- Миграция login_code_default_on: код из почты при входе включён у всех по умолчанию (нет строки = включено);
+--   выключить — Настройки → Безопасность. Вопрос после регистрации больше не показывается (asked=true).
