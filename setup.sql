@@ -1718,3 +1718,9 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   в Supabase включено «Secure email change»). Забыл текущий пароль, но вошёл: код на почту (resetPasswordForEmail →
 --   verifyOtp type=recovery) → новый пароль, не выходя из приложения. Шаблоны «Reset password» и «Change email address»
 --   в Supabase теперь с кодом {{ .Token }}; длина кода — 6 цифр (Sign In / Providers → Email → Email OTP length).
+
+-- ===== Баннеры профиля (миграция profile_banners) =====
+-- profiles.banner — путь в публичном бакете banners (6 МБ; фото, GIF, MP4/WebM/MOV); видео до 5 с проверяет сайт.
+-- public.set_banner(path): премиум или админ, файл в своей папке. Показывается полосой над аватаркой (аватарка заходит на неё).
+-- Фон шапки профиля теперь только от NFT (надетый подарок; у админов — любой фон NFT через set_profile_bg('nft:…')).
+--   Цветные фоны и свои картинки как фон убраны (у кого стояли цвета — сброшены).

@@ -860,7 +860,7 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .worn-btn { border: 0; padding: 0 2px; background: none; font: inherit; font-size: .95em; cursor: pointer; border-radius: 8px; }
 .worn-btn:hover { background: rgb(255 255 255 / .18); }
 .u-hero { position: relative; display: grid; justify-items: center; gap: 8px; align-self: stretch; }
-.u-hero > :not(.orbit):not(.pat) { position: relative; }
+.u-hero > :not(.orbit):not(.pat):not(.u-banner) { position: relative; }
 /* закреплённые подарки «парят» вокруг аватарки */
 .orbit { position: absolute; left: 0; right: 0; top: 0; height: 150px; pointer-events: none; }
 .u-hero.nftg .orbit { top: 18px; }
@@ -879,6 +879,18 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .u-hero.pbg h2, .u-hero.pbg #uSeen, .u-hero.pbg .u-round, .u-hero.pbg .u-acts .btn.ghost { color: #fff !important; }
 .u-hero.pbg .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .35), 0 10px 24px rgb(0 0 0 / .35); }
 .pbg-row { display: flex; gap: 10px; flex-wrap: wrap; }
+/* баннер профиля: полоса над аватаркой, аватарка чуть заходит на неё снизу */
+.u-banner { position: absolute; left: 0; right: 0; top: 0; height: calc(150px + env(safe-area-inset-top, 0px)); overflow: hidden; z-index: 0; background: #000; }
+.u-banner img, .u-banner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(0 0 0 / .28), transparent 40%, transparent 70%, rgb(0 0 0 / .18)); pointer-events: none; }
+.upage .u-hero.has-banner { padding-top: calc(104px + env(safe-area-inset-top, 0px)); }
+.u-hero.has-banner .orbit { display: none; }
+.u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 4px var(--panel-2), 0 8px 20px rgb(0 0 0 / .3); }
+.u-hero.has-banner.nftg .avatar.lg { box-shadow: 0 0 0 4px rgb(255 255 255 / .35), 0 8px 20px rgb(0 0 0 / .35); }
+.u-hero.has-banner .u-round { color: #fff; }
+.bn-edit { position: relative; height: 110px; border-radius: 14px; overflow: hidden; background: var(--panel-2); display: grid; place-items: center; }
+.bn-edit img, .bn-edit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bn-empty { color: var(--muted); font-size: 14px; }
 .pbg-sw { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--muted); font-size: 16px; }
 .pbg-sw.none { background: var(--panel-2); }
 .pbg-sw[aria-checked="true"] { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
@@ -2987,6 +2999,7 @@ void main() {
         <div class="feat"><span class="pico red" aria-hidden="true">🎲</span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
         <div class="feat"><span class="pico grey" aria-hidden="true">👁</span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">👥</span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
+        <div class="feat"><span class="pico pink" aria-hidden="true">🎞</span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 5 секунд над аватаркой.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках можно выбрать качество «HD» (1080p, 30 кадров/с) и «Плавно» для видео и игр.</span></div>
         <div class="feat"><span class="pico sky" aria-hidden="true">🌌</span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
         <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
@@ -3144,25 +3157,15 @@ void main() {
       <select class="input" id="pfChan"><option value="">Не показывать</option></select>
       <div class="hint" id="pfChanHint">Открытый канал, которым вы управляете: его увидят все, кто откроет ваш профиль.</div>
     </label>
-    <div class="field"><span>Фон профиля <b class="prem-tag" style="color:var(--premium)">★ премиум</b></span>
-      <div class="pbg-row" id="pfBg" role="radiogroup" aria-label="Фон профиля">
-        <button type="button" role="radio" class="pbg-sw none" data-bg="" title="Без фона" aria-label="Без фона">✕</button>
-        <button type="button" role="radio" class="pbg-sw pbg-blue" data-bg="blue" title="Синий" aria-label="Синий"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-sky" data-bg="sky" title="Голубой" aria-label="Голубой"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-pink" data-bg="pink" title="Розовый" aria-label="Розовый"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-red" data-bg="red" title="Красный" aria-label="Красный"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-green" data-bg="green" title="Зелёный" aria-label="Зелёный"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-aurora" data-bg="aurora" title="Сияние" aria-label="Сияние"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-sunset" data-bg="sunset" title="Закат" aria-label="Закат"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-ocean" data-bg="ocean" title="Океан" aria-label="Океан"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-night" data-bg="night" title="Ночь" aria-label="Ночь"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-candy" data-bg="candy" title="Конфета" aria-label="Конфета"></button>
-        <button type="button" role="radio" class="pbg-sw pbg-forest" data-bg="forest" title="Лес" aria-label="Лес"></button>
-        <button type="button" class="pbg-sw own" id="pfBgOwn" title="Своя картинка" aria-label="Своя картинка">🖼</button>
-        <input type="file" id="pfBgFile" accept="image/*" hidden>
+    <div class="field"><span>Баннер профиля <b class="prem-tag" style="color:var(--premium)">★ премиум</b></span>
+      <div class="bn-edit" id="pfBanner"><div class="bn-empty" id="pfBannerEmpty">Нет баннера</div></div>
+      <div class="actions" style="justify-content:flex-start;margin-top:8px">
+        <button class="btn ghost" type="button" id="pfBannerUp">🖼 Фото или видео</button>
+        <button class="btn ghost" type="button" id="pfBannerOff" hidden>Убрать</button>
       </div>
-      <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:8px" hidden></div>
-      <div class="hint">Баннер вашего профиля: цвет, градиент или своё фото (🖼) — можно и анимированное (GIF/WebP до 1 МБ). Если надет NFT-подарок, показывается его фон.</div>
+      <input type="file" id="pfBannerFile" accept="image/*,video/mp4,video/webm,video/quicktime" hidden>
+      <div class="hint">Показывается над аватаркой. Фото, GIF или видео до 5 секунд (без звука, крутится по кругу). Фон шапки профиля даёт надетый NFT-подарок.</div>
+      <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:10px" hidden></div>
     </div>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
@@ -3865,6 +3868,7 @@ void main() {
 <dialog id="dlgUser" class="full">
   <div class="dlg user-card upage" tabindex="-1" autofocus>
     <div class="u-hero" id="uHero">
+      <div class="u-banner" id="uBanner" hidden></div>
       <div class="u-top">
         <button class="u-round" type="button" id="uBack" data-close title="Назад" aria-label="Назад"></button>
         <span class="u-top-r">
@@ -4327,7 +4331,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot,intro";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot,intro";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -7999,23 +8003,32 @@ async function loadUserChannel(id) {
   $("uChanRow").hidden = false;
   $("uNoBio").hidden = true;
 }
-// мой профиль: цвет фона (только с премиумом)
+// баннер профиля: путь в хранилище banners; видео — по расширению файла
+function bannerUrl(path) { return SUPABASE_URL + "/storage/v1/object/public/banners/" + path; }
+function bannerNode(path) {
+  if (/\.(mp4|webm|mov)$/i.test(path)) {
+    const v = h("video", { src: bannerUrl(path), muted: true, autoplay: true, loop: true, playsinline: true, preload: "auto", "aria-hidden": "true" });
+    v.muted = true; v.play().catch(() => {});
+    return v;
+  }
+  return h("img", { src: bannerUrl(path), alt: "", loading: "lazy" });
+}
+// мой профиль: баннер (премиум) и, у админов, фон шапки из NFT
 function paintMyBg() {
+  const bn = state.profile.banner || "";
+  $("pfBanner").replaceChildren(bn ? bannerNode(bn) : h("div", { class: "bn-empty" }, T("Нет баннера")));
+  $("pfBannerOff").hidden = !bn;
   const cur = state.profile.profile_bg || "";
-  for (const b of $("pfBg").children) if (b.dataset.bg !== undefined) b.setAttribute("aria-checked", String(b.dataset.bg === cur));
-  $("pfBgOwn").setAttribute("aria-pressed", String(/^img:/.test(cur)));
-  $("pfBgOwn").style.background = /^img:/.test(cur) ? "center / cover url(\"" + avatarUrl(cur.slice(4)) + "\")" : "";
-  $("pfBgOwn").textContent = /^img:/.test(cur) ? "" : "🖼";
-  // админам — ещё и все фоны NFT-подарков
   const row = $("pfBgNft");
   row.hidden = !state.isAdmin;
   if (!state.isAdmin) return;
   const fill = () => {
-    row.replaceChildren(...(state.giftBackdrops || []).map((b) => {
-      const el = h("button", { type: "button", role: "radio", class: "pbg-sw", "data-bg": "nft:" + b.id, title: b.name, "aria-label": b.name, "aria-checked": String(cur === "nft:" + b.id) });
-      el.style.setProperty("--b1", b.c1); el.style.setProperty("--b2", b.c2);
-      return el;
-    }));
+    row.replaceChildren(h("button", { type: "button", role: "radio", class: "pbg-sw none", "data-bg": "", title: T("Без фона"), "aria-label": T("Без фона"), "aria-checked": String(!cur) }, "✕"),
+      ...(state.giftBackdrops || []).map((b) => {
+        const el = h("button", { type: "button", role: "radio", class: "pbg-sw", "data-bg": "nft:" + b.id, title: b.name, "aria-label": b.name, "aria-checked": String(cur === "nft:" + b.id) });
+        el.style.setProperty("--b1", b.c1); el.style.setProperty("--b2", b.c2);
+        return el;
+      }));
   };
   if (state.giftBackdrops) fill(); else giftTypes().then(fill);
 }
@@ -8023,59 +8036,72 @@ async function pickMyBg(e) {
   const b = e.target.closest("[data-bg]");
   if (!b) return;
   const color = b.dataset.bg || null;
-  if (color && !isPremium(state.profile) && !state.isAdmin) { toast(T("Фон профиля доступен с премиумом")); return; }
   if ((state.profile.profile_bg || null) === color) return;
   const { error } = await sb.rpc("set_profile_bg", { p_color: color });
-  if (error) { toast(/premium/.test(error.message || "") ? T("Фон профиля доступен с премиумом") : T("Не удалось изменить фон профиля")); return; }
+  if (error) { toast(T("Не удалось изменить фон профиля")); return; }
   state.profile = Object.assign({}, state.profile, { profile_bg: color });
   paintMyBg();
   refreshMe();
   toast(color ? T("Фон профиля изменён") : T("Фон профиля убран"));
 }
-$("pfBg").addEventListener("click", (e) => { if (!e.target.closest("#pfBgOwn")) pickMyBg(e); });
-// своя картинка на фон профиля: уменьшаем до 1280 px и сохраняем рядом с аватаркой
-$("pfBgOwn").addEventListener("click", () => {
-  if (!isPremium(state.profile) && !state.isAdmin) { toast(T("Фон профиля доступен с премиумом")); return; }
-  $("pfBgFile").click();
+async function setBanner(path) {
+  const { error } = await sb.rpc("set_banner", { p_path: path });
+  if (error) { toast(/premium/.test(error.message || "") ? T("Баннер доступен с премиумом") : T("Не удалось сохранить баннер")); return false; }
+  state.profile = Object.assign({}, state.profile, { banner: path });
+  paintMyBg(); refreshMe();
+  if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
+  return true;
+}
+$("pfBannerUp").addEventListener("click", () => {
+  if (!isPremium(state.profile) && !state.isAdmin) { toast(T("Баннер профиля доступен с премиумом")); return; }
+  $("pfBannerFile").click();
 });
-$("pfBgFile").addEventListener("change", async (e) => {
+$("pfBannerOff").addEventListener("click", async () => { if (await setBanner(null)) toast(T("Баннер убран")); });
+function videoDuration(file) {
+  return new Promise((res) => {
+    const v = document.createElement("video"), u = URL.createObjectURL(file);
+    v.preload = "metadata"; v.muted = true;
+    v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(u); res(isFinite(d) ? d : NaN); };
+    v.onerror = () => { URL.revokeObjectURL(u); res(NaN); };
+    v.src = u;
+  });
+}
+$("pfBannerFile").addEventListener("change", async (e) => {
   const f = e.target.files && e.target.files[0];
   e.target.value = "";
-  if (!f || !/^image\//.test(f.type)) return;
-  if (await isAnimatedImage(f)) {
-    const path = await uploadAnimated(f, "bg-");
-    if (path) {
-      const { error } = await sb.rpc("set_profile_bg", { p_color: "img:" + path });
-      if (error) { toast(/premium/.test(error.message || "") ? T("Фон профиля доступен с премиумом") : T("Не удалось изменить фон профиля")); return; }
-      state.profile = Object.assign({}, state.profile, { profile_bg: "img:" + path });
-      paintMyBg(); refreshMe();
-      toast(T("Анимированный баннер установлен"));
-      if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
-      return;
-    }
-    if (path === null) return;
+  if (!f) return;
+  const isVid = /^video\//.test(f.type) || /\.(mp4|webm|mov)$/i.test(f.name || "");
+  let blob = f, ext, type;
+  if (isVid) {
+    const d = await videoDuration(f);
+    if (isNaN(d)) { toast(T("Не получилось открыть видео — попробуйте MP4")); return; }
+    if (d > 5.4) { toast(T("Видео длиннее 5 секунд (") + d.toFixed(1) + T(" с). Обрежьте его и загрузите снова")); return; }
+    if (f.size > 6 * 1024 * 1024) { toast(T("Видео больше 6 МБ — сожмите его или сделайте короче")); return; }
+    type = /webm/.test(f.type) ? "video/webm" : /quicktime/.test(f.type) || /\.mov$/i.test(f.name || "") ? "video/quicktime" : "video/mp4";
+    ext = type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
+  } else if (!/^image\//.test(f.type)) { toast(T("Выберите фото или видео")); return; }
+  else if (await isAnimatedImage(f)) {
+    if (f.size > 6 * 1024 * 1024) { toast(T("Анимация больше 6 МБ")); return; }
+    type = /gif/i.test(f.type) ? "image/gif" : "image/webp"; ext = type === "image/gif" ? "gif" : "webp";
+  } else {
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+      const k = Math.min(1, 1600 / img.naturalWidth);
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(img.src);
+      blob = null;
+      for (const q of [0.86, 0.75, 0.6]) { blob = await new Promise((r) => cv.toBlob(r, "image/webp", q)); if (blob && blob.size < 1500 * 1024) break; }
+      if (!blob) { toast(T("Не удалось обработать картинку")); return; }
+      type = "image/webp"; ext = "webp";
+    } catch (x) { toast(T("Не удалось открыть картинку")); return; }
   }
-  toast(T("Загружаем фон…"));
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
-    const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
-    const cv = document.createElement("canvas");
-    cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
-    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-    URL.revokeObjectURL(img.src);
-    let blob = null;
-    for (const q of [0.85, 0.75, 0.6, 0.45]) { blob = await new Promise((r) => cv.toBlob(r, "image/webp", q)); if (blob && blob.size < 950 * 1024) break; }
-    if (!blob || blob.size >= 1024 * 1024) { toast(T("Картинка слишком большая")); return; }
-    const path = state.me.id + "/bg-" + Date.now() + ".webp";
-    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: blob.type || "image/webp", cacheControl: "31536000" });
-    if (up.error) { toast(T("Не удалось загрузить картинку")); return; }
-    const { error } = await sb.rpc("set_profile_bg", { p_color: "img:" + path });
-    if (error) { toast(/premium/.test(error.message || "") ? T("Фон профиля доступен с премиумом") : T("Не удалось изменить фон профиля")); return; }
-    state.profile = Object.assign({}, state.profile, { profile_bg: "img:" + path });
-    paintMyBg(); refreshMe();
-    toast(T("Фон профиля изменён"));
-    if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
-  } catch (x) { toast(T("Не удалось открыть картинку")); }
+  toast(isVid ? T("Загружаем видео…") : T("Загружаем баннер…"));
+  const path = state.me.id + "/banner-" + Date.now() + "." + ext;
+  const up = await sb.storage.from("banners").upload(path, blob, { contentType: type, cacheControl: "31536000" });
+  if (up.error) { toast(/size|large/i.test(up.error.message || "") ? T("Файл слишком большой") : T("Не удалось загрузить баннер")); return; }
+  if (await setBanner(path)) toast(T("Баннер установлен"));
 });
 $("pfBgNft").addEventListener("click", pickMyBg);
 // мой профиль: список каналов на выбор
@@ -8119,19 +8145,11 @@ function paintUser(p) {
   for (const old of hero.querySelectorAll(":scope > .orbit")) old.remove();
   for (const old of hero.querySelectorAll(":scope > .pat, :scope > .rays")) old.remove();
   hero.classList.remove("nftg");
-  // цветной фон профиля у премиума; надетый NFT важнее и перекрывает его
-  for (const k of PBG) hero.classList.remove("pbg", "pbg-" + k);
-  hero.classList.remove("pbg-img"); hero.style.backgroundImage = "";
+  // фон шапки — только от NFT: надетый подарок или (у админов) выбранный фон NFT
+  hero.classList.remove("pbg"); hero.style.background = "";
   hero.style.removeProperty("--b1"); hero.style.removeProperty("--b2");
   if (worn) paintNft(hero, worn);
-  else if ((isPremium(p) || p.is_admin) && PBG.includes(p.profile_bg)) hero.classList.add("pbg", "pbg-" + p.profile_bg);
-  else if ((isPremium(p) || p.is_admin) && /^img:/.test(p.profile_bg || "")) {
-    // своя картинка: под текстом лёгкое затемнение, чтобы имя читалось на любом фото
-    hero.classList.add("pbg", "pbg-img");
-    hero.style.backgroundImage = "linear-gradient(rgb(0 0 0 / .18), rgb(0 0 0 / .5)), url(\"" + avatarUrl(p.profile_bg.slice(4)) + "\")";
-  }
   else if (p.is_admin && /^nft:/.test(p.profile_bg || "")) {
-    // у админов фоном может быть любой фон NFT-подарков; список фонов подгружается отдельно
     const apply = () => {
       const b = (state.giftBackdrops || []).find((x) => x.id === p.profile_bg.slice(4));
       if (!b || !viewed || viewed.id !== p.id || hero.classList.contains("nftg")) return;
@@ -8139,6 +8157,11 @@ function paintUser(p) {
     };
     if (state.giftBackdrops) apply(); else giftTypes().then(apply);
   }
+  // баннер над аватаркой (свой фото или видео до 5 с) — у премиума и админов
+  const bn = (isPremium(p) || p.is_admin) && p.banner ? p.banner : "";
+  $("uBanner").replaceChildren(...(bn ? [bannerNode(bn)] : []));
+  $("uBanner").hidden = !bn;
+  hero.classList.toggle("has-banner", !!bn);
   $("uNoBio").hidden = !!p.bio || nfts(p).length > 0 || !!p.banned_at;
   $("uGift").hidden = !!p.banned_at;
   $("uSeen").textContent = p.banned_at ? "" : fmtSeen(p);
