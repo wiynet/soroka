@@ -17,12 +17,16 @@ async function config() {
   return cfg!;
 }
 
+// значки форматирования убираем, скрытый текст (||…||) в уведомлении не показываем
+function plain(t: string) {
+  return String(t || "").replace(/\|\|([\s\S]+?)\|\|/g, "▒▒▒▒").replace(/\*\*([\s\S]+?)\*\*/g, "$1").replace(/__([\s\S]+?)__/g, "$1").replace(/~~([\s\S]+?)~~/g, "$1").replace(/`([^`]+)`/g, "$1");
+}
 function preview(m: any): string {
   if (m.sticker_id) return "🖼 Стикер";
   if (m.gif_url) return "GIF";
   if (m.gift_type) return "🎁 Подарок";
   if (m.event_kind) return m.body || "Выдача от администратора";
-  if (m.body) return m.body.length > 140 ? m.body.slice(0, 140) + "…" : m.body;
+  if (m.body) { const b = plain(m.body); return b.length > 140 ? b.slice(0, 140) + "…" : b; }
   if (m.file_type && String(m.file_type).startsWith("image/")) return "📷 Фото";
   if (m.file_type && String(m.file_type).startsWith("video/")) return "🎥 Видео";
   if (m.file_name === "Голосовое сообщение") return "🎤 Голосовое сообщение";

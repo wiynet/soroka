@@ -713,6 +713,19 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .gif-badge { position: absolute; left: 8px; top: 8px; padding: 1px 6px; border-radius: 6px; background: rgb(0 0 0 / .5); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
 .stk-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 14px; display: grid; gap: 10px; justify-items: center; }
 .composer { position: relative; }
+.fmt-bar { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); z-index: 31; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+.fmt-bar[hidden] { display: none; }
+.fmt-bar button { min-width: 36px; height: 34px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: 15px; cursor: pointer; padding: 0 8px; }
+.fmt-bar button:hover { background: var(--panel-2); }
+.fmt-bar .fb-sp { font-size: 13px; }
+.msg .body s, .tx s { opacity: .8; }
+.mcode { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .92em; padding: 1px 5px; border-radius: 6px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.spoiler { border-radius: 5px; cursor: pointer; color: transparent !important; background: color-mix(in srgb, currentColor 0%, transparent); background-image: radial-gradient(circle at 20% 30%, rgb(128 128 128 / .7) 1px, transparent 1.4px), radial-gradient(circle at 70% 60%, rgb(128 128 128 / .7) 1px, transparent 1.4px), radial-gradient(circle at 40% 80%, rgb(128 128 128 / .6) 1px, transparent 1.4px); background-size: 7px 7px, 9px 9px, 5px 5px; background-color: rgb(128 128 128 / .28); user-select: none; transition: color .2s, background-color .2s; }
+.spoiler * { color: transparent !important; }
+.spoiler.open { color: inherit !important; background: rgb(128 128 128 / .12); user-select: text; cursor: text; }
+.spoiler.open * { color: inherit !important; }
+@media (prefers-reduced-motion: no-preference) { .spoiler:not(.open) { animation: sp-drift 2.2s linear infinite; } }
+@keyframes sp-drift { to { background-position: 7px 7px, -9px 9px, 5px -5px; } }
 .poll-card { display: grid; gap: 8px; min-width: min(280px, 70vw); }
 .poll-card .pq { font-weight: 600; font-size: 15.5px; overflow-wrap: anywhere; }
 .poll-card .pk { font-size: 12.5px; color: var(--muted); }
@@ -2345,7 +2358,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=787a48f4e3"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=449e3194c6"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3292,6 +3305,13 @@ void main() {
         <input type="file" id="fileInput" multiple hidden>
         <button class="bot-menu-btn" id="btnBotMenu" type="button" title="Команды бота" aria-label="Команды бота" hidden>☰ Меню</button>
         <button class="icon-btn" id="btnAttach" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить фото или файл"></button>
+        <div class="fmt-bar" id="fmtBar" hidden role="toolbar" aria-label="Форматирование">
+          <button type="button" data-f="**" title="Жирный (Ctrl+B)"><b>Ж</b></button>
+          <button type="button" data-f="__" title="Курсив (Ctrl+I)"><i>К</i></button>
+          <button type="button" data-f="~~" title="Зачёркнутый (Ctrl+Shift+X)"><s>З</s></button>
+          <button type="button" data-f="`" title="Моноширинный (Ctrl+Shift+M)"><code>M</code></button>
+          <button type="button" data-f="||" title="Скрытый (Ctrl+Shift+P)" class="fb-sp">Скрытый</button>
+        </div>
         <textarea id="text" rows="1" maxlength="4000" placeholder="Сообщение" aria-label="Сообщение"></textarea>
         <button class="icon-btn" id="btnBotKb" type="button" title="Клавиатура бота" aria-label="Клавиатура бота" hidden></button>
         <button class="icon-btn" id="btnStk" type="button" title="Стикеры" aria-label="Стикеры"></button>
@@ -6211,6 +6231,40 @@ $("back").addEventListener("click", () => { if (phoneLayout()) chatBack(0); else
 function scrollDown() { const m = $("msgs"); m.scrollTop = m.scrollHeight; }
 function nearBottom() { const m = $("msgs"); return m.scrollHeight - m.scrollTop - m.clientHeight < 120; }
 
+/* ---------- форматирование: **жирный**, __курсив__, ~~зачёркнутый~~, `моно`, ||скрытый|| ---------- */
+const FMT = [["**", "b"], ["__", "i"], ["~~", "s"], ["||", "sp"], ["`", "code"]];
+function fmtText(text) {
+  if (!text || !/(\*\*|__|~~|\|\||`)/.test(text)) return linkify(text || "");
+  const out = [];
+  let i = 0, plain = "";
+  const flush = () => { if (plain) { out.push(...linkify(plain)); plain = ""; } };
+  while (i < text.length) {
+    // ссылки не трогаем: в них бывают __ и ~~
+    const url = /^https?:\/\/[^\s<]+/.exec(text.slice(i, i + 2100));
+    if (url && (i === 0 || /[\s(«"']/.test(text[i - 1]))) { plain += url[0]; i += url[0].length; continue; }
+    let hit = null;
+    for (const [mk, kind] of FMT) {
+      if (!text.startsWith(mk, i)) continue;
+      const end = text.indexOf(mk, i + mk.length);
+      if (end > i + mk.length && !(kind !== "code" && /^\s/.test(text[i + mk.length]))) { hit = { mk, kind, end }; break; }
+    }
+    if (!hit) { plain += text[i]; i++; continue; }
+    flush();
+    const inner = text.slice(i + hit.mk.length, hit.end);
+    if (hit.kind === "code") out.push(h("code", { class: "mcode" }, inner));
+    else if (hit.kind === "sp") {
+      const sp = h("span", { class: "spoiler", role: "button", tabindex: "0", title: T("Нажмите, чтобы показать"), onclick: (e) => { e.stopPropagation(); e.preventDefault(); sp.classList.add("open"); } }, ...fmtText(inner));
+      out.push(sp);
+    } else out.push(h(hit.kind, {}, ...fmtText(inner)));
+    i = hit.end + hit.mk.length;
+  }
+  flush();
+  return out;
+}
+// для превью и уведомлений: значки форматирования убираем, скрытый текст прячем
+function fmtPlain(t) {
+  return String(t || "").replace(/\|\|([\s\S]+?)\|\|/g, (m, x) => "▒".repeat(Math.min(8, Math.max(3, x.length)))).replace(/\*\*([\s\S]+?)\*\*/g, "$1").replace(/__([\s\S]+?)__/g, "$1").replace(/~~([\s\S]+?)~~/g, "$1").replace(/`([^`]+)`/g, "$1");
+}
 function linkify(text) {
   return text.split(/(https?:\/\/[^\s<]+)/g).flatMap((part, i) =>
     !(i % 2) ? mentionize(part) : (ownLink(part) ? h("a", { href: part, onclick: (e) => { e.preventDefault(); followOwn(part); } }, part)
@@ -6470,7 +6524,7 @@ function msgNode(m, group) {
   } else {
     const text = m.geo_lat != null ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
     if (m.geo_lat != null) { el.classList.add("geom"); el.append(geoCard(m)); }
-    if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : linkify(text))));
+    if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : fmtText(text))));
     const tr = !group && msgTr.get(m.id);
     if (tr && tr.on) el.append(h("button", { class: "msg-tr", type: "button", title: T("Скрыть перевод"), onclick: (e) => { e.stopPropagation(); tr.on = false; repaintKeep(); } },
       h("small", {}, tr.busy ? T("Переводим…") : T("Перевод")), tr.busy ? null : h("span", {}, tr.text)));
@@ -6739,7 +6793,7 @@ function mediaLabel(m) {
 // ярлыки приходят из базы по-русски; в английском интерфейсе переводим их на лету
 function previewText(t) {
   const m = /^(Стикер|Фото и видео|Фото|Видеосообщение|Видео|Голосовое сообщение|Файл)( \(\d+\))?$/.exec(t || "");
-  return m ? T(m[1]) + (m[2] || "") : t ? String(t).replace(/```[\w+#.-]*\n?/g, "") : t;
+  return m ? T(m[1]) + (m[2] || "") : t ? fmtPlain(String(t).replace(/```[\w+#.-]*\n?/g, "")) : t;
 }
 function touchChat(m) {
   const c = state.chats.get(m.chat_id);
@@ -6998,7 +7052,7 @@ async function loadThread() {
           if (res.error) { toast(T("Не удалось удалить комментарий")); return; }
           loadThread(); ensureStats(true);
         } }, "✕")),
-      h("div", { class: "tx" }, linkify(r.body)));
+      h("div", { class: "tx" }, fmtText(r.body)));
   }) : [h("div", { class: "empty-note" }, error ? T("Не удалось загрузить комментарии.") : T("Комментариев пока нет. Напишите первый."))]));
   if (stick) sc.scrollTop = sc.scrollHeight;
   $("thCount").textContent = rows.length ? rows.length + " " + plural(rows.length, T("комментарий"), T("комментария"), T("комментариев")) : T("пока нет");
@@ -7063,7 +7117,7 @@ async function ensureReplies() {
 function snippet(m) {
   if (m.sticker_path) return T("Стикер");
   const t = (m.file_type || "");
-  return (m.body || (m.video_secs != null ? T("Видеосообщение") : m.voice_secs != null ? T("Голосовое сообщение") : !m.file_path ? "" : t.startsWith("image/") ? T("Фото") : t.startsWith("video/") ? T("Видео") : m.file_name) || T("Файл")).replace(/\s+/g, " ").slice(0, 90);
+  return (fmtPlain(m.body) || (m.video_secs != null ? T("Видеосообщение") : m.voice_secs != null ? T("Голосовое сообщение") : !m.file_path ? "" : t.startsWith("image/") ? T("Фото") : t.startsWith("video/") ? T("Видео") : m.file_name) || T("Файл")).replace(/\s+/g, " ").slice(0, 90);
 }
 function senderName(c, id) { return id === state.me.id ? T("Вы") : c ? memberName(c, id) : T("Участник"); }
 async function jumpTo(id) {
@@ -7959,6 +8013,38 @@ function fitText() {
   t.style.height = Math.min(t.scrollHeight + 2, 160) + "px";
 }
 $("text").addEventListener("input", () => { fitText(); syncComposer(); sayTyping(); });
+// панель форматирования над полем ввода: появляется, когда выделен текст
+function fmtApply(mk) {
+  const t = $("text"), a = t.selectionStart, b = t.selectionEnd;
+  if (a === b) return;
+  let sel = t.value.slice(a, b), lead = "", trail = "";
+  // пробелы по краям выделения оставляем снаружи — иначе форматирование не сработает
+  lead = /^\s*/.exec(sel)[0]; trail = /\s*$/.exec(sel)[0]; sel = sel.slice(lead.length, sel.length - trail.length);
+  if (!sel) return;
+  const wrapped = sel.startsWith(mk) && sel.endsWith(mk) && sel.length > mk.length * 2;
+  const rep = wrapped ? sel.slice(mk.length, -mk.length) : mk + sel + mk;
+  t.setRangeText(lead + rep + trail, a, b, "select");
+  t.dispatchEvent(new Event("input"));
+  t.focus();
+  fmtBarSync();
+}
+function fmtBarSync() {
+  const t = $("text"), bar = $("fmtBar");
+  bar.hidden = !(document.activeElement === t && t.selectionEnd > t.selectionStart && t.value.slice(t.selectionStart, t.selectionEnd).trim());
+}
+$("fmtBar").addEventListener("pointerdown", (e) => e.preventDefault());   // поле ввода не теряет выделение
+$("fmtBar").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (b) fmtApply(b.dataset.f); });
+for (const ev of ["select", "keyup", "mouseup", "touchend"]) $("text").addEventListener(ev, () => setTimeout(fmtBarSync, 0));
+document.addEventListener("selectionchange", () => { if (document.activeElement === $("text")) fmtBarSync(); });
+$("text").addEventListener("blur", () => setTimeout(fmtBarSync, 150));
+$("text").addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  const mk = !e.shiftKey && (k === "b" || k === "и") ? "**" : !e.shiftKey && (k === "i" || k === "ш") ? "__" : e.shiftKey && (k === "x" || k === "ч") ? "~~" : e.shiftKey && (k === "m" || k === "ь") ? "`" : e.shiftKey && (k === "p" || k === "з") ? "||" : "";
+  if (!mk) return;
+  const t = $("text");
+  if (t.selectionEnd > t.selectionStart) { e.preventDefault(); fmtApply(mk); }
+});
 $("text").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || e.isComposing) return;
   const quick = settings.enterSends && !e.shiftKey && matchMedia("(pointer: fine)").matches;
