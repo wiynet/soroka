@@ -186,7 +186,9 @@ button { cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .auth-card .link { justify-self: center; font-size: 13px; }
 .auth-card .tabs { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.auth-card .tabs button[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.auth-card .tabs button[aria-selected="true"] { background: var(--panel); box-shadow: 0 1px 3px rgb(0 0 0 / .1), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); }
+:root[data-theme="dark"] .auth-card .tabs button[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 12%, transparent); box-shadow: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .auth-card .tabs button[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 12%, transparent); box-shadow: none; } }
 .auth-card .error:empty { min-height: 0; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel-2); border-radius: 12px; padding: 4px; }
 .tabs button { border: 0; background: transparent; border-radius: 9px; padding: 9px; font-weight: 500; color: var(--muted); }
@@ -285,6 +287,7 @@ button.wordmark.spin { opacity: .55; }
 .code-btn svg { width: 14px; height: 14px; }
 .code-pre { margin: 0; padding: 10px 12px; max-height: 420px; overflow: auto; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; tab-size: 2; user-select: text; -webkit-user-select: text; }
 /* ---------- кинематографичное интро перед входом ---------- */
+.boot-error { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; text-wrap: balance; }
 .intro { position: fixed; inset: 0; z-index: 200; overflow-y: auto; overflow-x: hidden; background: #05070d; color: #f4f6fb; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .intro[hidden] { display: none; }
 .intro-track { position: relative; height: calc(100vh + 4200px); }
@@ -303,17 +306,18 @@ button.wordmark.spin { opacity: .55; }
   background-image: linear-gradient(to right, rgb(255 255 255 / .05) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / .05) 1px, transparent 1px);
   -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%); mask-image: radial-gradient(ellipse at center, #000 0%, transparent 70%); }
 .intro-hero { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; text-align: center; width: 100vw; padding: 0 16px; will-change: transform; }
-.intro h1 { margin: 0; font-size: clamp(42px, 9vw, 104px); line-height: 1.02; letter-spacing: -.04em; }
-.intro .t-matte { font-weight: 700; color: #f4f6fb; text-shadow: 0 10px 30px rgb(255 255 255 / .2), 0 2px 4px rgb(255 255 255 / .1); }
-.intro .t-silver { font-weight: 800; background: linear-gradient(180deg, #fff 0%, rgb(255 255 255 / .4) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: translateZ(0);
-  filter: drop-shadow(0 10px 20px rgb(255 255 255 / .15)) drop-shadow(0 2px 4px rgb(255 255 255 / .1)); }
+.intro h1 { margin: 0; font-size: clamp(30px, 10vw, 104px); line-height: 1.02; letter-spacing: -.04em; text-wrap: balance; }
+.intro .t-matte { font-weight: 700; color: #f4f6fb; text-shadow: 0 8px 28px rgb(255 255 255 / .08); }
+.intro .t-silver { font-weight: 800; background: linear-gradient(180deg, #fff 0%, rgb(255 255 255 / .74) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: translateZ(0);
+  filter: drop-shadow(0 8px 24px rgb(255 255 255 / .07)); }
 .intro .t-card-silver { background: linear-gradient(180deg, #fff 0%, #a1a1aa 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: translateZ(0);
   filter: drop-shadow(0 12px 24px rgb(0 0 0 / .8)) drop-shadow(0 4px 8px rgb(0 0 0 / .6)); }
 .intro-cta { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; text-align: center; width: 100vw; padding: 0 16px; }
-.intro-cta h2 { margin: 0 0 18px; font-size: clamp(34px, 7vw, 76px); font-weight: 700; letter-spacing: -.03em; }
+.intro-cta h2 { margin: 0 0 18px; font-size: clamp(24px, 8.4vw, 76px); font-weight: 700; letter-spacing: -.03em; text-wrap: balance; }
 .intro-cta p { margin: 0 auto 40px; max-width: 34rem; color: rgb(244 246 251 / .62); font-size: clamp(16px, 2.2vw, 20px); font-weight: 300; line-height: 1.6; }
+.intro-cta p span { display: inline-block; }
 .intro-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
-.intro-btn { display: flex; align-items: center; gap: 12px; padding: 16px 30px; border: 0; border-radius: 20px; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; transition: all .4s cubic-bezier(.25, 1, .5, 1); }
+.intro-btn { display: flex; align-items: center; gap: 12px; white-space: nowrap; padding: 16px 30px; border: 0; border-radius: 20px; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; transition: all .4s cubic-bezier(.25, 1, .5, 1); }
 .intro-btn svg { width: 24px; height: 24px; }
 .intro-btn.light { background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%); color: #0f172a;
   box-shadow: 0 0 0 1px rgb(0 0 0 / .05), 0 2px 4px rgb(0 0 0 / .1), 0 12px 24px -4px rgb(0 0 0 / .3), inset 0 1px 1px #fff, inset 0 -3px 6px rgb(0 0 0 / .06); }
@@ -329,13 +333,13 @@ button.wordmark.spin { opacity: .55; }
   border: 1px solid rgb(255 255 255 / .04); }
 .intro-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 50; mix-blend-mode: screen;
   background: radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgb(255 255 255 / .06) 0%, transparent 40%); }
-.intro-grid3 { position: relative; z-index: 10; width: 100%; height: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 48px; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; gap: 32px; }
-.intro-brand { order: 3; display: flex; justify-content: flex-end; }
-.intro-brand h2 { margin: 0; font-size: clamp(56px, 7.5vw, 116px); font-weight: 900; text-transform: uppercase; letter-spacing: -.05em; line-height: .9; text-align: right; }
+.intro-grid3 { position: relative; z-index: 10; width: 100%; height: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 48px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 32px; }
+.intro-brand { order: 3; display: flex; justify-content: flex-end; container-type: inline-size; }
+.intro-brand h2 { margin: 0; font-size: min(116px, 15.5cqi); font-weight: 900; text-transform: uppercase; letter-spacing: -.05em; line-height: .9; text-align: right; }
 .intro-mock { order: 2; position: relative; width: 100%; height: 600px; display: flex; align-items: center; justify-content: center; perspective: 1000px; }
 .intro-mock-in { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .intro-copy { order: 1; text-align: left; }
-.intro-copy h3 { margin: 0 0 20px; color: #fff; font-size: clamp(26px, 2.8vw, 38px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.intro-copy h3 { margin: 0 0 20px; color: #fff; font-size: clamp(24px, 2.15vw, 31px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; text-wrap: balance; }
 .intro-copy p { margin: 0; color: rgb(219 234 254 / .72); font-size: 17px; line-height: 1.6; }
 .intro-copy b { color: #fff; }
 /* телефон */
@@ -356,8 +360,8 @@ button.wordmark.spin { opacity: .55; }
 .intro-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .intro-ring .ring { transform: rotate(-90deg); transform-origin: center; stroke-dasharray: 352; stroke-dashoffset: 352; stroke-linecap: round; }
 .intro-ring div { text-align: center; z-index: 1; }
-.intro-ring b { display: block; font-size: 32px; font-weight: 800; letter-spacing: -.04em; }
-.intro-ring span { font-size: 9px; color: rgb(191 219 254 / .55); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+.intro-ring b { display: block; font-size: 28px; font-weight: 800; letter-spacing: -.04em; }
+.intro-ring span { display: block; margin-top: 2px; font-size: 10px; color: rgb(191 219 254 / .6); font-weight: 600; }
 .intro-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 16px; background: linear-gradient(180deg, rgb(255 255 255 / .04) 0%, rgb(255 255 255 / .01) 100%);
   box-shadow: 0 10px 20px rgb(0 0 0 / .3), inset 0 1px 1px rgb(255 255 255 / .05), inset 0 -1px 1px rgb(0 0 0 / .5); border: 1px solid rgb(255 255 255 / .03); }
 .intro-row .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
@@ -366,17 +370,19 @@ button.wordmark.spin { opacity: .55; }
 .intro-row .tx span { display: block; font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .intro-row .n { min-width: 18px; height: 18px; border-radius: 999px; background: #3b82f6; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; }
 .intro-homebar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 4px; border-radius: 999px; background: rgb(255 255 255 / .2); }
-.intro-badge { position: absolute; z-index: 30; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px;
+.intro-badge { position: absolute; z-index: 30; display: flex; white-space: nowrap; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px;
   background: linear-gradient(135deg, rgb(255 255 255 / .08) 0%, rgb(255 255 255 / .01) 100%); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
   box-shadow: 0 0 0 1px rgb(255 255 255 / .1), 0 25px 50px -12px rgb(0 0 0 / .8), inset 0 1px 1px rgb(255 255 255 / .2), inset 0 -1px 1px rgb(0 0 0 / .5); }
 .intro-badge .e { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 19px; border: 1px solid rgb(96 165 250 / .3); background: linear-gradient(180deg, rgb(59 130 246 / .2), rgb(30 58 138 / .1)); }
 .intro-badge b { display: block; font-size: 14px; letter-spacing: -.01em; }
 .intro-badge span { font-size: 12px; color: rgb(191 219 254 / .55); }
-.intro-badge.b1 { top: 48px; left: -80px; }
-.intro-badge.b2 { bottom: 80px; right: -80px; }
+.intro-badge.b1 { top: calc(50% - 305px); right: calc(50% + 55px); }
+.intro-badge.b2 { top: calc(50% + 178px); left: calc(50% + 30px); }
 /* управление интро */
 .intro-skip { position: fixed; top: max(14px, env(safe-area-inset-top)); right: 16px; z-index: 210; border: 0; border-radius: 999px; padding: 9px 16px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; background: rgb(255 255 255 / .1); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(255 255 255 / .12); cursor: pointer; }
 .intro-skip:hover { background: rgb(255 255 255 / .18); }
+.intro-skip { transition: opacity .3s, visibility .3s; }
+.intro-skip.gone { opacity: 0; visibility: hidden; }
 .intro-hint { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 210; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: rgb(255 255 255 / .55); pointer-events: none; transition: opacity .4s; }
 .intro-hint i { width: 22px; height: 34px; border: 2px solid rgb(255 255 255 / .35); border-radius: 12px; position: relative; }
 .intro-hint i::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 7px; margin-left: -2px; border-radius: 2px; background: rgb(255 255 255 / .7); animation: intro-wheel 1.6s ease-in-out infinite; }
@@ -391,12 +397,20 @@ button.wordmark.spin { opacity: .55; }
   .intro-copy { order: 3; text-align: center; }
   .intro-copy h3 { margin: 0; font-size: 24px; }
   .intro-copy p { display: none; }
-  .intro-badge.b1 { top: -6px; left: -15px; }
+  .intro-badge { gap: 10px; padding: 10px 12px; }
+  .intro-badge .e { width: 32px; height: 32px; font-size: 16px; }
+  .intro-badge.b1 { right: calc(50% + 40px); }
   .intro-btns { flex-direction: column; align-items: stretch; width: min(320px, 100%); }
-  .intro-btn { justify-content: center; }
-  .intro-badge.b2 { bottom: 48px; right: -15px; }
+  .intro-btn { justify-content: center; padding: 16px 20px; }
 }
 @media (min-width: 768px) and (max-width: 1023px) { .intro-mock-in { transform: scale(.85); } .intro-copy p { display: block; } }
+/* невысокие телефоны (iPhone SE и т. п.): сцена с телефоном целиком влезает в экран */
+@media (max-width: 767px) and (max-height: 700px) {
+  .intro-mock { height: 300px; }
+  .intro-mock-in { transform: scale(.5); }
+  .intro-brand h2 { font-size: clamp(36px, 11vw, 64px); }
+  .intro-copy h3 { font-size: 19px; }
+}
 @media (prefers-reduced-motion: reduce) { .intro-island i, .intro-hint i::after { animation: none; } }
 
 /* местоположение в чате */
@@ -2367,7 +2381,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=245e9edace"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e269d3159b"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2771,7 +2785,7 @@ void main() {
     </div>
     <div class="intro-cta">
       <h2 class="t-silver">Начни общаться.</h2>
-      <p>Регистрация займёт минуту. Это бесплатно.</p>
+      <p><span>Регистрация займёт минуту.</span> <span>Это бесплатно.</span></p>
       <div class="intro-btns">
         <button class="intro-btn light" type="button" id="introSignup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Создать аккаунт</button>
         <button class="intro-btn dark" type="button" id="introLogin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 7l5 5-5 5M15 12H3M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Войти</button>
@@ -4705,7 +4719,10 @@ const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,use
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
 if (!window.supabase) {
-  document.body.textContent = T("Не удалось загрузить библиотеку. Проверьте интернет и обновите страницу.");
+  const msg = document.createElement("div");
+  msg.className = "boot-error";
+  msg.textContent = T("Не удалось загрузить библиотеку. Проверьте интернет и обновите страницу.");
+  document.body.replaceChildren(msg);
   throw new Error("supabase-js not loaded");
 }
 // ошибка входа через Google приходит в адресе после возврата (#error=… или ?error=…): запоминаем её до того, как адрес почистится
@@ -12021,19 +12038,20 @@ function introTimeline() {
   add([hero, grid], 0, 2, IEASE.p2io, { s: 1, blur: 0, o: 1 }, { s: 1.15, blur: 20, o: .2 });
   add(card, 0, 2, IEASE.p3io, { y: H + 200 }, { y: 0 });
   add(card, 2, 1.5, IEASE.p3io, { w: card0.w, h: card0.h, r: card0.r }, { w: W, h: H, r: 0 });
-  add(mock, 2.7, 2.5, IEASE.expoOut, { y: 300, z: -500, rx: 50, ry: -30, o: 0, s: .6 }, { y: 0, z: 0, rx: 0, ry: 0, o: 1, s: 1 });
-  add(widgets, 3.7, 1.5, IEASE.back(1.2), { y: 40, o: 0, s: .95 }, { y: 0, o: 1, s: 1 }, .15);
-  add(ring, 4.6, 2, IEASE.p3io, { dash: 352 }, { dash: 60 });
-  add(count, 4.6, 2, IEASE.expoOut, { num: 0 }, { num: 1250 });
-  add(badges, 4.6, 1.5, IEASE.back(1.5), { y: 100, o: 0, s: .7, rz: -10 }, { y: 0, o: 1, s: 1, rz: 0 }, .2);
-  add(copy, 5.1, 1.5, IEASE.p4out, { x: -50, o: 0 }, { x: 0, o: 1 });
-  add(brand, 5.1, 1.5, IEASE.expoOut, { x: 50, o: 0, s: .8 }, { x: 0, o: 1, s: 1 });
-  add(hero, 9.1, 0, IEASE.lin, { o: .2 }, { o: 0 });
-  add(cta, 9.1, 0, IEASE.lin, { o: 0, s: .8, blur: 30 }, { o: 1, s: .8, blur: 30 });
-  add([mock, ...badges, copy, brand], 10.6, 1.2, IEASE.p3in, { s: 1, y: 0, z: 0, o: 1 }, { s: .9, y: -40, z: -200, o: 0 }, .05);
-  add(card, 11.95, 1.8, IEASE.expoIO, { w: W, h: H, r: 0 }, { w: card0.w, h: card0.h, r: card0.r });
-  add(cta, 11.95, 1.8, IEASE.expoIO, { s: .8, blur: 30 }, { s: 1, blur: 0 });
-  add(card, 13.75, 1.5, IEASE.p3in, { y: 0 }, { y: -H - 300 });
+  add(mock, 1, 2.5, IEASE.expoOut, { y: 300, z: -500, rx: 50, ry: -30, o: 0, s: .6 }, { y: 0, z: 0, rx: 0, ry: 0, o: 1, s: 1 });
+  add(widgets, 1.9, 1.5, IEASE.back(1.2), { y: 40, o: 0, s: .95 }, { y: 0, o: 1, s: 1 }, .15);
+  add(ring, 2.7, 2, IEASE.p3io, { dash: 352 }, { dash: 60 });
+  add(count, 2.7, 2, IEASE.expoOut, { num: 0 }, { num: 1250 });
+  add(badges, 2.7, 1.5, IEASE.back(1.5), { y: 100, o: 0, s: .7, rz: -10 }, { y: 0, o: 1, s: 1, rz: 0 }, .2);
+  add(copy, 3, 1.5, IEASE.p4out, { x: -50, o: 0 }, { x: 0, o: 1 });
+  add(brand, 3, 1.5, IEASE.expoOut, { x: 50, o: 0, s: .8 }, { x: 0, o: 1, s: 1 });
+  add(hero, 8, 0, IEASE.lin, { o: .2 }, { o: 0 });
+  add(cta, 8, 0, IEASE.lin, { o: 0, s: .8, blur: 30 }, { o: 1, s: .8, blur: 30 });
+  add([mock, ...badges, copy, brand], 8, 1.2, IEASE.p3in, { s: 1, y: 0, z: 0, o: 1 }, { s: .9, y: -40, z: -200, o: 0 }, .05);
+  // карточка уезжает и гаснет, пока сжимается, — пустой синей плашки на экране нет
+  add(card, 8.8, 1.5, IEASE.expoIO, { w: W, h: H, r: 0 }, { w: card0.w, h: card0.h, r: card0.r });
+  add(card, 9.2, 1.3, IEASE.p3io, { y: 0, o: 1 }, { y: -H - 300, o: 0 });
+  add(cta, 8.8, 1.7, IEASE.expoIO, { s: .8, blur: 30 }, { s: 1, blur: 0 });
   // для каждого элемента и свойства — дорожки по порядку
   const tracks = new Map();
   for (const tw of T) for (const k of Object.keys(tw.to)) {
@@ -12041,7 +12059,7 @@ function introTimeline() {
     (tracks.get(tw.el)[k] = tracks.get(tw.el)[k] || []).push(tw);
   }
   for (const props of tracks.values()) for (const k in props) props[k].sort((a, b) => a.start - b.start);
-  return { tracks, total: 15.25 };
+  return { tracks, total: 11.2 };
 }
 // состояние сцены в момент t
 function introRender(t) {
@@ -12083,6 +12101,7 @@ function introFrame(now) {
   if (Math.abs(target - introCur) < .002) introCur = target;
   introRender(introCur);
   $("introHint").style.opacity = root.scrollTop > 40 ? "0" : "1";
+  $("introSkip").classList.toggle("gone", introCur > 10.3);   // на последнем экране уже есть «Создать аккаунт» и «Войти»
   introRafId = requestAnimationFrame(introFrame);
 }
 function showIntro(view) {
