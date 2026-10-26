@@ -2358,7 +2358,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=449e3194c6"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=281c167d99"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3860,6 +3860,15 @@ void main() {
   <audio id="callAudio" autoplay></audio>
 </div>
 <button class="call-bar" id="callBar" type="button" hidden><span class="dot"></span><span id="callBarText"></span><b>Вернуться</b></button>
+<!-- просьба разрешить микрофон -->
+<dialog id="dlgMic" class="news-dlg">
+  <div class="dlg news">
+    <div class="news-head"><span class="news-badge">🎙</span><h2>Доступ к микрофону</h2></div>
+    <div class="small" id="micText" style="text-align:center;line-height:1.45"></div>
+    <div class="news-list" id="micSteps" hidden></div>
+    <div class="actions"><button class="btn ghost" type="button" id="micLater">Позже</button><button class="btn" type="button" id="micAllow">Разрешить</button></div>
+  </div>
+</dialog>
 <!-- окно «Что нового» -->
 <dialog id="dlgNews" class="news-dlg">
   <div class="dlg news">
@@ -5507,6 +5516,7 @@ async function startApp() {
   loadMyBots().then(() => { if (state.activeId) renderHead(); }).catch(() => {});
   loadContacts();
   setTimeout(() => checkNews(0), 2500);
+  setTimeout(() => checkMicAsk(0), 6000);
   claimDaily();
   refreshAiCredits();
   idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
@@ -7212,6 +7222,54 @@ function onChatRow(row) {
     if (state.activeId === c.id) renderHead();
   }
 }
+/* ---------- просьба заново разрешить микрофон: один раз на устройстве ---------- */
+const MIC_ASK = "mestario.micAsk.1";
+async function micState() {
+  try { if (navigator.permissions && navigator.permissions.query) return (await navigator.permissions.query({ name: "microphone" })).state; } catch (e) {}
+  return "unknown";
+}
+async function checkMicAsk(tries) {
+  if (!state.started || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  try { if (localStorage.getItem(MIC_ASK)) return; } catch (e) { return; }
+  // ждём, пока закроются другие окна (например, «Что нового») и не идёт звонок
+  if (document.querySelector("dialog[open]") || (typeof vc !== "undefined" && vc) || (typeof call !== "undefined" && call)) {
+    if ((tries || 0) < 30) setTimeout(() => checkMicAsk((tries || 0) + 1), 4000);
+    return;
+  }
+  const st = await micState();
+  if (st === "granted") { try { localStorage.setItem(MIC_ASK, "1"); } catch (e) {} return; }
+  const denied = st === "denied";
+  $("micText").textContent = denied
+    ? T("Микрофон для Mestario сейчас запрещён в браузере, поэтому не работают голосовые, видеосообщения, звонки и голосовые чаты. Сайт не может спросить второй раз — включите его сами:")
+    : T("Чтобы записывать голосовые и видеосообщения, звонить и говорить в голосовых чатах, разрешите Mestario доступ к микрофону. Он включается, только когда вы сами начинаете запись или звонок.");
+  $("micSteps").hidden = !denied;
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const steps = IN_APP ? [["⚙", T("Откройте настройки телефона → Приложения → Mestario → Разрешения")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Вернитесь в Mestario")]]
+    : ios ? [["ᴬA", T("Нажмите «аА» слева в адресной строке Safari → «Настройки веб-сайта»")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Обновите страницу")]]
+    : [["🔒", T("Нажмите на значок замка или настроек слева от адреса mestario.lol")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Обновите страницу")]];
+  $("micSteps").replaceChildren(...steps.map(([ic, t]) => h("div", { class: "news-it" }, h("span", { class: "ic" }, ic), h("span", {}, t))));
+  $("micAllow").textContent = denied ? T("Понятно") : T("Разрешить");
+  $("dlgMic").dataset.denied = denied ? "1" : "";
+  $("micLater").hidden = denied;
+  $("dlgMic").showModal();
+}
+function micDone() { try { localStorage.setItem(MIC_ASK, "1"); } catch (e) {} }
+$("micLater").addEventListener("click", () => { $("dlgMic").close(); micDone(); });
+$("micAllow").addEventListener("click", async () => {
+  if ($("dlgMic").dataset.denied) { $("dlgMic").close(); micDone(); return; }
+  $("micAllow").disabled = true;
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    st.getTracks().forEach((t) => t.stop());   // сразу выключаем: нужен был только ответ браузера
+    $("dlgMic").close(); micDone();
+    toast(T("Готово: микрофон разрешён"));
+  } catch (e) {
+    const denied = e && e.name === "NotAllowedError";
+    if (denied) { micDone(); $("dlgMic").close(); toast(T("Микрофон запрещён — включить можно в настройках сайта в браузере")); }
+    else { $("dlgMic").close(); micDone(); toast(T("Микрофон не найден на этом устройстве")); }
+  } finally { $("micAllow").disabled = false; }
+});
+
 /* ---------- «Что нового»: показываем каждому новое обновление один раз ---------- */
 let newsNow = null;
 function paintNews(n) {
