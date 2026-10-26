@@ -917,11 +917,15 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 4px var(--panel-2), 0 8px 20px rgb(0 0 0 / .3); }
 .u-hero.has-banner.nftg .avatar.lg { box-shadow: 0 0 0 4px rgb(255 255 255 / .35), 0 8px 20px rgb(0 0 0 / .35); }
 .u-hero.has-banner .u-round { color: #fff; }
-/* баннер сверху шапки в своих пропорциях: видео и фото видны целиком, без обрезки (высота — --bnh из JS).
-   Пока стоит баннер, фон NFT и цветной фон шапки не рисуются */
-.u-hero.has-banner > .u-banner { height: calc(var(--bnh, 170px) + env(safe-area-inset-top, 0px)); }
-.u-hero.has-banner > .u-banner img, .u-hero.has-banner > .u-banner video { object-fit: contain; }
-.upage .u-hero.has-banner { padding-top: calc(var(--bnh, 170px) - 58px + env(safe-area-inset-top, 0px)); }
+/* баннер на всю шапку профиля; высота шапки подстраивается под пропорции видео/фото (--bnh из JS),
+   чтобы обрезалось как можно меньше. Пока стоит баннер, фон NFT и цветной фон шапки не рисуются */
+.upage .u-hero.has-banner { padding-top: calc(110px + env(safe-area-inset-top, 0px)); min-height: calc(var(--bnh, 0px) + env(safe-area-inset-top, 0px)); align-content: end; background: #000 !important; }
+.u-hero.has-banner > .u-banner { inset: 0; height: auto; }
+.u-hero.has-banner > .u-banner::after { background: linear-gradient(rgb(0 0 0 / .32), transparent 26%, rgb(0 0 0 / .1) 50%, rgb(0 0 0 / .66)); }
+.u-hero.has-banner h2, .u-hero.has-banner #uSeen, .u-hero.has-banner .u-acts .btn.ghost { color: #fff !important; }
+.u-hero.has-banner h2 { text-shadow: 0 1px 6px rgb(0 0 0 / .45); }
+.u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .4), 0 10px 24px rgb(0 0 0 / .4); }
+.u-hero.has-banner .qa-i { background: rgb(255 255 255 / .18); box-shadow: none; color: #fff; }
 .bn-edit { position: relative; height: 110px; border-radius: 14px; overflow: hidden; background: var(--panel-2); display: grid; place-items: center; }
 .bn-edit img, .bn-edit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .bn-empty { color: var(--muted); font-size: 14px; }
@@ -9377,8 +9381,8 @@ function paintUser(p) {
     const fit = () => {
       const w = bnEl.videoWidth || bnEl.naturalWidth, hh = bnEl.videoHeight || bnEl.naturalHeight;
       if (!w || !hh || !hero.clientWidth) return;
-      // в своих пропорциях, но не выше 60% экрана и не ниже 120px
-      hero.style.setProperty("--bnh", Math.round(Math.max(120, Math.min(innerHeight * 0.6, hero.clientWidth * hh / w))) + "px");
+      // шапка в пропорциях баннера (не выше 75% экрана) — видео почти не обрезается
+      hero.style.setProperty("--bnh", Math.round(Math.min(innerHeight * 0.75, hero.clientWidth * hh / w)) + "px");
     };
     bnEl.addEventListener(bnEl.tagName === "VIDEO" ? "loadedmetadata" : "load", fit, { once: true });
     if (bnEl.complete || bnEl.readyState >= 1) requestAnimationFrame(fit);
