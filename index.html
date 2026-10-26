@@ -1197,6 +1197,8 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .u-thumbs button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--panel-2); cursor: pointer; }
 .u-thumbs img, .u-thumbs video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .danger-row b { color: var(--danger); }
+.msg-tr { display: grid; gap: 2px; margin-top: 6px; padding: 6px 9px; border: 0; border-left: 3px solid var(--accent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: inherit; font: inherit; text-align: left; cursor: pointer; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-tr small { font-size: 11.5px; font-weight: 600; color: var(--accent); }
 .media-link { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); color: var(--accent); text-decoration: none; word-break: break-all; }
 .media-link b { font-weight: 500; }
 .grp-row .avatar { flex: none; }
@@ -3913,6 +3915,7 @@ void main() {
     <button class="btn ghost" type="button" id="maPin">Закрепить</button>
     <button class="btn ghost" type="button" id="maEdit">Изменить</button>
     <button class="btn ghost" type="button" id="maCopy">Скопировать текст</button>
+    <button class="btn ghost" type="button" id="maTr">Перевести</button>
     <button class="btn ghost" type="button" id="maReport">Пожаловаться</button>
     <button class="btn danger" type="button" id="maDel">Удалить</button>
     <button class="btn ghost" type="button" data-close>Отмена</button>
@@ -6287,6 +6290,9 @@ function msgNode(m, group) {
     const text = m.geo_lat != null ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
     if (m.geo_lat != null) { el.classList.add("geom"); el.append(geoCard(m)); }
     if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : linkify(text))));
+    const tr = !group && msgTr.get(m.id);
+    if (tr && tr.on) el.append(h("button", { class: "msg-tr", type: "button", title: T("Скрыть перевод"), onclick: (e) => { e.stopPropagation(); tr.on = false; repaintKeep(); } },
+      h("small", {}, tr.busy ? T("Переводим…") : T("Перевод")), tr.busy ? null : h("span", {}, tr.text)));
     if (Array.isArray(m.mentions) && m.mentions.includes(state.me.id)) el.classList.add("at-me");
   }
   const rr = reactRow(m);
@@ -6380,6 +6386,8 @@ function msgSig(m, group, c) {
   const rx = state.reacts.get(m.id);
   if (rx && rx.size) parts.push(JSON.stringify([...rx]), state.reactPop === null || state.reactPop === undefined ? "" : String(state.reactPop).startsWith(m.id + "|") ? state.reactPop : "");
   if (m.voice_secs != null || m.video_secs != null) parts.push(transcripts.get(m.id) || "", trBusy.has(m.id) ? 1 : 0, trHidden.has(m.id) ? 1 : 0);
+  const mt = msgTr.get(m.id);
+  if (mt) parts.push(mt.on ? 1 : 0, mt.busy ? 1 : 0, mt.text || "");
   // временные ссылки на файлы живут час: раз в 40 минут узел с файлом строится заново
   if (m.file_path) parts.push(Math.floor(Date.now() / 2400000));
   return parts.join("¦");
@@ -7895,6 +7903,8 @@ function openMsgMenu(m, group) {
   $("maPin").textContent = c && c.pinned === m.id ? T("Открепить") : T("Закрепить");
   $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type || !!m.event_kind || m.voice_secs != null || !!m.forwarded_from;
   $("maCopy").hidden = !m.body || !!m.gift_type || !!m.event_kind;
+  $("maTr").hidden = !m.body || !!m.gift_type || !!m.event_kind || !!group || m.geo_lat != null;
+  $("maTr").textContent = msgTr.get(m.id) && msgTr.get(m.id).on ? T("Скрыть перевод") : T("Перевести");
   $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
   $("maReport").hidden = m.sender_id === state.me.id || !!m.event_kind;
   $("dlgMsg").showModal();
@@ -7906,6 +7916,28 @@ function openMsgMenu(m, group) {
   }
 }
 $("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
+// перевод сообщения: ИИ переводит на язык интерфейса (если уже на нём — на другой), готовый перевод хранится
+var msgTr = new Map();   // id сообщения -> { text, on, busy }
+async function translateMsg(m) {
+  const cur = msgTr.get(m.id);
+  if (cur && cur.text) { cur.on = !cur.on; repaintKeep(); return; }
+  if (cur && cur.busy) return;
+  msgTr.set(m.id, { busy: true, on: true });
+  repaintKeep();
+  let r = null;
+  try {
+    const tok = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch(SUPABASE_URL + "/functions/v1/translate", { method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (tok || SUPABASE_KEY) },
+      body: JSON.stringify({ message_id: m.id, lang: window.SOROKA_LANG === "en" ? "en" : "ru" }) });
+    r = await res.json().catch(() => null);
+  } catch (e) {}
+  if (!r || !r.text) {
+    msgTr.delete(m.id);
+    toast(r && r.error === "limit" ? T("На сегодня переводы закончились — завтра снова можно") : T("Не получилось перевести. Попробуйте ещё раз."));
+  } else msgTr.set(m.id, { text: r.text, on: true });
+  repaintKeep();
+}
+$("maTr").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) translateMsg(actMsg); });
 $("maPin").addEventListener("click", () => {
   $("dlgMsg").close();
   if (!actMsg) return;

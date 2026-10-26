@@ -1770,3 +1770,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Экспорт чата (.txt), Очистить чат (clear_chat_history — только у себя), Заблокировать, Пожаловаться, Удалить чат.
 -- Темы: chats.theme (общая, видят все участники) и chat_members.theme (своя). set_chat_theme(chat, theme, both):
 -- both = true требует премиум (в группах — ещё и права админа чата); своя тема перекрывает общую. my_chat_themes().
+
+-- ===== Перевод сообщений (миграция message_translate, функция translate) =====
+-- Меню сообщения → «Перевести»: функция translate (Gemini тем же ключом, что ИИ-помощник; запасной — Pollinations)
+-- переводит на язык интерфейса (если уже на нём — на другой). Бесплатно: готовые переводы в private.msg_translations,
+-- новых — до 100 в день (премиум и админы — 500), учёт в private.translate_uses. tr_source/tr_get/tr_put/tr_take — только service_role.
