@@ -668,6 +668,9 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 #dlgDocs { width: min(620px, calc(100% - 24px)); }
 .auth-legal { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.45; }
 .auth-legal .link { font-size: inherit; padding: 0; display: inline; }
+.auth-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 12.5px; }
+.auth-foot a { color: var(--muted); text-decoration: none; }
+.auth-foot a:hover { color: var(--ink); text-decoration: underline; }
 .del-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 #adTabs { grid-auto-columns: minmax(max-content, 1fr); overflow-x: auto; scrollbar-width: none; }
 #adTabs button { white-space: nowrap; padding-inline: 10px; }
@@ -2367,7 +2370,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=245e9edace"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7a896702b1"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2812,6 +2815,7 @@ void main() {
           <div class="intro-copy">
             <h3>Мессенджер, который ощущается по-новому.</h3>
             <p><b>Mestario</b> — личные чаты, группы и каналы, подарки и NFT, ИИ-помощник @ai и своя валюта Mest. Быстро, красиво и всё в одном месте.</p>
+            <nav class="auth-foot" aria-label="Документы" style="justify-content:flex-start"><a href="/terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a><a href="/privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a><a href="/support.html" target="_blank" rel="noopener">Поддержка</a></nav>
           </div>
         </div>
       </div>
@@ -2949,6 +2953,7 @@ void main() {
     </div>
   </div>
   </div>
+  <nav class="auth-foot" aria-label="Документы"><a href="/terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a><a href="/privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a><a href="/support.html" target="_blank" rel="noopener">Поддержка</a></nav>
 </section>
 
 <!-- ============ мессенджер ============ -->
@@ -4583,7 +4588,7 @@ void main() {
       <button type="button" role="tab" data-doc="rules" aria-selected="false">Правила</button>
     </div>
     <div class="docs-body" id="docsBody"></div>
-    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+    <div class="actions"><a class="btn ghost" href="/support.html" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">Контакты поддержки</a><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
 
@@ -14974,7 +14979,7 @@ $("passForm").addEventListener("submit", (e) => {
 let kickedOnce = false;
 /* ---------- документы: соглашение, конфиденциальность, правила ---------- */
 // Тексты лежат здесь на двух языках целиком, а не в общем словаре: это длинные связные документы.
-const DOCS_DATE = { ru: "Редакция от 11 октября 2026 года", en: "Version of 11 October 2026" };
+const DOCS_DATE = { ru: "Редакция от 26 октября 2026 года", en: "Version of 26 October 2026" };
 const DOCS = {
   terms: {
     ru: ["Пользовательское соглашение", [
@@ -14982,41 +14987,45 @@ const DOCS = {
       ["2. Аккаунт", "Для регистрации нужны почта, пароль, имя и юзернейм. Указывайте свою почту: через неё восстанавливается доступ.\nВы отвечаете за сохранность пароля и за всё, что делается из вашего аккаунта. Не передавайте аккаунт другим людям.\nПользоваться Mestario можно с возраста, с которого закон вашей страны разрешает самостоятельно пользоваться такими сервисами; если вы младше — только с согласия родителей."],
       ["3. Что можно и чего нельзя", "Mestario предназначена для личного общения, групп и каналов. Запрещённое поведение перечислено в «Правилах» — они являются частью этого соглашения."],
       ["4. Ваши материалы", "Сообщения, фото, видео, истории и другие материалы остаются вашими. Вы разрешаете Mestario хранить их и показывать тем, кому вы их отправили или открыли, — это нужно, чтобы сервис работал.\nЗа содержание материалов отвечает тот, кто их отправил."],
-      ["5. Mest, премиум и подарки", "Mest — внутренняя игровая валюта Mestario. Это не деньги: их нельзя обменять на деньги, вывести или вернуть.\nПремиум, подарки, коллекционные юзернеймы и другие покупки за Mest действуют только внутри Mestario.\nС некоторых операций удерживается комиссия (продажа подарка, аукцион, розыгрыш) — её размер показывается до подтверждения.\nАдминистрация может менять цены, комиссии и набор функций."],
-      ["6. Блокировка и удаление", "За нарушение правил администрация может удалить материалы, ограничить функции или заблокировать аккаунт. Причину блокировки можно уточнить и обжаловать через поддержку — кнопка есть на экране блокировки.\nВы можете удалить аккаунт сами: Настройки → Безопасность → Удалить аккаунт. Удаление необратимо; Mest и покупки при этом пропадают."],
-      ["7. Как работает сервис", "Mestario предоставляется «как есть». Мы стараемся, чтобы она работала без сбоев, но не обещаем, что сервис будет доступен всегда и без ошибок, и не отвечаем за потерю данных из-за сбоев.\nЧтобы хранилище не переполнялось, файлы исчезнувших историй и удалённых сообщений стираются, а видео и видеосообщения хранятся до 6 месяцев."],
-      ["8. Изменения", "Соглашение может обновляться. Актуальная редакция всегда доступна в этом окне; о существенных изменениях мы сообщаем в канале обновлений. Продолжая пользоваться Mestario, вы соглашаетесь с новой редакцией."],
-      ["9. Связь", "Вопросы и жалобы — через поддержку: Настройки → Поддержка."]]],
+      ["5. Mest, премиум и подарки", "Mest — внутренняя валюта Mestario. Это цифровой товар, а не деньги: Mest нельзя обменять обратно на деньги, вывести или передать за пределы сервиса.\nПремиум, подарки, коллекционные юзернеймы, NFT-номера и другие покупки действуют только внутри Mestario. Покупка не передаёт вам исключительных прав на оформление, изображения и другие материалы сервиса.\nС некоторых операций удерживается комиссия (продажа подарка, аукцион, розыгрыш) — её размер показывается до подтверждения.\nАдминистрация может менять цены, комиссии и набор функций; уже оплаченные покупки при этом сохраняются."],
+      ["6. Оплата", "Mest и премиум можно купить за деньги. Цена, состав покупки и способ оплаты показываются до оплаты. Доступные способы: СБП (QR-код или ссылка в банковском приложении), криптовалюта, CryptoBot и xRocket.\nПлатёж проводит платёжный сервис-партнёр. Данные карты, банковского счёта или криптокошелька вводятся на его стороне — Mestario их не получает и не хранит.\nОплаченное зачисляется на аккаунт автоматически сразу после подтверждения платежа. Если через 24 часа покупка не появилась, напишите в поддержку и укажите номер или время платежа."],
+      ["7. Возврат", "Покупка считается исполненной, как только Mest или премиум зачислены на аккаунт. Зачисленные и тем более потраченные Mest, а также уже включённый премиум не возвращаются, если закон не требует иного.\nДеньги возвращаются, если платёж прошёл, а покупка не зачислилась, если с вас списали оплату дважды или из-за технической ошибки сервиса. Напишите в поддержку в течение 14 дней после платежа: после проверки мы вернём деньги тем же способом, которым вы платили, или зачислим покупку — по вашему выбору. Срок возврата — до 10 рабочих дней; комиссии банков и сетей могут удерживаться.\nПри блокировке аккаунта за нарушение правил оплаченные Mest и покупки не возвращаются."],
+      ["8. Блокировка и удаление", "За нарушение правил администрация может удалить материалы, ограничить функции или заблокировать аккаунт. Причину блокировки можно уточнить и обжаловать через поддержку — кнопка есть на экране блокировки.\nВы можете удалить аккаунт сами: Настройки → Безопасность → Удалить аккаунт. Удаление необратимо; Mest и покупки при этом пропадают."],
+      ["9. Как работает сервис", "Mestario предоставляется «как есть». Мы стараемся, чтобы она работала без сбоев, но не обещаем, что сервис будет доступен всегда и без ошибок, и не отвечаем за потерю данных из-за сбоев.\nЧтобы хранилище не переполнялось, файлы исчезнувших историй и удалённых сообщений стираются, а видео и видеосообщения хранятся до 6 месяцев."],
+      ["10. Изменения", "Соглашение может обновляться. Актуальная редакция всегда доступна в этом окне; о существенных изменениях мы сообщаем в канале обновлений. Продолжая пользоваться Mestario, вы соглашаетесь с новой редакцией."],
+      ["11. Связь", "Вопросы, жалобы и запросы о платежах — в поддержку: в приложении Настройки → Поддержка. Все способы связи: mestario.lol/support.html"]]],
     en: ["Terms of Use", [
       ["1. About this document", "This is an agreement between you and the administration of the Mestario messenger (mestario.lol). By creating an account or using Mestario you accept these terms. If you do not agree, please do not use the service."],
       ["2. Your account", "To sign up you need an email, a password, a name and a username. Use your own email: it is how access is restored.\nYou are responsible for keeping your password safe and for everything done from your account. Do not hand your account to other people.\nYou may use Mestario from the age at which the law of your country lets you use such services on your own; if you are younger, only with your parents' consent."],
       ["3. What is and isn't allowed", "Mestario is meant for private chats, groups and channels. Prohibited behaviour is listed in the Rules, which are part of these terms."],
       ["4. Your content", "Messages, photos, videos, stories and other content remain yours. You allow Mestario to store them and show them to the people you sent or opened them to — the service cannot work otherwise.\nWhoever sends content is responsible for it."],
-      ["5. Mest, premium and gifts", "Mest is Mestario's in-app play currency. They are not money: they cannot be exchanged for money, withdrawn or refunded.\nPremium, gifts, collectible usernames and other purchases made with coins work only inside Mestario.\nSome operations carry a fee (selling a gift, auctions, giveaways); its size is shown before you confirm.\nThe administration may change prices, fees and features."],
-      ["6. Blocking and deletion", "For breaking the rules the administration may remove content, restrict features or block an account. You can ask for the reason and appeal through support — the button is on the block screen.\nYou can delete your account yourself: Settings → Security → Delete account. Deletion is permanent; coins and purchases are lost."],
-      ["7. How the service works", "Mestario is provided \"as is\". We try to keep it running smoothly but do not promise it will always be available or error-free, and we are not liable for data lost because of failures.\nTo keep storage from filling up, files of expired stories and deleted messages are erased, and videos and video messages are kept for up to 6 months."],
-      ["8. Changes", "These terms may be updated. The current version is always available in this window; we announce significant changes in the updates channel. By continuing to use Mestario you accept the new version."],
-      ["9. Contact", "Questions and complaints go through support: Settings → Support."]]],
+      ["5. Mest, premium and gifts", "Mest is Mestario's in-app currency. It is a digital good, not money: Mest cannot be exchanged back for money, withdrawn or moved outside the service.\nPremium, gifts, collectible usernames, NFT numbers and other purchases work only inside Mestario. A purchase does not give you exclusive rights to the service's designs, images or other materials.\nSome operations carry a fee (selling a gift, auctions, giveaways); its size is shown before you confirm.\nThe administration may change prices, fees and features; purchases already paid for are kept."],
+      ["6. Payment", "Mest and premium can be bought for money. The price, what you get and the payment method are shown before you pay. Available methods: SBP (QR code or a link in your banking app), cryptocurrency, CryptoBot and xRocket.\nPayments are processed by a partner payment service. Card, bank account or crypto wallet details are entered on its side — Mestario neither receives nor stores them.\nThe purchase is credited to your account automatically as soon as the payment is confirmed. If it has not appeared within 24 hours, contact support with the payment number or time."],
+      ["7. Refunds", "A purchase is complete once Mest or premium has been credited to the account. Credited (let alone spent) Mest and premium that is already active are not refunded unless the law requires otherwise.\nMoney is refunded if the payment went through but the purchase was not credited, if you were charged twice, or because of a technical fault on our side. Contact support within 14 days of the payment: after checking, we will refund the money by the method you paid with or credit the purchase — your choice. Refunds take up to 10 business days; bank and network fees may be withheld.\nPaid Mest and purchases are not refunded when an account is blocked for breaking the rules."],
+      ["8. Blocking and deletion", "For breaking the rules the administration may remove content, restrict features or block an account. You can ask for the reason and appeal through support — the button is on the block screen.\nYou can delete your account yourself: Settings → Security → Delete account. Deletion is permanent; coins and purchases are lost."],
+      ["9. How the service works", "Mestario is provided \"as is\". We try to keep it running smoothly but do not promise it will always be available or error-free, and we are not liable for data lost because of failures.\nTo keep storage from filling up, files of expired stories and deleted messages are erased, and videos and video messages are kept for up to 6 months."],
+      ["10. Changes", "These terms may be updated. The current version is always available in this window; we announce significant changes in the updates channel. By continuing to use Mestario you accept the new version."],
+      ["11. Contact", "Questions, complaints and payment requests go to support: in the app, Settings → Support. All contact options: mestario.lol/support.html"]]],
   },
   privacy: {
     ru: ["Политика конфиденциальности", [
-      ["1. Какие данные мы храним", "Данные аккаунта: почта, пароль (в виде необратимого хеша — сам пароль никто не видит), имя, юзернейм, фото и описание профиля.\nТо, что вы создаёте: сообщения, файлы, фото, видео, голосовые и видеосообщения, истории, реакции, комментарии.\nСлужебные данные: время последнего входа в сеть, список устройств, с которых выполнен вход (тип браузера, IP-адрес, время), адреса для push-уведомлений, история операций с Mest, запросы в поддержку."],
-      ["2. Зачем", "Чтобы вы могли входить в аккаунт, переписываться, получать уведомления, видеть свои покупки, а мы — отвечать на запросы и пресекать нарушения. Для рекламы ваши данные не используются и никому не продаются."],
+      ["1. Какие данные мы храним", "Данные аккаунта: почта, пароль (в виде необратимого хеша — сам пароль никто не видит), имя, юзернейм, фото и описание профиля.\nТо, что вы создаёте: сообщения, файлы, фото, видео, голосовые и видеосообщения, истории, реакции, комментарии.\nСлужебные данные: время последнего входа в сеть, список устройств, с которых выполнен вход (тип браузера, IP-адрес, время), адреса для push-уведомлений, история операций с Mest, запросы в поддержку, технические отчёты об ошибках приложения.\nПри покупке за деньги: сумма, что куплено, способ оплаты, номер и статус платежа. Данные карты, банковского счёта и криптокошелька обрабатывает платёжный сервис — Mestario их не получает и не хранит."],
+      ["2. Зачем", "Чтобы вы могли входить в аккаунт, переписываться, получать уведомления, оплачивать и видеть свои покупки, а мы — отвечать на запросы, разбирать вопросы по платежам, исправлять ошибки и пресекать мошенничество и нарушения. Для рекламы ваши данные не используются и никому не продаются."],
       ["3. Кто что видит", "Сообщения видят участники чата. Имя, юзернейм, фото, описание, открытые подарки и истории видны другим пользователям.\nСкрытые подарки, дата окончания премиума, архив и закреплённые чаты видны только вам. Время «был в сети» можно скрыть в настройках.\nПереписка не защищена сквозным шифрованием: она хранится на сервере. Администраторы не читают личные чаты в обычной работе; доступ к данным возможен при разборе жалоб, нарушений и технических сбоев."],
-      ["4. Где хранятся данные", "База данных и файлы размещены на платформе Supabase, сайт — на GitHub Pages, уведомления доставляются через службы push вашего браузера. Эти сервисы обрабатывают данные по нашему поручению."],
-      ["5. Сколько хранятся", "Пока существует аккаунт. Исключения: истории исчезают по истечении срока, их файлы и файлы удалённых сообщений стираются; видео и видеосообщения хранятся до 6 месяцев."],
+      ["4. Где хранятся данные", "База данных и файлы размещены на платформе Supabase, сайт — на GitHub Pages, уведомления доставляются через службы push вашего браузера, платежи проводит платёжный сервис-партнёр. Эти сервисы получают только то, что нужно для их работы, и обрабатывают данные по нашему поручению. Государственным органам данные передаются только в случаях, прямо предусмотренных законом."],
+      ["5. Сколько хранятся", "Пока существует аккаунт; сведения о платежах — столько, сколько требует закон. Исключения: истории исчезают по истечении срока, их файлы и файлы удалённых сообщений стираются; видео и видеосообщения хранятся до 6 месяцев."],
       ["6. Ваши возможности", "Изменить имя, юзернейм, фото и описание — в профиле. Сменить почту и пароль, отключить устройства — Настройки → Безопасность. Удалить сообщение или переписку — в меню сообщения и чата.\nУдалить аккаунт — Настройки → Безопасность → Удалить аккаунт: профиль обезличивается, вход закрывается, почта освобождается. Сообщения, отправленные другим людям, остаются у них без вашего имени.\nЗапросить сведения о своих данных или их удаление можно через поддержку."],
       ["7. На устройстве", "Mestario хранит в браузере настройки оформления, список недавних поисков и ключ входа. Рекламных и сторонних отслеживающих файлов cookie нет."],
-      ["8. Изменения и связь", "Политика может обновляться; актуальная редакция всегда в этом окне. Вопросы — через поддержку: Настройки → Поддержка."]]],
+      ["8. Изменения и связь", "Политика может обновляться; актуальная редакция всегда в этом окне и на mestario.lol/privacy.html. Вопросы о данных — в поддержку: Настройки → Поддержка или mestario.lol/support.html."]]],
     en: ["Privacy Policy", [
-      ["1. What we store", "Account data: email, password (as an irreversible hash — nobody can see the password itself), name, username, profile photo and bio.\nWhat you create: messages, files, photos, videos, voice and video messages, stories, reactions, comments.\nService data: last-seen time, the list of devices signed in (browser type, IP address, time), push-notification endpoints, coin transaction history, support requests."],
-      ["2. Why", "So that you can sign in, chat, get notifications and see your purchases, and so that we can answer requests and stop abuse. Your data is not used for advertising and is not sold to anyone."],
+      ["1. What we store", "Account data: email, password (as an irreversible hash — nobody can see the password itself), name, username, profile photo and bio.\nWhat you create: messages, files, photos, videos, voice and video messages, stories, reactions, comments.\nService data: last-seen time, the list of devices signed in (browser type, IP address, time), push-notification endpoints, coin transaction history, support requests, technical error reports from the app.\nWhen you buy something for money: the amount, what was bought, the payment method, the payment number and status. Card, bank account and crypto wallet details are handled by the payment service — Mestario neither receives nor stores them."],
+      ["2. Why", "So that you can sign in, chat, get notifications, pay for and see your purchases, and so that we can answer requests, sort out payment issues, fix bugs and stop fraud and abuse. Your data is not used for advertising and is not sold to anyone."],
       ["3. Who sees what", "Messages are visible to the chat's members. Your name, username, photo, bio, visible gifts and stories are visible to other users.\nHidden gifts, the premium end date, archived and pinned chats are visible only to you. Last-seen time can be hidden in settings.\nChats are not end-to-end encrypted: they are stored on the server. Administrators do not read private chats in normal operation; data may be accessed when handling complaints, abuse and technical failures."],
-      ["4. Where data is kept", "The database and files are hosted on Supabase, the site on GitHub Pages, and notifications are delivered through your browser's push service. These services process data on our behalf."],
-      ["5. How long", "For as long as the account exists. Exceptions: stories disappear when they expire and their files, like files of deleted messages, are erased; videos and video messages are kept for up to 6 months."],
+      ["4. Where data is kept", "The database and files are hosted on Supabase, the site on GitHub Pages, notifications are delivered through your browser's push service, and payments are processed by a partner payment service. These services receive only what they need to work and process data on our behalf. Data is disclosed to authorities only where the law expressly requires it."],
+      ["5. How long", "For as long as the account exists; payment records for as long as the law requires. Exceptions: stories disappear when they expire and their files, like files of deleted messages, are erased; videos and video messages are kept for up to 6 months."],
       ["6. Your options", "Change your name, username, photo and bio in your profile. Change email and password or sign devices out in Settings → Security. Delete a message or a conversation from the message and chat menus.\nDelete your account in Settings → Security → Delete account: the profile is anonymised, sign-in is closed and the email is released. Messages you sent to other people stay with them without your name.\nYou can ask about your data or request its deletion through support."],
       ["7. On your device", "Mestario keeps appearance settings, recent searches and the sign-in key in your browser. There are no advertising or third-party tracking cookies."],
-      ["8. Changes and contact", "This policy may be updated; the current version is always in this window. Questions go through support: Settings → Support."]]],
+      ["8. Changes and contact", "This policy may be updated; the current version is always in this window and at mestario.lol/privacy.html. Data questions go to support: Settings → Support or mestario.lol/support.html."]]],
   },
   rules: {
     ru: ["Правила Mestario", [
