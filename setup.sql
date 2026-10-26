@@ -1781,3 +1781,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- лучшие посты, итоги. Владелец, админы чата и админы сайта. Дополняет старую channel_stats(p_chat) в окне «Статистика»
 -- (графики «Подписчики за 30 дней» и «Просмотры постов по дням публикации», среднее и охват).
 -- (функция создана как channel_stats(uuid,int) и сразу переименована: alter function ... rename to channel_stats_v2)
+
+-- ===== GIF (миграция gif_messages, функция gif) =====
+-- messages.gif_url — ссылка на ролик GIPHY (только media*.giphy.com / i.giphy.com); в списке чатов и push — «GIF».
+-- Ограничение messages_not_empty дополнено условием gif_url is not null (alter table … drop/add constraint).
+-- Ключ GIPHY: админка → Статистика → «GIF (GIPHY)» (admin_set_gif_key), хранится в private.gif_config;
+-- функция gif читает его через gif_server_config() (только service_role). gif_configured() — задан ли ключ.
+-- Панель стикеров: вкладка «GIF» — популярные и поиск. push v10: превью «GIF».

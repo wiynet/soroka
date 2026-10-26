@@ -699,6 +699,17 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .stk-grid img { width: 100%; height: 100%; object-fit: contain; }
 .stk-grid .del { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--danger); color: #fff; font-size: 14px; line-height: 22px; padding: 0; }
 .stk-grid .add { border: 2px dashed var(--line); color: var(--muted); font-size: 28px; }
+.stk-tabs .gif-tab { font-weight: 800; letter-spacing: .04em; }
+.stk-grid:has(> .gif-bar) { display: flex; flex-direction: column; gap: 8px; }
+.gif-bar .gif-q { width: 100%; padding: 8px 12px; border-radius: 12px; }
+.gif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.gif-grid .gif-it { aspect-ratio: 1; padding: 0; overflow: hidden; border-radius: 10px; background: var(--panel-2); }
+.gif-grid video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gif-grid .stk-empty, .gif-grid .gif-more { grid-column: 1 / -1; }
+.msg.gifm { padding: 4px !important; }
+.gif-box { position: relative; border-radius: 12px; overflow: hidden; max-width: 260px; }
+.gif-box video { display: block; width: 100%; max-height: 300px; object-fit: cover; background: var(--panel-2); }
+.gif-badge { position: absolute; left: 8px; top: 8px; padding: 1px 6px; border-radius: 6px; background: rgb(0 0 0 / .5); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
 .stk-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 14px; display: grid; gap: 10px; justify-items: center; }
 .composer { position: relative; }
 .poll-card { display: grid; gap: 8px; min-width: min(280px, 70vw); }
@@ -3461,6 +3472,12 @@ void main() {
       <div class="stats" id="adStats"></div>
       <div class="site-row"><div class="tx"><b id="adSiteState">Сайт открыт</b><div class="small muted" id="adSiteSub"></div></div><button class="btn ghost" type="button" id="adSiteBtn">Закрыть сайт</button></div>
       <div class="hint">«В сети» считает тех, кто был активен за последние две минуты.</div>
+      <div class="set-label" style="margin:0">GIF (GIPHY)</div>
+      <div class="ad-grid">
+        <input class="input" id="adGifKey" type="password" autocomplete="off" spellcheck="false" placeholder="API-ключ GIPHY">
+        <button class="btn ghost" type="button" id="adGifSave">Сохранить ключ</button>
+      </div>
+      <div class="hint" id="adGifHint">Ключ берётся на developers.giphy.com → Create an App → API. Он хранится только в базе.</div>
     </div>
 
     <div data-pane="users" style="display:grid;gap:10px" hidden>
@@ -6233,6 +6250,11 @@ function msgNode(m, group) {
   }
   if (m.poll_id) {
     el.append(pollCard(m));
+  } else if (m.gif_url) {
+    el.classList.add("gifm");
+    const v = h("video", { class: "gif", src: m.gif_url, muted: true, autoplay: true, loop: true, playsinline: true, preload: "auto", "aria-label": "GIF" });
+    v.muted = true;
+    el.append(h("div", { class: "gif-box" }, v, h("span", { class: "gif-badge" }, "GIF")));
   } else if (m.sticker_path) {
     el.classList.add("stk");
     el.append(h("img", { class: "sticker", src: avatarUrl(m.sticker_path), alt: T("Стикер"), loading: "lazy", onclick: (e) => { e.stopPropagation(); openPackBySticker(m.sticker_id); } }));
@@ -6547,6 +6569,7 @@ function addMsg(m) {
 const albumSeen = new Map();   // альбом → { ids, img, vid, cap }: сообщения альбома приходят по одному
 function mediaLabel(m) {
   if (m.sticker_path || m.sticker_id) return "Стикер";
+  if (m.gif_url) return "GIF";
   const kind = !m.file_path || m.voice_secs != null || m.video_secs != null ? "" : (m.file_type || "").startsWith("image/") ? "img" : (m.file_type || "").startsWith("video/") ? "vid" : "";
   let img = kind === "img" ? 1 : 0, vid = kind === "vid" ? 1 : 0, cap = m.body || "";
   if (m.album_id && kind) {
@@ -7822,6 +7845,7 @@ function showAdminTab(name) {
   if (name === "stats") { loadStats(); checkSite(); }
   if (name === "users") { loadSupportAdmin(); loadAllUsers(); loadAdmins(); loadBanned(); }
   if (name === "nft") { loadCollectibles(); loadNumbers(); }
+  if (name === "stats") sb.rpc("gif_configured").then(({ data }) => { $("adGifHint").textContent = data ? T("Ключ GIPHY задан — поиск GIF работает. Чтобы заменить, вставьте новый.") : T("Ключ берётся на developers.giphy.com → Create an App → API. Он хранится только в базе."); });
   if (name === "tickets") loadTickets();
   if (name === "reports") loadReports();
 }
@@ -8481,6 +8505,18 @@ async function loadNumbers() {
     } }, T("Забрать")))));
 }
 numInput($("adNum"));
+$("adGifSave").addEventListener("click", async () => {
+  const k = $("adGifKey").value.trim();
+  if (!k) { toast(T("Вставьте ключ GIPHY")); return; }
+  $("adGifSave").disabled = true;
+  const { error } = await sb.rpc("admin_set_gif_key", { p_key: k });
+  $("adGifSave").disabled = false;
+  if (error) { toast(/bad key/.test(error.message || "") ? T("Ключ выглядит неправильно") : T("Не удалось сохранить ключ")); return; }
+  $("adGifKey").value = "";
+  $("adGifHint").textContent = T("Ключ GIPHY задан — поиск GIF работает. Чтобы заменить, вставьте новый.");
+  gifs.err = ""; gifs.items = [];
+  toast(T("Ключ сохранён"));
+});
 $("adNumOwner").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
 for (const id of ["adNum", "adNumOwner"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("adNumGo").click(); } });
 $("adNumGo").addEventListener("click", async () => {
@@ -14218,13 +14254,16 @@ async function loadStickers() {
     const st = await sb.from("stickers").select("id,pack_id,file_path,position").in("pack_id", ids).is("deleted_at", null).order("position");
     for (const x of st.data || []) (stk.items.get(x.pack_id) || []).push(x);
   }
-  if (!stk.packs.some((p) => p.id === stk.cur)) stk.cur = stk.packs[0] ? stk.packs[0].id : null;
+  if (stk.cur !== "gif" && !stk.packs.some((p) => p.id === stk.cur)) stk.cur = stk.packs[0] ? stk.packs[0].id : "gif";
   stk.loaded = true;
 }
 function paintStickerPanel() {
-  const tabs = stk.packs.map((p) => h("button", { type: "button", "aria-pressed": String(p.id === stk.cur), onclick: () => { stk.cur = p.id; paintStickerPanel(); } }, p.title));
+  if (!stk.cur) stk.cur = stk.packs[0] ? stk.packs[0].id : "gif";
+  const tabs = [h("button", { type: "button", class: "gif-tab", "aria-pressed": String(stk.cur === "gif"), onclick: () => { stk.cur = "gif"; paintStickerPanel(); } }, "GIF"),
+    ...stk.packs.map((p) => h("button", { type: "button", "aria-pressed": String(p.id === stk.cur), onclick: () => { stk.cur = p.id; paintStickerPanel(); } }, p.title))];
   tabs.push(h("button", { type: "button", title: T("Создать набор"), onclick: () => { closeStickers(); openPackEditor(null); } }, "＋ " + T("Набор")));
   $("stkTabs").replaceChildren(...tabs);
+  if (stk.cur === "gif") { paintGifs(); return; }
   const pack = stk.packs.find((p) => p.id === stk.cur);
   if (!pack) {
     $("stkGrid").replaceChildren(h("div", { class: "stk-empty", style: "grid-column:1/-1" }, T("У вас пока нет стикеров. Создайте свой набор из картинок или добавьте чужой, нажав на стикер в переписке."),
@@ -14245,6 +14284,63 @@ async function toggleStickers() {
 }
 function closeStickers() { $("stkPanel").hidden = true; }
 document.addEventListener("pointerdown", (e) => { if (!$("stkPanel").hidden && !$("stkPanel").contains(e.target) && !$("btnStk").contains(e.target)) closeStickers(); });
+/* ---------- GIF: поиск GIPHY через функцию gif, в сообщении — ссылка на ролик ---------- */
+const gifs = { q: "", items: [], next: 0, busy: false, err: "", seq: 0, input: null };
+async function loadGifs(more) {
+  if (gifs.busy && more) return;
+  const seq = ++gifs.seq;
+  gifs.busy = true; gifs.err = "";
+  if (!more) { gifs.items = []; gifs.next = 0; }
+  paintGifGrid();
+  let r = null;
+  try {
+    const tok = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch(SUPABASE_URL + "/functions/v1/gif", { method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (tok || SUPABASE_KEY) },
+      body: JSON.stringify({ q: gifs.q, offset: gifs.next, lang: window.SOROKA_LANG }) });
+    r = await res.json().catch(() => null);
+  } catch (e) {}
+  if (seq !== gifs.seq) return;
+  gifs.busy = false;
+  if (!r || !Array.isArray(r.items)) gifs.err = r && r.error === "not configured" ? "off" : r && r.error === "busy" ? "busy" : "net";
+  else { gifs.items.push(...r.items); gifs.next = r.next; gifs.more = r.items.length >= 24 && gifs.next < (r.total || 0); }
+  paintGifGrid();
+}
+function paintGifs() {
+  if (!gifs.input) {
+    gifs.input = h("input", { class: "input gif-q", type: "search", placeholder: T("Поиск GIF"), "aria-label": T("Поиск GIF"), maxlength: "60" });
+    gifs.input.addEventListener("input", debounce(() => { gifs.q = gifs.input.value.trim(); loadGifs(false); }, 350));
+  }
+  $("stkGrid").replaceChildren(h("div", { class: "gif-bar" }, gifs.input), h("div", { class: "gif-grid", id: "gifGrid" }));
+  if (!gifs.items.length && !gifs.busy) loadGifs(false); else paintGifGrid();
+}
+function paintGifGrid() {
+  const g = document.getElementById("gifGrid");
+  if (!g) return;
+  if (gifs.err) {
+    g.replaceChildren(h("div", { class: "stk-empty" }, gifs.err === "off" ? T("GIF пока не подключены: администратору нужно указать ключ GIPHY в админке.") : gifs.err === "busy" ? T("Слишком много запросов. Попробуйте через минуту.") : T("Не удалось загрузить GIF.")));
+    return;
+  }
+  const kids = gifs.items.map((x) => {
+    const v = h("video", { src: x.preview, muted: true, autoplay: true, loop: true, playsinline: true, preload: "metadata", "aria-label": x.title || "GIF" });
+    v.muted = true;
+    return h("button", { type: "button", class: "gif-it", title: x.title || "GIF", onclick: () => sendGif(x) }, v);
+  });
+  if (gifs.busy) kids.push(h("div", { class: "stk-empty" }, T("Загружаем…")));
+  else if (!gifs.items.length) kids.push(h("div", { class: "stk-empty" }, T("Ничего не нашли.")));
+  else if (gifs.more) kids.push(h("button", { type: "button", class: "btn ghost gif-more", onclick: () => loadGifs(true) }, T("Ещё")));
+  g.replaceChildren(...kids);
+}
+async function sendGif(x) {
+  const chatId = state.activeId; if (!chatId || !x.mp4) return;
+  closeStickers();
+  const row = { chat_id: chatId, sender_id: state.me.id, gif_url: x.mp4 };
+  if (state.replyTo) { row.reply_to = state.replyTo.id; cancelReply(); }
+  const { data, error } = await sb.from("messages").insert(row).select().single();
+  if (error) { toast(/slow mode/.test(error.message || "") ? T("В чате включён медленный режим — подождите") : T("Не удалось отправить GIF")); return; }
+  touchChat(data);
+  if (state.activeId === chatId && !state.msgs.some((m) => m.id === data.id)) addMsg(data);
+  renderList();
+}
 async function sendSticker(x) {
   const chatId = state.activeId; if (!chatId) return;
   closeStickers();
