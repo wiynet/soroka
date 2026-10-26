@@ -1790,12 +1790,13 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 /* вход через браузер */
 .ho-btn { width: 100%; margin-top: 4px; }
-/* вход через Google */
-.or-sep { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; margin: 2px 0; }
-.or-sep::before, .or-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.or-sep[hidden], .g-btn[hidden] { display: none; }
-.g-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; }
-.g-ico { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--panel); font-size: 13px; font-weight: 800; line-height: 1; }
+/* вход через Google: маленькая круглая кнопка с логотипом внизу формы */
+.g-btn { justify-self: center; align-self: center; width: 44px; height: 44px; margin: 4px auto 0; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .08); transition: transform .12s var(--ease), box-shadow .2s; }
+.g-btn:hover { box-shadow: 0 4px 14px rgb(0 0 0 / .14); }
+.g-btn:active { transform: scale(.92); }
+.g-btn[hidden] { display: none; }
+.g-btn img { width: 22px; height: 22px; display: block; }
+.g-btn b { color: #131c22; font-size: 18px; }
 .ho-btn[hidden] { display: none; }
 .ho-code { font-size: 40px; font-weight: 800; letter-spacing: .3em; text-align: center; padding: 10px 0 4px; font-variant-numeric: tabular-nums; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
@@ -2684,10 +2685,9 @@ void main() {
       <label class="field ic-lock"><span>Пароль</span><input class="input" placeholder="Пароль" id="loginPass" type="password" autocomplete="current-password" required></label>
       <div class="error" id="loginErr"></div>
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
-      <div class="or-sep" data-google hidden><span>или</span></div>
-      <button class="btn ghost g-btn" type="button" data-google hidden><span class="g-ico" aria-hidden="true">G</span><span>Войти через Google</span></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="signupForm" data-view="signup" novalidate hidden>
@@ -2701,9 +2701,8 @@ void main() {
         <div class="hint">Не короче 8 символов</div></label>
       <div class="error" id="signupErr"></div>
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
-      <div class="or-sep" data-google hidden><span>или</span></div>
-      <button class="btn ghost g-btn" type="button" data-google hidden><span class="g-ico" aria-hidden="true">G</span><span>Продолжить с Google</span></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="resetForm" data-view="reset" novalidate hidden>
@@ -11441,6 +11440,12 @@ $("haYes").addEventListener("click", () => decideApprove(true));
 $("haNo").addEventListener("click", () => decideApprove(false));
 
 /* ---------- вход и регистрация через Google ---------- */
+// официальный значок Google берётся с его же сервера; не загрузился — запасной адрес, потом просто буква
+function gLogoFail(img) {
+  if (!img.dataset.alt) { img.dataset.alt = "1"; img.src = "https://developers.google.com/identity/images/g-logo.png"; return; }
+  img.replaceWith(Object.assign(document.createElement("b"), { textContent: "G" }));
+}
+window.gLogoFail = gLogoFail;
 // кнопка показывается, только когда вход через Google включён в Supabase (узнаём из открытых настроек входа)
 let googleOn = false;
 try { googleOn = localStorage.getItem("mestario.gauth") === "1"; } catch (e) {}
