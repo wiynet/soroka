@@ -1788,3 +1788,11 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Ключ GIPHY: админка → Статистика → «GIF (GIPHY)» (admin_set_gif_key), хранится в private.gif_config;
 -- функция gif читает его через gif_server_config() (только service_role). gif_configured() — задан ли ключ.
 -- Панель стикеров: вкладка «GIF» — популярные и поиск. push v10: превью «GIF».
+
+-- ===== Вход по NFT-номеру (миграции number_login, number_login_digits; функция number-login) =====
+-- Системный бот «Mestario» @mest (is_bot, verified) — private.system_accounts('login_bot'). Экран входа → «Войти по NFT-номеру +555».
+-- nl_start(number): номер ищется по цифрам; не чаще раза в минуту и 5 раз в час; код (6 цифр, в базе только sha256)
+-- приходит сообщением от @mest в личный чат владельца (push на все устройства); функция ещё шлёт письмо с кодом
+-- (signInWithOtp, шаблон Magic link). nl_check(id, code): 5 попыток, 10 минут. Подошёл код бота — generateLink(magiclink)
+-- → клиент verifyOtp(token_hash); подошёл код из письма — verifyOtp(email) на сервере → клиент setSession.
+-- nl_* — только service_role.

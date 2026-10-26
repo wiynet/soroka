@@ -2759,6 +2759,7 @@ void main() {
       <div class="error" id="loginErr"></div>
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
+      <button class="link" type="button" data-go="numlogin" id="goNumLogin">Войти по NFT-номеру +555</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
       <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
@@ -2776,6 +2777,20 @@ void main() {
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
       <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+    </form>
+
+    <form id="numForm" data-view="numlogin" novalidate hidden>
+      <div class="code-head">
+        <div class="code-ico" aria-hidden="true">☎</div>
+        <b>Вход по NFT-номеру</b>
+        <div class="small muted" id="nlText">Введите свой номер +555. Код придёт от бота «Mestario» в чат на ваших устройствах и на почту.</div>
+      </div>
+      <label class="field" id="nlNumWrap"><span>Номер</span><div class="num-wrap"><input class="input" id="nlNum" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="12 34 56"></div></label>
+      <input class="input code-input" id="nlCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="000000" aria-label="Код" hidden>
+      <div class="error" id="nlErr"></div>
+      <button class="btn go" type="submit"><span id="nlGo">Получить код</span><b aria-hidden="true">→</b></button>
+      <button class="link" type="button" id="nlAgain" hidden>Ввести другой номер</button>
+      <button class="link" type="button" data-go="login">Назад ко входу</button>
     </form>
 
     <form id="resetForm" data-view="reset" novalidate hidden>
@@ -11979,6 +11994,71 @@ async function decideApprove(ok) {
 }
 $("haYes").addEventListener("click", () => decideApprove(true));
 $("haNo").addEventListener("click", () => decideApprove(false));
+
+/* ---------- вход по NFT-номеру: код от бота @mest в чат и на почту ---------- */
+let nlReq = null;
+numInput($("nlNum"));
+function nlReset() {
+  nlReq = null;
+  $("nlNumWrap").hidden = false; $("nlCode").hidden = true; $("nlAgain").hidden = true;
+  $("nlCode").value = ""; $("nlErr").textContent = "";
+  $("nlGo").textContent = T("Получить код");
+  $("nlText").textContent = T("Введите свой номер +555. Код придёт от бота «Mestario» в чат на ваших устройствах и на почту.");
+}
+$("goNumLogin").addEventListener("click", () => { nlReset(); setTimeout(() => { if (canAutoFocus()) $("nlNum").focus(); }, 50); });
+$("nlAgain").addEventListener("click", () => { nlReset(); $("nlNum").focus(); });
+async function nlCall(body) {
+  try {
+    const r = await fetch(SUPABASE_URL + "/functions/v1/number-login", { method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify(body) });
+    return await r.json().catch(() => ({ error: "server" }));
+  } catch (e) { return { error: "network" }; }
+}
+$("numForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = $("nlErr"), btn = e.target.querySelector("button[type=submit]");
+  err.textContent = "";
+  if (!nlReq) {
+    const num = $("nlNum").value.trim();
+    if (!/[0-9]/.test(num)) { err.textContent = T("Введите номер после +555."); return; }
+    btn.disabled = true;
+    const r = await nlCall({ action: "start", number: num });
+    btn.disabled = false;
+    if (!r.id) {
+      err.textContent = r.error === "not found" ? T("Такого NFT-номера нет или он никому не принадлежит.") : r.error === "wait" ? T("Код уже отправлен. Новый можно запросить через минуту.")
+        : r.error === "limit" ? T("Слишком много попыток. Попробуйте через час.") : r.error === "bad number" ? T("Номер: после +555 до 10 символов — цифры и пробелы.") : T("Не получилось. Проверьте интернет и попробуйте ещё раз.");
+      return;
+    }
+    nlReq = r;
+    $("nlNumWrap").hidden = true; $("nlCode").hidden = false; $("nlAgain").hidden = false;
+    $("nlGo").textContent = T("Войти");
+    $("nlText").textContent = r.number + T(": код отправлен сообщением от «Mestario» в чат на ваших устройствах") + (r.email ? T(" и письмом на ") + r.email : "") + T(". Подходит любой из них.");
+    $("nlCode").focus();
+    return;
+  }
+  const code = $("nlCode").value.replace(/\D/g, "");
+  if (code.length < 6) { err.textContent = T("Введите код из 6 цифр."); return; }
+  btn.disabled = true;
+  const r = await nlCall({ action: "verify", id: nlReq.id, code });
+  if (r.token_hash) {
+    const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: "magiclink" });
+    btn.disabled = false;
+    if (error) { err.textContent = T("Не получилось войти. Попробуйте ещё раз."); return; }
+    nlReq = null;
+    return;
+  }
+  if (r.session) {
+    const { error } = await sb.auth.setSession(r.session);
+    btn.disabled = false;
+    if (error) { err.textContent = T("Не получилось войти. Попробуйте ещё раз."); return; }
+    nlReq = null;
+    return;
+  }
+  btn.disabled = false;
+  err.textContent = r.error === "wrong" ? T("Неверный код.") + (r.left > 0 ? T(" Осталось попыток: ") + r.left : "")
+    : r.error === "attempts" ? T("Слишком много неверных попыток. Запросите новый код.") : r.error === "expired" ? T("Код устарел. Запросите новый.")
+    : r.error === "gone" ? T("Этот код уже использован. Запросите новый.") : T("Не получилось. Попробуйте ещё раз.");
+  if (r.error === "attempts" || r.error === "expired" || r.error === "gone") { nlReq = null; $("nlAgain").hidden = false; }
+});
 
 /* ---------- вход и регистрация через Google ---------- */
 // официальный значок Google берётся с его же сервера; не загрузился — запасной адрес, потом просто буква
