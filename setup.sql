@@ -1739,3 +1739,16 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Прокрутка: обработчик scroll ничего не делает, если меню закрыто; в «жидком стекле» нет размытия под каждым пузырём.
 -- Исправлено: класс .me редактора ломал кнопку «Скачать приложение» и пузыри поддержки (теперь .me-wrap);
 -- кнопки в шапке профиля снова поверх баннера, баннер выше (170px) и аватарка заходит на него снизу.
+
+-- ===== Вход через Google (клиент index.html; база не менялась) =====
+-- Кнопки «Войти через Google» / «Продолжить с Google» показываются сами, когда Google включён в Supabase
+-- (клиент читает открытые настройки /auth/v1/settings). Новый пользователь попадает на шаг «имя и юзернейм»:
+-- имя из Google, юзернейм предлагается из почты. Хук custom_access_token_hook код из письма требует только
+-- для входа по паролю — вход через Google его не просит.
+-- В приложениях (Android, iPhone, Windows) Google не пускает во встроенное окно: вход идёт через системный браузер
+-- (#gapprove-<id> → вход через Google → подтверждение «Войти в приложение»), как «Войти через браузер».
+-- Настройка (один раз, вручную):
+--   Google Cloud → APIs & Services → OAuth consent screen (External) и Credentials → OAuth client ID (Web application):
+--     Authorized JavaScript origins: https://mestario.lol
+--     Authorized redirect URIs:     https://zgjptlyhflfwbnmzpdsa.supabase.co/auth/v1/callback
+--   Supabase → Authentication → Sign In / Providers → Google: включить, вставить Client ID и Client Secret, Save.

@@ -1790,6 +1790,12 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 /* вход через браузер */
 .ho-btn { width: 100%; margin-top: 4px; }
+/* вход через Google */
+.or-sep { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; margin: 2px 0; }
+.or-sep::before, .or-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.or-sep[hidden], .g-btn[hidden] { display: none; }
+.g-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; }
+.g-ico { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--panel); font-size: 13px; font-weight: 800; line-height: 1; }
 .ho-btn[hidden] { display: none; }
 .ho-code { font-size: 40px; font-weight: 800; letter-spacing: .3em; text-align: center; padding: 10px 0 4px; font-variant-numeric: tabular-nums; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
@@ -2678,6 +2684,8 @@ void main() {
       <label class="field ic-lock"><span>Пароль</span><input class="input" placeholder="Пароль" id="loginPass" type="password" autocomplete="current-password" required></label>
       <div class="error" id="loginErr"></div>
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
+      <div class="or-sep" data-google hidden><span>или</span></div>
+      <button class="btn ghost g-btn" type="button" data-google hidden><span class="g-ico" aria-hidden="true">G</span><span>Войти через Google</span></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
     </form>
@@ -2693,6 +2701,8 @@ void main() {
         <div class="hint">Не короче 8 символов</div></label>
       <div class="error" id="signupErr"></div>
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
+      <div class="or-sep" data-google hidden><span>или</span></div>
+      <button class="btn ghost g-btn" type="button" data-google hidden><span class="g-ico" aria-hidden="true">G</span><span>Продолжить с Google</span></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
     </form>
 
@@ -4383,6 +4393,16 @@ if (!window.supabase) {
   document.body.textContent = T("Не удалось загрузить библиотеку. Проверьте интернет и обновите страницу.");
   throw new Error("supabase-js not loaded");
 }
+// ошибка входа через Google приходит в адресе после возврата (#error=… или ?error=…): запоминаем её до того, как адрес почистится
+const OAUTH_ERR = (() => {
+  try {
+    const q = new URLSearchParams(location.hash.slice(1)), q2 = new URLSearchParams(location.search);
+    const e = q.get("error_description") || q.get("error") || q2.get("error_description") || q2.get("error");
+    if (!e) return "";
+    history.replaceState(null, "", location.pathname);
+    return e;
+  } catch (x) { return ""; }
+})();
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const state = {
@@ -5056,8 +5076,15 @@ function onAuth(event, session) {
     if (next) { switchTo(next); return; }
     showAuth("login");
     // пришли по ссылке «Войти через браузер», а в этом браузере вход не выполнен — без интро, сразу с подсказкой
-    if (/^#approve-/.test(location.hash)) $("loginErr").textContent = T("Чтобы подтвердить вход в приложение, сначала войдите здесь в свой аккаунт — запрос появится сразу после входа.");
-    else showIntro("login");
+    const ap = /^#(g?)approve-([0-9a-f-]{36})$/.exec(location.hash);
+    if (ap) {
+      // запрос из приложения запоминаем: после входа (в том числе через Google, когда адрес сменится) покажем его
+      try { sessionStorage.setItem("mestario.approve", JSON.stringify({ id: ap[2], t: Date.now() })); } catch (e) {}
+      $("loginErr").textContent = T("Чтобы подтвердить вход в приложение, сначала войдите здесь в свой аккаунт — запрос появится сразу после входа.");
+      if (ap[1]) checkGoogle().then(() => { if (googleOn && !state.me) { $("loginErr").textContent = T("Открываем вход через Google…"); googleLogin(null); } });
+    } else if (OAUTH_ERR) {
+      $("loginErr").textContent = /cancel|denied/i.test(OAUTH_ERR) ? T("Вход через Google отменён.") : T("Не получилось войти через Google: ") + OAUTH_ERR;
+    } else showIntro("login");
     return;
   }
   if (state.recovering) return;
@@ -5138,12 +5165,21 @@ async function enter() {
     return;
   }
   const meta = state.me.user_metadata || {};
-  const name = String(meta.display_name || "").trim().slice(0, 64);
+  const name = String(meta.display_name || meta.full_name || meta.name || "").trim().slice(0, 64);
   const username = String(meta.username || "").toLowerCase();
   const made = name && USERNAME_RE.test(username) ? await createProfile(username, name) : "";
   if (made === "ok") { startApp(); return; }
   $("unName").value = name;
   $("unUser").value = "";
+  // вошли через Google: юзернейм предлагаем из почты (его можно поменять), свободен ли — подскажет проверка ниже
+  const viaGoogle = (state.me.app_metadata || {}).provider === "google" || (state.me.identities || []).some((i) => i.provider === "google");
+  if (viaGoogle && !username) {
+    let u = String(state.me.email || "").split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (!/^[a-z]/.test(u)) u = "u" + u;
+    while (u.length < 4) u += Math.floor(Math.random() * 10);
+    $("unUser").value = u.slice(0, 32);
+    $("unUser").dispatchEvent(new Event("input"));
+  }
   showAuth("username");
   if (made === "ip") { $("usernameErr").textContent = T("С этого адреса уже создано слишком много аккаунтов. Новый создать нельзя."); return; }
   if (username) $("usernameErr").textContent = T("Юзернейм @") + username + T(" успели занять. Выберите другой.");
@@ -11316,7 +11352,7 @@ function hoDevice() {
   return model && !/^wv$|^K$/.test(model) ? kind + " · " + model.trim() : kind;
 }
 let ho = null;
-function hoLink() { return ho ? PUBLIC_SITE + "#approve-" + ho.id : ""; }
+function hoLink() { return ho ? PUBLIC_SITE + (ho.google ? "#gapprove-" : "#approve-") + ho.id : ""; }
 function hoOpen() {
   if (!ho) return;
   const url = hoLink();
@@ -11325,13 +11361,14 @@ function hoOpen() {
   if (IN_ELECTRON) window.open(url.replace(/^https:/, "http:"), "_blank");   // программа отдаёт такие ссылки обычному браузеру
   else location.href = url;                       // приложение на телефоне открывает чужой адрес в системном браузере
 }
-async function loginViaBrowser() {
+async function loginViaBrowser(google) {
+  google = google === true;   // как обработчик нажатия функция получает событие — это не «через Google»
   const b = $("loginBrowser");
   b.disabled = true;
   const r = await hoCall({ action: "create", device: hoDevice() });
   b.disabled = false;
   if (!r.id || !r.secret) { $("loginErr").textContent = r.error === "busy" ? T("Слишком много попыток. Подождите минуту.") : T("Не получилось. Проверьте интернет и попробуйте ещё раз."); return; }
-  ho = { id: r.id, secret: r.secret, until: Date.now() + 5 * 60 * 1000, busy: false };
+  ho = { id: r.id, secret: r.secret, until: Date.now() + 5 * 60 * 1000, busy: false, google };
   $("hoCode").textContent = hoCode(r.id);
   $("hoState").textContent = T("Ждём подтверждения…");
   $("dlgHoWait").showModal();
@@ -11402,6 +11439,40 @@ async function decideApprove(ok) {
 }
 $("haYes").addEventListener("click", () => decideApprove(true));
 $("haNo").addEventListener("click", () => decideApprove(false));
+
+/* ---------- вход и регистрация через Google ---------- */
+// кнопка показывается, только когда вход через Google включён в Supabase (узнаём из открытых настроек входа)
+let googleOn = false;
+try { googleOn = localStorage.getItem("mestario.gauth") === "1"; } catch (e) {}
+function paintGoogle() { for (const el of document.querySelectorAll("[data-google]")) el.hidden = !googleOn; }
+let googleCheck = null;
+function checkGoogle() {
+  if (!googleCheck) googleCheck = fetch(SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: SUPABASE_KEY } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d || !d.external) return;
+      googleOn = !!d.external.google;
+      try { localStorage.setItem("mestario.gauth", googleOn ? "1" : "0"); } catch (e) {}
+      paintGoogle();
+    })
+    .catch(() => {});
+  return googleCheck;
+}
+paintGoogle();
+checkGoogle();
+async function googleLogin(btn) {
+  const form = btn && btn.closest("form"), err = form ? form.querySelector(".error") : $("loginErr");
+  if (err) err.textContent = "";
+  // в приложениях Google не пускает во встроенное окно: вход идёт в системном браузере, а приложение его подтверждает
+  if (IN_APP || IN_ELECTRON) { loginViaBrowser(true); return; }
+  if (btn) btn.disabled = true;
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: SITE, queryParams: { prompt: "select_account" } } });
+  if (error) {
+    if (btn) btn.disabled = false;
+    if (err) err.textContent = /not enabled|unsupported provider/i.test(error.message || "") ? T("Вход через Google пока не включён.") : T("Не получилось открыть вход через Google. Попробуйте ещё раз.");
+  }
+}
+for (const b of document.querySelectorAll("button[data-google]")) b.addEventListener("click", () => googleLogin(b));
 
 /* ---------- удаление «в песок»: элемент стирается слева направо, а на его месте разлетаются песчинки ---------- */
 function dustAway(el, ms) {
@@ -14244,9 +14315,14 @@ $("btnMute").addEventListener("click", async () => {
 // переход в чат из уведомления
 async function handleLink() {
   const hash = decodeURIComponent(location.hash || "");
-  if (hash.length < 3 || !state.started) return;
+  if (!state.started) return;
+  // подтверждение входа в приложение, начатое до входа на сайте (после Google адрес уже другой)
+  let pend = null;
+  try { pend = JSON.parse(sessionStorage.getItem("mestario.approve") || "null"); sessionStorage.removeItem("mestario.approve"); } catch (e) {}
+  if (pend && /^[0-9a-f-]{36}$/.test(pend.id) && Date.now() - pend.t < 10 * 60 * 1000 && !/approve-/.test(hash)) { showApprove(pend.id); return; }
+  if (hash.length < 3) return;
   let m;
-  if ((m = /^#approve-([0-9a-f-]{36})$/.exec(hash))) showApprove(m[1]);
+  if ((m = /^#g?approve-([0-9a-f-]{36})$/.exec(hash))) showApprove(m[1]);
   else if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
   else if ((m = /^#gift-(\d{1,12})$/.exec(hash))) openGiftView(Number(m[1]));
   else if ((m = /^#([a-z]{2,20})-(\d{1,7})$/i.exec(hash))) openGiftView({ type: m[1].toLowerCase(), number: Number(m[2]) });
