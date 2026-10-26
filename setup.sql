@@ -1817,3 +1817,4 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- whats_new_pending() — самое новое обновление, которое человек ещё не видел; whats_new_seen(id) — отметка (private.whats_new_seen).
 -- Клиент показывает окно один раз через 2,5 с после входа, если не открыто другое окно и нет звонка. Админка → «Что нового».
 -- Первое обновление (список сегодняшних новинок) добавлено миграцией.
+-- Исправление: в messages вставка разрешена по столбцам — выдано grant insert (gif_url, avatar_suggest) (миграция messages_grant_gif_suggest).
