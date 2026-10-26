@@ -917,16 +917,13 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 4px var(--panel-2), 0 8px 20px rgb(0 0 0 / .3); }
 .u-hero.has-banner.nftg .avatar.lg { box-shadow: 0 0 0 4px rgb(255 255 255 / .35), 0 8px 20px rgb(0 0 0 / .35); }
 .u-hero.has-banner .u-round { color: #fff; }
-/* баннер на всю шапку профиля: фон NFT и цветные фоны под ним не рисуются */
-.upage .u-hero.has-banner { padding-top: calc(150px + env(safe-area-inset-top, 0px)); background: #000 !important; }
-.u-hero.has-banner > .u-banner { inset: 0; height: auto; }
-.u-hero.has-banner > .u-banner::after { background: linear-gradient(rgb(0 0 0 / .32), transparent 26%, rgb(0 0 0 / .12) 48%, rgb(0 0 0 / .68)); }
-.u-hero.has-banner h2, .u-hero.has-banner #uSeen, .u-hero.has-banner .u-acts .btn.ghost { color: #fff !important; }
-.u-hero.has-banner h2 { text-shadow: 0 1px 6px rgb(0 0 0 / .45); }
-.u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .4), 0 10px 24px rgb(0 0 0 / .4); }
-.u-hero.has-banner .qa-i { background: rgb(255 255 255 / .18); box-shadow: none; color: #fff; }
+/* баннер сверху шапки в своих пропорциях: видео и фото видны целиком, без обрезки (высота — --bnh из JS).
+   Пока стоит баннер, фон NFT и цветной фон шапки не рисуются */
+.u-hero.has-banner > .u-banner { height: calc(var(--bnh, 170px) + env(safe-area-inset-top, 0px)); }
+.u-hero.has-banner > .u-banner img, .u-hero.has-banner > .u-banner video { object-fit: contain; }
+.upage .u-hero.has-banner { padding-top: calc(var(--bnh, 170px) - 58px + env(safe-area-inset-top, 0px)); }
 .bn-edit { position: relative; height: 110px; border-radius: 14px; overflow: hidden; background: var(--panel-2); display: grid; place-items: center; }
-.bn-edit img, .bn-edit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bn-edit img, .bn-edit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .bn-empty { color: var(--muted); font-size: 14px; }
 .pbg-sw { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--muted); font-size: 16px; }
 .pbg-sw.none { background: var(--panel-2); }
@@ -2366,7 +2363,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=281c167d99"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=245e9edace"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3221,7 +3218,7 @@ void main() {
         <div class="feat"><span class="pico red" aria-hidden="true">🎲</span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
         <div class="feat"><span class="pico grey" aria-hidden="true">👁</span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">👥</span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
-        <div class="feat"><span class="pico pink" aria-hidden="true">🎞</span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 5 секунд над аватаркой.</span></div>
+        <div class="feat"><span class="pico pink" aria-hidden="true">🎞</span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 30 секунд на всю шапку профиля.</span></div>
         <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках можно выбрать качество «HD» (1080p, 30 кадров/с) и «Плавно» для видео и игр.</span></div>
         <div class="feat"><span class="pico sky" aria-hidden="true">🌌</span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
         <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
@@ -3396,7 +3393,7 @@ void main() {
         <button class="btn ghost" type="button" id="pfBannerOff" hidden>Убрать</button>
       </div>
       <input type="file" id="pfBannerFile" accept="image/*,video/mp4,video/webm,video/quicktime" hidden>
-      <div class="hint">Показывается над аватаркой. Фото, GIF или видео до 5 секунд (без звука, крутится по кругу). Фон шапки профиля даёт надетый NFT-подарок.</div>
+      <div class="hint">Показывается на всю шапку профиля. Фото, GIF или видео до 30 секунд (без звука, крутится по кругу). Пока стоит баннер, фон шапки не показывается.</div>
       <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:10px" hidden></div>
     </div>
     <div class="small muted" id="pfEmail"></div>
@@ -9297,18 +9294,18 @@ $("pfBannerFile").addEventListener("change", async (e) => {
   let type, ext;
   if (!isVid && await isAnimatedImage(f)) {
     // GIF и анимированные картинки ставим как есть
-    if (f.size > 6 * 1024 * 1024) { toast(T("Анимация больше 6 МБ")); return; }
+    if (f.size > 20 * 1024 * 1024) { toast(T("Анимация больше 20 МБ")); return; }
     type = /gif/i.test(f.type) ? "image/gif" : "image/webp"; ext = type === "image/gif" ? "gif" : "webp";
   } else {
-    // редактор: выбрать часть кадра под баннер, у видео — отрезок до 5 секунд, можно порисовать
-    const out = await openMediaEditor(f, { fixed: 3, out: isVid ? [1200, 400] : [1500, 500], maxDur: 5, audio: false, title: T("Баннер"), save: T("Готово") });
+    // редактор: выбрать часть кадра под баннер, у видео — отрезок до 30 секунд, можно порисовать
+    const out = await openMediaEditor(f, { maxDur: 30, audio: false, title: T("Баннер"), save: T("Готово") });
     if (!out) return;
     f = out;
     if (meIsVideo(f)) {
       type = /webm/.test(f.type) ? "video/webm" : /quicktime/.test(f.type) || /\.mov$/i.test(f.name || "") ? "video/quicktime" : "video/mp4";
       ext = type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
     } else { type = f.type || "image/jpeg"; ext = /png/.test(type) ? "png" : /webp/.test(type) ? "webp" : "jpg"; }
-    if (f.size > 6 * 1024 * 1024) { toast(T("Файл больше 6 МБ — выберите отрезок короче")); return; }
+    if (f.size > 20 * 1024 * 1024) { toast(T("Файл больше 20 МБ — выберите отрезок короче")); return; }
   }
   toast(isVid ? T("Загружаем видео…") : T("Загружаем баннер…"));
   const path = state.me.id + "/banner-" + Date.now() + "." + ext;
@@ -9372,8 +9369,20 @@ function paintUser(p) {
     };
     if (state.giftBackdrops) apply(); else giftTypes().then(apply);
   }
-  // баннер на всю шапку (своё фото или видео до 5 с) — у премиума и админов
-  $("uBanner").replaceChildren(...(bn ? [bannerNode(bn)] : []));
+  // баннер на всю шапку (своё фото или видео до 30 с) — у премиума и админов
+  const bnEl = bn ? bannerNode(bn) : null;
+  $("uBanner").replaceChildren(...(bnEl ? [bnEl] : []));
+  hero.style.removeProperty("--bnh");
+  if (bnEl) {
+    const fit = () => {
+      const w = bnEl.videoWidth || bnEl.naturalWidth, hh = bnEl.videoHeight || bnEl.naturalHeight;
+      if (!w || !hh || !hero.clientWidth) return;
+      // в своих пропорциях, но не выше 60% экрана и не ниже 120px
+      hero.style.setProperty("--bnh", Math.round(Math.max(120, Math.min(innerHeight * 0.6, hero.clientWidth * hh / w))) + "px");
+    };
+    bnEl.addEventListener(bnEl.tagName === "VIDEO" ? "loadedmetadata" : "load", fit, { once: true });
+    if (bnEl.complete || bnEl.readyState >= 1) requestAnimationFrame(fit);
+  }
   $("uBanner").hidden = !bn;
   hero.classList.toggle("has-banner", !!bn);
   $("uNoBio").hidden = !!p.bio || nfts(p).length > 0 || !!p.banned_at;
