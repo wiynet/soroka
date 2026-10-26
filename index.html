@@ -908,8 +908,7 @@ dialog.full .dlg.upage { height: 100%; max-height: none; gap: 14px; }
 .upage:focus { outline: none; }
 .u-acts .btn.ghost { background: rgb(127 127 127 / .22); color: inherit; }
 .u-hero.nftg .u-acts .btn.ghost { color: #fff; }
-#uNumRow[hidden] + .chan-row[hidden] + .prow { border-top: 0; }
-#uNumRow:not([hidden]) + button.prow.chan-row { border-top: 1px solid var(--line); }
+.chan-row[hidden] + .prow { border-top: 0; }
 .u-top-r { display: flex; gap: 8px; }
 .u-round { pointer-events: auto; height: 40px; min-width: 40px; padding: 0; display: grid; place-items: center; border-radius: 999px; border: 1px solid rgb(255 255 255 / .16); background: rgb(127 127 127 / .22); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--ink); font-weight: 600; font-size: 14px; }
 .u-round.wide { padding: 0 16px; }
@@ -1176,6 +1175,46 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .ptx small { font-size: 12px; color: var(--muted); }
 .ptx #uNum { border: 0; background: none; padding: 0; text-align: left; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .ver-note .ptx div { font-size: 14px; line-height: 1.35; }
+/* профиль в стиле «Данные контакта»: номер под именем, круглые быстрые действия, разделы */
+.u-num { border: 0; background: none; padding: 0 6px; margin-top: -4px; font: inherit; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .02em; cursor: pointer; border-radius: 8px; }
+.u-num:hover { background: var(--panel-2); }
+.u-hero.has-banner .u-num, .u-hero.nftg .u-num, .u-hero.pbg .u-num { color: rgb(255 255 255 / .85); }
+.u-qa { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.u-qa[hidden], .qa[hidden] { display: none; }
+.qa { display: grid; justify-items: center; gap: 6px; width: 70px; border: 0; background: none; padding: 0; color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+.qa-i { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); box-shadow: 0 2px 10px rgb(0 0 0 / .08), inset 0 0 0 1px var(--line); color: var(--accent); transition: transform .12s var(--ease), filter .2s; }
+.qa-i svg { width: 22px; height: 22px; }
+.qa:hover .qa-i { filter: brightness(1.06); }
+.qa:active .qa-i { transform: scale(.92); }
+.u-hero.has-banner .qa, .u-hero.nftg .qa, .u-hero.pbg .qa { color: #fff; }
+.u-hero.nftg .qa-i, .u-hero.pbg .qa-i { background: rgb(255 255 255 / .18); box-shadow: none; color: #fff; }
+.plabel { justify-self: start; font-size: 13px; font-weight: 700; color: var(--muted); padding: 2px 6px 0; }
+.plabel[hidden] { display: none; }
+.pico[data-ic] svg { width: 17px; height: 17px; color: #fff; }
+.pcount { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; padding-right: 4px; }
+.u-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 12px 12px; }
+.u-thumbs:empty { display: none; }
+.u-thumbs button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--panel-2); cursor: pointer; }
+.u-thumbs img, .u-thumbs video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.danger-row b { color: var(--danger); }
+.media-link { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); color: var(--accent); text-decoration: none; word-break: break-all; }
+.media-link b { font-weight: 500; }
+.grp-row .avatar { flex: none; }
+.ct-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ct-sw { position: relative; aspect-ratio: 3 / 4; border-radius: 14px; border: 2px solid transparent; cursor: pointer; overflow: hidden; display: grid; align-content: end; gap: 4px; padding: 8px; font: inherit; font-size: 12px; color: var(--ink); text-align: left; }
+.ct-sw.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.ct-sw i { display: block; height: 12px; border-radius: 6px; width: 70%; background: var(--panel); }
+.ct-sw i.m { justify-self: end; width: 55%; background: hsl(var(--h) 50% 80%); }
+:root[data-theme="dark"] .ct-sw i.m { background: hsl(var(--h) 45% 28%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ct-sw i.m { background: hsl(var(--h) 45% 28%); } }
+.ct-sw b { font-weight: 600; }
+.ct-both { display: flex; align-items: center; gap: 10px; }
+/* тема чата: свой цвет (--h) и фон переписки */
+#conv[data-ct] #msgs, .ct-sw[data-ct] { background: var(--ct-bg); }
+/* цвета, зависящие от оттенка, пересчитываем внутри чата с темой */
+#conv[data-ct] { --accent: hsl(var(--h) 85% 28%); --mine: hsl(var(--h) 50% 88%); }
+:root[data-theme="dark"] #conv[data-ct] { --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%); --mine: hsl(var(--h) 50% 21%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #conv[data-ct] { --accent: hsl(var(--h) 60% 58%); --accent-ink: hsl(var(--h) 60% 8%); --mine: hsl(var(--h) 50% 21%); } }
 .ptx #uUser { border: 0; background: none; padding: 0; text-align: left; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 button.prow { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); text-align: left; font: inherit; }
 button.prow b { font-weight: 600; }
@@ -3957,22 +3996,22 @@ void main() {
       </div>
       <span id="uAvatar"></span>
       <h2 id="uName"></h2>
+      <button class="u-num" type="button" id="uNum" title="Скопировать номер" hidden></button>
       <div class="seen-row">
         <button class="lvl" type="button" id="uLvl" hidden></button>
         <div class="small muted" id="uSeen"></div>
       </div>
-      <div class="u-acts">
-        <button class="btn" type="button" id="uWrite">Написать</button>
-        <button class="btn ghost" type="button" id="uGift">Подарить</button>
-        <button class="btn ghost" type="button" id="uBotEdit" hidden>⚙ Настроить бота</button>
+      <div class="u-qa" id="uQa">
+        <button type="button" class="qa" id="uWrite"><span class="qa-i" data-ic="chats"></span><span>Написать</span></button>
+        <button type="button" class="qa" id="uCallQ" hidden><span class="qa-i" data-ic="phone"></span><span>Звонок</span></button>
+        <button type="button" class="qa" id="uSearchQ" hidden><span class="qa-i" data-ic="find"></span><span>Поиск</span></button>
+        <button type="button" class="qa" id="uGift"><span class="qa-i" data-ic="giftf"></span><span>Подарить</span></button>
       </div>
+      <button class="btn ghost" type="button" id="uBotEdit" hidden>⚙ Настроить бота</button>
     </div>
     <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
+      <div class="plabel">Информация</div>
       <div class="pcard">
-        <div class="prow" id="uNumRow" hidden>
-          <span class="pico green" aria-hidden="true">☎</span>
-          <div class="ptx"><button type="button" id="uNum" title="Скопировать номер"></button><small>Номер · NFT</small></div>
-        </div>
         <button class="prow chan-row" type="button" id="uChanRow" hidden>
           <span id="uChanAv"></span>
           <div class="ptx"><b id="uChanTitle"></b><div class="chan-last" id="uChanLast"></div><small id="uChanSub"></small></div>
@@ -3991,22 +4030,60 @@ void main() {
           <span class="pico gold" id="uNftIco"></span>
           <div class="ptx"><div class="nft-list left" id="uNft"></div><small>NFT-юзернеймы</small></div>
         </div>
-        <div class="prow ver-note" id="uVerNote" hidden>
-          <span class="pico blue" aria-hidden="true">✓</span>
-          <div class="ptx"><div>Этот аккаунт имеет официальную верификацию от Mestario</div></div>
-        </div>
-        <button class="prow" type="button" id="uBlockRow" hidden>
-          <span class="pico red" aria-hidden="true">⦸</span>
-          <div class="ptx"><b id="uBlockText"></b><small id="uBlockSub"></small></div>
-        </button>
-        <button class="prow" type="button" id="uReportRow" hidden>
-          <span class="pico orange" aria-hidden="true">!</span>
-          <div class="ptx"><b>Пожаловаться</b><small>Сообщить администраторам о нарушении</small></div>
-        </button>
         <div class="prow" id="uPremRow">
           <span class="pico violet">★</span>
           <div class="ptx"><div id="uPremLine"></div><small>Премиум</small></div>
         </div>
+        <div class="prow ver-note" id="uVerNote" hidden>
+          <span class="pico blue" aria-hidden="true">✓</span>
+          <div class="ptx"><div>Этот аккаунт имеет официальную верификацию от Mestario</div></div>
+        </div>
+      </div>
+      <div class="pcard" id="uMediaCard" hidden>
+        <button class="prow" type="button" id="uMediaRow">
+          <span class="pico blue" data-ic="file"></span>
+          <div class="ptx"><b>Медиа, ссылки и документы</b></div>
+          <span class="pcount" id="uMediaN"></span>
+        </button>
+        <div class="u-thumbs" id="uThumbs"></div>
+      </div>
+      <div class="pcard" id="uChatCard" hidden>
+        <button class="prow" type="button" id="uMuteRow">
+          <span class="pico orange" data-ic="bell"></span>
+          <div class="ptx"><b>Уведомления</b><small id="uMuteSub"></small></div>
+        </button>
+        <button class="prow" type="button" id="uTtlRow">
+          <span class="pico violet" data-ic="timer"></span>
+          <div class="ptx"><b>Исчезающие сообщения</b><small id="uTtlSub"></small></div>
+        </button>
+        <button class="prow" type="button" id="uThemeRow">
+          <span class="pico green" data-ic="brush"></span>
+          <div class="ptx"><b>Тема чата</b><small id="uThemeSub"></small></div>
+        </button>
+      </div>
+      <div class="plabel" id="uGroupsLabel" hidden></div>
+      <div class="pcard" id="uGroupsCard" hidden></div>
+      <div class="pcard" id="uActCard">
+        <button class="prow" type="button" id="uExportRow" hidden>
+          <span class="pico grey" data-ic="dl"></span>
+          <div class="ptx"><b>Экспорт чата</b><small>Скачать переписку файлом</small></div>
+        </button>
+        <button class="prow danger-row" type="button" id="uClearRow" hidden>
+          <span class="pico red" data-ic="erase"></span>
+          <div class="ptx"><b>Очистить чат</b></div>
+        </button>
+        <button class="prow danger-row" type="button" id="uBlockRow" hidden>
+          <span class="pico red" aria-hidden="true">⦸</span>
+          <div class="ptx"><b id="uBlockText"></b><small id="uBlockSub"></small></div>
+        </button>
+        <button class="prow danger-row" type="button" id="uReportRow" hidden>
+          <span class="pico orange" aria-hidden="true">!</span>
+          <div class="ptx"><b>Пожаловаться</b><small>Сообщить администраторам о нарушении</small></div>
+        </button>
+        <button class="prow danger-row" type="button" id="uDelRow" hidden>
+          <span class="pico red" data-ic="trash"></span>
+          <div class="ptx"><b>Удалить чат</b></div>
+        </button>
       </div>
       <div class="small muted" id="uNoBio" hidden>Описание не заполнено.</div>
       <div class="banned-note" id="uBanned" hidden></div>
@@ -4461,6 +4538,8 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const ICONS = {
+  brush: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L11 18l-5-5z"/><path d="M6 13c-2 0-3 1.500-3 3.500S2 20 2 20s3.500.5 5-1 1.500-3.500 1-4.500"/></g>',
+  erase: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.500h9l1-12.500"/><path d="M10 11l4 4M14 11l-4 4"/></g>',
   kbd: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></g>',
   send: '<path d="M4 12l16-8-6 16-3-7-7-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
   clip: '<path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.600-8.6a3.300 3.300 0 014.700 4.700l-8.500 8.500a1.700 1.700 0 01-2.400-2.400l7.800-7.800" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -5368,11 +5447,12 @@ async function watchStories(p) {
 async function loadChats() {
   loadStoryUsers();
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,msg_ttl,slow_seconds,links_new_block,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,msg_ttl,slow_seconds,links_new_block,theme,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast(T("Не удалось загрузить чаты")); return; }
-  const [counts, fl] = await Promise.all([sb.rpc("unread_counts"), sb.rpc("my_chat_flags")]);
+  const [counts, fl, th] = await Promise.all([sb.rpc("unread_counts"), sb.rpc("my_chat_flags"), sb.rpc("my_chat_themes")]);
   const flags = new Map((Array.isArray(fl.data) ? fl.data : []).map((r) => [r.chat_id, r]));
+  const myThemes = new Map((Array.isArray(th.data) ? th.data : []).map((r) => [r.chat_id, r.theme]));
   if (Array.isArray(counts.data)) {
     state.unread = new Map(counts.data.map((r) => [r.chat_id, Number(r.cnt) || 0]).filter((r) => r[1] > 0));
     if (state.activeId && !document.hidden) state.unread.delete(state.activeId);
@@ -5390,6 +5470,7 @@ async function loadChats() {
     hiddenAt: (flags.get(c.id) || {}).hidden_at || null, cleared: Number((flags.get(c.id) || {}).cleared_before) || 0,
     pinned: c.pinned_message || null, username: c.username || null, is_private: !!c.is_private, comments_off: !!c.comments_off,
     ttl: c.msg_ttl || null, slow: Number(c.slow_seconds) || 0, linksNew: !!c.links_new_block,
+    theme: c.theme || null, myTheme: myThemes.get(c.id) || null,
   }]));
   if (state.activeId && !state.chats.has(state.activeId)) closeChat();
   if (Array.isArray(counts.data)) closeReadNotes();
@@ -5523,6 +5604,7 @@ function openChatCtx(c, x, y, row) {
   if (!c.archived) kids.push(item("pin", c.pinAt ? T("Открепить") : T("Закрепить"), () => chatPin(c, !c.pinAt)));
   kids.push(item(c.archived ? "unarchive" : "archive", c.archived ? T("Вернуть из архива") : T("В архив"), () => chatArchive(c, !c.archived)));
   kids.push(item("folder", T("Добавить в папку"), () => openFolderMenu(c, x, y)));
+  kids.push(item("brush", T("Тема чата"), () => openThemePicker(c)));
   if (!c.is_group && other(c)) kids.push(item("timer", T("Исчезающие сообщения") + (c.ttl ? " · " + ttlName(c.ttl) : ""), () => openTtlMenu(c, x, y)));
   const del = [];
   if (!c.is_group) {
@@ -5567,13 +5649,14 @@ async function chatArchive(c, on) {
 let cdJob = null;
 function askChatDel(c, mode) {
   const o = c.is_group ? null : other(c), name = chatTitle(c);
-  const text = mode === "me" ? T("Чат пропадёт из вашего списка, а переписка — с ваших устройств. У собеседника всё останется. Если вам снова напишут, чат появится уже без старых сообщений.")
+  const text = mode === "clear" ? T("Сообщения пропадут только у вас, на всех ваших устройствах. У собеседника переписка останется, а чат — в вашем списке.")
+    : mode === "me" ? T("Чат пропадёт из вашего списка, а переписка — с ваших устройств. У собеседника всё останется. Если вам снова напишут, чат появится уже без старых сообщений.")
     : mode === "both" ? T("Вся переписка будет удалена и у вас, и у собеседника. Вернуть её нельзя.")
     : mode === "leave" ? (c.is_channel ? T("Вы отпишетесь от канала, и он пропадёт из списка.") : T("Вы выйдете из группы, и она пропадёт из списка."))
     : (c.is_channel ? T("Канал исчезнет у всех подписчиков вместе с постами. Вернуть его нельзя.") : T("Группа исчезнет у всех участников вместе с перепиской. Вернуть её нельзя."));
-  $("cdTitle").textContent = (mode === "leave" ? (c.is_channel ? T("Отписаться: ") : T("Покинуть: ")) : mode === "both" ? T("Удалить у обоих: ") : mode === "all" ? T("Удалить у всех: ") : T("Удалить у себя: ")) + name;
+  $("cdTitle").textContent = mode === "clear" ? T("Очистить чат: ") + name : (mode === "leave" ? (c.is_channel ? T("Отписаться: ") : T("Покинуть: ")) : mode === "both" ? T("Удалить у обоих: ") : mode === "all" ? T("Удалить у всех: ") : T("Удалить у себя: ")) + name;
   $("cdText").textContent = text;
-  $("cdGo").textContent = mode === "leave" ? (c.is_channel ? T("Отписаться") : T("Покинуть группу")) : mode === "both" ? T("Удалить у обоих") : mode === "all" ? T("Удалить у всех") : T("Удалить у себя");
+  $("cdGo").textContent = mode === "clear" ? T("Очистить") : mode === "leave" ? (c.is_channel ? T("Отписаться") : T("Покинуть группу")) : mode === "both" ? T("Удалить у обоих") : mode === "all" ? T("Удалить у всех") : T("Удалить у себя");
   cdJob = { c, mode };
   $("dlgChatDel").showModal();
 }
@@ -5581,6 +5664,19 @@ $("cdGo").addEventListener("click", async () => {
   if (!cdJob) return;
   const { c, mode } = cdJob;
   $("cdGo").disabled = true;
+  if (mode === "clear") {
+    const { error } = await sb.rpc("clear_chat_history", { p_chat: c.id });
+    $("cdGo").disabled = false;
+    if (error) { toast(T("Не удалось очистить чат")); return; }
+    cdJob = null; $("dlgChatDel").close();
+    c.cleared = Number.MAX_SAFE_INTEGER;   // точный номер подтянется со списком чатов
+    if (state.activeId === c.id) { state.msgs = []; state.hasMore = false; renderMsgs(); }
+    msgCache.set(c.id, { msgs: [], hasMore: false }); idbSaveChat(c.id);   // и сохранённую на устройстве переписку этого чата
+    loadChats();
+    if (viewed && $("dlgUser").open) paintProfileChat(viewed);
+    toast(T("Чат очищен"));
+    return;
+  }
   const { error } = mode === "me" ? await sb.rpc("hide_chat", { p_chat: c.id })
     : mode === "both" ? await sb.rpc("wipe_direct_chat", { p_chat: c.id })
     : mode === "leave" ? await sb.rpc("leave_group", { p_chat: c.id })
@@ -5825,6 +5921,7 @@ function preOpenChat(p) {
 function renderHead() {
   const c = state.chats.get(state.activeId);
   if (!c) return;
+  applyChatTheme();
   const o = other(c);
   $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path));
   $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.is_group || !preTick(o) ? [] : [preTick(o)]), chatTitle(c), ...(c.is_group ? [] : marks(o)));
@@ -6862,10 +6959,138 @@ function onChatRow(row) {
   if (typeof row.comments_off === "boolean" && c.comments_off !== row.comments_off) { c.comments_off = row.comments_off; if (state.activeId === c.id) repaintMsgs(); }
   const pin = row.pinned_message || null;
   if (c.pinned !== pin) { c.pinned = pin; if (state.activeId === c.id) paintPin(); }
+  if ("theme" in row && (row.theme || null) !== c.theme) { c.theme = row.theme || null; if (state.activeId === c.id) applyChatTheme(); }
   if ("msg_ttl" in row || "slow_seconds" in row) {
     c.ttl = row.msg_ttl || null; c.slow = Number(row.slow_seconds) || 0; c.linksNew = !!row.links_new_block;
     if (state.activeId === c.id) renderHead();
   }
+}
+/* ---------- темы чатов: свой цвет и фон переписки ---------- */
+// своя тема видна только мне и доступна всем; общую (видят оба) ставят с премиумом
+const CHAT_THEMES = [
+  { id: "sky", name: "Небо", h: 205, a: 205, b: 250 },
+  { id: "mint", name: "Мята", h: 165, a: 160, b: 195 },
+  { id: "sun", name: "Закат", h: 28, a: 40, b: 350 },
+  { id: "rose", name: "Роза", h: 340, a: 335, b: 290 },
+  { id: "violet", name: "Фиалка", h: 265, a: 265, b: 220 },
+  { id: "forest", name: "Лес", h: 135, a: 130, b: 85 },
+  { id: "coral", name: "Коралл", h: 10, a: 12, b: 40 },
+  { id: "night", name: "Ночь", h: 230, a: 235, b: 275, k: 34 },
+  { id: "sand", name: "Песок", h: 38, a: 38, b: 60 },
+];
+function ctBg(t) { const k = t.k || 22; return "linear-gradient(165deg, color-mix(in srgb, hsl(" + t.a + " 80% 58%) " + k + "%, var(--panel)), color-mix(in srgb, hsl(" + t.b + " 75% 60%) " + (k - 4) + "%, var(--panel)))"; }
+function chatThemeOf(c) { const id = c && (c.myTheme || c.theme); return id ? CHAT_THEMES.find((t) => t.id === id) || null : null; }
+function applyChatTheme() {
+  const c = state.chats.get(state.activeId), t = chatThemeOf(c), conv = $("conv");
+  if (!t) { delete conv.dataset.ct; conv.style.removeProperty("--h"); conv.style.removeProperty("--ct-bg"); return; }
+  conv.dataset.ct = t.id; conv.style.setProperty("--h", String(t.h)); conv.style.setProperty("--ct-bg", ctBg(t));
+}
+function openThemePicker(c) {
+  c = state.chats.get(c.id) || c;
+  const prem = isPremium(state.profile) || state.isAdmin;
+  const canBoth = prem && (!c.is_group || myRole(c));
+  let pick = c.myTheme || c.theme || "", both = !c.myTheme && !!c.theme;
+  const grid = h("div", { class: "ct-grid" });
+  const sw = (t) => {
+    const b = h("button", { type: "button", class: "ct-sw" + ((t ? t.id : "") === pick ? " on" : ""), "aria-pressed": String((t ? t.id : "") === pick),
+      onclick: () => { pick = t ? t.id : ""; for (const x of grid.children) x.classList.toggle("on", x === b); } },
+      h("i", {}), h("i", { class: "m" }), h("b", {}, t ? T(t.name) : T("Стандартная")));
+    if (t) { b.dataset.ct = t.id; b.style.setProperty("--h", String(t.h)); b.style.setProperty("--ct-bg", ctBg(t)); }
+    else b.style.background = "var(--panel-2)";
+    return b;
+  };
+  grid.append(sw(null), ...CHAT_THEMES.map(sw));
+  const chk = h("input", { type: "checkbox", disabled: canBoth ? null : true });
+  chk.checked = both && canBoth;
+  const err = h("div", { class: "error" });
+  const save = h("button", { class: "btn", type: "button", onclick: async () => {
+    save.disabled = true;
+    const { error } = await sb.rpc("set_chat_theme", { p_chat: c.id, p_theme: pick || null, p_both: chk.checked });
+    save.disabled = false;
+    if (error) { err.textContent = /premium/.test(error.message || "") ? T("Тему для обоих можно ставить с премиумом.") : T("Не удалось сохранить тему."); return; }
+    if (chk.checked) { c.theme = pick || null; c.myTheme = null; } else c.myTheme = pick || null;
+    if (state.activeId === c.id) applyChatTheme();
+    if (viewed && $("dlgUser").open) paintProfileChat(viewed);
+    d.close();
+    toast(!pick ? T("Тема сброшена") : chk.checked ? T("Тема установлена для обоих") : T("Тема установлена — её видите только вы"));
+  } }, T("Сохранить"));
+  const d = h("dialog", { class: "ct-dlg" }, h("div", { class: "dlg", style: "display:grid;gap:14px" },
+    h("h2", { style: "margin:0" }, T("Тема чата")),
+    grid,
+    h("label", { class: "toggle ct-both" }, chk, h("span", {}, c.is_group ? T("Для всех участников") : T("Для обоих"),
+      h("span", { class: "muted" }, canBoth ? "" : c.is_group && prem ? T(" (только админы чата)") : T(" (премиум) — без него тему видите только вы")))),
+    err,
+    h("div", { class: "actions" }, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, T("Отмена")), save)));
+  d.addEventListener("close", () => d.remove());
+  document.body.append(d);
+  d.showModal();
+}
+/* ---------- медиа, ссылки и документы личного чата ---------- */
+async function openMediaList(c) {
+  const tabs = [["photo", T("Фото и видео")], ["file", T("Файлы")], ["link", T("Ссылки")]];
+  let cur = "photo";
+  const box = h("div", { style: "display:grid;gap:10px;max-height:60vh;overflow:auto" });
+  const seg = h("div", { class: "seg", role: "tablist" }, ...tabs.map(([k, t]) => h("button", { type: "button", role: "tab", "aria-checked": String(k === cur), onclick: (e) => { cur = k; for (const b of seg.children) b.setAttribute("aria-checked", String(b === e.currentTarget)); paint(); } }, t)));
+  const d = h("dialog", {}, h("div", { class: "dlg", style: "display:grid;gap:12px" }, h("h2", { style: "margin:0" }, T("Медиа, ссылки и документы")), seg, box,
+    h("div", { class: "actions" }, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, T("Закрыть")))));
+  d.addEventListener("close", () => d.remove());
+  document.body.append(d);
+  d.showModal();
+  box.replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
+  const { data } = await sb.from("messages").select("id,body,file_path,file_type,file_name,file_size,created_at,sender_id").eq("chat_id", c.id).is("deleted_at", null)
+    .gt("id", c.cleared || 0).or("file_path.not.is.null,body.ilike.*http*").order("id", { ascending: false }).limit(300);
+  const rows = data || [];
+  function paint() {
+    if (cur === "photo") {
+      const ph = rows.filter((m) => m.file_path && /^(image|video)\//.test(m.file_type || "") && m.file_type !== "image/svg+xml");
+      if (!ph.length) { box.replaceChildren(h("div", { class: "empty-note" }, T("Фото и видео пока нет."))); return; }
+      box.replaceChildren(h("div", { class: "u-thumbs", style: "padding:0" }, ...ph.map((m) => {
+        const isV = /^video\//.test(m.file_type);
+        const el = isV ? h("video", { muted: true, playsinline: true, preload: "metadata" }) : h("img", { alt: m.file_name || "", loading: "lazy" });
+        signedUrl(m.file_path).then((u) => { if (u) el.src = u + (isV ? "#t=0.1" : ""); });
+        return h("button", { type: "button", onclick: () => { d.close(); $("dlgUser").close(); openChat(c.id); setTimeout(() => jumpTo(m.id), 400); } }, el);
+      })));
+    } else if (cur === "file") {
+      const fl = rows.filter((m) => m.file_path && !/^(image|video)\//.test(m.file_type || ""));
+      if (!fl.length) { box.replaceChildren(h("div", { class: "empty-note" }, T("Файлов пока нет."))); return; }
+      box.replaceChildren(...fl.map((m) => h("button", { class: "file", type: "button", onclick: async () => { const u = await signedUrl(m.file_path, m.file_name || "file"); if (u) window.open(u, "_blank", "noopener"); } },
+        h("span", { class: "ico" }, icon(m.voice_secs != null ? "mic" : "file")), h("span", {}, h("div", { class: "fn" }, m.file_name || T("Файл")), h("div", { class: "small muted" }, fmtSize(m.file_size || 0) + " · " + dFmt.format(new Date(m.created_at)))))));
+    } else {
+      const links = [];
+      for (const m of rows) for (const u of (m.body || "").match(/https?:\/\/[^\s<]+/g) || []) links.push({ u, m });
+      if (!links.length) { box.replaceChildren(h("div", { class: "empty-note" }, T("Ссылок пока нет."))); return; }
+      box.replaceChildren(...links.slice(0, 200).map(({ u, m }) => h("a", { href: u, target: "_blank", rel: "noopener noreferrer", class: "media-link" }, h("b", {}, u.replace(/^https?:\/\//, "").slice(0, 80)), h("small", { class: "muted" }, dFmt.format(new Date(m.created_at))))));
+    }
+  }
+  paint();
+}
+/* ---------- экспорт переписки в текстовый файл ---------- */
+async function exportChat(c) {
+  toast(T("Готовим файл…"));
+  const all = [];
+  let before = null;
+  for (let page = 0; page < 50; page++) {
+    let q = sb.from("messages").select("id,sender_id,body,file_name,file_type,voice_secs,sticker_id,gift_type,created_at,edited_at").eq("chat_id", c.id).is("deleted_at", null).gt("id", c.cleared || 0);
+    if (before) q = q.lt("id", before);
+    const { data, error } = await q.order("id", { ascending: false }).limit(1000);
+    if (error) { toast(T("Не удалось выгрузить переписку")); return; }
+    all.push(...data);
+    if (data.length < 1000) break;
+    before = data[data.length - 1].id;
+  }
+  all.reverse();
+  const name = (id) => id === state.me.id ? (state.profile.display_name || T("Вы")) : memberName(c, id);
+  const fmt = new Intl.DateTimeFormat(window.SOROKA_LANG === "en" ? "en-GB" : "ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const lines = [T("Переписка Mestario: ") + chatTitle(c), T("Выгружено: ") + fmt.format(new Date()) + " · " + all.length + T(" сообщ."), ""];
+  for (const m of all) {
+    const what = m.body || (m.sticker_id ? T("[стикер]") : m.gift_type ? T("[подарок]") : m.voice_secs != null ? T("[голосовое]") : m.file_type && m.file_type.startsWith("image/") ? T("[фото] ") + (m.file_name || "") : m.file_name ? T("[файл] ") + m.file_name : "");
+    lines.push("[" + fmt.format(new Date(m.created_at)) + "] " + name(m.sender_id) + ": " + what + (m.edited_at ? T(" (изменено)") : ""));
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const a = h("a", { href: URL.createObjectURL(blob), download: ("Mestario — " + chatTitle(c)).replace(/[\\/:*?"<>|]/g, "") + ".txt" });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  toast(T("Файл с перепиской сохранён"));
 }
 /* ---------- поиск по сообщениям чата ---------- */
 function closeFind() { $("findBar").hidden = true; $("findList").hidden = true; $("findText").value = ""; $("findList").replaceChildren(); }
@@ -8463,7 +8688,7 @@ function paintUser(p) {
   $("uUser").textContent = "@" + p.username;
   // NFT-номер — первой строкой карточки, над юзернеймом
   const pn = nums(p);
-  $("uNumRow").hidden = !pn.length;
+  $("uNum").hidden = !pn.length;
   $("uNum").textContent = pn.join(" · ");
   // галочка перед именем — значит, верификация от Mestario (скрытую галочку видит только сам владелец)
   $("uVerNote").hidden = !(p.verified || p.is_admin) || (p.hide_tick && p.id !== state.me.id) || !!p.banned_at;
@@ -8490,8 +8715,89 @@ function paintUser(p) {
   $("uGift").hidden = !!p.banned_at || !!p.is_bot;
   $("uEdit").hidden = $("uAddStory").hidden = !me;
   $("uBotEdit").hidden = !(p.is_bot && myBots.some((b) => b.id === p.id));
+  paintProfileChat(p);
   paintStoryRing();
 }
+/* ---------- разделы профиля, связанные с личным чатом: медиа, уведомления, таймер, тема, общие группы, действия ---------- */
+function directWith(uid) { return [...state.chats.values()].find((c) => !c.is_group && other(c) && other(c).id === uid) || null; }
+let profSeq = 0;
+function paintProfileChat(p) {
+  const me = p.id === state.me.id, dc = me ? null : directWith(p.id), seq = ++profSeq;
+  const has = !!dc && !p.banned_at;
+  $("uCallQ").hidden = !has || !canCall(dc);
+  $("uSearchQ").hidden = !dc;
+  $("uMediaCard").hidden = true;
+  $("uChatCard").hidden = !has;
+  $("uExportRow").hidden = $("uClearRow").hidden = $("uDelRow").hidden = !dc;
+  $("uActCard").hidden = me;
+  if (has) {
+    $("uMuteSub").textContent = dc.muted ? T("Выключены") : T("Включены");
+    $("uTtlSub").textContent = dc.ttl ? ttlName(dc.ttl) : T("Выкл.");
+    const th = chatThemeOf(dc);
+    $("uThemeSub").textContent = th ? T(th.name) + (dc.myTheme ? T(" · только у вас") : T(" · у обоих")) : T("Стандартная");
+  }
+  $("uGroupsLabel").hidden = $("uGroupsCard").hidden = true;
+  if (me) return;
+  // общие группы
+  sb.rpc("common_groups", { p_user: p.id }).then(({ data }) => {
+    if (seq !== profSeq || !Array.isArray(data) || !data.length) return;
+    const n = data.length;
+    $("uGroupsLabel").textContent = n + " " + plural(n, T("общая группа"), T("общие группы"), T("общих групп"));
+    $("uGroupsCard").replaceChildren(...data.slice(0, 6).map((g) => h("button", { class: "prow grp-row", type: "button",
+      onclick: () => { $("dlgUser").close(); if (state.chats.has(g.id)) openChat(g.id); } },
+      avatar(g.title || T("Группа"), g.id, true, g.avatar_path),
+      h("div", { class: "ptx" }, h("b", {}, g.title || T("Группа")), h("small", {}, Number(g.members) + " " + plural(Number(g.members), T("участник"), T("участника"), T("участников")))))));
+    $("uGroupsLabel").hidden = $("uGroupsCard").hidden = false;
+  });
+  if (!dc) return;
+  // медиа: сколько всего и четыре последних фото
+  Promise.all([sb.rpc("chat_media_count", { p_chat: dc.id }),
+    sb.from("messages").select("id,file_path,file_type,file_name").eq("chat_id", dc.id).is("deleted_at", null).gt("id", dc.cleared || 0)
+      .like("file_type", "image/%").neq("file_type", "image/svg+xml").order("id", { ascending: false }).limit(4)]).then(([cnt, ph]) => {
+    if (seq !== profSeq) return;
+    const n = Number(cnt.data) || 0;
+    if (!n) return;
+    $("uMediaN").textContent = String(n);
+    $("uThumbs").replaceChildren(...(ph.data || []).map((m) => {
+      const img = h("img", { alt: m.file_name || T("Фото"), loading: "lazy" });
+      signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+      return h("button", { type: "button", "aria-label": T("Открыть фото"), onclick: () => { if (img.src) { $("viewerImg").src = img.src; $("viewer").showModal(); } } }, img);
+    }));
+    $("uMediaCard").hidden = false;
+  });
+}
+for (const el of $("dlgUser").querySelectorAll("[data-ic]")) el.append(icon(el.dataset.ic));
+$("uCallQ").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (!dc) return; $("dlgUser").close(); openChat(dc.id); startCall(dc); });
+$("uSearchQ").addEventListener("click", () => {
+  const dc = viewed && directWith(viewed.id); if (!dc) return;
+  $("dlgUser").close(); openChat(dc.id);
+  setTimeout(() => { $("findBar").hidden = false; $("findText").focus(); }, 350);
+});
+$("uMuteRow").addEventListener("click", async () => {
+  const dc = viewed && directWith(viewed.id); if (!dc) return;
+  const next = !dc.muted;
+  const { error } = await sb.rpc("set_chat_muted", { p_chat: dc.id, p_muted: next });
+  if (error) { toast(T("Не удалось изменить уведомления этого чата")); return; }
+  dc.muted = next; renderList(); if (state.activeId === dc.id) renderHead();
+  $("uMuteSub").textContent = next ? T("Выключены") : T("Включены");
+  toast(next ? T("Уведомления из этого чата выключены") : T("Уведомления из этого чата включены"));
+});
+$("uTtlRow").addEventListener("click", (e) => {
+  const dc = viewed && directWith(viewed.id); if (!dc) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  openTtlMenu(dc, r.left + 40, r.bottom - 6);
+});
+$("uThemeRow").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (dc) openThemePicker(dc); });
+$("uMediaRow").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (dc) openMediaList(dc); });
+$("uExportRow").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (dc) exportChat(dc); });
+$("uClearRow").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (dc) askChatDel(dc, "clear"); });
+$("uDelRow").addEventListener("click", (e) => {
+  const dc = viewed && directWith(viewed.id); if (!dc) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  placeCtx(h("div", { class: "ctx", role: "menu", "aria-label": T("Удалить чат") },
+    ctxItem("trash", T("Удалить у себя"), () => { $("dlgUser").close(); askChatDel(dc, "me"); }, true),
+    ctxItem("trash", T("Удалить у обоих"), () => { $("dlgUser").close(); askChatDel(dc, "both"); }, true)), r.left + 40, r.top - 90);
+});
 function showUserTab(name) {
   if (name !== "gifts") name = "stories";
   for (const b of $("uTabs").children) b.setAttribute("aria-checked", String(b.dataset.ut === name));
