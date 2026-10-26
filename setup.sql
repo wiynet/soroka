@@ -1775,3 +1775,9 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- Меню сообщения → «Перевести»: функция translate (Gemini тем же ключом, что ИИ-помощник; запасной — Pollinations)
 -- переводит на язык интерфейса (если уже на нём — на другой). Бесплатно: готовые переводы в private.msg_translations,
 -- новых — до 100 в день (премиум и админы — 500), учёт в private.translate_uses. tr_source/tr_get/tr_put/tr_take — только service_role.
+
+-- ===== Статистика каналов: рост подписчиков и охват (миграция channel_stats, затем переименование) =====
+-- public.channel_stats_v2(p_chat, p_days=30): по дням — всего участников, пришло/ушло, посты и их просмотры;
+-- лучшие посты, итоги. Владелец, админы чата и админы сайта. Дополняет старую channel_stats(p_chat) в окне «Статистика»
+-- (графики «Подписчики за 30 дней» и «Просмотры постов по дням публикации», среднее и охват).
+-- (функция создана как channel_stats(uuid,int) и сразу переименована: alter function ... rename to channel_stats_v2)
