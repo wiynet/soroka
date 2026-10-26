@@ -195,6 +195,9 @@ button { cursor: pointer; }
 .at-wrap { position: relative; }
 .at-wrap::before { content: "@"; position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); }
 .at-wrap .input { padding-left: 30px; }
+.num-wrap { position: relative; }
+.num-wrap::before { content: "+555"; position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-variant-numeric: tabular-nums; }
+.num-wrap .input { padding-left: 54px; font-variant-numeric: tabular-nums; }
 
 /* ---------- app shell ---------- */
 #app { height: 100%; display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); }
@@ -905,7 +908,8 @@ dialog.full .dlg.upage { height: 100%; max-height: none; gap: 14px; }
 .upage:focus { outline: none; }
 .u-acts .btn.ghost { background: rgb(127 127 127 / .22); color: inherit; }
 .u-hero.nftg .u-acts .btn.ghost { color: #fff; }
-.chan-row[hidden] + .prow { border-top: 0; }
+#uNumRow[hidden] + .chan-row[hidden] + .prow { border-top: 0; }
+#uNumRow:not([hidden]) + button.prow.chan-row { border-top: 1px solid var(--line); }
 .u-top-r { display: flex; gap: 8px; }
 .u-round { pointer-events: auto; height: 40px; min-width: 40px; padding: 0; display: grid; place-items: center; border-radius: 999px; border: 1px solid rgb(255 255 255 / .16); background: rgb(127 127 127 / .22); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--ink); font-weight: 600; font-size: 14px; }
 .u-round.wide { padding: 0 16px; }
@@ -1170,6 +1174,8 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .chan-row .chev { color: var(--muted); font-size: 22px; line-height: 1; }
 .chan-row:hover { background: rgb(127 127 127 / .08); }
 .ptx small { font-size: 12px; color: var(--muted); }
+.ptx #uNum { border: 0; background: none; padding: 0; text-align: left; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.ver-note .ptx div { font-size: 14px; line-height: 1.35; }
 .ptx #uUser { border: 0; background: none; padding: 0; text-align: left; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 button.prow { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); text-align: left; font: inherit; }
 button.prow b { font-weight: 600; }
@@ -2212,7 +2218,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=87b937247d"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=19caf5f60a"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2687,7 +2693,7 @@ void main() {
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
-      <button class="g-btn" type="button" data-google title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="signupForm" data-view="signup" novalidate hidden>
@@ -2702,7 +2708,7 @@ void main() {
       <div class="error" id="signupErr"></div>
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
-      <button class="g-btn" type="button" data-google title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="resetForm" data-view="reset" novalidate hidden>
@@ -3435,6 +3441,20 @@ void main() {
       <div class="actions"><button class="btn" type="submit">Выдать</button></div>
       <div class="set-label">Все NFT-юзернеймы</div>
       <div class="scroll" id="adList"></div>
+      <div class="set-label">Выдать NFT-номер</div>
+      <div class="ad-grid">
+        <label class="field"><span>Номер</span>
+          <div class="num-wrap"><input class="input" id="adNum" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="12 34 56"></div>
+        </label>
+        <label class="field"><span>Кому (обычный юзернейм)</span>
+          <div class="at-wrap"><input class="input" id="adNumOwner" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off"></div>
+        </label>
+      </div>
+      <div class="hint">После +555 — до 10 символов: цифры и пробелы. Номер показывается в профиле первой строкой, его можно продать на маркете.</div>
+      <div class="error" id="adNumErr"></div>
+      <div class="actions"><button class="btn" type="button" id="adNumGo">Выдать номер</button></div>
+      <div class="set-label">Все NFT-номера</div>
+      <div class="scroll" id="adNumList"></div>
     </form>
 
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
@@ -3447,15 +3467,15 @@ void main() {
     <h2>Маркет</h2>
     <div class="small muted" id="mkBal"></div>
     <div class="seg" id="mkTabs" role="tablist">
-      <button type="button" role="tab" data-mk="nft" aria-checked="true">NFT-юзернеймы</button>
+      <button type="button" role="tab" data-mk="nft" aria-checked="true">NFT</button>
       <button type="button" role="tab" data-mk="gifts" aria-checked="false">Подарки</button>
       <button type="button" role="tab" data-mk="auction" aria-checked="false">Аукцион</button>
     </div>
 
     <div data-mkpane="nft" style="display:grid;gap:14px">
-      <div class="hint">Юзернейм можно купить сразу по цене продавца или предложить свою цену ниже. Mest за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете.</div>
+      <div class="hint">NFT-юзернейм или номер +555 можно купить сразу по цене продавца или предложить свою цену ниже. Mest за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете.</div>
       <div class="lots" id="mkLots"></div>
-      <div class="set-label">Мои NFT-юзернеймы</div>
+      <div class="set-label">Мои NFT-юзернеймы и номера</div>
       <div id="mkMine" style="display:grid;gap:8px"></div>
       <div id="mkAdmin" style="display:grid;gap:8px" hidden>
         <div class="set-label">Выставить новый юзернейм (админ)</div>
@@ -3464,6 +3484,12 @@ void main() {
           <input class="input" id="mkNewPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Цена в Mest">
         </div>
         <div class="actions"><button class="btn" type="button" id="mkNewAdd">Выставить на продажу</button></div>
+        <div class="set-label">Выставить новый номер +555 (админ)</div>
+        <div class="ad-grid">
+          <div class="num-wrap"><input class="input" id="mkNewNum" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="12 34 56"></div>
+          <input class="input" id="mkNewNumPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Цена в Mest">
+        </div>
+        <div class="actions"><button class="btn" type="button" id="mkNewNumAdd">Выставить номер</button></div>
       </div>
     </div>
 
@@ -3943,6 +3969,10 @@ void main() {
     </div>
     <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
       <div class="pcard">
+        <div class="prow" id="uNumRow" hidden>
+          <span class="pico green" aria-hidden="true">☎</span>
+          <div class="ptx"><button type="button" id="uNum" title="Скопировать номер"></button><small>Номер · NFT</small></div>
+        </div>
         <button class="prow chan-row" type="button" id="uChanRow" hidden>
           <span id="uChanAv"></span>
           <div class="ptx"><b id="uChanTitle"></b><div class="chan-last" id="uChanLast"></div><small id="uChanSub"></small></div>
@@ -3960,6 +3990,10 @@ void main() {
         <div class="prow" id="uNftRow">
           <span class="pico gold" id="uNftIco"></span>
           <div class="ptx"><div class="nft-list left" id="uNft"></div><small>NFT-юзернеймы</small></div>
+        </div>
+        <div class="prow ver-note" id="uVerNote" hidden>
+          <span class="pico blue" aria-hidden="true">✓</span>
+          <div class="ptx"><div>Этот аккаунт имеет официальную верификацию от Mestario</div></div>
         </div>
         <button class="prow" type="button" id="uBlockRow" hidden>
           <span class="pico red" aria-hidden="true">⦸</span>
@@ -4384,7 +4418,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),is_bot,intro";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),collectible_numbers(number),is_bot,intro";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -4500,6 +4534,9 @@ function icon(name) {
   return s;
 }
 function nfts(p) { return ((p && p.collectible_usernames) || []).map((x) => x.username); }
+// NFT-номера +555: выдают админы, продаются на маркете
+function nums(p) { return ((p && p.collectible_numbers) || []).map((x) => x.number).sort(); }
+function lotLabel(l) { return l.number ? l.number : "@" + l.username; }
 function gem(p) {
   if (!nfts(p).length) return null;
   const g = icon("gem");
@@ -5149,7 +5186,7 @@ async function createProfile(username, name) {
   return "ok";
 }
 async function enter() {
-  const { data, error } = await sb.from("profiles").select("*,collectible_usernames(username)").eq("id", state.me.id).maybeSingle();
+  const { data, error } = await sb.from("profiles").select("*,collectible_usernames(username),collectible_numbers(number)").eq("id", state.me.id).maybeSingle();
   if (error) { showAuth("login"); $("loginErr").textContent = T("Не удалось загрузить профиль. Обновите страницу."); return; }
   if (data) {
     state.profile = data;
@@ -7535,7 +7572,7 @@ function showAdminTab(name) {
   for (const pane of $("dlgAdmin").querySelectorAll("[data-pane]")) pane.hidden = pane.dataset.pane !== name;
   if (name === "stats") { loadStats(); checkSite(); }
   if (name === "users") { loadSupportAdmin(); loadAllUsers(); loadAdmins(); loadBanned(); }
-  if (name === "nft") loadCollectibles();
+  if (name === "nft") { loadCollectibles(); loadNumbers(); }
   if (name === "tickets") loadTickets();
   if (name === "reports") loadReports();
 }
@@ -7738,10 +7775,15 @@ function marketError(e) {
     : /own listing/.test(m) ? T("Это ваш собственный лот.")
     : /bad price|bad amount/.test(m) ? T("Введите целое число больше нуля.")
     : /bad name/.test(m) ? T("Недопустимый юзернейм: латинские буквы, цифры и _.")
-    : /not owner/.test(m) ? T("Этот юзернейм вам не принадлежит.")
+    : /not owner/.test(m) ? T("Это не ваш юзернейм или номер.")
+    : /bad number/.test(m) ? T("Номер: после +555 до 10 символов — цифры и пробелы.")
+    : /number taken/.test(m) ? T("Такой номер уже есть (с другими пробелами).")
+    : /user not found/.test(m) ? T("Такого пользователя нет.")
     : T("Не получилось. Попробуйте ещё раз.");
 }
 function nftChip(u) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft" }, g, "@" + u); }
+function numChip(n) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft num" }, g, n); }
+function lotChip(l) { return l.number ? numChip(l.number) : nftChip(l.username); }
 async function loadMarketBalance() {
   const { data } = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
   state.balance = data ? Number(data.balance) : 0;
@@ -7781,7 +7823,7 @@ let lots = [];
 async function loadLots() {
   $("mkAdmin").hidden = !state.isAdmin;
   const { data, error } = await sb.from("nft_listings")
-    .select("id,username,price,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
+    .select("id,username,number,price,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
     .eq("status", "open").order("id", { ascending: false }).limit(100);
   lots = error || !data ? [] : data;
   $("mkLots").replaceChildren(...(lots.length ? lots.map((l, i) => {
@@ -7789,7 +7831,7 @@ async function loadLots() {
     const top = pend.reduce((a, o) => Math.max(a, Number(o.amount)), 0);
     const mine = pend.find((o) => o.bidder_id === state.me.id);
     const el = h("button", { class: "lot", type: "button", onclick: () => openLot(l.id) },
-      nftChip(l.username),
+      lotChip(l),
       h("span", { class: "txt small muted" },
         (l.by_admin ? T("Продаёт «Mestario»") : T("Продаёт ") + (l.seller ? l.seller.display_name : T("владелец"))) +
         (top ? T(" · лучшее предложение ") + nf.format(top) : T(" · предложений нет")) + (mine ? T(" · ваше: ") + nf.format(Number(mine.amount)) : "")),
@@ -7800,26 +7842,44 @@ async function loadLots() {
   paintMyNames();
 }
 function paintMyNames() {
-  const mine = nfts(state.profile);
-  const listed = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [l.username, l]));
-  $("mkMine").replaceChildren(...(mine.length ? mine.map((u) => {
-    const l = listed.get(u);
-    if (l) return h("div", { class: "mine-row" }, nftChip(u), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + coins(Number(l.price))),
+  // свои NFT-юзернеймы и номера: каждый можно выставить на продажу
+  const mine = [...nums(state.profile).map((n) => ({ number: n })), ...nfts(state.profile).map((u) => ({ username: u }))];
+  const listed = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [lotLabel(l), l]));
+  $("mkMine").replaceChildren(...(mine.length ? mine.map((it) => {
+    const key = lotLabel(it), l = listed.get(key);
+    if (l) return h("div", { class: "mine-row" }, lotChip(it), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + coins(Number(l.price))),
       h("button", { class: "btn ghost", type: "button", onclick: () => openLot(l.id) }, T("Открыть лот")));
-    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: T("Цена"), "aria-label": T("Цена для @") + u });
-    return h("div", { class: "mine-row" }, nftChip(u), h("span", { style: "flex:1" }), price,
+    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: T("Цена"), "aria-label": T("Цена для ") + key });
+    return h("div", { class: "mine-row" }, lotChip(it), h("span", { style: "flex:1" }), price,
       h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
         const p = Math.floor(Number(price.value));
         if (!(p > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
         e.target.disabled = true;
-        const { error } = await sb.rpc("list_my_username", { p_name: u, p_price: p });
+        const { error } = it.number ? await sb.rpc("list_my_number", { p_number: it.number, p_price: p }) : await sb.rpc("list_my_username", { p_name: it.username, p_price: p });
         e.target.disabled = false;
         if (error) { toast(marketError(error)); return; }
-        toast("@" + u + T(" выставлен за ") + coins(p));
+        toast(key + T(" выставлен за ") + coins(p));
         loadLots();
       } }, T("Продать")));
-  }) : [h("div", { class: "small muted" }, T("У вас пока нет NFT-юзернеймов. Их можно купить здесь или получить от администратора."))]));
+  }) : [h("div", { class: "small muted" }, T("У вас пока нет NFT-юзернеймов и номеров. Их можно купить здесь или получить от администратора."))]));
 }
+// номер: только цифры и одиночные пробелы, не длиннее 10 символов после +555
+function numInput(el) {
+  el.addEventListener("input", () => { el.value = el.value.replace(/^\+?555\s*/, "").replace(/[^0-9 ]/g, "").replace(/ {2,}/g, " ").replace(/^ /, "").slice(0, 10); });
+}
+numInput($("mkNewNum"));
+$("mkNewNumAdd").addEventListener("click", async () => {
+  const num = $("mkNewNum").value.trim(), price = Math.floor(Number($("mkNewNumPrice").value));
+  if (!/[0-9]/.test(num)) { toast(T("Введите номер после +555")); return; }
+  if (!(price > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
+  $("mkNewNumAdd").disabled = true;
+  const { error } = await sb.rpc("admin_list_number", { p_number: num, p_price: price });
+  $("mkNewNumAdd").disabled = false;
+  if (error) { toast(marketError(error)); return; }
+  $("mkNewNum").value = ""; $("mkNewNumPrice").value = "";
+  toast("+555 " + num + T(" выставлен за ") + coins(price));
+  loadLots();
+});
 $("mkNewName").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
 $("mkNewAdd").addEventListener("click", async () => {
   const name = $("mkNewName").value, price = Math.floor(Number($("mkNewPrice").value));
@@ -7840,7 +7900,7 @@ async function openLot(id) {
   if (!l) return;
   lot = l; buyArmed = false;
   const own = !l.by_admin && l.seller_id === state.me.id;
-  $("lotName").replaceChildren(nftChip(l.username));
+  $("lotName").replaceChildren(lotChip(l));
   $("lotFacts").textContent = T("Цена: ") + coins(Number(l.price)) + " · " + (l.by_admin ? T("продаёт «Mestario»") : T("продаёт ") + (l.seller ? l.seller.display_name + " (@" + l.seller.username + ")" : T("владелец")));
   $("lotBuy").hidden = own;
   $("lotBuy").textContent = T("Купить за ") + coins(Number(l.price));
@@ -7875,7 +7935,7 @@ async function afterTrade(msg, close) {
 async function answerOffer(o, accept) {
   const { error } = await sb.rpc("answer_offer", { p_offer: o.id, p_accept: accept });
   if (error) { $("lotErr").textContent = marketError(error); return; }
-  afterTrade(accept ? T("Предложение принято, юзернейм продан за ") + coins(Number(o.amount)) : T("Предложение отклонено, Mest возвращены покупателю"), accept);
+  afterTrade(accept ? (lot && lot.number ? T("Предложение принято, номер продан за ") : T("Предложение принято, юзернейм продан за ")) + coins(Number(o.amount)) : T("Предложение отклонено, Mest возвращены покупателю"), accept);
 }
 async function cancelOffer(o) {
   const { error } = await sb.rpc("cancel_offer", { p_offer: o.id });
@@ -7889,7 +7949,7 @@ $("lotBuy").addEventListener("click", async () => {
   const { error } = await sb.rpc("buy_listing", { p_listing: lot.id });
   $("lotBuy").disabled = false;
   if (error) { $("lotErr").textContent = marketError(error); buyArmed = false; $("lotBuy").textContent = T("Купить за ") + coins(Number(lot.price)); return; }
-  afterTrade("@" + lot.username + T(" теперь ваш"), true);
+  afterTrade(lotLabel(lot) + T(" теперь ваш"), true);
 });
 $("lotOffer").addEventListener("click", async () => {
   if (!lot) return;
@@ -8129,6 +8189,47 @@ async function loadCollectibles() {
     return el;
   }));
 }
+async function loadNumbers() {
+  const list = $("adNumList");
+  const { data, error } = await sb.from("collectible_numbers")
+    .select("number,owner_id,granted_at,profiles(username,display_name)")
+    .order("granted_at", { ascending: false }).limit(300);
+  if (error) { list.replaceChildren(h("div", { class: "empty-note" }, T("Не удалось загрузить список."))); return; }
+  if (!data.length) { list.replaceChildren(h("div", { class: "empty-note" }, T("Пока ни одного NFT-номера не выдано."))); return; }
+  list.replaceChildren(...data.map((row) => h("div", { class: "ad-row" },
+    numChip(row.number),
+    h("span", { class: "txt small" + (row.profiles ? "" : " muted") }, row.profiles ? row.profiles.display_name + " · @" + row.profiles.username : T("свободен, никому не выдан")),
+    row.profiles && h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
+      e.target.disabled = true;
+      const res = await sb.rpc("admin_revoke_number", { p_number: row.number });
+      if (res.error) { toast(T("Не удалось забрать номер")); e.target.disabled = false; return; }
+      toast(row.number + T(" забран"));
+      loadNumbers();
+    } }, T("Забрать")))));
+}
+numInput($("adNum"));
+$("adNumOwner").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
+for (const id of ["adNum", "adNumOwner"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("adNumGo").click(); } });
+$("adNumGo").addEventListener("click", async () => {
+  const num = $("adNum").value.trim(), owner = $("adNumOwner").value, err = $("adNumErr");
+  if (!/[0-9]/.test(num)) { err.textContent = T("Введите номер после +555."); return; }
+  if (!owner) { err.textContent = T("Укажите, кому выдать: обычный юзернейм человека."); return; }
+  err.textContent = "";
+  $("adNumGo").disabled = true;
+  const { data, error } = await sb.rpc("admin_grant_number", { p_number: num, p_owner: owner });
+  $("adNumGo").disabled = false;
+  if (error) {
+    const m = error.message || "";
+    err.textContent = /user not found/.test(m) ? T("Пользователь @") + owner + T(" не найден.")
+      : /already listed/.test(m) ? T("Этот номер сейчас продаётся на маркете — сначала снимите лот.")
+      : /not allowed/.test(m) ? T("У этого аккаунта нет прав администратора.")
+      : marketError(error);
+    return;
+  }
+  $("adNum").value = "";
+  toast((data || "+555 " + num) + T(" выдан пользователю @") + owner);
+  loadNumbers();
+});
 for (const id of ["adName", "adOwner"]) {
   $(id).addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
 }
@@ -8360,6 +8461,12 @@ function paintUser(p) {
   $("uNft").replaceChildren(...nftChips(p));
   $("uNft").hidden = !nfts(p).length;
   $("uUser").textContent = "@" + p.username;
+  // NFT-номер — первой строкой карточки, над юзернеймом
+  const pn = nums(p);
+  $("uNumRow").hidden = !pn.length;
+  $("uNum").textContent = pn.join(" · ");
+  // галочка перед именем — значит, верификация от Mestario (скрытую галочку видит только сам владелец)
+  $("uVerNote").hidden = !(p.verified || p.is_admin) || (p.hide_tick && p.id !== state.me.id) || !!p.banned_at;
   $("uBio").textContent = p.bio || "";
   $("uBio").hidden = !p.bio;
   $("uBioRow").hidden = !p.bio;
@@ -9366,6 +9473,9 @@ async function paintBlockList() {
 $("uCopyLink").append(icon("link"));
 $("uNftIco").append(icon("gem"));
 $("uCopyLink").addEventListener("click", () => { if (viewed) copyText(SITE + "#@" + viewed.username, T("Ссылка на профиль скопирована")); });
+$("uNum").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("uNum").textContent.split(" · ")[0]); toast(T("Номер скопирован")); } catch (e) {}
+});
 $("uUser").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uUser").textContent); toast(T("Юзернейм скопирован")); } catch (e) {}
 });
@@ -9440,7 +9550,7 @@ function renderPremium() {
   for (const b of document.querySelectorAll(".walls .prem")) b.title = on ? "" : T("Фон для премиума");
 }
 async function reloadMe() {
-  const { data } = await sb.from("profiles").select("*,collectible_usernames(username)").eq("id", state.me.id).maybeSingle();
+  const { data } = await sb.from("profiles").select("*,collectible_usernames(username),collectible_numbers(number)").eq("id", state.me.id).maybeSingle();
   if (data) state.profile = data;
   refreshMe();
   renderPremium();
@@ -11449,7 +11559,9 @@ window.gLogoFail = gLogoFail;
 // кнопка показывается, только когда вход через Google включён в Supabase (узнаём из открытых настроек входа)
 let googleOn = false;
 try { googleOn = localStorage.getItem("mestario.gauth") === "1"; } catch (e) {}
-function paintGoogle() { for (const el of document.querySelectorAll("[data-google]")) el.classList.toggle("off", !googleOn); }
+// вход через Google пока выключен (GOOGLE_LOGIN = false): кнопки скрыты, код оставлен на будущее
+const GOOGLE_LOGIN = false;
+function paintGoogle() { for (const el of document.querySelectorAll("[data-google]")) el.hidden = !GOOGLE_LOGIN; }
 let googleCheck = null;
 function checkGoogle() {
   if (!googleCheck) googleCheck = fetch(SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: SUPABASE_KEY } })

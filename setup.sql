@@ -1752,3 +1752,14 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --     Authorized JavaScript origins: https://mestario.lol
 --     Authorized redirect URIs:     https://zgjptlyhflfwbnmzpdsa.supabase.co/auth/v1/callback
 --   Supabase → Authentication → Sign In / Providers → Google: включить, вставить Client ID и Client Secret, Save.
+
+-- ===== NFT-номера +555 (миграция nft_numbers) =====
+-- public.collectible_numbers(number, owner_id, granted_by, granted_at): «+555 » и до 10 символов (цифры и одиночные пробелы);
+-- уникальность по цифрам (индекс по replace(number,' ','')). Видны всем (select), меняются только через функции.
+-- Выдают и забирают только админы: admin_grant_number(p_number, p_owner username), admin_revoke_number(p_number).
+-- Маркет общий с NFT-юзернеймами: nft_listings.number (username стал необязательным, ровно одно из двух),
+-- admin_list_number(p_number, p_price), list_my_number(p_number, p_price); buy_listing / make_offer / answer_offer /
+-- cancel_offer / refund_offers / settle_listing понимают номера (подписи операций — private.lot_label).
+-- Клиент: номер — первая строка карточки профиля (над юзернеймом); выдача и список — в админке (вкладка NFT);
+-- выставить номер — в маркете. Вход через Google скрыт (GOOGLE_LOGIN = false), код оставлен.
+-- Профиль с галочкой: над «Заблокировать» строка «Этот аккаунт имеет официальную верификацию от Mestario».
