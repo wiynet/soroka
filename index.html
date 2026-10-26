@@ -917,6 +917,14 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 4px var(--panel-2), 0 8px 20px rgb(0 0 0 / .3); }
 .u-hero.has-banner.nftg .avatar.lg { box-shadow: 0 0 0 4px rgb(255 255 255 / .35), 0 8px 20px rgb(0 0 0 / .35); }
 .u-hero.has-banner .u-round { color: #fff; }
+/* баннер на всю шапку профиля: фон NFT и цветные фоны под ним не рисуются */
+.upage .u-hero.has-banner { padding-top: calc(150px + env(safe-area-inset-top, 0px)); background: #000 !important; }
+.u-hero.has-banner > .u-banner { inset: 0; height: auto; }
+.u-hero.has-banner > .u-banner::after { background: linear-gradient(rgb(0 0 0 / .32), transparent 26%, rgb(0 0 0 / .12) 48%, rgb(0 0 0 / .68)); }
+.u-hero.has-banner h2, .u-hero.has-banner #uSeen, .u-hero.has-banner .u-acts .btn.ghost { color: #fff !important; }
+.u-hero.has-banner h2 { text-shadow: 0 1px 6px rgb(0 0 0 / .45); }
+.u-hero.has-banner .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .4), 0 10px 24px rgb(0 0 0 / .4); }
+.u-hero.has-banner .qa-i { background: rgb(255 255 255 / .18); box-shadow: none; color: #fff; }
 .bn-edit { position: relative; height: 110px; border-radius: 14px; overflow: hidden; background: var(--panel-2); display: grid; place-items: center; }
 .bn-edit img, .bn-edit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .bn-empty { color: var(--muted); font-size: 14px; }
@@ -9245,6 +9253,8 @@ async function pickMyBg(e) {
   if (!b) return;
   const color = b.dataset.bg || null;
   if ((state.profile.profile_bg || null) === color) return;
+  // фон и баннер вместе не бывают: выбрал фон — баннер убирается
+  if (color && state.profile.banner && !(await setBanner(null))) return;
   const { error } = await sb.rpc("set_profile_bg", { p_color: color });
   if (error) { toast(T("Не удалось изменить фон профиля")); return; }
   state.profile = Object.assign({}, state.profile, { profile_bg: color });
@@ -9253,6 +9263,10 @@ async function pickMyBg(e) {
   toast(color ? T("Фон профиля изменён") : T("Фон профиля убран"));
 }
 async function setBanner(path) {
+  if (path && state.profile.profile_bg) {
+    const { error: be } = await sb.rpc("set_profile_bg", { p_color: null });
+    if (!be) state.profile = Object.assign({}, state.profile, { profile_bg: null });
+  }
   const { error } = await sb.rpc("set_banner", { p_path: path });
   if (error) { toast(/premium/.test(error.message || "") ? T("Баннер доступен с премиумом") : T("Не удалось сохранить баннер")); return false; }
   state.profile = Object.assign({}, state.profile, { banner: path });
@@ -9347,7 +9361,9 @@ function paintUser(p) {
   // фон шапки — только от NFT: надетый подарок или (у админов) выбранный фон NFT
   hero.classList.remove("pbg"); hero.style.background = "";
   hero.style.removeProperty("--b1"); hero.style.removeProperty("--b2");
-  if (worn) paintNft(hero, worn);
+  const bn = (isPremium(p) || p.is_admin) && p.banner ? p.banner : "";
+  if (bn) {}
+  else if (worn) paintNft(hero, worn);
   else if (p.is_admin && /^nft:/.test(p.profile_bg || "")) {
     const apply = () => {
       const b = (state.giftBackdrops || []).find((x) => x.id === p.profile_bg.slice(4));
@@ -9356,8 +9372,7 @@ function paintUser(p) {
     };
     if (state.giftBackdrops) apply(); else giftTypes().then(apply);
   }
-  // баннер над аватаркой (свой фото или видео до 5 с) — у премиума и админов
-  const bn = (isPremium(p) || p.is_admin) && p.banner ? p.banner : "";
+  // баннер на всю шапку (своё фото или видео до 5 с) — у премиума и админов
   $("uBanner").replaceChildren(...(bn ? [bannerNode(bn)] : []));
   $("uBanner").hidden = !bn;
   hero.classList.toggle("has-banner", !!bn);
