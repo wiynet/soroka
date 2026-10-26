@@ -2687,7 +2687,7 @@ void main() {
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
-      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="signupForm" data-view="signup" novalidate hidden>
@@ -2702,7 +2702,7 @@ void main() {
       <div class="error" id="signupErr"></div>
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
-      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
     </form>
 
     <form id="resetForm" data-view="reset" novalidate hidden>
@@ -11449,7 +11449,7 @@ window.gLogoFail = gLogoFail;
 // кнопка показывается, только когда вход через Google включён в Supabase (узнаём из открытых настроек входа)
 let googleOn = false;
 try { googleOn = localStorage.getItem("mestario.gauth") === "1"; } catch (e) {}
-function paintGoogle() { for (const el of document.querySelectorAll("[data-google]")) el.hidden = !googleOn; }
+function paintGoogle() { for (const el of document.querySelectorAll("[data-google]")) el.classList.toggle("off", !googleOn); }
 let googleCheck = null;
 function checkGoogle() {
   if (!googleCheck) googleCheck = fetch(SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: SUPABASE_KEY } })
@@ -11469,7 +11469,14 @@ async function googleLogin(btn) {
   const form = btn && btn.closest("form"), err = form ? form.querySelector(".error") : $("loginErr");
   if (err) err.textContent = "";
   // в приложениях Google не пускает во встроенное окно: вход идёт в системном браузере, а приложение его подтверждает
-  if (IN_APP || IN_ELECTRON) { loginViaBrowser(true); return; }
+  if (IN_APP || IN_ELECTRON) {
+    if (!googleOn) { googleCheck = null; await checkGoogle(); }
+    if (!googleOn) { if (err) err.textContent = T("Вход через Google скоро заработает — пока войдите по почте."); return; }
+    loginViaBrowser(true); return;
+  }
+  // пока Google не включён в Supabase, переход вёл бы на страницу с ошибкой — объясняем здесь
+  if (!googleOn) { googleCheck = null; await checkGoogle(); }
+  if (!googleOn) { if (err) err.textContent = T("Вход через Google скоро заработает — пока войдите по почте."); return; }
   if (btn) btn.disabled = true;
   const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: SITE, queryParams: { prompt: "select_account" } } });
   if (error) {
