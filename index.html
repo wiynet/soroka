@@ -2834,7 +2834,7 @@ void main() {
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="link" type="button" data-go="numlogin" id="goNumLogin">Войти по NFT-номеру +555</button>
       <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
-      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="window.gLogoFail&&gLogoFail(this)"></button>
     </form>
 
     <form id="signupForm" data-view="signup" novalidate hidden>
@@ -2849,7 +2849,7 @@ void main() {
       <div class="error" id="signupErr"></div>
       <button class="btn go" type="submit"><span>Создать аккаунт</span><b aria-hidden="true">→</b></button>
       <p class="auth-legal"><span>Создавая аккаунт, вы принимаете</span> <button class="link" type="button" data-doc="terms">Пользовательское соглашение</button> <span>и</span> <button class="link" type="button" data-doc="privacy">Политику конфиденциальности</button></p>
-      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="gLogoFail(this)"></button>
+      <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="window.gLogoFail&&gLogoFail(this)"></button>
     </form>
 
     <form id="numForm" data-view="numlogin" novalidate hidden>
@@ -6321,6 +6321,8 @@ function voiceUrl(m) {
 function voiceStop() { voiceEl.pause(); voice.id = null; voice.audio = null; voice.loading = null; }
 voiceEl.addEventListener("timeupdate", paintVoice);
 voiceEl.addEventListener("pause", paintVoice);
+voiceEl.addEventListener("pause", () => audioBackSoon());
+voiceEl.addEventListener("ended", () => audioBackSoon());
 voiceEl.addEventListener("playing", paintVoice);
 voiceEl.addEventListener("ended", () => { voice.id = null; voice.audio = null; paintVoice(); });
 voiceEl.addEventListener("error", () => {
@@ -6344,6 +6346,7 @@ function paintVoice() {
 }
 async function playVoice(m, at) {
   if (voice.id === m.id && voice.audio) {
+    audioMode("playback");
     if (at != null) { try { voiceEl.currentTime = at; } catch (e) {} if (voiceEl.paused) voiceEl.play().catch(() => {}); }
     else if (voiceEl.paused) voiceEl.play().catch(() => {}); else voiceEl.pause();
     paintVoice();
@@ -6363,6 +6366,7 @@ async function playVoice(m, at) {
   voice.loading = null;
   if (!url) { toast(T("Не удалось загрузить голосовое")); paintVoice(); return; }
   voice.id = m.id; voice.audio = voiceEl;
+  audioMode("playback");
   voiceEl.src = url;
   if (at) { try { voiceEl.currentTime = at; } catch (e) {} }
   voiceEl.play().catch(() => {});
@@ -7222,6 +7226,43 @@ function onChatRow(row) {
     if (state.activeId === c.id) renderHead();
   }
 }
+/* ---------- диагностика: ошибки и частые перезапуски страницы уходят в базу (private.client_events) ---------- */
+const DIAG = (() => {
+  let boots = [];
+  try { boots = JSON.parse(sessionStorage.getItem("mestario.boots") || "[]").filter((t) => Date.now() - t < 300000); } catch (e) {}
+  boots.push(Date.now());
+  try { sessionStorage.setItem("mestario.boots", JSON.stringify(boots)); } catch (e) {}
+  let last = null;
+  try { last = JSON.parse(localStorage.getItem("mestario.lastErr") || "null"); localStorage.removeItem("mestario.lastErr"); } catch (e) {}
+  const nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+  return { boots: boots.length, nav: nav.type || "", last };
+})();
+function diag(kind, info) {
+  try { sb.rpc("log_client", { p_kind: kind, p_info: { ...info, mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null, app: window.Capacitor ? "app" : /Electron/i.test(navigator.userAgent) ? "pc" : "web" }, p_ua: navigator.userAgent }).then(() => {}); } catch (e) {}
+}
+let diagErrs = 0;
+function diagErr(msg, src) {
+  const e = { msg: String(msg || "").slice(0, 300), src: String(src || "").slice(0, 200), t: Date.now() };
+  try { localStorage.setItem("mestario.lastErr", JSON.stringify(e)); } catch (x) {}
+  if (++diagErrs <= 5) diag("error", e);
+}
+window.addEventListener("error", (e) => diagErr(e.message, (e.filename || "") + ":" + (e.lineno || "")));
+window.addEventListener("unhandledrejection", (e) => diagErr(e.reason && (e.reason.message || e.reason), "promise"));
+// страница открылась заново 3 раза за 5 минут — записываем, чтобы понять причину
+setTimeout(() => { if (DIAG.boots >= 3) diag("reload_loop", { boots: DIAG.boots, nav: DIAG.nav, last: DIAG.last }); }, 3000);
+// GIF и видео-превью за краем экрана не крутим: на телефоне каждое такое видео занимает память и декодер
+const gifIO = "IntersectionObserver" in window ? new IntersectionObserver((list) => {
+  for (const en of list) { const v = en.target; if (en.isIntersecting) { if (v.paused) v.play().catch(() => {}); } else if (!v.paused) v.pause(); }
+}, { rootMargin: "200px" }) : null;
+const gifMO = gifIO && new MutationObserver((ms) => {
+  for (const m of ms) for (const n of m.addedNodes) {
+    if (n.nodeType !== 1) continue;
+    if (n.matches && n.matches("video.gif, .gif-it video")) gifIO.observe(n);
+    else if (n.querySelectorAll) for (const v of n.querySelectorAll("video.gif, .gif-it video")) gifIO.observe(v);
+  }
+});
+if (gifMO) gifMO.observe(document.body, { childList: true, subtree: true });
+
 /* ---------- просьба заново разрешить микрофон: один раз на устройстве ---------- */
 const MIC_ASK = "mestario.micAsk.1";
 async function micState() {
@@ -8057,7 +8098,7 @@ function vnoteNode(m, src) {
     if (!v.paused) { v.pause(); return; }
     if (vnPlaying && vnPlaying !== v) vnPlaying.pause();
     try { if (!voiceEl.paused) voiceEl.pause(); } catch (e) {}
-    vnPlaying = v; v.muted = false;
+    vnPlaying = v; v.muted = false; audioMode("playback");
     box.classList.add("on");
     v.play().catch(() => { box.classList.remove("on"); toast(T("Не удалось проиграть видеосообщение")); });
   });
@@ -12160,13 +12201,26 @@ $("abForm").addEventListener("submit", async (e) => {
   refreshAiCredits();
 });
 
+/* ---------- iPhone: голосовые слышно и в беззвучном режиме ---------- */
+// «playback» — как у плеера: беззвучный переключатель не глушит; «ambient» — для звуков интерфейса (их глушит)
+function audioMode(t) { try { if (navigator.audioSession && navigator.audioSession.type !== t) navigator.audioSession.type = t; } catch (e) {} }
+function mediaPlaying() {
+  return (typeof voiceEl !== "undefined" && !voiceEl.paused) || (typeof vnPlaying !== "undefined" && vnPlaying && !vnPlaying.paused)
+    || (typeof call !== "undefined" && !!call) || (typeof vc !== "undefined" && !!vc);
+}
+let audioBackT = 0;
+function audioBackSoon() { clearTimeout(audioBackT); audioBackT = setTimeout(() => { if (!mediaPlaying()) audioMode("ambient"); }, 800); }
+document.addEventListener("play", (e) => { if (e.target && (e.target === voiceEl || (e.target.tagName === "VIDEO" && !e.target.muted) || e.target.tagName === "AUDIO")) audioMode("playback"); }, true);
+document.addEventListener("pause", audioBackSoon, true);
+document.addEventListener("ended", audioBackSoon, true);
+
 /* ---------- свои звуки Mestario: синтезируются прямо в браузере, без файлов ---------- */
 let sndCtx = null, sndBus = null, sndLast = 0;
 function sndUnlock() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   // iPhone: «фоновый» режим звука — беззвучный переключатель его глушит, как у системных звуков
-  try { if (navigator.audioSession && navigator.audioSession.type !== "ambient") navigator.audioSession.type = "ambient"; } catch (e) {}
+  if (!mediaPlaying()) audioMode("ambient");
   if (!sndCtx) {
     try {
       sndCtx = new AC();
