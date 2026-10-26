@@ -1208,6 +1208,24 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .u-thumbs button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--panel-2); cursor: pointer; }
 .u-thumbs img, .u-thumbs video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .danger-row b { color: var(--danger); }
+/* пузырьки сообщений Mestario */
+#msgs .msg[data-bb] { background: var(--bb) !important; color: var(--bb-ink) !important; border-color: transparent !important; }
+#msgs .msg[data-bb] a, #msgs .msg[data-bb] .author, #msgs .msg[data-bb] .fwd { color: inherit !important; }
+#msgs .msg[data-bb] .meta, #msgs .msg[data-bb] .meta .dots, #msgs .msg[data-bb] .ticks, #msgs .msg[data-bb] .ticks.read { color: color-mix(in srgb, var(--bb-ink) 78%, transparent) !important; }
+#msgs .msg[data-bb] .quote { background: rgb(255 255 255 / .18) !important; border-color: color-mix(in srgb, var(--bb-ink) 70%, transparent) !important; color: inherit !important; }
+#msgs .msg[data-bb] .quote b { color: inherit !important; }
+#msgs .msg[data-bb] .msg-tr { background: rgb(255 255 255 / .16); border-left-color: currentColor; }
+#msgs .msg[data-bb] .msg-tr small { color: inherit; }
+.bb-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.bb-sw { width: 44px; height: 30px; border-radius: 15px 15px 4px 15px; border: 2px solid transparent; cursor: pointer; padding: 0; position: relative; }
+.bb-sw.on { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.bb-sw.none { background: var(--mine); font-size: 12px; color: var(--muted); }
+.sug-card { display: grid; gap: 8px; justify-items: start; margin-top: 6px; }
+.sug-ph { width: 180px !important; height: 180px !important; object-fit: cover; border-radius: 50% !important; }
+.ct-dlg .ct-sw.own { background: var(--panel-2); display: grid; place-items: center; align-content: center; font-size: 26px; }
+.ct-sw[data-img] { background-size: cover !important; background-position: center !important; }
+.cn-av { display: flex; align-items: center; gap: 12px; }
+.cn-row .avatar { flex: none; }
 .st-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .st-kpi { display: grid; gap: 2px; padding: 10px; border-radius: 12px; background: var(--panel-2); }
 .st-kpi b { font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -2304,7 +2322,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=08a8f0d4f1"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=2e87e22cdc"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -2928,6 +2946,7 @@ void main() {
           <div class="pcard">
             <button class="srow" type="button" data-go="saved"><span class="pico blue" data-ico="bookmark"></span><span class="st">Избранное</span><span class="sv" id="sv_saved"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="accounts"><span class="pico orange" data-ico="users"></span><span class="st">Аккаунты</span><span class="sv" id="sv_accounts"></span><span class="chev" aria-hidden="true">›</span></button>
+            <button class="srow" type="button" data-go="contacts"><span class="pico green" data-ico="users"></span><span class="st">Контакты</span><span class="sv" id="sv_contacts"></span><span class="chev" aria-hidden="true">›</span></button>
           </div>
           <div class="pcard">
             <button class="srow" type="button" data-go="notify"><span class="pico red" data-ico="bell"></span><span class="st">Уведомления</span><span class="sv" id="sv_notify"></span><span class="chev" aria-hidden="true">›</span></button>
@@ -3016,7 +3035,15 @@ void main() {
         <div class="small muted">Аккаунт удаляется навсегда: войти в него или восстановить его будет нельзя.</div>
         <div class="actions" style="justify-content:flex-start"><button class="btn danger" type="button" id="btnDelAcc">Удалить аккаунт</button></div>
         </div>
+        <div data-page="contacts" hidden>
+        <input class="input" id="cnSearch" type="search" placeholder="Поиск по контактам" autocomplete="off">
+        <div id="cnList" style="display:grid;gap:2px"></div>
+        <div class="hint">Имена, фото и пузырьки контактов видите только вы.</div>
+        </div>
         <div data-page="look" hidden>
+        <div class="set-label">Пузырёк моих сообщений</div>
+        <div class="hint" style="margin-top:-4px">Его видят все, кому вы пишете.</div>
+        <div id="setBubble"></div>
         <div class="set-label">Тема</div>
         <div class="seg" data-key="theme" role="radiogroup" aria-label="Тема">
           <button type="button" role="radio" data-v="system">Как в системе</button>
@@ -4117,6 +4144,10 @@ void main() {
           <span class="pico gold" id="uNftIco"></span>
           <div class="ptx"><div class="nft-list left" id="uNft"></div><small>NFT-юзернеймы</small></div>
         </div>
+        <button class="prow" type="button" id="uContactRow" hidden>
+          <span class="pico green" data-ic="users"></span>
+          <div class="ptx"><b id="uContactText">Добавить в контакты</b><small id="uContactSub">Своё имя, фото и пузырёк — видите только вы</small></div>
+        </button>
         <div class="prow" id="uPremRow">
           <span class="pico violet">★</span>
           <div class="ptx"><div id="uPremLine"></div><small>Премиум</small></div>
@@ -4582,7 +4613,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),collectible_numbers(number),is_bot,intro";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),collectible_numbers(number),is_bot,intro,bubble";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -5405,6 +5436,7 @@ async function startApp() {
   await loadChats();
   loadFolders();
   loadMyBots().then(() => { if (state.activeId) renderHead(); }).catch(() => {});
+  loadContacts();
   claimDaily();
   refreshAiCredits();
   idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
@@ -5606,18 +5638,18 @@ function other(c) { return c.members.find((p) => p.id !== state.me.id); }
 function chatTitle(c) {
   if (c.is_group) return c.title || T("Группа");
   const o = other(c);
-  return o ? o.display_name : T("Избранное");
+  return o ? nameOf(o) : T("Избранное");
 }
 function memberName(c, id) {
   const p = c.members.find((m) => m.id === id);
-  return p ? p.display_name : T("Участник");
+  return p ? nameOf(p) : T("Участник");
 }
 function chatRow(c) {
   let preview = previewText(c.last_text) || (c.is_channel ? T("Канал создан") : c.is_group ? T("Группа создана") : T("Нет сообщений"));
   if (c.is_channel) { /* в канале автор один, имя не подписываем */ }
   else if (c.last_text && c.last_sender === state.me.id) preview = T("Вы: ") + preview;
   else if (c.last_text && c.is_group) preview = memberName(c, c.last_sender) + ": " + preview;
-  const av = avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? c.avatar_path : (other(c) || state.profile).avatar_path);
+  const av = avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, false, c.is_group ? c.avatar_path : avOf(other(c) || state.profile));
   // рамка вокруг аватарки в списке означает действующую историю, а не «в сети»
   if (!c.is_group && other(c) && storyUsers.has(other(c).id)) {
     const who = other(c);
@@ -5648,7 +5680,7 @@ function rowSig(c) {
   return [c.id, chatTitle(c), c.avatar_path, c.last_text, c.last_sender, c.last_text ? listTime(c.last_at) : "", state.unread.get(c.id) || 0,
     mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.id === state.activeId ? 1 : 0, c.is_channel ? 1 : 0,
     o && storyUsers.has(o.id) ? ((storyFeed.get(o.id) || {}).seen ? "s" : "S") : "", who,
-    c.is_group && c.last_sender ? memberName(c, c.last_sender) : "", window.SOROKA_LANG].join("¦");
+    c.is_group && c.last_sender ? memberName(c, c.last_sender) : "", window.SOROKA_LANG, contactsVer, o ? avOf(o) : ""].join("¦");
 }
 function chatRowCached(c) {
   const sig = rowSig(c), hit = rowCache.get(c.id);
@@ -6011,7 +6043,7 @@ function renderHead() {
   if (!c) return;
   applyChatTheme();
   const o = other(c);
-  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path));
+  $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : avOf(o || state.profile)));
   $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.is_group || !preTick(o) ? [] : [preTick(o)]), chatTitle(c), ...(c.is_group ? [] : marks(o)));
   if (!c.is_group && o && c.ttl) $("convName").append(ttlMark(c));
   tint($("convName"), c.is_group ? null : o);
@@ -6301,6 +6333,14 @@ function msgNode(m, group) {
     else el.append(h("div", { class: "file" }, h("span", { class: "ico" }, icon(m.voice_secs != null ? "mic" : "file")),
       h("span", {}, h("div", { class: "fn" }, m.file_name || T("Файл")), h("div", { class: "small muted" }, m.voice_secs != null ? fmtDur(m.voice_secs) : fmtSize(m.file_size || 0)))));
   }
+  if (m.avatar_suggest && m.file_path && !temp) {
+    el.classList.add("sugm");
+    const ph = el.querySelector("img.photo");
+    const card = h("div", { class: "sug-card" }, h("b", {}, mine ? T("Вы предложили фото для профиля") : T("Вам предлагают фото для профиля")));
+    if (!mine) card.append(h("button", { class: "btn", type: "button", onclick: (e) => acceptSuggest(m, e.currentTarget) }, T("Поставить себе")));
+    el.append(card);
+    if (ph) ph.classList.add("sug-ph");
+  }
   if (m.poll_id) {
     el.append(pollCard(m));
   } else if (m.gif_url) {
@@ -6409,6 +6449,9 @@ function msgNode(m, group) {
     st && st.views != null && h("span", { class: "views", title: T("Сколько подписчиков прочитали пост") }, icon("eye"), String(st.views)),
     (m.edited_at ? T("изменено ") : "") + tFmt.format(new Date(m.created_at)), ticks));
   if (!temp) msgMenuBind(el, group ? group[group.length - 1] : m, group);
+  // пузырёк: свой у отправителя (видят все) или тот, что я поставил другу (вижу только я)
+  const bb = !el.classList.contains("stk") && !el.classList.contains("gifm") && !el.classList.contains("giftm") && !el.classList.contains("vn") && !el.classList.contains("gw") ? BUBBLES.find((x) => x.id === bubbleFor(m, c)) : null;
+  if (bb) { el.dataset.bb = bb.id; el.style.setProperty("--bb", bb.bg); el.style.setProperty("--bb-ink", bb.ink || "#fff"); }
   return el;
 }
 // то же меню, что по «⋯»: правая кнопка мыши, на телефоне — долгое нажатие на сообщение
@@ -6451,14 +6494,14 @@ let slideBusy = false, slidePending = false;
 const msgNodes = new Map();
 let msgNodesChat = null, msgStick = null;
 function userSig(p) {
-  return p ? [p.id, p.display_name, p.avatar_path, p.verified, p.is_admin, p.premium_until, p.name_hue, p.hide_crown, p.hide_tick,
+  return p ? [p.id, nameOf(p), avOf(p), p.bubble, contactsVer, p.verified, p.is_admin, p.premium_until, p.name_hue, p.hide_crown, p.hide_tick,
     p.badge_style, p.badge_path, p.worn_type, p.worn_number, p.worn_model, p.worn_backdrop].join("|") : "";
 }
 // подпись всего, от чего зависит вид сообщения; null — такие сообщения не кешируем (опросы, подарки, розыгрыши, неотправленные)
 function msgSig(m, group, c) {
   if (isTemp(m) || m.poll_id || m.gift_type || m.event_kind || (m.giveaway_id && /^🎉/.test(m.body || ""))) return null;
   const list = group || [m];
-  const parts = [window.SOROKA_LANG, state.me.id, list.map((x) => JSON.stringify(x)).join("\n")];
+  const parts = [window.SOROKA_LANG, state.me.id, list.map((x) => JSON.stringify(x)).join("\n"), bubbleFor(m, c) || "", contactsVer];
   const mine = m.sender_id === state.me.id;
   if (c) {
     parts.push(c.is_group ? 1 : 0, c.is_channel ? 1 : 0, mine ? (m.id <= readUpTo(c) ? "r" : "u") : "");
@@ -6502,7 +6545,7 @@ function mrowFor(node, last, who, senderId) {
   if (hit && hit.sig === sig && (hit.el.isConnected ? node.parentNode === hit.el : true)) { if (node.parentNode !== hit.el) hit.el.append(node); return hit.el; }
   const av = last
     ? h("button", { class: "mav", type: "button", title: who ? who.display_name : T("Участник"), "aria-label": T("Профиль: ") + (who ? who.display_name : T("участник")), onclick: () => { if (who) showUser(who); } },
-        avatar(who ? who.display_name : "?", senderId, true, who && who.avatar_path))
+        avatar(who ? nameOf(who) : "?", senderId, true, who && avOf(who)))
     : h("span", { class: "gap" });
   const el = h("div", { class: "mrow" }, av, node);
   mrowCache.set(node, { sig, el });
@@ -7065,6 +7108,182 @@ function onChatRow(row) {
     if (state.activeId === c.id) renderHead();
   }
 }
+/* ---------- пузырьки сообщений и контакты ---------- */
+// пузырьки только от Mestario (цвета и градиенты, без фото); свой видят все, другу можно поставить — увижу только я
+const BUBBLES = [
+  { id: "red", name: "Красный", bg: "linear-gradient(160deg, #ff5f57, #d92d2a)" },
+  { id: "orange", name: "Оранжевый", bg: "linear-gradient(160deg, #ffa24c, #f06a1c)" },
+  { id: "gold", name: "Золото", bg: "linear-gradient(160deg, #ffd666, #e6a817)", ink: "#2b1d00" },
+  { id: "green", name: "Зелёный", bg: "linear-gradient(160deg, #5fd47a, #239a46)" },
+  { id: "mint", name: "Мята", bg: "linear-gradient(160deg, #7af0c8, #22b893)", ink: "#003325" },
+  { id: "teal", name: "Бирюза", bg: "linear-gradient(160deg, #39c6c9, #0d8a96)" },
+  { id: "sky", name: "Небо", bg: "linear-gradient(160deg, #6cc9ff, #2b8fe8)" },
+  { id: "blue", name: "Синий", bg: "linear-gradient(160deg, #4f7dff, #2747d1)" },
+  { id: "indigo", name: "Индиго", bg: "linear-gradient(160deg, #7a6bff, #4a32d6)" },
+  { id: "violet", name: "Фиолетовый", bg: "linear-gradient(160deg, #b27cff, #7b3fe0)" },
+  { id: "pink", name: "Розовый", bg: "linear-gradient(160deg, #ff7ab8, #e0357f)" },
+  { id: "graphite", name: "Графит", bg: "linear-gradient(160deg, #4a5560, #232a31)" },
+  { id: "sunset", name: "Закат", bg: "linear-gradient(135deg, #ffb347, #ff5e62 55%, #a43bd6)" },
+  { id: "ocean", name: "Океан", bg: "linear-gradient(135deg, #2bc0e4, #1a6dd6 55%, #2c2f8f)" },
+  { id: "aurora", name: "Сияние", bg: "linear-gradient(135deg, #14d8a8, #4b5cf0 60%, #b04fe0)" },
+  { id: "candy", name: "Конфета", bg: "linear-gradient(135deg, #ff9a9e, #f78ad0 50%, #a18cd1)" },
+  { id: "fire", name: "Огонь", bg: "linear-gradient(135deg, #ffd000, #ff6a00 50%, #e0001a)" },
+  { id: "forest", name: "Лес", bg: "linear-gradient(135deg, #a8e063, #3fa56a 55%, #134e3a)" },
+];
+var contacts = new Map(), contactsVer = 0;
+function nameOf(p) { const k = p && contacts.get(p.id); return (k && k.name) || (p ? p.display_name : ""); }
+function avOf(p) { const k = p && contacts.get(p.id); return (k && k.avatar_path) || (p ? p.avatar_path : null); }
+function bubbleFor(m, c) {
+  if (!m || !state.me) return null;
+  if (m.sender_id === state.me.id) return (state.profile && state.profile.bubble) || null;
+  const k = contacts.get(m.sender_id);
+  if (k && k.bubble) return k.bubble === "none" ? null : k.bubble;
+  const who = c && c.members.find((x) => x.id === m.sender_id);
+  return (who && who.bubble) || null;
+}
+function contactsChanged() {
+  contactsVer++;
+  rowCache.clear(); msgNodes.clear();
+  renderList();
+  if (state.activeId) { renderHead(); repaintKeep(); }
+}
+async function loadContacts() {
+  const { data } = await sb.from("contacts").select("user_id,name,avatar_path,bubble");
+  contacts = new Map((data || []).map((r) => [r.user_id, r]));
+  contactsChanged();
+}
+function bubblePicker(cur, onPick, withNone) {
+  const box = h("div", { class: "bb-grid" });
+  const sw = (b) => {
+    const el = h("button", { type: "button", class: "bb-sw" + (b ? "" : " none") + ((b ? b.id : "") === (cur || "") ? " on" : ""), title: b ? T(b.name) : withNone, "aria-label": b ? T(b.name) : withNone,
+      onclick: () => { for (const x of box.children) x.classList.toggle("on", x === el); onPick(b ? b.id : ""); } }, b ? "" : "∅");
+    if (b) el.style.background = b.bg;
+    return el;
+  };
+  box.append(sw(null), ...BUBBLES.map(sw));
+  return box;
+}
+// свой пузырёк — в «Оформлении»
+function paintMyBubble() {
+  const box = $("setBubble"); if (!box) return;
+  box.replaceChildren(bubblePicker((state.profile && state.profile.bubble) || "", async (id) => {
+    const { error } = await sb.rpc("set_my_bubble", { p_bubble: id || null });
+    if (error) { toast(T("Не удалось сохранить пузырёк")); return; }
+    state.profile = { ...state.profile, bubble: id || null };
+    contactsChanged();
+    toast(id ? T("Пузырёк сохранён — его видят все") : T("Обычный пузырёк"));
+  }, T("Обычный")));
+}
+// редактор контакта: своё имя, своя аватарка и пузырёк для его сообщений — видны только мне
+function openContactEditor(p) {
+  const cur = contacts.get(p.id) || {};
+  let avPath = cur.avatar_path || null, bubble = cur.bubble || "";
+  const name = h("input", { class: "input", maxlength: "64", placeholder: p.display_name, value: cur.name || "" });
+  const avBox = h("span", {});
+  const paintAv = () => avBox.replaceChildren(avatar(name.value.trim() || p.display_name, p.id, "lg", avPath || p.avatar_path));
+  paintAv();
+  name.addEventListener("input", paintAv);
+  const file = h("input", { type: "file", accept: "image/*", hidden: true });
+  file.addEventListener("change", async () => {
+    const f = file.files[0]; file.value = "";
+    if (!f) return;
+    const out = await openMediaEditor(f, { fixed: 1, out: [512, 512], title: T("Фото контакта"), save: T("Готово") });
+    if (!out) return;
+    const blob = await toWebp(out, 512);
+    const path = state.me.id + "/contact-" + p.id + "-" + Date.now() + ".webp";
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+    if (up.error) { toast(T("Не удалось загрузить фото")); return; }
+    avPath = path; paintAv();
+  });
+  const err = h("div", { class: "error" });
+  const save = h("button", { class: "btn", type: "button", onclick: async () => {
+    const row = { owner_id: state.me.id, user_id: p.id, name: name.value.trim() || null, avatar_path: avPath, bubble: bubble || null };
+    save.disabled = true;
+    const { error } = await sb.from("contacts").upsert(row);
+    save.disabled = false;
+    if (error) { err.textContent = T("Не удалось сохранить контакт."); return; }
+    contacts.set(p.id, row); contactsChanged();
+    if (viewed && viewed.id === p.id && $("dlgUser").open) paintUser(viewed);
+    d.close(); toast(cur.user_id ? T("Контакт сохранён") : T("Добавлено в контакты"));
+  } }, T("Сохранить"));
+  const del = h("button", { class: "btn ghost", type: "button", hidden: !contacts.has(p.id), onclick: async () => {
+    const { error } = await sb.from("contacts").delete().eq("user_id", p.id);
+    if (error) { err.textContent = T("Не удалось удалить контакт."); return; }
+    contacts.delete(p.id); contactsChanged();
+    if (viewed && viewed.id === p.id && $("dlgUser").open) paintUser(viewed);
+    d.close(); toast(T("Удалено из контактов"));
+  } }, T("Удалить из контактов"));
+  const d = h("dialog", {}, h("div", { class: "dlg", style: "display:grid;gap:12px" },
+    h("h2", { style: "margin:0" }, contacts.has(p.id) ? T("Контакт") : T("Новый контакт")),
+    h("div", { class: "small muted" }, T("Имя, фото и пузырёк здесь видите только вы. У человека в профиле ничего не меняется.")),
+    h("div", { class: "cn-av" }, avBox, h("div", { style: "display:grid;gap:6px" },
+      h("button", { class: "btn ghost", type: "button", onclick: () => file.click() }, T("Поставить своё фото")),
+      h("button", { class: "link", type: "button", onclick: () => { avPath = null; paintAv(); } }, T("Убрать своё фото")))), file,
+    h("label", { class: "field" }, h("span", {}, T("Имя в ваших контактах")), name),
+    h("div", { class: "set-label", style: "margin:0" }, T("Пузырёк его сообщений (видите только вы)")),
+    bubblePicker(bubble, (id) => { bubble = id; }, T("Как выбрал он")),
+    h("button", { class: "btn ghost", type: "button", onclick: () => { d.close(); suggestPhoto(p); } }, "📷 " + T("Предложить ему фото для профиля")),
+    err,
+    h("div", { class: "actions" }, del, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, T("Отмена")), save)));
+  d.addEventListener("close", () => d.remove());
+  document.body.append(d); d.showModal();
+}
+async function toWebp(file, max) {
+  const img = new Image(); const url = URL.createObjectURL(file); img.src = url;
+  try { await img.decode(); } catch (e) { URL.revokeObjectURL(url); return file; }
+  const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const cv = h("canvas"); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  URL.revokeObjectURL(url);
+  return await new Promise((r) => cv.toBlob((b) => r(b || file), "image/webp", 0.86));
+}
+// предложить фото: в личный чат уходит фото с кнопкой «Поставить себе»
+function suggestPhoto(p) {
+  const f = h("input", { type: "file", accept: "image/*" });
+  f.addEventListener("change", async () => {
+    const file = f.files[0]; if (!file) return;
+    const out = await openMediaEditor(file, { fixed: 1, out: [640, 640], title: T("Фото для профиля"), save: T("Предложить") });
+    if (!out) return;
+    const blob = await toWebp(out, 640);
+    let dc = directWith(p.id);
+    if (!dc) { const { data } = await sb.rpc("open_direct_chat", { other: p.id }); if (!data) { toast(T("Не удалось открыть чат")); return; } await loadChats(); dc = state.chats.get(data); }
+    if (!dc) return;
+    const path = dc.id + "/" + randomId() + ".webp";
+    const up = await sb.storage.from("attachments").upload(path, blob, { contentType: "image/webp" });
+    if (up.error) { toast(T("Не удалось загрузить фото")); return; }
+    const { data, error } = await sb.from("messages").insert({ chat_id: dc.id, sender_id: state.me.id, body: "", file_path: path, file_name: "avatar.webp", file_type: "image/webp", file_size: blob.size, avatar_suggest: true }).select().single();
+    if (error) { toast(T("Не удалось отправить предложение")); return; }
+    touchChat(data); if (state.activeId === dc.id && !state.msgs.some((x) => x.id === data.id)) addMsg(data);
+    renderList();
+    toast(T("Фото предложено — ") + nameOf(p) + T(" сможет поставить его одним нажатием"));
+  });
+  f.click();
+}
+async function acceptSuggest(m, btn) {
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.storage.from("attachments").download(m.file_path);
+    if (error || !data) { toast(T("Не удалось скачать фото")); return; }
+    const blob = await toWebp(new File([data], "a.webp", { type: data.type || "image/webp" }), 640);
+    const path = state.me.id + "/" + Date.now() + ".webp";
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+    if (up.error) { toast(T("Не удалось загрузить аватарку")); return; }
+    await setAvatarPath(path);
+  } finally { btn.disabled = false; }
+}
+// страница «Контакты» в настройках
+function paintContactsPage() {
+  const box = $("cnList"), q = ($("cnSearch").value || "").trim().toLowerCase();
+  const people = new Map();
+  for (const c of state.chats.values()) for (const m of c.members) if (m.id !== state.me.id && contacts.has(m.id)) people.set(m.id, m);
+  const rows = [...contacts.keys()].map((id) => people.get(id) || { id, display_name: (contacts.get(id).name || "…"), username: "" })
+    .filter((p) => !q || nameOf(p).toLowerCase().includes(q) || (p.username || "").includes(q))
+    .sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+  box.replaceChildren(...(rows.length ? rows.map((p) => h("button", { class: "row cn-row", type: "button", onclick: () => { $("dlgSettings").close(); showUser(p); } },
+    avatar(nameOf(p), p.id, true, avOf(p)), h("span", { class: "txt" }, h("span", { class: "name" }, nameOf(p)), h("span", { class: "sub" }, h("span", {}, (p.username ? "@" + p.username : "") + (contacts.get(p.id).name && p.display_name !== contacts.get(p.id).name ? " · " + p.display_name : ""))))))
+    : [h("div", { class: "empty-note" }, contacts.size ? T("Никого не нашли.") : T("Контактов пока нет. Откройте профиль человека и нажмите «Добавить в контакты»."))]));
+}
+
 /* ---------- темы чатов: свой цвет и фон переписки ---------- */
 // своя тема видна только мне и доступна всем; общую (видят оба) ставят с премиумом
 const CHAT_THEMES = [
@@ -7079,11 +7298,19 @@ const CHAT_THEMES = [
   { id: "sand", name: "Песок", h: 38, a: 38, b: 60 },
 ];
 function ctBg(t) { const k = t.k || 22; return "linear-gradient(165deg, color-mix(in srgb, hsl(" + t.a + " 80% 58%) " + k + "%, var(--panel)), color-mix(in srgb, hsl(" + t.b + " 75% 60%) " + (k - 4) + "%, var(--panel)))"; }
-function chatThemeOf(c) { const id = c && (c.myTheme || c.theme); return id ? CHAT_THEMES.find((t) => t.id === id) || null : null; }
+function chatThemeOf(c) {
+  const id = c && (c.myTheme || c.theme);
+  if (!id) return null;
+  if (id.startsWith("img:")) return { id: "img", img: id.slice(4), name: "Своё фото" };
+  return CHAT_THEMES.find((t) => t.id === id) || null;
+}
+function ctImgBg(path) { return 'linear-gradient(rgb(0 0 0 / .06), rgb(0 0 0 / .06)), url("' + avatarUrl(path) + '") center / cover no-repeat'; }
 function applyChatTheme() {
   const c = state.chats.get(state.activeId), t = chatThemeOf(c), conv = $("conv");
   if (!t) { delete conv.dataset.ct; conv.style.removeProperty("--h"); conv.style.removeProperty("--ct-bg"); return; }
-  conv.dataset.ct = t.id; conv.style.setProperty("--h", String(t.h)); conv.style.setProperty("--ct-bg", ctBg(t));
+  conv.dataset.ct = t.id;
+  if (t.img) { conv.style.removeProperty("--h"); conv.style.setProperty("--ct-bg", ctImgBg(t.img)); return; }
+  conv.style.setProperty("--h", String(t.h)); conv.style.setProperty("--ct-bg", ctBg(t));
 }
 function openThemePicker(c) {
   c = state.chats.get(c.id) || c;
@@ -7100,6 +7327,27 @@ function openThemePicker(c) {
     return b;
   };
   grid.append(sw(null), ...CHAT_THEMES.map(sw));
+  // своё фото на фон (не больше 1600 px по длинной стороне)
+  const cur0 = c.myTheme || c.theme || "";
+  const own = h("button", { type: "button", class: "ct-sw own" + (cur0.startsWith("img:") ? " on" : ""), title: T("Своё фото") }, h("b", {}, cur0.startsWith("img:") ? "" : "🖼"), h("b", {}, T("Своё фото")));
+  if (cur0.startsWith("img:")) { own.dataset.img = "1"; own.dataset.path = cur0; own.style.background = ctImgBg(cur0.slice(4)); }
+  const ofile = h("input", { type: "file", accept: "image/*", hidden: true });
+  // уже есть своё фото, но выбрана другая тема — выбираем его; выбрано — нажатие меняет фото
+  own.addEventListener("click", () => { if (own.dataset.img && !pick.startsWith("img:")) { pick = own.dataset.path; for (const x of grid.children) x.classList.toggle("on", x === own); return; } ofile.click(); });
+  ofile.addEventListener("change", async () => {
+    const f = ofile.files[0]; ofile.value = "";
+    if (!f) return;
+    own.disabled = true;
+    const blob = await toWebp(f, 1600);
+    const path = state.me.id + "/theme-" + Date.now() + ".webp";
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+    own.disabled = false;
+    if (up.error) { err.textContent = T("Не удалось загрузить фото."); return; }
+    pick = "img:" + path; own.dataset.img = "1"; own.dataset.path = pick;
+    own.style.background = ctImgBg(path); own.firstChild.textContent = "";
+    for (const x of grid.children) x.classList.toggle("on", x === own);
+  });
+  grid.append(own, ofile);
   const chk = h("input", { type: "checkbox", disabled: canBoth ? null : true });
   chk.checked = both && canBoth;
   const err = h("div", { class: "error" });
@@ -8046,7 +8294,7 @@ function paintForward() {
   $("fwChats").replaceChildren(...(chats.length ? chats.map((c) => {
     const o = other(c);
     return h("button", { class: "row", type: "button", onclick: () => forwardTo(c) },
-      avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : (o || state.profile).avatar_path),
+      avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : avOf(o || state.profile)),
       h("span", { class: "txt" }, h("span", { class: "name" }, c.is_channel && kindIcon("horn"), chatTitle(c)),
         h("span", { class: "sub" }, h("span", {}, c.is_channel ? T("канал") : c.is_group ? T("группа") : o ? "@" + o.username : T("заметки для себя")))));
   }) : [h("div", { class: "empty-note" }, T("Чат не найден."))]));
@@ -8764,13 +9012,13 @@ $("pfChan").addEventListener("change", async (e) => {
 });
 const PBG = ["blue", "sky", "pink", "red", "green", "aurora", "sunset", "ocean", "night", "candy", "forest"];
 function paintUser(p) {
-  const av = avatar(p.display_name, p.id, "lg", p.avatar_path);
+  const av = avatar(nameOf(p), p.id, "lg", avOf(p));
   if (p.avatar_path) {
     av.classList.add("zoom");
     av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(p.avatar_path); $("viewer").showModal(); });
   }
   $("uAvatar").replaceChildren(av);
-  $("uName").replaceChildren(...[preTick(p)].filter(Boolean), p.display_name, ...marks(p));
+  $("uName").replaceChildren(...[preTick(p)].filter(Boolean), nameOf(p), ...marks(p));
   tint($("uName"), p);
   // надетый подарок рядом с именем: по нажатию открывается его карточка
   const wornEl = $("uName").querySelector(".worn");
@@ -8853,6 +9101,10 @@ function paintUser(p) {
   $("uEdit").hidden = $("uAddStory").hidden = !me;
   $("uBotEdit").hidden = !(p.is_bot && myBots.some((b) => b.id === p.id));
   paintProfileChat(p);
+  const isC = contacts.has(p.id), k = contacts.get(p.id) || {};
+  $("uContactRow").hidden = me || !!p.is_bot;
+  $("uContactText").textContent = isC ? T("Изменить контакт") : T("Добавить в контакты");
+  $("uContactSub").textContent = isC && k.name && k.name !== p.display_name ? T("В профиле: ") + p.display_name : T("Своё имя, фото и пузырёк — видите только вы");
   paintStoryRing();
 }
 /* ---------- разделы профиля, связанные с личным чатом: медиа, уведомления, таймер, тема, общие группы, действия ---------- */
@@ -8904,6 +9156,7 @@ function paintProfileChat(p) {
   });
 }
 for (const el of $("dlgUser").querySelectorAll("[data-ic]")) el.append(icon(el.dataset.ic));
+$("uContactRow").addEventListener("click", () => { if (viewed) openContactEditor(viewed); });
 $("uCallQ").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (!dc) return; $("dlgUser").close(); openChat(dc.id); startCall(dc); });
 $("uSearchQ").addEventListener("click", () => {
   const dc = viewed && directWith(viewed.id); if (!dc) return;
@@ -10280,7 +10533,7 @@ function openProfileEdit() {
 $("setEdit").addEventListener("click", () => $("btnProfile").click());
 $("setMe").addEventListener("click", () => showUser(state.profile));
 // меню настроек: страницы внутри одного окна
-const SET_TITLES = { premium: "Mestario Premium", coins: T("Мои Mest"), menu: T("Настройки"), notify: T("Уведомления"), privacy: T("Конфиденциальность"), security: T("Безопасность"), look: T("Оформление"), chat: T("Сообщения"), accounts: T("Аккаунты"), lang: T("Язык") };
+const SET_TITLES = { contacts: T("Контакты"), premium: "Mestario Premium", coins: T("Мои Mest"), menu: T("Настройки"), notify: T("Уведомления"), privacy: T("Конфиденциальность"), security: T("Безопасность"), look: T("Оформление"), chat: T("Сообщения"), accounts: T("Аккаунты"), lang: T("Язык") };
 const SET_ICONS = { star: "starf", coin: "coinf", gift: "giftf" };
 for (const el of document.querySelectorAll("#dlgSettings [data-ico]")) el.append(icon(SET_ICONS[el.dataset.ico] || el.dataset.ico));
 $("setBack").append(icon("back"));
@@ -10312,6 +10565,7 @@ $("setLang").addEventListener("click", (e) => {
   try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (err) {}
   location.reload();
 });
+$("cnSearch").addEventListener("input", paintContactsPage);
 $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   const b = e.target.closest("[data-go]");
   if (!b) return;
@@ -10320,6 +10574,8 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   if (go === "privacy") { showSetPage("privacy"); paintBlockList(); return; }
   if (go === "security") { showSetPage("security"); paintSecurity(); paintPinState(); paintLoginCode(); return; }
   if (go === "premium") { showSetPage("premium"); paintPremiumPage(); return; }
+  if (go === "contacts") { showSetPage("contacts"); $("cnSearch").value = ""; paintContactsPage(); return; }
+  if (go === "look") { showSetPage("look"); paintMyBubble(); return; }
   if (SET_TITLES[go]) { showSetPage(go); return; }
   $("dlgSettings").close();
   if (go === "saved") startDirect(state.me.id);
@@ -14998,7 +15254,7 @@ function messageHit(m, q) {
   const text = h("span", {}, ...(j < 0 ? [part] : [part.slice(0, j), h("mark", {}, part.slice(j, j + len)), part.slice(j + len)]));
   const who = m.sender_id === state.me.id ? T("Вы: ") : c && c.is_group && !c.is_channel ? memberName(c, m.sender_id) + ": " : "";
   return h("button", { class: "row msg-hit", type: "button", onclick: async () => { setSearchMode(false); $("search").value = ""; await openChat(m.chat_id); jumpTo(m.id); } },
-    avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, true, c.is_group ? c.avatar_path : (other(c) || state.profile).avatar_path),
+    avatar(chatTitle(c), c.is_group ? c.id : (other(c) || state.profile).id, true, c.is_group ? c.avatar_path : avOf(other(c) || state.profile)),
     h("span", { class: "txt" }, h("span", { class: "top" }, h("span", { class: "name" }, chatTitle(c)), h("span", { class: "time" }, listTime(m.created_at))),
       h("span", { class: "sub" }, h("span", {}, who, text))));
 }

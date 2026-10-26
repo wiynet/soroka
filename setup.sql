@@ -1803,3 +1803,11 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- vc_state(chat) — для плашки «Идёт голосовой чат · N». Пропавшие убираются через 60 с, пустой чат закрывается.
 -- Звук идёт напрямую между участниками (каждый с каждым), сигналы и состав — канал realtime «vc-<id>» (broadcast + presence).
 -- Заходят с выключенным микрофоном; «говорит» — по громкости звука. Английский перевод: en.js дополнен (около 360 строк).
+
+-- ===== Пузырьки, контакты, предложение фото, фото в темах (миграция bubbles_contacts_photo_themes) =====
+-- profiles.bubble + set_my_bubble(id): свой пузырёк — 18 вариантов Mestario (цвета и градиенты, фото нельзя), видят все.
+-- public.contacts(owner_id, user_id, name, avatar_path, bubble): своё имя, своя аватарка (avatars/<я>/contact-<id>-<ts>.webp)
+-- и пузырёк для сообщений друга — видит только владелец (RLS). Настройки → «Контакты», профиль → «Добавить в контакты».
+-- messages.avatar_suggest: фото с кнопкой «Поставить себе» (копируется в avatars/<получатель>/… и ставится аватаркой).
+-- Темы чатов: theme = 'img:<я>/theme-<ts>.webp' — своё фото фоном (ограничения chats_theme_check / chat_members_theme_check
+-- расширены через alter table … drop/add constraint; set_chat_theme проверяет, что фото из своей папки).
