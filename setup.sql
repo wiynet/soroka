@@ -1796,3 +1796,10 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- (signInWithOtp, шаблон Magic link). nl_check(id, code): 5 попыток, 10 минут. Подошёл код бота — generateLink(magiclink)
 -- → клиент verifyOtp(token_hash); подошёл код из письма — verifyOtp(email) на сервере → клиент setSession.
 -- nl_* — только service_role.
+
+-- ===== Голосовые чаты в группах и каналах (миграция voice_chats) =====
+-- public.voice_chats (один активный на чат, в realtime), private.voice_participants (устройство + отметка раз в 20 с).
+-- vc_join(chat, device): войти/начать (в канале начинают и говорят владелец и админы, до 12 человек), vc_ping, vc_leave,
+-- vc_state(chat) — для плашки «Идёт голосовой чат · N». Пропавшие убираются через 60 с, пустой чат закрывается.
+-- Звук идёт напрямую между участниками (каждый с каждым), сигналы и состав — канал realtime «vc-<id>» (broadcast + presence).
+-- Заходят с выключенным микрофоном; «говорит» — по громкости звука. Английский перевод: en.js дополнен (около 360 строк).

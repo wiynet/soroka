@@ -2008,6 +2008,25 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .call-ui.ended .call-btns { opacity: .35; pointer-events: none; }
 .call-bar { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 44; display: flex; align-items: center; gap: 10px;
   border: 0; border-radius: 999px; padding: 8px 16px; background: #2fb36b; color: #fff; font: inherit; font-size: 14px; cursor: pointer; box-shadow: 0 8px 24px -10px rgb(0 0 0 / .5); max-width: calc(100% - 32px); }
+.vc-banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: color-mix(in srgb, var(--online) 14%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 14px; }
+.vc-banner[hidden] { display: none; }
+.vc-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--online); flex: none; animation: call-blink 1s infinite alternate; }
+.vc-bt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-banner .btn { padding: 6px 14px; }
+.vc-ui { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; gap: 16px; padding: max(14px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom)); color: #fff; background: radial-gradient(120% 80% at 50% 0%, #1f4a3c, #0b1512 70%); }
+.vc-ui[hidden] { display: none; }
+.vc-top { display: flex; align-items: center; gap: 10px; }
+.vc-title { flex: 1; display: grid; text-align: center; gap: 2px; }
+.vc-title span { font-size: 13px; opacity: .75; }
+.vc-sp { width: 40px; }
+.vc-people { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 16px 10px; align-content: start; padding-top: 10px; }
+.vc-p { display: grid; justify-items: center; gap: 6px; font-size: 13px; text-align: center; }
+.vc-p .avatar { width: 64px !important; height: 64px !important; font-size: 24px !important; box-shadow: 0 0 0 3px transparent; transition: box-shadow .15s; }
+.vc-p.talk .avatar { box-shadow: 0 0 0 3px #4cd184, 0 0 18px rgb(76 209 132 / .6); }
+.vc-p .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-p small { opacity: .65; }
+.vc-note { text-align: center; font-size: 13px; opacity: .75; min-height: 18px; }
+.vc-bar { background: #2fb36b; }
 .call-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: call-blink 1s infinite alternate; }
 @keyframes call-blink { to { opacity: .3; } }
 .call-bar span:not(.dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2285,7 +2304,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=19caf5f60a"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=08a8f0d4f1"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3182,6 +3201,7 @@ void main() {
         </div>
         <button class="ai-buy-btn" id="btnAiBuy" type="button" title="Купить ИИ-кредиты за Mest" hidden>+ Кредиты</button>
         <button class="icon-btn" id="btnCall" type="button" title="Позвонить" aria-label="Позвонить" hidden></button>
+        <button class="icon-btn" id="btnVc" type="button" title="Голосовой чат" aria-label="Голосовой чат" hidden></button>
         <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
         <button class="icon-btn" id="btnBotEdit" type="button" title="Настроить бота" aria-label="Настроить бота" hidden></button>
         <button class="icon-btn" id="btnMute" type="button" title="Уведомления из этого чата" aria-label="Уведомления из этого чата"></button>
@@ -3191,6 +3211,7 @@ void main() {
         <button class="link" id="findClose" type="button">Закрыть</button>
       </div>
       <div class="find-list" id="findList" hidden></div>
+      <div class="vc-banner" id="vcBanner" hidden><span class="vc-dot" aria-hidden="true"></span><span class="vc-bt" id="vcBannerText"></span><button class="btn" type="button" id="vcBannerJoin">Присоединиться</button></div>
       <div class="pin-bar" id="pinBar" hidden>
         <button type="button" class="pin-main" id="pinOpen"><b>Закреплено</b><span id="pinText"></span></button>
         <button class="link" id="pinOff" type="button" title="Открепить" aria-label="Открепить">✕</button>
@@ -3752,6 +3773,21 @@ void main() {
   <audio id="callAudio" autoplay></audio>
 </div>
 <button class="call-bar" id="callBar" type="button" hidden><span class="dot"></span><span id="callBarText"></span><b>Вернуться</b></button>
+<!-- голосовой чат группы или канала -->
+<div class="vc-ui" id="vcUi" hidden role="dialog" aria-label="Голосовой чат">
+  <div class="vc-top">
+    <button class="call-ib" id="vcMin" type="button" title="Свернуть — вы останетесь в голосовом чате" aria-label="Свернуть"></button>
+    <div class="vc-title"><b id="vcTitle"></b><span id="vcSub"></span></div>
+    <span class="vc-sp"></span>
+  </div>
+  <div class="vc-people" id="vcPeople"></div>
+  <div class="vc-note" id="vcNote"></div>
+  <div class="call-btns">
+    <div class="call-act"><button class="call-b" id="vcMute" type="button"></button><span id="vcMuteLbl">Микрофон</span></div>
+    <div class="call-act"><button class="call-b red" id="vcLeave" type="button" title="Выйти" aria-label="Выйти из голосового чата"></button><span>Выйти</span></div>
+  </div>
+</div>
+<button class="call-bar vc-bar" id="vcBar" type="button" hidden><span class="dot"></span><span id="vcBarText"></span><b>Открыть</b></button>
 <!-- конструктор бота -->
 <dialog id="dlgBotEdit" class="bot-edit-dlg">
   <div class="dlg">
@@ -5387,6 +5423,7 @@ async function startApp() {
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments" }, (p) => onComment(p.new))
     .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, (p) => onTicket(p))
     .on("postgres_changes", { event: "*", schema: "public", table: "calls" }, (p) => onCallRow(p.new))
+    .on("postgres_changes", { event: "*", schema: "public", table: "voice_chats" }, (p) => { if (p.new && p.new.chat_id === state.activeId) vcRefresh(); })
     .subscribe();
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
@@ -5984,6 +6021,7 @@ function renderHead() {
   if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
   $("btnAiBuy").hidden = !isAiChat(c) || !!state.isAdmin;
   $("btnCall").hidden = !canCall(c) || !window.RTCPeerConnection;
+  if (typeof vcRefresh === "function") vcRefresh();
   { const bt = botOf(c); $("btnBotEdit").hidden = !(bt && myBots.some((b) => b.id === bt.id)); }
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
   // в личном чате хватает пузыря с точками; в группе в шапке видно, кто именно печатает
@@ -13173,6 +13211,205 @@ $("callBar").addEventListener("click", () => { if (call) { call.min = false; cal
 $("callVideo").addEventListener("dblclick", () => { const v = $("callVideo"); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
 $("callFull").append(icon("full"));
 $("callFull").addEventListener("click", () => { const v = $("callVideo"); if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); });
+
+/* ---------- голосовые чаты групп и каналов: каждый соединяется с каждым напрямую, до 12 человек ---------- */
+var vc = null;
+const VC_DEV = String(CALL_DEV).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40) || ("d" + Date.now());
+function vcCanStart(c) { return !!c && c.is_group && (!c.is_channel || !!myRole(c)); }
+async function vcRefresh() {
+  const c = state.chats.get(state.activeId), ban = $("vcBanner");
+  $("btnVc").hidden = !c || !c.is_group || !window.RTCPeerConnection || (c.is_channel && !myRole(c));
+  if (!c || !c.is_group) { ban.hidden = true; return; }
+  if (vc && vc.chat === c.id) { ban.hidden = true; return; }
+  const { data } = await sb.rpc("vc_state", { p_chat: c.id });
+  if (state.activeId !== c.id) return;
+  const on = !!(data && data.active);
+  ban.hidden = !on;
+  if (on) $("vcBannerText").textContent = T("Идёт голосовой чат · ") + data.members + " " + plural(Number(data.members), T("участник"), T("участника"), T("участников"));
+  if (c.is_channel && !myRole(c)) $("btnVc").hidden = true;
+}
+function vcSend(msg) { if (vc && vc.ch) vc.ch.send({ type: "broadcast", event: "sig", payload: { ...msg, from: VC_DEV } }).catch(() => {}); }
+function vcTrack() { if (vc && vc.ch) vc.ch.track({ uid: state.me.id, muted: !vc.mic || vc.muted }).catch(() => {}); }
+async function vcJoin(chatId) {
+  const c = state.chats.get(chatId);
+  if (!c) return;
+  if (vc) { if (vc.chat === chatId) { vc.min = false; vcPaint(); return; } toast(T("Сначала выйдите из другого голосового чата")); return; }
+  if (typeof call !== "undefined" && call) { toast(T("Сначала завершите звонок")); return; }
+  if (!window.RTCPeerConnection) { toast(T("Этот браузер не поддерживает голосовые чаты")); return; }
+  vc = { chat: chatId, peers: new Map(), joining: true, muted: false };
+  vcPaint();
+  const { data, error } = await sb.rpc("vc_join", { p_chat: chatId, p_dev: VC_DEV });
+  if (error || !data) {
+    vc = null; vcPaint();
+    const m = (error && error.message) || "";
+    toast(/full/.test(m) ? T("В голосовом чате уже 12 человек — больше не помещается") : /not started/.test(m) ? T("Голосовой чат в канале начинают админы") : T("Не получилось войти в голосовой чат"));
+    return;
+  }
+  vc.id = data.id; vc.speak = !!data.speak; vc.ice = Array.isArray(data.ice) && data.ice.length ? data.ice : [{ urls: "stun:stun.l.google.com:19302" }];
+  if (vc.speak) {
+    vc.mic = await callMic(false);
+    if (!vc) { return; }
+    // заходим с выключенным микрофоном, как в Telegram: включают его сами
+    if (vc.mic) { vc.muted = true; vc.mic.getAudioTracks().forEach((t) => (t.enabled = false)); }
+  }
+  const ch = sb.channel("vc-" + vc.id, { config: { broadcast: { self: false }, presence: { key: VC_DEV } } });
+  vc.ch = ch;
+  ch.on("broadcast", { event: "sig" }, ({ payload }) => vcSig(payload));
+  ch.on("presence", { event: "sync" }, vcSync);
+  ch.subscribe((st) => { if (st === "SUBSCRIBED" && vc && vc.ch === ch) { vcTrack(); vc.joining = false; vcPaint(); } });
+  vc.ping = setInterval(() => { if (vc) sb.rpc("vc_ping", { p_vc: vc.id, p_dev: VC_DEV }).then(() => {}); }, 20000);
+  vc.meter = setInterval(vcMeter, 250);
+  vcPaint();
+  vcRefresh();
+}
+function vcSync() {
+  if (!vc || !vc.ch) return;
+  const st = vc.ch.presenceState(), here = new Map();
+  for (const [dev, metas] of Object.entries(st)) { if (dev !== VC_DEV && metas && metas[0]) here.set(dev, metas[0]); }
+  // новые участники: соединение начинает тот, чей номер устройства меньше
+  for (const [dev, meta] of here) {
+    const p = vc.peers.get(dev);
+    if (p) { p.uid = meta.uid; p.muted = !!meta.muted; continue; }
+    vc.peers.set(dev, { uid: meta.uid, muted: !!meta.muted, iceQ: [] });
+    if (VC_DEV < dev) vcOffer(dev);
+  }
+  for (const [dev, p] of vc.peers) if (!here.has(dev)) { vcDrop(p); vc.peers.delete(dev); }
+  vcPaint();
+}
+function vcPc(dev) {
+  const p = vc.peers.get(dev);
+  const pc = new RTCPeerConnection({ iceServers: vc.ice });
+  p.pc = pc;
+  const mt = vc.mic && vc.mic.getAudioTracks()[0];
+  if (mt) pc.addTrack(mt, vc.mic); else pc.addTransceiver("audio", { direction: "recvonly" });
+  pc.onicecandidate = (e) => { if (e.candidate) vcSend({ t: "ice", to: dev, c: e.candidate.toJSON() }); };
+  pc.ontrack = (e) => {
+    const stream = e.streams[0] || new MediaStream([e.track]);
+    if (!p.audio) { p.audio = h("audio", { autoplay: true }); p.audio.hidden = true; document.body.append(p.audio); }
+    p.audio.srcObject = stream; p.audio.play().catch(() => {});
+    try {
+      vc.ac = vc.ac || new (window.AudioContext || window.webkitAudioContext)();
+      const an = vc.ac.createAnalyser(); an.fftSize = 512;
+      vc.ac.createMediaStreamSource(stream).connect(an);
+      p.an = an;
+    } catch (x) {}
+  };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === "failed" && vc && vc.peers.get(dev) === p) { vcDrop(p); p.pc = null; if (VC_DEV < dev) setTimeout(() => vc && vc.peers.has(dev) && vcOffer(dev), 1500); } vcPaint(); };
+  return pc;
+}
+async function vcOffer(dev) {
+  if (!vc || !vc.peers.has(dev)) return;
+  const pc = vcPc(dev);
+  try { await pc.setLocalDescription(await pc.createOffer()); vcSend({ t: "offer", to: dev, sdp: pc.localDescription.toJSON() }); } catch (e) {}
+}
+async function vcSig(m) {
+  if (!vc || !m || m.to !== VC_DEV || !m.from) return;
+  let p = vc.peers.get(m.from);
+  if (!p) { p = { uid: null, iceQ: [] }; vc.peers.set(m.from, p); }
+  try {
+    if (m.t === "offer") {
+      if (p.pc) { vcDrop(p); }
+      const pc = vcPc(m.from);
+      await pc.setRemoteDescription(m.sdp);
+      await pc.setLocalDescription(await pc.createAnswer());
+      vcSend({ t: "answer", to: m.from, sdp: pc.localDescription.toJSON() });
+      for (const c of p.iceQ.splice(0)) try { await pc.addIceCandidate(c); } catch (e) {}
+    } else if (m.t === "answer" && p.pc) {
+      await p.pc.setRemoteDescription(m.sdp);
+      for (const c of p.iceQ.splice(0)) try { await p.pc.addIceCandidate(c); } catch (e) {}
+    } else if (m.t === "ice" && m.c) {
+      if (p.pc && p.pc.remoteDescription) { try { await p.pc.addIceCandidate(m.c); } catch (e) {} } else p.iceQ.push(m.c);
+    } else if (m.t === "renew" && VC_DEV < m.from) { vcDrop(p); p.pc = null; vcOffer(m.from); }
+  } catch (e) { console.warn("vc signal", e); }
+}
+function vcDrop(p) {
+  try { if (p.pc) p.pc.close(); } catch (e) {}
+  if (p.audio) { p.audio.srcObject = null; p.audio.remove(); p.audio = null; }
+  p.an = null;
+}
+// кто сейчас говорит: громкость звука каждого участника (и своя)
+function vcLevel(an) {
+  if (!an) return 0;
+  const a = new Uint8Array(an.fftSize); an.getByteTimeDomainData(a);
+  let sum = 0; for (const v of a) { const x = (v - 128) / 128; sum += x * x; }
+  return Math.sqrt(sum / a.length);
+}
+function vcMeter() {
+  if (!vc) return;
+  if (vc.mic && !vc.myAn) {
+    try { vc.ac = vc.ac || new (window.AudioContext || window.webkitAudioContext)(); const an = vc.ac.createAnalyser(); an.fftSize = 512; vc.ac.createMediaStreamSource(vc.mic).connect(an); vc.myAn = an; } catch (e) {}
+  }
+  if (vc.ac && vc.ac.state === "suspended" && !vc.acTry) { vc.acTry = true; vc.ac.resume().catch(() => {}).finally(() => { if (vc) vc.acTry = false; });
+  }
+  let changed = false;
+  const me = !vc.muted && vcLevel(vc.myAn) > 0.025;
+  if (me !== !!vc.talk) { vc.talk = me; changed = true; }
+  for (const p of vc.peers.values()) { const t = !p.muted && vcLevel(p.an) > 0.025; if (t !== !!p.talk) { p.talk = t; changed = true; } }
+  if (changed) vcPaint();
+}
+function vcPerson(uid) {
+  const c = vc && state.chats.get(vc.chat);
+  return (c && c.members.find((x) => x.id === uid)) || (uid === state.me.id ? state.profile : null);
+}
+function vcPaint() {
+  const ui = $("vcUi"), bar = $("vcBar");
+  if (!vc) { ui.hidden = true; bar.hidden = true; return; }
+  const c = state.chats.get(vc.chat);
+  $("vcTitle").textContent = c ? chatTitle(c) : T("Голосовой чат");
+  const people = [{ uid: state.me.id, me: true, talk: vc.talk, muted: !vc.mic || vc.muted }];
+  const seen = new Set([state.me.id + VC_DEV]);
+  for (const [dev, p] of vc.peers) if (p.uid) people.push({ uid: p.uid, talk: p.talk, muted: p.muted, state: p.pc ? p.pc.connectionState : "new" });
+  const n = new Set(people.map((x) => x.uid)).size;
+  $("vcSub").textContent = vc.joining ? T("Подключаемся…") : T("Голосовой чат · ") + n + " " + plural(n, T("участник"), T("участника"), T("участников"));
+  $("vcPeople").replaceChildren(...people.map((x) => {
+    const pr = vcPerson(x.uid);
+    return h("div", { class: "vc-p" + (x.talk ? " talk" : "") },
+      avatar(pr ? pr.display_name : "?", x.uid, "lg", pr && pr.avatar_path),
+      h("span", { class: "nm" }, x.me ? T("Вы") : pr ? pr.display_name : T("Участник")),
+      h("small", {}, x.state && x.state !== "connected" && !x.me ? T("соединяемся…") : x.muted ? T("микрофон выключен") : x.talk ? T("говорит") : T("слушает")));
+  }));
+  $("vcNote").textContent = !vc.speak ? T("В канале говорят только админы — вы слушаете") : !vc.mic ? T("Микрофона нет — вы только слушаете") : "";
+  $("vcMute").replaceChildren(icon(vc.muted || !vc.mic ? "micoff" : "mic"));
+  $("vcMute").classList.toggle("on", !!vc.mic && !vc.muted);
+  $("vcMute").disabled = !vc.speak;
+  $("vcMuteLbl").textContent = !vc.mic ? T("Без микрофона") : vc.muted ? T("Включить") : T("Выключить");
+  ui.hidden = !!vc.min;
+  bar.hidden = !vc.min;
+  $("vcBarText").textContent = (c ? chatTitle(c) : "") + " · " + T("голосовой чат") + (vc.talk ? " · " + T("вы говорите") : "");
+}
+async function vcLeave() {
+  if (!vc) return;
+  const v = vc; vc = null;
+  clearInterval(v.ping); clearInterval(v.meter);
+  for (const p of v.peers.values()) vcDrop(p);
+  if (v.mic) v.mic.getTracks().forEach((t) => t.stop());
+  if (v.ch) { try { await v.ch.untrack(); } catch (e) {} sb.removeChannel(v.ch); }
+  if (v.ac) v.ac.close().catch(() => {});
+  if (v.id) sb.rpc("vc_leave", { p_vc: v.id, p_dev: VC_DEV }).then(() => vcRefresh());
+  vcPaint();
+}
+$("btnVc").append(icon("mic"));
+$("btnVc").addEventListener("click", () => { const c = state.chats.get(state.activeId); if (c) vcJoin(c.id); });
+$("vcBannerJoin").addEventListener("click", () => { if (state.activeId) vcJoin(state.activeId); });
+$("vcMin").append(icon("down"));
+$("vcMin").addEventListener("click", () => { if (vc) { vc.min = true; vcPaint(); } });
+$("vcBar").addEventListener("click", () => { if (vc) { vc.min = false; vcPaint(); } });
+$("vcLeave").append(icon("phone"));
+$("vcLeave").addEventListener("click", vcLeave);
+$("vcMute").addEventListener("click", async () => {
+  if (!vc || !vc.speak) return;
+  if (!vc.mic) {
+    const mic = await callMic(true);
+    if (!mic || !vc) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
+    vc.mic = mic; vc.muted = false; vc.myAn = null;
+    // микрофон появился уже в чате: пересоединяемся со всеми, чтобы отдать звук
+    for (const [dev, p] of vc.peers) { vcDrop(p); p.pc = null; if (VC_DEV < dev) vcOffer(dev); else vcSend({ t: "renew", to: dev }); }
+  } else {
+    vc.muted = !vc.muted;
+    vc.mic.getAudioTracks().forEach((t) => (t.enabled = !vc.muted));
+  }
+  vcTrack(); vcPaint();
+});
 
 /* ---------- редактор фото и видео: обрезка кадра, поворот, рисование, обрезка видео по времени ---------- */
 const ME_ASPECTS = [["orig", "Оригинал"], [1, "1:1"], [4 / 3, "4:3"], [16 / 9, "16:9"], [9 / 16, "9:16"]];
