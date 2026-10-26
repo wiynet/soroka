@@ -2045,6 +2045,28 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .vc-p small { opacity: .65; }
 .vc-note { text-align: center; font-size: 13px; opacity: .75; min-height: 18px; }
 .vc-bar { background: #2fb36b; }
+#adTabs { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
+#adTabs::-webkit-scrollbar { display: none; }
+#adTabs button { flex: none; padding-left: 12px; padding-right: 12px; }
+/* окно «Что нового» */
+.news-dlg { width: min(460px, calc(100% - 24px)); }
+.news { display: grid; gap: 14px; }
+.news-head { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.news-head h2 { margin: 4px 0 0; }
+.news-badge { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; font-size: 28px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent); }
+.news-imgs { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 14px; }
+.news-imgs:empty { display: none; }
+.news-imgs::-webkit-scrollbar { display: none; }
+.news-imgs img { flex: 0 0 100%; width: 100%; max-height: 300px; object-fit: cover; border-radius: 14px; scroll-snap-align: center; background: var(--panel-2); cursor: zoom-in; }
+.news-imgs.many img { flex-basis: 85%; }
+.news-list { display: grid; gap: 8px; max-height: 46vh; overflow: auto; }
+.news-it { display: flex; gap: 12px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: var(--panel-2); line-height: 1.35; }
+.news-it .ic { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; background: var(--panel); }
+.nw-imgs { display: flex; flex-wrap: wrap; gap: 8px; }
+.nw-imgs:empty::before { content: attr(data-empty); color: var(--muted); font-size: 13px; }
+.nw-th { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; background: var(--panel-2); }
+.nw-th img { width: 100%; height: 100%; object-fit: cover; }
+.nw-th button { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgb(0 0 0 / .6); color: #fff; padding: 0; cursor: pointer; }
 .call-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: call-blink 1s infinite alternate; }
 @keyframes call-blink { to { opacity: .3; } }
 .call-bar span:not(.dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2322,7 +2344,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=2e87e22cdc"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=787a48f4e3"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3519,6 +3541,23 @@ void main() {
       <button type="button" role="tab" data-tab="nft" aria-checked="false">NFT</button>
       <button type="button" role="tab" data-tab="tickets" aria-checked="false" id="adTabTickets">Запросы</button>
       <button type="button" role="tab" data-tab="reports" aria-checked="false" id="adTabReports">Жалобы</button>
+      <button type="button" role="tab" data-tab="news" aria-checked="false">Что нового</button>
+    </div>
+
+    <div data-pane="news" style="display:grid;gap:12px" hidden>
+      <div class="hint">Окно «Что нового» увидит каждый один раз при входе. Каждая строка текста — отдельный пункт, эмодзи в начале строки станет значком.</div>
+      <label class="field"><span>Заголовок</span><input class="input" id="nwTitle" maxlength="80" value="Что нового в Mestario"></label>
+      <label class="field"><span>Что добавили</span><textarea class="input" id="nwBody" rows="7" maxlength="4000" placeholder="🎙 Голосовые чаты в группах&#10;🎨 Темы чатов со своим фото"></textarea></label>
+      <div class="set-label" style="margin:0">Фото (до 8)</div>
+      <div class="nw-imgs" id="nwImgs"></div>
+      <input type="file" id="nwFile" accept="image/*" multiple hidden>
+      <div class="actions">
+        <button class="btn ghost" type="button" id="nwAdd">＋ Фото</button>
+        <button class="btn ghost" type="button" id="nwPreview">Предпросмотр</button>
+        <button class="btn" type="button" id="nwPublish">Опубликовать для всех</button>
+      </div>
+      <div class="set-label" style="margin:0">Прошлые обновления</div>
+      <div id="nwList" style="display:grid;gap:6px"></div>
     </div>
 
     <div data-pane="tickets" style="display:grid;gap:10px" hidden>
@@ -3800,6 +3839,15 @@ void main() {
   <audio id="callAudio" autoplay></audio>
 </div>
 <button class="call-bar" id="callBar" type="button" hidden><span class="dot"></span><span id="callBarText"></span><b>Вернуться</b></button>
+<!-- окно «Что нового» -->
+<dialog id="dlgNews" class="news-dlg">
+  <div class="dlg news">
+    <div class="news-head"><span class="news-badge">✨</span><h2 id="newsTitle"></h2><div class="small muted" id="newsDate"></div></div>
+    <div class="news-imgs" id="newsImgs"></div>
+    <div class="news-list" id="newsList"></div>
+    <div class="actions"><button class="btn" type="button" id="newsOk">Понятно</button></div>
+  </div>
+</dialog>
 <!-- голосовой чат группы или канала -->
 <div class="vc-ui" id="vcUi" hidden role="dialog" aria-label="Голосовой чат">
   <div class="vc-top">
@@ -5437,6 +5485,7 @@ async function startApp() {
   loadFolders();
   loadMyBots().then(() => { if (state.activeId) renderHead(); }).catch(() => {});
   loadContacts();
+  setTimeout(() => checkNews(0), 2500);
   claimDaily();
   refreshAiCredits();
   idbReady.then(() => setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchChats, { timeout: 3000 }), 1500));
@@ -7108,6 +7157,82 @@ function onChatRow(row) {
     if (state.activeId === c.id) renderHead();
   }
 }
+/* ---------- «Что нового»: показываем каждому новое обновление один раз ---------- */
+let newsNow = null;
+function paintNews(n) {
+  $("newsTitle").textContent = n.title;
+  $("newsDate").textContent = n.created_at ? dyFmt.format(new Date(n.created_at)).replace(/\s*г\.$/, "") : "";
+  const imgs = Array.isArray(n.images) ? n.images : [];
+  $("newsImgs").classList.toggle("many", imgs.length > 1);
+  $("newsImgs").replaceChildren(...imgs.map((pth) => h("img", { src: n.local && n.local[pth] ? n.local[pth] : avatarUrl(pth), alt: "", loading: "lazy", onclick: (e) => { $("viewerImg").src = e.currentTarget.src; $("viewer").showModal(); } })));
+  const lines = String(n.body || "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  $("newsList").replaceChildren(...lines.map((ln) => {
+    const m = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*|[☎✂⚡✨])\s*(.*)$/u.exec(ln);
+    return h("div", { class: "news-it" }, h("span", { class: "ic" }, m ? m[1] : "•"), h("span", {}, m ? m[2] : ln));
+  }));
+}
+async function checkNews(tries) {
+  if (!state.started) return;
+  if (document.querySelector("dialog[open]") || (typeof vc !== "undefined" && vc) || (typeof call !== "undefined" && call)) {   // не перебиваем открытое окно и звонок
+    if ((tries || 0) < 15) setTimeout(() => checkNews((tries || 0) + 1), 4000);
+    return;
+  }
+  const { data } = await sb.rpc("whats_new_pending");
+  const n = Array.isArray(data) ? data[0] : null;
+  if (!n || !state.started || document.querySelector("dialog[open]")) return;
+  newsNow = n;
+  paintNews(n);
+  $("dlgNews").showModal();
+}
+$("newsOk").addEventListener("click", () => $("dlgNews").close());
+$("dlgNews").addEventListener("close", () => { if (newsNow && newsNow.id) sb.rpc("whats_new_seen", { p_id: newsNow.id }).then(() => {}); newsNow = null; });
+// админка: написать обновление, добавить свои фото, опубликовать
+let nwImages = [], nwLocal = {};
+function paintNwImgs() {
+  $("nwImgs").dataset.empty = T("Фото пока нет");
+  $("nwImgs").replaceChildren(...nwImages.map((pth, i) => h("div", { class: "nw-th" }, h("img", { src: nwLocal[pth] || avatarUrl(pth), alt: "" }),
+    h("button", { type: "button", title: T("Убрать"), "aria-label": T("Убрать фото"), onclick: () => { nwImages.splice(i, 1); paintNwImgs(); } }, "✕"))));
+}
+async function loadNewsAdmin() {
+  paintNwImgs();
+  const { data } = await sb.from("whats_new").select("id,title,body,images,created_at").order("id", { ascending: false }).limit(20);
+  $("nwList").replaceChildren(...((data || []).length ? data.map((n) => h("button", { class: "st-post", type: "button", onclick: () => { paintNews(n); newsNow = null; $("dlgNews").showModal(); } },
+    h("span", { class: "st-ptxt" }, n.title), h("small", { class: "muted" }, dyFmt.format(new Date(n.created_at)) + " · " + String(n.body || "").split(/\n+/).filter(Boolean).length + T(" пунктов") + (n.images && n.images.length ? " · 📷 " + n.images.length : ""))))
+    : [h("div", { class: "small muted" }, T("Обновлений пока не было."))]));
+}
+$("nwAdd").addEventListener("click", () => $("nwFile").click());
+$("nwFile").addEventListener("change", async (e) => {
+  const files = [...e.target.files]; e.target.value = "";
+  for (const f of files) {
+    if (nwImages.length >= 8) { toast(T("Не больше 8 фото")); break; }
+    const blob = await toWebp(f, 1600);
+    const path = state.me.id + "/news-" + Date.now() + ".webp";
+    const up = await sb.storage.from("avatars").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+    if (up.error) { toast(T("Не удалось загрузить фото")); continue; }
+    nwImages.push(path); nwLocal[path] = URL.createObjectURL(blob);
+    paintNwImgs();
+  }
+});
+$("nwPreview").addEventListener("click", () => {
+  paintNews({ title: $("nwTitle").value.trim() || T("Что нового"), body: $("nwBody").value, images: nwImages, local: nwLocal, created_at: new Date().toISOString() });
+  newsNow = null;
+  $("dlgNews").showModal();
+});
+let nwArmed = false;
+$("nwPublish").addEventListener("click", async () => {
+  const title = $("nwTitle").value.trim(), body = $("nwBody").value.trim();
+  if (!title || (!body && !nwImages.length)) { toast(T("Напишите, что добавили, или добавьте фото")); return; }
+  if (!nwArmed) { nwArmed = true; $("nwPublish").textContent = T("Точно? Увидят все"); setTimeout(() => { nwArmed = false; $("nwPublish").textContent = T("Опубликовать для всех"); }, 4000); return; }
+  nwArmed = false; $("nwPublish").textContent = T("Опубликовать для всех");
+  $("nwPublish").disabled = true;
+  const { error } = await sb.rpc("whats_new_publish", { p_title: title, p_body: body, p_images: nwImages });
+  $("nwPublish").disabled = false;
+  if (error) { toast(T("Не удалось опубликовать")); return; }
+  $("nwBody").value = ""; nwImages = []; nwLocal = {};
+  toast(T("Опубликовано — каждый увидит окно при входе"));
+  loadNewsAdmin();
+});
+
 /* ---------- пузырьки сообщений и контакты ---------- */
 // пузырьки только от Mestario (цвета и градиенты, без фото); свой видят все, другу можно поставить — увижу только я
 const BUBBLES = [
@@ -8149,6 +8274,7 @@ function showAdminTab(name) {
   if (name === "stats") sb.rpc("gif_configured").then(({ data }) => { $("adGifHint").textContent = data ? T("Ключ GIPHY задан — поиск GIF работает. Чтобы заменить, вставьте новый.") : T("Ключ берётся на developers.giphy.com → Create an App → API. Он хранится только в базе."); });
   if (name === "tickets") loadTickets();
   if (name === "reports") loadReports();
+  if (name === "news") loadNewsAdmin();
 }
 $("adTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) showAdminTab(b.dataset.tab); });
 // полный список аккаунтов для администраторов: юзернейм, имя, роль и когда был в сети

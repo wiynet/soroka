@@ -1811,3 +1811,9 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- messages.avatar_suggest: фото с кнопкой «Поставить себе» (копируется в avatars/<получатель>/… и ставится аватаркой).
 -- Темы чатов: theme = 'img:<я>/theme-<ts>.webp' — своё фото фоном (ограничения chats_theme_check / chat_members_theme_check
 -- расширены через alter table … drop/add constraint; set_chat_theme проверяет, что фото из своей папки).
+
+-- ===== Окно «Что нового» (миграции whats_new, whats_new_pending_simple) =====
+-- public.whats_new(title, body, images[]) — читают все; публикует админ: whats_new_publish(title, body, images) (фото — avatars/<админ>/news-<ts>.webp, до 8).
+-- whats_new_pending() — самое новое обновление, которое человек ещё не видел; whats_new_seen(id) — отметка (private.whats_new_seen).
+-- Клиент показывает окно один раз через 2,5 с после входа, если не открыто другое окно и нет звонка. Админка → «Что нового».
+-- Первое обновление (список сегодняшних новинок) добавлено миграцией.
