@@ -6175,6 +6175,7 @@ async function openChat(id) {
   if (!c) return;
   cacheActive();   // переписка, из которой ушли, остаётся в памяти — вернуться в неё можно мгновенно
   state.activeId = id;
+  routeSync();
   state.msgs = []; state.hasMore = false; state.msgsReady = null;
   state.unread.delete(id);
   mentionChats.delete(id);
@@ -6243,6 +6244,7 @@ function closeChat(quiet) {
   closeFind();
   if (selMode) selEnd();
   state.activeId = null; state.msgs = [];
+  routeSync();
   $("conv").hidden = true; $("placeholder").hidden = false;
   $("app").classList.remove("chat-open");
   if (quiet !== true) flash($("app"), 300, "back");
@@ -10037,6 +10039,7 @@ async function openGiftView(id, fresh) {
   const g = res.data;
   if (!g) { $("gvHint").textContent = T("Не удалось загрузить подарок."); return; }
   gvGift = g;
+  routeSync(true);
   const ar = g.nft_number != null ? await sb.from("gift_auctions").select("id,seller_id,start_price,top_bid,top_bidder,bids_count,ends_at,bidder:profiles!gift_auctions_top_bidder_fkey(id,username,display_name)").eq("gift_id", g.id).eq("status", "open").maybeSingle() : { data: null };
   const auc = gvAuction = ar.data && ar.data.id ? ar.data : null;
   const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
@@ -10886,6 +10889,7 @@ let setPageNow = "menu";
 function showSetPage(name) {
   const back = name === "menu" && setPageNow !== "menu";
   setPageNow = name;
+  routeSync();
   for (const pg of document.querySelectorAll("#dlgSettings [data-page]")) {
     pg.hidden = pg.dataset.page !== name;
     if (!pg.hidden) flash(pg, 400, back ? "from-left" : "from-right");
@@ -15048,8 +15052,11 @@ function paintDocs() {
     ...d[1].flatMap(([t, x]) => [h("h3", {}, t), h("p", {}, x)]));
   $("docsBody").parentElement.scrollTop = 0;
 }
+// на сайте каждый документ открывается своей страницей (mestario.lol/terms.html и т. д.), в приложении — окном
+const DOC_PAGE = { terms: "terms.html", privacy: "privacy.html", rules: "rules.html" };
 function openDocs(tab) {
   docsTab = DOCS[tab] ? tab : "terms";
+  if (!IN_APP && DOC_PAGE[docsTab] && location.protocol === "https:" && window.open("/" + DOC_PAGE[docsTab], "_blank", "noopener")) return;
   paintDocs();
   if (!$("dlgDocs").open) $("dlgDocs").showModal();
 }
@@ -15863,8 +15870,8 @@ $("btnMute").addEventListener("click", async () => {
   toast(next ? T("Уведомления из этого чата выключены") : T("Уведомления из этого чата включены"));
 });
 // переход в чат из уведомления
-async function handleLink() {
-  const hash = decodeURIComponent(location.hash || "");
+async function handleLink(hashArg) {
+  const hash = hashArg || decodeURIComponent(location.hash || "");
   if (!state.started) return;
   // подтверждение входа в приложение, начатое до входа на сайте (после Google адрес уже другой)
   let pend = null;
@@ -15872,6 +15879,7 @@ async function handleLink() {
   if (pend && /^[0-9a-f-]{36}$/.test(pend.id) && Date.now() - pend.t < 10 * 60 * 1000 && !/approve-/.test(hash)) { showApprove(pend.id); return; }
   if (hash.length < 3) return;
   let m;
+  if (ROUTE_APP.test(hash.slice(1))) { if (!hashArg) history.replaceState(history.state, "", location.pathname); applyRoute("/" + hash.slice(1)); return; }
   if ((m = /^#g?approve-([0-9a-f-]{36})$/.exec(hash))) showApprove(m[1]);
   else if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
   else if ((m = /^#gift-(\d{1,12})$/.exec(hash))) openGiftView(Number(m[1]));
@@ -15892,9 +15900,91 @@ async function handleLink() {
       if (r.data && r.data.id) showUser(r.data); else toast("@" + name + T(" не найден"));
     }
   } else return;
-  history.replaceState(null, "", location.pathname);
+  if (!hashArg) { history.replaceState(history.state, "", location.pathname); routeSync(true); }
 }
-window.addEventListener("hashchange", handleLink);
+window.addEventListener("hashchange", () => handleLink());
+
+/* ---------- адрес у каждого экрана: mestario.lol/settings, /@юзернейм, /c-…, /market ----------
+   Пути из одного сегмента, поэтому относительные ссылки на файлы не ломаются. GitHub Pages на такие
+   адреса отдаёт 404.html, а он перекладывает путь в #… — дальше его разбирает handleLink.
+   /support и /terms не используем: это настоящие страницы support.html и terms.html. */
+const ROUTER_ON = /^(www\.)?(mestario\.lol|mestario\.top|soroka\.lol)$|^127\.0\.0\.1$/.test(location.hostname) && !window.Capacitor;
+const ROUTE_APP = /^(settings(-[a-z]+)?|market|admin|help|profile)$/;
+const routeStack = [location.pathname];
+let routeBusy = false, routeSelfBack = false, routeT = 0;
+function routeNow() {
+  if (!state.started) return "/";
+  if ($("dlgGiftView").open && gvGift) return "/" + giftSlug(gvGift);
+  if ($("dlgUser").open && viewed && viewed.username) return "/@" + viewed.username;
+  if ($("dlgChan").open && viewedChan && viewedChan.username) return "/@" + viewedChan.username;
+  if ($("dlgProfile").open) return "/profile";
+  if ($("dlgMarket").open) return "/market";
+  if ($("dlgAdmin").open) return "/admin";
+  if ($("dlgSupport").open) return "/help";
+  if ($("dlgSettings").open) return "/settings" + (setPageNow && setPageNow !== "menu" ? "-" + setPageNow : "");
+  if (state.activeId) { const c = state.chats.get(state.activeId); return c && c.username ? "/@" + c.username : "/c-" + state.activeId; }
+  return "/";
+}
+// после любого перехода в интерфейсе: новый экран — новая запись в истории, возврат на прошлый экран — шаг назад
+function routeSync(replace) {
+  if (!ROUTER_ON) return;
+  clearTimeout(routeT);
+  routeT = setTimeout(() => {
+    if (routeBusy) return;
+    const p = routeNow();
+    if (p === location.pathname) return;
+    if (replace) { history.replaceState({ mr: 1 }, "", p); routeStack[routeStack.length - 1] = p; return; }
+    if (routeStack.length > 1 && routeStack[routeStack.length - 2] === p) { routeStack.pop(); routeSelfBack = true; history.back(); return; }
+    history.pushState({ mr: 1 }, "", p); routeStack.push(p);
+  }, 30);
+}
+const ROUTED = ["dlgGiftView", "dlgUser", "dlgChan", "dlgProfile", "dlgMarket", "dlgAdmin", "dlgSupport"];
+function closeRouted(keep) {
+  for (const id of ROUTED) if (id !== keep && $(id).open) $(id).close();
+  if (keep !== "dlgSettings" && $("dlgSettings").open) $("dlgSettings").close();
+}
+// открыть экран по адресу: кнопки браузера «назад/вперёд» и ссылки вида mestario.lol/settings
+async function applyRoute(path) {
+  if (!state.started) return;
+  routeBusy = true;
+  try {
+    const seg = decodeURIComponent(path.replace(/^\/+|\/+$/g, ""));
+    let m;
+    if (!seg) { closeRouted(); if (state.activeId) { if (phoneLayout()) chatBack(0); else closeChat(); } }
+    else if ((m = /^c-([0-9a-f-]{36})$/.exec(seg))) { closeRouted(); if (state.activeId !== m[1]) await openChatFromLink(m[1]); }
+    else if ((m = /^settings(?:-([a-z]+))?$/.exec(seg))) {
+      closeRouted("dlgSettings");
+      if (!$("dlgSettings").open) $("btnSettings").click();
+      const pg = m[1] && document.querySelector('#dlgSettings [data-page="' + m[1] + '"]') ? m[1] : "menu";
+      if (setPageNow !== pg) showSetPage(pg);
+    }
+    else if (seg === "market") { closeRouted("dlgMarket"); if (!$("dlgMarket").open) $("btnMarket").click(); }
+    else if (seg === "admin") { closeRouted("dlgAdmin"); if (state.isAdmin && !$("dlgAdmin").open) $("btnAdmin").click(); }
+    else if (seg === "help") { closeRouted("dlgSupport"); if (!$("dlgSupport").open) openSupport(); }
+    else if (seg === "profile") { closeRouted("dlgProfile"); if (!$("dlgProfile").open) $("btnProfile").click(); }
+    else {
+      // @юзернейм, подарок, приглашение — как в ссылках
+      const cur = routeNow();
+      if (cur !== "/" + seg) { closeRouted(); await handleLink("#" + seg); }
+    }
+  } finally {
+    routeBusy = false;
+    routeSync(true);
+  }
+}
+window.addEventListener("popstate", () => {
+  if (!ROUTER_ON) return;
+  if (routeSelfBack) { routeSelfBack = false; return; }
+  const p = location.pathname;
+  if (routeStack.length > 1 && routeStack[routeStack.length - 2] === p) routeStack.pop(); else routeStack.push(p);
+  applyRoute(p);
+});
+// любое окно-экран открылось или закрылось — обновляем адрес
+if (ROUTER_ON) {
+  const mo = new MutationObserver(() => routeSync());
+  for (const id of ROUTED) mo.observe($(id), { attributes: true, attributeFilter: ["open"] });
+  mo.observe($("dlgSettings"), { attributes: true, attributeFilter: ["hidden"] });
+}
 function openChatFromLink(id) {
   if (!id || !state.started) return;
   if (state.chats.has(id)) { openChat(id); return; }

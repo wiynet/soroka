@@ -14,8 +14,8 @@ const para = (t) => esc(t).split("\n").map((l) => l.replace(/mestario\.lol\/([a-
 const sections = (list) => list.map(([h, t]) => `<h2>${esc(h)}</h2>\n<p>${para(t)}</p>`).join("\n");
 
 const NAV = {
-  ru: [["terms.html", "Соглашение"], ["privacy.html", "Конфиденциальность"], ["support.html", "Поддержка"]],
-  en: [["terms.html", "Terms"], ["privacy.html", "Privacy"], ["support.html", "Support"]],
+  ru: [["terms.html", "Соглашение"], ["privacy.html", "Конфиденциальность"], ["rules.html", "Правила"], ["support.html", "Поддержка"]],
+  en: [["terms.html", "Terms"], ["privacy.html", "Privacy"], ["rules.html", "Rules"], ["support.html", "Support"]],
 };
 function page(file, title, desc, body, bodyEn) {
   const nav = (lang) => NAV[lang].map(([f, t]) => `<a href="/${f}"${f === file ? ' aria-current="page"' : ""}>${t}</a>`).join("");
@@ -73,6 +73,9 @@ const rules = (lang) => `\n<h2 style="font-size:20px;margin-top:30px">${esc(DOCS
 fs.writeFileSync(path.join(root, "terms.html"), page("terms.html", "Пользовательское соглашение",
   "Пользовательское соглашение (публичная оферта) мессенджера Mestario: аккаунт, покупки, оплата и возврат, правила.",
   doc("terms", "ru", rules("ru")), doc("terms", "en", rules("en"))));
+fs.writeFileSync(path.join(root, "rules.html"), page("rules.html", "Правила Mestario",
+  "Правила мессенджера Mestario: что нельзя делать, что бывает за нарушение и куда писать, если вас заблокировали.",
+  doc("rules", "ru"), doc("rules", "en")));
 fs.writeFileSync(path.join(root, "privacy.html"), page("privacy.html", "Политика конфиденциальности",
   "Политика конфиденциальности мессенджера Mestario: какие данные хранятся, зачем, кто их видит и как их удалить.",
   doc("privacy", "ru"), doc("privacy", "en")));
