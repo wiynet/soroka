@@ -668,6 +668,22 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 #dlgDocs { width: min(620px, calc(100% - 24px)); }
 .auth-legal { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.45; }
 .auth-legal .link { font-size: inherit; padding: 0; display: inline; }
+/* музыка профиля */
+.u-music { display: inline-flex; align-items: center; gap: 10px; max-width: min(320px, 86%); margin-top: 2px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); background: color-mix(in srgb, var(--panel-2) 70%, transparent); color: inherit; font: inherit; font-size: 14px; cursor: pointer; backdrop-filter: blur(8px); }
+.u-music[hidden] { display: none; }
+.u-hero.has-banner .u-music, .u-hero.nftg .u-music, .u-hero.pbg .u-music { color: #fff; background: rgb(0 0 0 / .28); border-color: rgb(255 255 255 / .22); }
+.u-music .mu-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.u-music .mu-st { flex: none; opacity: .7; font-size: 12.5px; }
+.mu-eq { flex: none; display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.mu-eq i { width: 3px; height: 4px; border-radius: 2px; background: var(--accent); }
+.u-hero.has-banner .mu-eq i, .u-hero.nftg .mu-eq i, .u-hero.pbg .mu-eq i { background: #fff; }
+.u-music.on .mu-eq i { animation: mu-bar .9s ease-in-out infinite; }
+.u-music.on .mu-eq i:nth-child(2) { animation-delay: -.3s; } .u-music.on .mu-eq i:nth-child(3) { animation-delay: -.6s; } .u-music.on .mu-eq i:nth-child(4) { animation-delay: -.15s; }
+@keyframes mu-bar { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+@media (prefers-reduced-motion: reduce) { .u-music.on .mu-eq i { animation: none; height: 10px; } }
+.mu-edit { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
+.mu-edit .mu-ic { font-size: 18px; color: var(--accent); }
+.mu-edit .mu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auth-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 12.5px; }
 .auth-foot a { color: var(--muted); text-decoration: none; }
 .auth-foot a:hover { color: var(--ink); text-decoration: underline; }
@@ -2370,7 +2386,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7a896702b1"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f5ea61f48e"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3167,6 +3183,7 @@ void main() {
         <div class="set-label">Сообщения</div>
         <label class="toggle"><input type="checkbox" id="setSounds"><span>Звуки сообщений <span class="muted">(свои звуки Mestario; на iPhone молчат в беззвучном режиме)</span></span></label>
         <label class="toggle"><input type="checkbox" id="setEnter"><span>Отправлять по Enter <span class="muted">(иначе по Ctrl+Enter)</span></span></label>
+        <label class="toggle"><input type="checkbox" id="setProfMusic"><span>Музыка в профилях <span class="muted">(включается сама, когда открываете профиль)</span></span></label>
     
     
         </div>
@@ -3404,6 +3421,16 @@ void main() {
       <input type="file" id="pfBannerFile" accept="image/*,video/mp4,video/webm,video/quicktime" hidden>
       <div class="hint">Показывается на всю шапку профиля. Фото, GIF или видео до 30 секунд (без звука, крутится по кругу). Пока стоит баннер, фон шапки не показывается.</div>
       <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:10px" hidden></div>
+    </div>
+    <div class="field"><span>Музыка профиля</span>
+      <div class="mu-edit" id="pfMusic"><span class="mu-ic" aria-hidden="true">♫</span><span class="mu-t" id="pfMusicT">Нет музыки</span><button class="link" type="button" id="pfMusicPlay" hidden>Послушать</button></div>
+      <input class="input" id="pfMusicName" maxlength="80" placeholder="Название трека" aria-label="Название трека" style="margin-top:8px" hidden>
+      <div class="actions" style="justify-content:flex-start;margin-top:8px">
+        <button class="btn ghost" type="button" id="pfMusicUp">🎵 Выбрать трек</button>
+        <button class="btn ghost" type="button" id="pfMusicOff" hidden>Убрать</button>
+      </div>
+      <input type="file" id="pfMusicFile" accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav,.flac" hidden>
+      <div class="hint">MP3, M4A, OGG или WAV до 15 МБ. Играет по кругу, когда кто-то открывает ваш профиль, — и на iPhone в беззвучном режиме.</div>
     </div>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
@@ -4207,6 +4234,7 @@ void main() {
         <button class="lvl" type="button" id="uLvl" hidden></button>
         <div class="small muted" id="uSeen"></div>
       </div>
+      <button class="u-music" type="button" id="uMusic" hidden><span class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mu-name" id="uMusicT"></span><span class="mu-st" id="uMusicSt"></span></button>
       <div class="u-qa" id="uQa">
         <button type="button" class="qa" id="uWrite"><span class="qa-i" data-ic="chats"></span><span>Написать</span></button>
         <button type="button" class="qa" id="uCallQ" hidden><span class="qa-i" data-ic="phone"></span><span>Звонок</span></button>
@@ -4705,7 +4733,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,collectible_usernames(username),collectible_numbers(number),is_bot,intro,bubble";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,music,music_title,collectible_usernames(username),collectible_numbers(number),is_bot,intro,bubble";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -9227,6 +9255,117 @@ async function loadUserChannel(id) {
   $("uChanRow").hidden = false;
   $("uNoBio").hidden = true;
 }
+/* ---------- музыка профиля: играет, пока открыт профиль; на iPhone — и в беззвучном режиме ---------- */
+function musicUrl(path) { return SUPABASE_URL + "/storage/v1/object/public/music/" + path; }
+const profAudio = new Audio();
+profAudio.loop = true; profAudio.preload = "auto"; profAudio.setAttribute("playsinline", "");
+let profMusic = null, profFade = 0, profUnlocked = false;
+// iPhone пускает звук без нажатия только у того плеера, который уже играл по нажатию: «разогреваем» его при первом касании
+function profMusicUnlock() {
+  if (profUnlocked || profMusic) return;
+  profUnlocked = true;
+  profAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  profAudio.play().then(() => { if (!profMusic) profAudio.pause(); }).catch(() => {});
+}
+function profFadeTo(v, ms, done) {
+  cancelAnimationFrame(profFade);
+  const v0 = profAudio.volume, t0 = performance.now();
+  const step = (t) => { const k = Math.min(1, (t - t0) / ms); profAudio.volume = Math.max(0, Math.min(1, v0 + (v - v0) * k)); if (k < 1) profFade = requestAnimationFrame(step); else if (done) done(); };
+  profFade = requestAnimationFrame(step);
+}
+function paintProfMusic() {
+  const on = !!profMusic && !profAudio.paused;
+  $("uMusic").classList.toggle("on", on);
+  $("uMusicSt").textContent = !profMusic ? "" : on ? T("пауза") : T("слушать");
+  $("uMusic").setAttribute("aria-label", (on ? T("Остановить музыку: ") : T("Включить музыку: ")) + $("uMusicT").textContent);
+}
+function profMusicPlay() {
+  if (!profMusic) return;
+  // голосовое, кружок или звонок важнее музыки
+  if ((!voiceEl.paused) || (typeof vnPlaying !== "undefined" && vnPlaying && !vnPlaying.paused) || (typeof call !== "undefined" && call) || (typeof vc !== "undefined" && vc)) { paintProfMusic(); return; }
+  audioMode("playback");
+  profAudio.volume = 0;
+  profAudio.play().then(() => { profFadeTo(.85, 900); paintProfMusic(); }).catch(() => paintProfMusic());
+}
+function profMusicStart(p) {
+  const path = p && p.music ? p.music : "";
+  $("uMusic").hidden = !path;
+  if (!path) { profMusicStop(); return; }
+  $("uMusicT").textContent = p.music_title || T("Музыка профиля");
+  if (profMusic === path) { paintProfMusic(); return; }
+  profMusicStop(true);
+  profMusic = path;
+  profAudio.src = musicUrl(path);
+  paintProfMusic();
+  if (settings.profMusic !== false) profMusicPlay();
+}
+function profMusicStop(now) {
+  if (!profMusic) return;
+  const done = () => { profAudio.pause(); profAudio.removeAttribute("src"); profAudio.load(); audioBackSoon(); };
+  profMusic = null;
+  if (now === true || profAudio.paused) done(); else profFadeTo(0, 350, done);
+  paintProfMusic();
+}
+profAudio.addEventListener("play", paintProfMusic);
+profAudio.addEventListener("pause", () => { paintProfMusic(); audioBackSoon(); });
+$("uMusic").addEventListener("click", () => {
+  if (!profMusic) return;
+  if (profAudio.paused) profMusicPlay(); else { profFadeTo(0, 250, () => profAudio.pause()); }
+});
+$("dlgUser").addEventListener("close", () => profMusicStop());
+// свернули приложение или вкладку — музыка профиля не играет в фоне
+document.addEventListener("visibilitychange", () => { if (document.hidden && profMusic && !profAudio.paused) profAudio.pause(); });
+// начали слушать голосовое — музыка профиля замолкает
+voiceEl.addEventListener("play", () => { if (profMusic && !profAudio.paused) profAudio.pause(); });
+
+// мой профиль: выбрать трек, название, убрать
+function paintMyMusic() {
+  const m = state.profile.music || "";
+  $("pfMusicT").textContent = m ? (state.profile.music_title || T("Музыка профиля")) : T("Нет музыки");
+  $("pfMusicOff").hidden = $("pfMusicName").hidden = $("pfMusicPlay").hidden = !m;
+  $("pfMusicUp").textContent = m ? T("🎵 Заменить трек") : T("🎵 Выбрать трек");
+  if (document.activeElement !== $("pfMusicName")) $("pfMusicName").value = state.profile.music_title || "";
+}
+async function setMyMusic(path, title) {
+  const { error } = await sb.rpc("set_profile_music", { p_path: path, p_title: title || null });
+  if (error) { toast(T("Не удалось сохранить музыку")); return false; }
+  state.profile = Object.assign({}, state.profile, { music: path, music_title: path ? (title || "").trim().slice(0, 80) || null : null });
+  paintMyMusic(); refreshMe();
+  if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
+  return true;
+}
+$("pfMusicUp").addEventListener("click", () => $("pfMusicFile").click());
+$("pfMusicOff").addEventListener("click", async () => { if (await setMyMusic(null)) toast(T("Музыка убрана из профиля")); });
+$("pfMusicName").addEventListener("change", () => { if (state.profile.music) setMyMusic(state.profile.music, $("pfMusicName").value); });
+let pfPreview = null;
+$("pfMusicPlay").addEventListener("click", () => {
+  if (pfPreview) { pfPreview.pause(); pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); audioBackSoon(); return; }
+  if (!state.profile.music) return;
+  audioMode("playback");
+  pfPreview = new Audio(musicUrl(state.profile.music));
+  pfPreview.onended = () => { pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); };
+  pfPreview.play().catch(() => {});
+  $("pfMusicPlay").textContent = T("Стоп");
+});
+$("dlgProfile").addEventListener("close", () => { if (pfPreview) { pfPreview.pause(); pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); } });
+$("pfMusicFile").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const ext = ((/\.([a-z0-9]{2,5})$/i.exec(f.name || "") || [])[1] || "").toLowerCase();
+  const TYPES = { mp3: "audio/mpeg", m4a: "audio/mp4", mp4: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg", webm: "audio/webm", wav: "audio/wav", flac: "audio/flac" };
+  const type = /^audio\//.test(f.type) && Object.values(TYPES).includes(f.type) ? f.type : TYPES[ext] || (f.type === "audio/x-m4a" ? "audio/mp4" : "");
+  if (!type) { toast(T("Выберите аудиофайл: MP3, M4A, OGG или WAV")); return; }
+  if (f.size > 15 * 1024 * 1024) { toast(T("Трек больше 15 МБ — выберите файл поменьше")); return; }
+  const fileExt = TYPES[ext] === type ? ext : Object.keys(TYPES).find((k) => TYPES[k] === type) || "mp3";
+  const title = (f.name || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[_]+/g, " ").trim().slice(0, 80);
+  toast(T("Загружаем трек…"));
+  const path = state.me.id + "/music-" + Date.now() + "." + fileExt;
+  const up = await sb.storage.from("music").upload(path, f, { contentType: type, cacheControl: "31536000" });
+  if (up.error) { toast(/size|large/i.test(up.error.message || "") ? T("Трек слишком большой") : T("Не удалось загрузить трек")); return; }
+  if (await setMyMusic(path, title)) toast(T("Музыка добавлена в профиль"));
+});
+
 // баннер профиля: путь в хранилище banners; видео — по расширению файла
 function bannerUrl(path) { return SUPABASE_URL + "/storage/v1/object/public/banners/" + path; }
 function bannerNode(path) {
@@ -9381,6 +9520,7 @@ function paintUser(p) {
     if (state.giftBackdrops) apply(); else giftTypes().then(apply);
   }
   // баннер на всю шапку (своё фото или видео до 30 с) — у премиума и админов
+  profMusicStart(p.banned_at ? null : p);
   const bnEl = bn ? bannerNode(bn) : null;
   $("uBanner").replaceChildren(...(bnEl ? [bnEl] : []));
   hero.style.removeProperty("--bnh");
@@ -10831,6 +10971,7 @@ function renderSettings() {
   }
   $("setEnter").checked = !!settings.enterSends;
   $("setSounds").checked = settings.sounds !== false;
+  $("setProfMusic").checked = settings.profMusic !== false;
 }
 function saveSettings() {
   try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {}
@@ -10851,6 +10992,7 @@ $("dlgSettings").addEventListener("click", (e) => {
   saveSettings();
 });
 $("setEnter").addEventListener("change", (e) => { settings.enterSends = e.target.checked; saveSettings(); });
+$("setProfMusic").addEventListener("change", (e) => { settings.profMusic = e.target.checked; saveSettings(); if (!e.target.checked) profMusicStop(); });
 $("setSounds").addEventListener("change", (e) => { settings.sounds = e.target.checked; saveSettings(); if (e.target.checked) { sndUnlock(); playSound("msg"); } });
 // аватарка в шапке открывает свой профиль; редактирование — по кнопке «Изм.» в нём
 $("btnProfile").addEventListener("click", () => showUser(state.profile));
@@ -10869,6 +11011,7 @@ function openProfileEdit() {
   $("dlgProfile").showModal();
   paintMyChannel();
   paintMyBg();
+  paintMyMusic();
   drawBadge();
 }
 // настройки показываются отдельной страницей на месте списка чатов; интерфейс оставлен как у окна
@@ -12243,7 +12386,8 @@ $("abForm").addEventListener("submit", async (e) => {
 function audioMode(t) { try { if (navigator.audioSession && navigator.audioSession.type !== t) navigator.audioSession.type = t; } catch (e) {} }
 function mediaPlaying() {
   return (typeof voiceEl !== "undefined" && !voiceEl.paused) || (typeof vnPlaying !== "undefined" && vnPlaying && !vnPlaying.paused)
-    || (typeof call !== "undefined" && !!call) || (typeof vc !== "undefined" && !!vc);
+    || (typeof call !== "undefined" && !!call) || (typeof vc !== "undefined" && !!vc)
+    || (typeof profAudio !== "undefined" && !profAudio.paused);
 }
 let audioBackT = 0;
 function audioBackSoon() { clearTimeout(audioBackT); audioBackT = setTimeout(() => { if (!mediaPlaying()) audioMode("ambient"); }, 800); }
@@ -12273,6 +12417,7 @@ function sndUnlock() {
 }
 // браузер разрешает звук только после первого касания или нажатия
 for (const ev of ["pointerdown", "keydown", "touchend"]) addEventListener(ev, sndUnlock, { passive: true, capture: true });
+for (const ev of ["pointerdown", "keydown", "touchend"]) addEventListener(ev, () => profMusicUnlock(), { passive: true, capture: true, once: true });
 function sndTone(t0, freq, dur, vol, type, glide) {
   const o = sndCtx.createOscillator(), g = sndCtx.createGain();
   o.type = type || "sine";
@@ -15961,7 +16106,7 @@ async function applyRoute(path) {
     else if (seg === "market") { closeRouted("dlgMarket"); if (!$("dlgMarket").open) $("btnMarket").click(); }
     else if (seg === "admin") { closeRouted("dlgAdmin"); if (state.isAdmin && !$("dlgAdmin").open) $("btnAdmin").click(); }
     else if (seg === "help") { closeRouted("dlgSupport"); if (!$("dlgSupport").open) openSupport(); }
-    else if (seg === "profile") { closeRouted("dlgProfile"); if (!$("dlgProfile").open) $("btnProfile").click(); }
+    else if (seg === "profile") { closeRouted("dlgProfile"); if (!$("dlgProfile").open) openProfileEdit(); }
     else {
       // @юзернейм, подарок, приглашение — как в ссылках
       const cur = routeNow();
