@@ -681,6 +681,25 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .u-music.on .mu-eq i:nth-child(2) { animation-delay: -.3s; } .u-music.on .mu-eq i:nth-child(3) { animation-delay: -.6s; } .u-music.on .mu-eq i:nth-child(4) { animation-delay: -.15s; }
 @keyframes mu-bar { 0%, 100% { height: 4px; } 50% { height: 14px; } }
 @media (prefers-reduced-motion: reduce) { .u-music.on .mu-eq i { animation: none; height: 10px; } }
+.u-music .mu-cov { width: 26px; height: 26px; border-radius: 6px; margin-left: -4px; object-fit: cover; flex: none; }
+.mu-apple { font-size: 12.5px; color: inherit; opacity: .75; text-decoration: none; margin-top: -2px; }
+.mu-apple:hover { opacity: 1; text-decoration: underline; }
+.mu-apple[hidden] { display: none; }
+.u-hero.has-banner .mu-apple, .u-hero.nftg .mu-apple, .u-hero.pbg .mu-apple { color: #fff; }
+.mu-search { margin-top: 8px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.mu-res { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; max-height: 320px; overflow-y: auto; border-radius: 14px; background: var(--panel-2); padding: 4px; }
+.mu-res[hidden] { display: none; }
+.mu-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; }
+.mu-row:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.mu-row img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; background: var(--panel); }
+.mu-row .mu-tx { flex: 1; min-width: 0; }
+.mu-row .mu-tx b, .mu-row .mu-tx span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mu-row .mu-tx b { font-weight: 600; font-size: 14.5px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.mu-row .mu-tx span { font-size: 12.5px; color: var(--muted); }
+.mu-row .mu-pv { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); cursor: pointer; font-size: 13px; }
+.mu-row .mu-pick { flex: none; padding: 6px 10px; font-size: 13px; }
+.mu-note { padding: 10px; font-size: 13px; color: var(--muted); text-align: center; }
+.mu-edit img.mu-ic { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; }
 .mu-edit { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
 .mu-edit .mu-ic { font-size: 18px; color: var(--accent); }
 .mu-edit .mu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2386,7 +2405,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f5ea61f48e"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7b43812a55"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3423,14 +3442,18 @@ void main() {
       <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:10px" hidden></div>
     </div>
     <div class="field"><span>Музыка профиля</span>
-      <div class="mu-edit" id="pfMusic"><span class="mu-ic" aria-hidden="true">♫</span><span class="mu-t" id="pfMusicT">Нет музыки</span><button class="link" type="button" id="pfMusicPlay" hidden>Послушать</button></div>
+      <div class="mu-edit" id="pfMusic"><span class="mu-ic" id="pfMusicIc" aria-hidden="true">♫</span><span class="mu-t" id="pfMusicT">Нет музыки</span><button class="link" type="button" id="pfMusicPlay" hidden>Послушать</button></div>
+      <div class="mu-search">
+        <input class="input" id="pfMusicQ" type="search" maxlength="80" placeholder="Найти песню в Apple Music" aria-label="Найти песню в Apple Music" autocomplete="off">
+        <div class="mu-res" id="pfMusicRes" hidden></div>
+      </div>
       <input class="input" id="pfMusicName" maxlength="80" placeholder="Название трека" aria-label="Название трека" style="margin-top:8px" hidden>
       <div class="actions" style="justify-content:flex-start;margin-top:8px">
         <button class="btn ghost" type="button" id="pfMusicUp">🎵 Выбрать трек</button>
         <button class="btn ghost" type="button" id="pfMusicOff" hidden>Убрать</button>
       </div>
       <input type="file" id="pfMusicFile" accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav,.flac" hidden>
-      <div class="hint">MP3, M4A, OGG или WAV до 15 МБ. Играет по кругу, когда кто-то открывает ваш профиль, — и на iPhone в беззвучном режиме.</div>
+      <div class="hint">Песня из Apple Music играет 30-секундным отрывком, свой файл (MP3, M4A, OGG или WAV до 15 МБ) — целиком. Музыка крутится по кругу, когда кто-то открывает ваш профиль, — и на iPhone в беззвучном режиме.</div>
     </div>
     <div class="small muted" id="pfEmail"></div>
     <div class="error" id="profileErr"></div>
@@ -4234,7 +4257,8 @@ void main() {
         <button class="lvl" type="button" id="uLvl" hidden></button>
         <div class="small muted" id="uSeen"></div>
       </div>
-      <button class="u-music" type="button" id="uMusic" hidden><span class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mu-name" id="uMusicT"></span><span class="mu-st" id="uMusicSt"></span></button>
+      <button class="u-music" type="button" id="uMusic" hidden><img class="mu-cov" id="uMusicCov" alt="" hidden><span class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="mu-name" id="uMusicT"></span><span class="mu-st" id="uMusicSt"></span></button>
+      <a class="mu-apple" id="uMusicLink" target="_blank" rel="noopener noreferrer" hidden>Слушать в Apple Music</a>
       <div class="u-qa" id="uQa">
         <button type="button" class="qa" id="uWrite"><span class="qa-i" data-ic="chats"></span><span>Написать</span></button>
         <button type="button" class="qa" id="uCallQ" hidden><span class="qa-i" data-ic="phone"></span><span>Звонок</span></button>
@@ -4733,7 +4757,7 @@ const IN_APP = !!window.Capacitor || location.hostname === "localhost" && /Andro
 const PUBLIC_SITE = "https://mestario.lol/";
 const HERE = IN_APP ? PUBLIC_SITE : location.origin + location.pathname;
 const VAPID_PUBLIC = "BNOA3jD0KYQzjfxtr_RQZgCKVOUvHh03z51rFsSNZV_TOg2lpQ1Ha4Q47RTKGEw-4nIc4ENVbzVD1Z92VHd3HNM";   // открытая часть ключа уведомлений
-const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,music,music_title,collectible_usernames(username),collectible_numbers(number),is_bot,intro,bubble";
+const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,username,display_name,avatar_path,bio,last_seen_at,banned_at,ban_reason,verified,premium_until,name_hue,is_admin,is_chief,worn_gift,worn_type,worn_model,worn_backdrop,worn_number,hide_seen,num,rating_points,music,music_title,music_meta,collectible_usernames(username),collectible_numbers(number),is_bot,intro,bubble";
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
@@ -9256,7 +9280,10 @@ async function loadUserChannel(id) {
   $("uNoBio").hidden = true;
 }
 /* ---------- музыка профиля: играет, пока открыт профиль; на iPhone — и в беззвучном режиме ---------- */
-function musicUrl(path) { return SUPABASE_URL + "/storage/v1/object/public/music/" + path; }
+function musicUrl(path, meta) {
+  if (/^itunes:/.test(path || "")) return meta && meta.preview ? meta.preview : "";
+  return SUPABASE_URL + "/storage/v1/object/public/music/" + path;
+}
 const profAudio = new Audio();
 profAudio.loop = true; profAudio.preload = "auto"; profAudio.setAttribute("playsinline", "");
 let profMusic = null, profFade = 0, profUnlocked = false;
@@ -9285,17 +9312,25 @@ function profMusicPlay() {
   if ((!voiceEl.paused) || (typeof vnPlaying !== "undefined" && vnPlaying && !vnPlaying.paused) || (typeof call !== "undefined" && call) || (typeof vc !== "undefined" && vc)) { paintProfMusic(); return; }
   audioMode("playback");
   profAudio.volume = 0;
-  profAudio.play().then(() => { profFadeTo(.85, 900); paintProfMusic(); }).catch(() => paintProfMusic());
+  const want = profMusic;
+  // пока ждали старта, профиль могли закрыть или сменить — тогда не играем
+  profAudio.play().then(() => { if (profMusic !== want) { profAudio.pause(); return; } profFadeTo(.85, 900); paintProfMusic(); }).catch(() => paintProfMusic());
 }
 function profMusicStart(p) {
-  const path = p && p.music ? p.music : "";
+  const meta = (p && p.music_meta) || null;
+  const path = p && p.music && musicUrl(p.music, meta) ? p.music : "";
   $("uMusic").hidden = !path;
+  const apple = !!path && /^itunes:/.test(path);
+  $("uMusicLink").hidden = !(apple && meta && meta.link);
+  if (apple && meta && meta.link) $("uMusicLink").href = meta.link;
+  $("uMusicCov").hidden = !(apple && meta && meta.cover);
+  if (apple && meta && meta.cover) $("uMusicCov").src = meta.cover;
   if (!path) { profMusicStop(); return; }
-  $("uMusicT").textContent = p.music_title || T("Музыка профиля");
+  $("uMusicT").textContent = (p.music_title || T("Музыка профиля")) + (apple && meta && meta.artist ? " — " + meta.artist : "");
   if (profMusic === path) { paintProfMusic(); return; }
   profMusicStop(true);
   profMusic = path;
-  profAudio.src = musicUrl(path);
+  profAudio.src = musicUrl(path, meta);
   paintProfMusic();
   if (settings.profMusic !== false) profMusicPlay();
 }
@@ -9320,21 +9355,77 @@ voiceEl.addEventListener("play", () => { if (profMusic && !profAudio.paused) pro
 
 // мой профиль: выбрать трек, название, убрать
 function paintMyMusic() {
-  const m = state.profile.music || "";
-  $("pfMusicT").textContent = m ? (state.profile.music_title || T("Музыка профиля")) : T("Нет музыки");
-  $("pfMusicOff").hidden = $("pfMusicName").hidden = $("pfMusicPlay").hidden = !m;
+  const m = state.profile.music || "", meta = state.profile.music_meta || null, apple = /^itunes:/.test(m);
+  $("pfMusicT").textContent = m ? (state.profile.music_title || T("Музыка профиля")) + (apple && meta && meta.artist ? " — " + meta.artist : "") : T("Нет музыки");
+  const ic = apple && meta && meta.cover ? h("img", { class: "mu-ic", id: "pfMusicIc", src: meta.cover, alt: "" }) : h("span", { class: "mu-ic", id: "pfMusicIc", "aria-hidden": "true" }, "♫");
+  $("pfMusicIc").replaceWith(ic);
+  $("pfMusicOff").hidden = $("pfMusicPlay").hidden = !m;
+  $("pfMusicName").hidden = !m || apple;
   $("pfMusicUp").textContent = m ? T("🎵 Заменить трек") : T("🎵 Выбрать трек");
   if (document.activeElement !== $("pfMusicName")) $("pfMusicName").value = state.profile.music_title || "";
 }
 async function setMyMusic(path, title) {
   const { error } = await sb.rpc("set_profile_music", { p_path: path, p_title: title || null });
   if (error) { toast(T("Не удалось сохранить музыку")); return false; }
-  state.profile = Object.assign({}, state.profile, { music: path, music_title: path ? (title || "").trim().slice(0, 80) || null : null });
+  state.profile = Object.assign({}, state.profile, { music: path, music_title: path ? (title || "").trim().slice(0, 80) || null : null, music_meta: null });
   paintMyMusic(); refreshMe();
   if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
   return true;
 }
 $("pfMusicUp").addEventListener("click", () => $("pfMusicFile").click());
+// поиск песен: каталог Apple (iTunes Search) отвечает браузеру напрямую, ключ не нужен
+let muSeq = 0, muList = [], muPv = null, muPvBtn = null;
+function muPvStop() { if (muPv) { muPv.pause(); muPv = null; } if (muPvBtn) { muPvBtn.textContent = "▶"; muPvBtn = null; } audioBackSoon(); }
+async function musicSearch(q) {
+  const box = $("pfMusicRes"), seq = ++muSeq;
+  q = q.trim();
+  if (q.length < 2) { box.hidden = true; box.replaceChildren(); muPvStop(); return; }
+  box.hidden = false;
+  if (!box.children.length) box.replaceChildren(h("div", { class: "mu-note" }, T("Ищем…")));
+  const cc = window.SOROKA_LANG === "en" ? "us" : "ru";
+  let items = [];
+  try {
+    const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=25&country=" + cc + "&term=" + encodeURIComponent(q));
+    const j = await r.json();
+    items = (j.results || []).filter((x) => x.previewUrl && x.trackId);
+  } catch (e) {
+    if (seq === muSeq) box.replaceChildren(h("div", { class: "mu-note" }, T("Apple Music сейчас не отвечает. Попробуйте ещё раз.")));
+    return;
+  }
+  if (seq !== muSeq) return;
+  muList = items;
+  if (!items.length) { box.replaceChildren(h("div", { class: "mu-note" }, T("Ничего не нашли. Попробуйте другое название или исполнителя."))); return; }
+  box.replaceChildren(...items.map((x, i) => {
+    const pv = h("button", { type: "button", class: "mu-pv", "aria-label": T("Послушать отрывок"), onclick: () => {
+      if (muPvBtn === pv) { muPvStop(); return; }
+      muPvStop(); audioMode("playback");
+      muPv = new Audio(x.previewUrl); muPvBtn = pv; pv.textContent = "❚❚";
+      muPv.onended = () => muPvStop();
+      muPv.play().catch(() => muPvStop());
+    } }, "▶");
+    return h("div", { class: "mu-row" },
+      h("img", { src: x.artworkUrl100 || x.artworkUrl60 || "", alt: "", loading: "lazy" }),
+      h("div", { class: "mu-tx" }, h("b", {}, x.trackName || ""), h("span", {}, (x.artistName || "") + (x.trackExplicitness === "explicit" ? " · 🅴" : ""))),
+      pv,
+      h("button", { type: "button", class: "btn ghost mu-pick", onclick: () => pickAppleSong(x) }, T("Выбрать")));
+  }));
+}
+async function pickAppleSong(x) {
+  muPvStop();
+  const clean = (u) => String(u || "").split("?")[0];
+  const cover = clean(x.artworkUrl100 || x.artworkUrl60).replace(/\/\d+x\d+bb\.(jpg|png)$/, "/300x300bb.jpg") || null;
+  const link = String(x.trackViewUrl || "").replace(/&uo=\d+$/, "") || null;
+  const { error } = await sb.rpc("set_profile_itunes", { p_track: x.trackId, p_title: x.trackName || "", p_artist: x.artistName || "", p_preview: x.previewUrl, p_cover: cover, p_link: link });
+  if (error) { toast(T("Не удалось поставить песню")); return; }
+  state.profile = Object.assign({}, state.profile, { music: "itunes:" + x.trackId, music_title: (x.trackName || "").slice(0, 120),
+    music_meta: { src: "apple", artist: x.artistName || "", preview: x.previewUrl, cover, link } });
+  $("pfMusicQ").value = ""; $("pfMusicRes").hidden = true; $("pfMusicRes").replaceChildren();
+  paintMyMusic(); refreshMe();
+  if ($("dlgUser").open && viewed && viewed.id === state.me.id) showUser(state.profile);
+  toast(T("Песня добавлена в профиль"));
+}
+$("pfMusicQ").addEventListener("input", debounce(() => musicSearch($("pfMusicQ").value), 400));
+$("pfMusicQ").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); musicSearch($("pfMusicQ").value); } });
 $("pfMusicOff").addEventListener("click", async () => { if (await setMyMusic(null)) toast(T("Музыка убрана из профиля")); });
 $("pfMusicName").addEventListener("change", () => { if (state.profile.music) setMyMusic(state.profile.music, $("pfMusicName").value); });
 let pfPreview = null;
@@ -9342,12 +9433,12 @@ $("pfMusicPlay").addEventListener("click", () => {
   if (pfPreview) { pfPreview.pause(); pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); audioBackSoon(); return; }
   if (!state.profile.music) return;
   audioMode("playback");
-  pfPreview = new Audio(musicUrl(state.profile.music));
+  pfPreview = new Audio(musicUrl(state.profile.music, state.profile.music_meta));
   pfPreview.onended = () => { pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); };
   pfPreview.play().catch(() => {});
   $("pfMusicPlay").textContent = T("Стоп");
 });
-$("dlgProfile").addEventListener("close", () => { if (pfPreview) { pfPreview.pause(); pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); } });
+$("dlgProfile").addEventListener("close", () => { muPvStop(); if (pfPreview) { pfPreview.pause(); pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); } });
 $("pfMusicFile").addEventListener("change", async (e) => {
   const f = e.target.files && e.target.files[0];
   e.target.value = "";

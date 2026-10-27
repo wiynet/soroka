@@ -1860,3 +1860,9 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- путь <uid>/<файл>, файл должен существовать, название до 80 символов. Клиент: трек играет по кругу, пока
 -- открыт профиль (плавное появление), на iPhone через audioSession "playback" — слышно в беззвучном режиме.
 -- Кнопка-чип в шапке ставит на паузу; настройка «Музыка в профилях» (Настройки → Сообщения) выключает автостарт.
+
+-- 2026-10-27 (2): музыка из Apple Music. Поиск — iTunes Search API прямо из браузера (ключ не нужен, CORS открыт).
+-- profiles.music = 'itunes:<trackId>', music_meta = {src:'apple', artist, preview, cover, link};
+-- public.set_profile_itunes(...) пропускает отрывок только с audio-ssl.itunes.apple.com, обложку с *.mzstatic.com,
+-- ссылку только на music.apple.com. В профиле играет 30-секундный отрывок, рядом ссылка «Слушать в Apple Music».
+-- set_profile_music (свой файл) теперь обнуляет music_meta.
