@@ -1871,3 +1871,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- (сеть, Safari, блокировка) — поиск идёт через функцию music-search (кэш 10 мин), а отрывки через
 -- music-preview (пропускает только audio-ssl.itunes.apple.com, меняет audio/x-m4p на audio/mp4).
 -- Устройство запоминает обход (localStorage mestario.appleProxy), событие пишется в client_events как apple_blocked.
+
+-- 2026-10-29: 10 тестовых аккаунтов tester1…tester10, почта tester<N>@test.mestario.invalid (несуществующий домен,
+-- письма никуда не уходят, почта подтверждена заранее). В auth.users.raw_user_meta_data стоит test_account=true.
+-- Пароли в репозиторий не записаны. Найти: select id from auth.users where email like '%@test.mestario.invalid';
