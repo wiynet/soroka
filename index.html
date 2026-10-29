@@ -2405,7 +2405,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7b43812a55"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f5b1b20737"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -9280,12 +9280,34 @@ async function loadUserChannel(id) {
   $("uNoBio").hidden = true;
 }
 /* ---------- музыка профиля: играет, пока открыт профиль; на iPhone — и в беззвучном режиме ---------- */
+// у кого серверы Apple не открываются, отрывки идут через нашу функцию music-preview (запоминаем на устройстве)
+let appleViaUs = false;
+try { appleViaUs = localStorage.getItem("mestario.appleProxy") === "1"; } catch (e) {}
+const APPLE_AUDIO = /^https:\/\/audio-ssl\.itunes\.apple\.com\//;
+function appleAudio(u) { return appleViaUs && APPLE_AUDIO.test(u || "") ? SUPABASE_URL + "/functions/v1/music-preview?u=" + encodeURIComponent(u) : u; }
+function appleViaUsOn(why) {
+  if (appleViaUs) return;
+  appleViaUs = true;
+  try { localStorage.setItem("mestario.appleProxy", "1"); } catch (e) {}
+  diag("apple_blocked", { why: String(why || "").slice(0, 200) });
+}
+// отрывок Apple не загрузился напрямую — пробуем ещё раз через наш сервер
+function appleAudioRetry(a, onRetry) {
+  a.addEventListener("error", () => {
+    const src = a.getAttribute("src") || "";
+    if (!APPLE_AUDIO.test(src)) return;
+    appleViaUsOn("audio");
+    a.src = appleAudio(src);
+    if (onRetry) onRetry();
+  });
+}
 function musicUrl(path, meta) {
-  if (/^itunes:/.test(path || "")) return meta && meta.preview ? meta.preview : "";
+  if (/^itunes:/.test(path || "")) return meta && meta.preview ? appleAudio(meta.preview) : "";
   return SUPABASE_URL + "/storage/v1/object/public/music/" + path;
 }
 const profAudio = new Audio();
 profAudio.loop = true; profAudio.preload = "auto"; profAudio.setAttribute("playsinline", "");
+appleAudioRetry(profAudio, () => { if (profMusic && settings.profMusic !== false) profMusicPlay(); });
 let profMusic = null, profFade = 0, profUnlocked = false;
 // iPhone пускает звук без нажатия только у того плеера, который уже играл по нажатию: «разогреваем» его при первом касании
 function profMusicUnlock() {
@@ -9376,6 +9398,21 @@ $("pfMusicUp").addEventListener("click", () => $("pfMusicFile").click());
 // поиск песен: каталог Apple (iTunes Search) отвечает браузеру напрямую, ключ не нужен
 let muSeq = 0, muList = [], muPv = null, muPvBtn = null;
 function muPvStop() { if (muPv) { muPv.pause(); muPv = null; } if (muPvBtn) { muPvBtn.textContent = "▶"; muPvBtn = null; } audioBackSoon(); }
+async function appleSearch(q, cc) {
+  if (!appleViaUs) {
+    try {
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 5000);
+      const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=25&country=" + cc + "&term=" + encodeURIComponent(q), { signal: ctl.signal });
+      clearTimeout(tm);
+      if (!r.ok) throw new Error("http " + r.status);
+      const j = JSON.parse((await r.text()).trim() || "{}");
+      return (j.results || []).filter((x) => x.previewUrl && x.trackId);
+    } catch (e) { appleViaUsOn("search: " + (e && (e.name + " " + e.message))); }
+  }
+  const { data, error } = await sb.functions.invoke("music-search", { body: { q, country: cc } });
+  if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || "proxy");
+  return data.items || [];
+}
 async function musicSearch(q) {
   const box = $("pfMusicRes"), seq = ++muSeq;
   q = q.trim();
@@ -9384,12 +9421,9 @@ async function musicSearch(q) {
   if (!box.children.length) box.replaceChildren(h("div", { class: "mu-note" }, T("Ищем…")));
   const cc = window.SOROKA_LANG === "en" ? "us" : "ru";
   let items = [];
-  try {
-    const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=25&country=" + cc + "&term=" + encodeURIComponent(q));
-    const j = await r.json();
-    items = (j.results || []).filter((x) => x.previewUrl && x.trackId);
-  } catch (e) {
-    if (seq === muSeq) box.replaceChildren(h("div", { class: "mu-note" }, T("Apple Music сейчас не отвечает. Попробуйте ещё раз.")));
+  try { items = await appleSearch(q, cc); }
+  catch (e) {
+    if (seq === muSeq) box.replaceChildren(h("div", { class: "mu-note" }, T("Apple Music сейчас не отвечает. Попробуйте ещё раз через минуту.")));
     return;
   }
   if (seq !== muSeq) return;
@@ -9399,9 +9433,10 @@ async function musicSearch(q) {
     const pv = h("button", { type: "button", class: "mu-pv", "aria-label": T("Послушать отрывок"), onclick: () => {
       if (muPvBtn === pv) { muPvStop(); return; }
       muPvStop(); audioMode("playback");
-      muPv = new Audio(x.previewUrl); muPvBtn = pv; pv.textContent = "❚❚";
+      muPv = new Audio(appleAudio(x.previewUrl)); muPvBtn = pv; pv.textContent = "❚❚";
+      appleAudioRetry(muPv, () => muPv && muPv.play().catch(() => muPvStop()));
       muPv.onended = () => muPvStop();
-      muPv.play().catch(() => muPvStop());
+      muPv.play().catch((e) => { if (e && e.name === "NotAllowedError") muPvStop(); });
     } }, "▶");
     return h("div", { class: "mu-row" },
       h("img", { src: x.artworkUrl100 || x.artworkUrl60 || "", alt: "", loading: "lazy" }),
@@ -9434,6 +9469,7 @@ $("pfMusicPlay").addEventListener("click", () => {
   if (!state.profile.music) return;
   audioMode("playback");
   pfPreview = new Audio(musicUrl(state.profile.music, state.profile.music_meta));
+  appleAudioRetry(pfPreview, () => pfPreview && pfPreview.play().catch(() => {}));
   pfPreview.onended = () => { pfPreview = null; $("pfMusicPlay").textContent = T("Послушать"); };
   pfPreview.play().catch(() => {});
   $("pfMusicPlay").textContent = T("Стоп");

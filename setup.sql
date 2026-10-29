@@ -1866,3 +1866,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- public.set_profile_itunes(...) пропускает отрывок только с audio-ssl.itunes.apple.com, обложку с *.mzstatic.com,
 -- ссылку только на music.apple.com. В профиле играет 30-секундный отрывок, рядом ссылка «Слушать в Apple Music».
 -- set_profile_music (свой файл) теперь обнуляет music_meta.
+
+-- 2026-10-29: Apple Music без прямого доступа к Apple. Если itunes.apple.com из браузера не открывается
+-- (сеть, Safari, блокировка) — поиск идёт через функцию music-search (кэш 10 мин), а отрывки через
+-- music-preview (пропускает только audio-ssl.itunes.apple.com, меняет audio/x-m4p на audio/mp4).
+-- Устройство запоминает обход (localStorage mestario.appleProxy), событие пишется в client_events как apple_blocked.
