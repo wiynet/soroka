@@ -1890,3 +1890,7 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- отдаются GitHub Pages). gift_types.art = https://mestario.lol/gifts/<id>.svg для heart, gem, star, moon,
 -- fire, rose, ufo, unicorn, bear, cat. Дракон пока без картинки (эмодзи). Клиент: giftFace(t, look) рисует
 -- <img class="em" src=art> для обычного подарка, у NFT — эмодзи модели; картинки крупнее эмодзи (CSS img.em).
+
+-- 2026-10-30: рейтинг ограничен 200 уровнями (MAX_LEVEL=200; 200 = 1 000 000 очков = потрачено Mest).
+-- Очки выше максимум не поднимают уровень. Новые цвета значка: t5 (130-199, алый), t6 (200, многоцветный).
+-- На максимуме в окне рейтинга вместо «до уровня N» — «Максимальный уровень — 200».

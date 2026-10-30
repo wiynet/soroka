@@ -1075,6 +1075,8 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .lvl.t2 { background: linear-gradient(160deg, #62b6ff, #2a72e0); }
 .lvl.t3 { background: linear-gradient(160deg, #b592ff, #6a3fe0); }
 .lvl.t4 { background: linear-gradient(160deg, #ffd166, #e08a12); }
+.lvl.t5 { background: linear-gradient(160deg, #ff8f8f, #d2284a); }
+.lvl.t6 { background: linear-gradient(135deg, #7af0ff, #b592ff 42%, #ff9ad5 72%, #ffd166); color: #16202b; }
 .lvl.big { min-width: 96px; height: 96px; font-size: 38px; cursor: default; }
 .rt-bar { align-self: stretch; height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
 .rt-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #62b6ff, #b592ff); }
@@ -2426,7 +2428,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f5b1b20737"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e607b9a26b"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -10218,10 +10220,13 @@ function paintNft(el, look) {
   return el;
 }
 // рейтинг: уровень растёт по квадрату потраченных Mest (25, 100, 225, 400…)
+const MAX_LEVEL = 200;
 function ratingOf(p) {
-  const pts = Math.max(0, Number(p && p.rating_points) || 0), level = Math.floor(Math.sqrt(pts / 25));
+  const pts = Math.max(0, Number(p && p.rating_points) || 0), level = Math.min(MAX_LEVEL, Math.floor(Math.sqrt(pts / 25)));
   const from = 25 * level * level, to = 25 * (level + 1) * (level + 1);
-  return { pts, level, from, to, share: Math.min(1, (pts - from) / (to - from)), tier: level >= 20 ? 4 : level >= 10 ? 3 : level >= 5 ? 2 : level >= 1 ? 1 : 0 };
+  const max = level >= MAX_LEVEL;
+  const tier = level >= 200 ? 6 : level >= 130 ? 5 : level >= 70 ? 4 : level >= 30 ? 3 : level >= 10 ? 2 : level >= 1 ? 1 : 0;
+  return { pts, level, from, to, max, tier, share: max ? 1 : Math.min(1, (pts - from) / (to - from)) };
 }
 function lvlBadge(el, r) { el.className = "lvl" + (el.classList.contains("big") ? " big" : "") + (r.tier ? " t" + r.tier : ""); el.textContent = String(r.level); }
 function openRating(p) {
@@ -10231,7 +10236,7 @@ function openRating(p) {
   $("rtPts").textContent = T("Очков рейтинга: ") + nf.format(r.pts);
   $("rtFill").style.width = "0";
   $("rtBar").setAttribute("aria-valuenow", String(Math.round(r.share * 100)));
-  $("rtNext").textContent = T("До уровня ") + (r.level + 1) + T(" осталось ") + nf.format(r.to - r.pts);
+  $("rtNext").textContent = r.max ? T("Максимальный уровень — 200") : T("До уровня ") + (r.level + 1) + T(" осталось ") + nf.format(r.to - r.pts);
   $("dlgRating").showModal();
   requestAnimationFrame(() => { $("rtFill").style.width = Math.round(r.share * 100) + "%"; });
 }
