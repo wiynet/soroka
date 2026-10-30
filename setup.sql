@@ -1875,3 +1875,6 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- 2026-10-29: 10 тестовых аккаунтов tester1…tester10, почта tester<N>@test.mestario.invalid (несуществующий домен,
 -- письма никуда не уходят, почта подтверждена заранее). В auth.users.raw_user_meta_data стоит test_account=true.
 -- Пароли в репозиторий не записаны. Найти: select id from auth.users where email like '%@test.mestario.invalid';
+
+-- 2026-10-30: NFT-юзернеймы убраны из отдельной строки карточки профиля и показываются под основным
+-- юзернеймом строкой «также @… @…» (как в Telegram). Чипы кликабельны — копируют @юзернейм. Только клиент.

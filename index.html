@@ -1416,6 +1416,9 @@ button.gift[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 
 .gem { display: inline-block; width: .95em; height: .95em; margin-left: 5px; vertical-align: -0.12em; color: var(--accent); flex: none; }
 .nft-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .nft-list.left { justify-content: flex-start; }
+.u-also { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 2px; }
+.u-also > small { color: var(--muted); }
+.u-also .nft { cursor: pointer; font-family: inherit; line-height: 1.1; }
 .nft { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 2px; padding: 4px 11px 4px 6px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
 .nft .gem { margin: 0 4px 0 2px; }
 .ad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -4277,16 +4280,12 @@ void main() {
         </button>
         <div class="prow">
           <span class="pico blue">@</span>
-          <div class="ptx"><button type="button" id="uUser" title="Скопировать юзернейм"></button><small id="uUserSub">Юзернейм</small></div>
+          <div class="ptx"><button type="button" id="uUser" title="Скопировать юзернейм"></button><div class="u-also" id="uAlso" hidden><small>также</small><span class="nft-list left" id="uNft"></span></div><small id="uUserSub">Юзернейм</small></div>
           <button class="icon-btn" type="button" id="uCopyLink" title="Скопировать ссылку на профиль" aria-label="Скопировать ссылку на профиль"></button>
         </div>
         <div class="prow" id="uBioRow">
           <span class="pico grey">i</span>
           <div class="ptx"><div id="uBio"></div><small>О себе</small></div>
-        </div>
-        <div class="prow" id="uNftRow">
-          <span class="pico gold" id="uNftIco"></span>
-          <div class="ptx"><div class="nft-list left" id="uNft"></div><small>NFT-юзернеймы</small></div>
         </div>
         <button class="prow" type="button" id="uContactRow" hidden>
           <span class="pico green" data-ic="users"></span>
@@ -5031,8 +5030,13 @@ function fmtSeen(p) {
   if (n === 1) return T("в сети вчера в ") + tFmt.format(d);
   return T("в сети ") + dFmt.format(d) + T(" в ") + tFmt.format(d);
 }
-function nftChips(p) {
-  return nfts(p).map((u) => { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft", title: T("NFT-юзернейм") }, g, "@" + u); });
+function nftChips(p, tap) {
+  return nfts(p).map((u) => {
+    const g = icon("gem"); g.classList.add("gem");
+    const attrs = { class: "nft", title: tap ? T("Скопировать @") + u : T("NFT-юзернейм") };
+    if (tap) { attrs.type = "button"; attrs.onclick = () => { try { navigator.clipboard.writeText("@" + u); toast(T("Юзернейм скопирован")); } catch (e) {} }; }
+    return h(tap ? "button" : "span", attrs, g, "@" + u);
+  });
 }
 function avatarUrl(path) {
   return SUPABASE_URL + "/storage/v1/object/public/avatars/" + path.split("/").map(encodeURIComponent).join("/");
@@ -9682,8 +9686,8 @@ function paintUser(p) {
   $("uBanReason").hidden = true;
   $("uBanReason").value = "";
   banArmed = false;
-  $("uNft").replaceChildren(...nftChips(p));
-  $("uNft").hidden = !nfts(p).length;
+  $("uNft").replaceChildren(...nftChips(p, true));
+  $("uAlso").hidden = !nfts(p).length;
   $("uUser").textContent = "@" + p.username;
   // NFT-номер — первой строкой карточки, над юзернеймом
   const pn = nums(p);
@@ -9694,7 +9698,6 @@ function paintUser(p) {
   $("uBio").textContent = p.bio || "";
   $("uBio").hidden = !p.bio;
   $("uBioRow").hidden = !p.bio;
-  $("uNftRow").hidden = !nfts(p).length;
   $("uPremRow").hidden = !isPremium(p);
   const rt = ratingOf(p);
   $("uLvl").hidden = !!p.banned_at || p.rating_points == null;
@@ -10782,7 +10785,6 @@ async function paintBlockList() {
     h("div", { class: "mem-acts" }, h("button", { class: "btn ghost", type: "button", onclick: () => setBlocked(u, false) }, T("Разблокировать"))))));
 }
 $("uCopyLink").append(icon("link"));
-$("uNftIco").append(icon("gem"));
 $("uCopyLink").addEventListener("click", () => { if (viewed) copyText(SITE + "#@" + viewed.username, T("Ссылка на профиль скопирована")); });
 $("uNum").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uNum").textContent.split(" · ")[0]); toast(T("Номер скопирован")); } catch (e) {}
