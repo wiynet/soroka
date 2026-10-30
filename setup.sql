@@ -1885,3 +1885,8 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- вернуть любой в каталог — hidden=false. Визуал (только клиент): подарки объёмнее (ореол + многослойная
 -- тень, крупнее), новая пружинистая анимация появления и мягкое покачивание (gift-float); в экономном/
 -- спокойном режиме покачивание отключается.
+
+-- 2026-10-30: свои картинки подарков (как 3D-стикеры). SVG в /gifts/<id>.svg (исходники в репозитории,
+-- отдаются GitHub Pages). gift_types.art = https://mestario.lol/gifts/<id>.svg для heart, gem, star, moon,
+-- fire, rose, ufo, unicorn, bear, cat. Дракон пока без картинки (эмодзи). Клиент: giftFace(t, look) рисует
+-- <img class="em" src=art> для обычного подарка, у NFT — эмодзи модели; картинки крупнее эмодзи (CSS img.em).
