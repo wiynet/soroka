@@ -908,7 +908,8 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .gift-pill, .gift-card { --gc: hsl(var(--h) 42% 22% / .9); background: var(--gc); color: #fff; backdrop-filter: blur(10px); }
 .gift-pill { padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; text-align: center; }
 .gift-card { display: grid; justify-items: center; gap: 4px; width: 100%; padding: 14px 18px 16px; border-radius: 22px; text-align: center; }
-.gift-card .em { font-size: 84px; line-height: 1.1; }
+.gift-card .em { font-size: 92px; line-height: 1.1; transform-origin: 50% 82%;
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / .5)) drop-shadow(0 4px 3px rgb(0 0 0 / .22)) drop-shadow(0 16px 20px rgb(0 0 0 / .42)); }
 .gift-card b { font-weight: 600; font-size: 15px; }
 .gift-card .line { font-size: 13px; opacity: .92; text-wrap: balance; }
 .gift-card .note { font-size: 14px; overflow-wrap: anywhere; }
@@ -1100,7 +1101,10 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .gift.tile { position: relative; aspect-ratio: 1; align-content: center; padding: 8px 6px; border-radius: 18px; border: 0; overflow: hidden;
   background: linear-gradient(160deg, color-mix(in srgb, var(--panel-2) 78%, #fff), var(--panel-2) 55%, color-mix(in srgb, var(--panel-2) 86%, #000));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -10px 18px -10px rgb(0 0 0 / .22), 0 3px 8px rgb(0 0 0 / .12); }
-.gift.tile .em { font-size: clamp(38px, 13vw, 58px); line-height: 1; filter: drop-shadow(0 7px 7px rgb(0 0 0 / .3)); }
+.gift.tile::before { content: ""; position: absolute; left: 50%; top: 46%; width: 92%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / .16), rgb(255 255 255 / .05) 45%, transparent 68%); pointer-events: none; }
+.gift.tile .em { position: relative; font-size: clamp(42px, 14vw, 64px); line-height: 1; transform-origin: 50% 85%;
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / .55)) drop-shadow(0 3px 2px rgb(0 0 0 / .25)) drop-shadow(0 12px 14px rgb(0 0 0 / .45)); }
 @media (max-width: 420px) {
   .gift.tile { border-radius: 14px; }
   .gift.tile .rib { top: 8px; right: -34px; font-size: 9.5px; }
@@ -1364,7 +1368,8 @@ button.prow b { font-weight: 600; }
 #gvBid { grid-template-columns: 1fr auto; }
 .gift .left { font-size: 11px; font-weight: 600; color: var(--accent); }
 .gv { align-items: center; text-align: center; }
-.gv .em { font-size: 96px; line-height: 1.1; }
+.gv .em { font-size: 104px; line-height: 1.1; transform-origin: 50% 82%;
+  filter: drop-shadow(0 2px 0 rgb(255 255 255 / .5)) drop-shadow(0 5px 4px rgb(0 0 0 / .22)) drop-shadow(0 18px 24px rgb(0 0 0 / .45)); }
 .gv dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; align-self: stretch; text-align: left; font-size: 14px; }
 .gv dt { color: var(--muted); }
 .gv dd { margin: 0; overflow-wrap: anywhere; }
@@ -1828,8 +1833,14 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .msg.hit { animation: hit 1.2s ease both; }
   .gift { animation: pop-in .28s var(--ease) both; transition: border-color .18s, box-shadow .18s, transform .12s var(--ease), background-color .18s; }
   button.gift:hover { transform: translateY(-2px); }
-  @keyframes gift-drop { 0% { transform: translateY(-18px) scale(.6) rotate(-14deg); opacity: 0; } 60% { transform: translateY(3px) scale(1.12) rotate(6deg); opacity: 1; } 100% { transform: none; } }
-  .msg.new .gift-card .em, #msgs.fresh .gift-card .em, .gv .em { animation: gift-drop .7s var(--ease) both; }
+  @keyframes gift-drop { 0% { transform: scale(.35) rotate(-16deg); opacity: 0; } 45% { transform: scale(1.18) rotate(7deg); opacity: 1; } 68% { transform: scale(.92) rotate(-4deg); } 84% { transform: scale(1.04) rotate(2deg); } 100% { transform: none; } }
+  /* подарки «дышат»: мягкое покачивание, как в Telegram */
+  @keyframes gift-float { 0%, 100% { transform: translateY(0) rotate(-2.5deg); } 50% { transform: translateY(-5px) rotate(2.5deg); } }
+  .msg.new .gift-card .em, #msgs.fresh .gift-card .em { animation: gift-drop .72s var(--ease) both; }
+  .gv .em { animation: gift-drop .6s var(--ease) both, gift-float 3.8s ease-in-out .6s infinite; }
+  .gift.tile .em { animation: gift-float 3.6s ease-in-out infinite; }
+  .gift.tile:nth-child(3n) .em { animation-duration: 4.3s; animation-delay: -1.2s; }
+  .gift.tile:nth-child(3n+2) .em { animation-duration: 3.1s; animation-delay: -.5s; }
   .gift-card .em { transition: transform .25s var(--ease); }
   .gift-card:hover .em { transform: scale(1.1) rotate(-6deg); }
   .gift-card .view { transition: background-color .18s, transform .12s var(--ease); }
@@ -2176,7 +2187,7 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 /* ---------- производительность: «вечные» эффекты работают только когда нужны; на слабых устройствах — облегчённый режим ---------- */
 .sbar:not(:focus-within)::before, .sbar:not(:focus-within)::after { animation-play-state: paused !important; }
 :root[data-lite] .tabbar, :root[data-lite] .star, :root[data-lite] .worn, :root[data-lite] .nft::after, :root[data-lite] .gem,
-:root[data-lite] .coin.big, :root[data-lite] .orb, :root[data-lite] .sparks i, :root[data-lite] .sbar::before, :root[data-lite] .sbar::after { animation: none !important; }
+:root[data-lite] .coin.big, :root[data-lite] .orb, :root[data-lite] .sparks i, :root[data-lite] .sbar::before, :root[data-lite] .sbar::after, :root[data-lite] .gift.tile .em, :root[data-lite] .gv .em { animation: none !important; }
 :root[data-lite][data-wall="crystal"] .pane::before { animation: none !important; }
 :root[data-lite] .hold-layer, :root[data-lite] dialog::backdrop, :root[data-lite] #dlgMsg::backdrop, :root[data-lite] .day,
 :root[data-lite] .tabbar, :root[data-lite] #viewer::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
@@ -2201,7 +2212,7 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 /* покой: после нескольких секунд без касаний фоновые «вечные» анимации замирают — видеокарта не работает впустую */
 :root.calm .tabbar, :root.calm .star, :root.calm .worn, :root.calm .gem, :root.calm .nft::after, :root.calm .coin.big,
-:root.calm .orb, :root.calm .sparks i, :root.calm[data-wall="crystal"] .pane::before, :root.calm .home-arrow { animation-play-state: paused !important; }
+:root.calm .orb, :root.calm .sparks i, :root.calm[data-wall="crystal"] .pane::before, :root.calm .home-arrow, :root.calm .gift.tile .em, :root.calm .gv .em { animation-play-state: paused !important; }
 
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
