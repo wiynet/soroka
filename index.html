@@ -1069,15 +1069,9 @@ dialog.story-view > * { grid-area: 1 / 1; }
 /* уровень рейтинга: значок перед временем в сети */
 .seen-row { display: flex; align-items: center; justify-content: center; gap: 6px; height: 20px; }
 .seen-row #uSeen { font-size: 13px; line-height: 20px; }
-.lvl { display: inline-grid; place-items: center; flex: none; min-width: 18px; height: 20px; padding: 0 4px; border: 0; font: 700 10.5px/1 var(--font); font-variant-numeric: tabular-nums; color: #fff; cursor: pointer;
-  background: linear-gradient(160deg, #8fa1b3, #5b6b7c); clip-path: polygon(50% 0, 100% 22%, 100% 70%, 50% 100%, 0 70%, 0 22%); }
-.lvl.t1 { background: linear-gradient(160deg, #6fd08c, #2f9b56); }
-.lvl.t2 { background: linear-gradient(160deg, #62b6ff, #2a72e0); }
-.lvl.t3 { background: linear-gradient(160deg, #b592ff, #6a3fe0); }
-.lvl.t4 { background: linear-gradient(160deg, #ffd166, #e08a12); }
-.lvl.t5 { background: linear-gradient(160deg, #ff8f8f, #d2284a); }
-.lvl.t6 { background: linear-gradient(135deg, #7af0ff, #b592ff 42%, #ff9ad5 72%, #ffd166); color: #16202b; }
-.lvl.big { min-width: 96px; height: 96px; font-size: 38px; cursor: default; }
+.lvl { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; padding: 0; border: 0; background: none; cursor: pointer; }
+.lvl svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / .35)); }
+.lvl.big { width: 104px; height: 104px; cursor: default; }
 .rt-bar { align-self: stretch; height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
 .rt-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #62b6ff, #b592ff); }
 .u-hero.nftg .avatar.lg { box-shadow: 0 0 0 3px rgb(255 255 255 / .35), 0 10px 24px rgb(0 0 0 / .35); }
@@ -10228,7 +10222,66 @@ function ratingOf(p) {
   const tier = level >= 200 ? 6 : level >= 130 ? 5 : level >= 70 ? 4 : level >= 30 ? 3 : level >= 10 ? 2 : level >= 1 ? 1 : 0;
   return { pts, level, from, to, max, tier, share: max ? 1 : Math.min(1, (pts - from) / (to - from)) };
 }
-function lvlBadge(el, r) { el.className = "lvl" + (el.classList.contains("big") ? " big" : "") + (r.tier ? " t" + r.tier : ""); el.textContent = String(r.level); }
+// значок рейтинга: золотой герб, усложняется с уровнем (корона → крылья → лавры), число внутри
+const RB_DEFS = '<defs>'
+  + '<linearGradient id="rbRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe9a0"/><stop offset="48%" stop-color="#e3a82f"/><stop offset="100%" stop-color="#8a560d"/></linearGradient>'
+  + '<radialGradient id="rbFace" cx="50%" cy="34%" r="75%"><stop offset="0%" stop-color="#fff6cf"/><stop offset="45%" stop-color="#ffd24a"/><stop offset="100%" stop-color="#c2800f"/></radialGradient>'
+  + '<linearGradient id="rbWing" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe390"/><stop offset="100%" stop-color="#a66c12"/></linearGradient>'
+  + '<linearGradient id="rbLeaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffdf85"/><stop offset="100%" stop-color="#9c650f"/></linearGradient>'
+  + '</defs>';
+function rbHex(cx, cy, R) {
+  const w = R * 0.86, pts = [[cx-w*0.62,cy-R*0.78],[cx+w*0.62,cy-R*0.78],[cx+w,cy],[cx+w*0.62,cy+R*0.78],[cx-w*0.62,cy+R*0.78],[cx-w,cy]];
+  return pts.map((q) => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" ");
+}
+function rbCrown(cx, cy, R) {
+  const top = cy - R * 0.78; let o = "";
+  const xs = [cx-R*0.52, cx-R*0.26, cx, cx+R*0.26, cx+R*0.52], hs = [8,11,14,11,8];
+  for (let i = 0; i < 5; i++) { const x = xs[i], h = hs[i];
+    o += '<path d="M' + (x-5).toFixed(1) + ' ' + top.toFixed(1) + ' L' + x.toFixed(1) + ' ' + (top-h).toFixed(1) + ' L' + (x+5).toFixed(1) + ' ' + top.toFixed(1) + ' Z" fill="url(#rbRim)" stroke="#7a4e0c" stroke-width="0.6"/>';
+    o += '<circle cx="' + x.toFixed(1) + '" cy="' + (top-h-1).toFixed(1) + '" r="1.6" fill="#fff3c4"/>';
+  }
+  return o;
+}
+function rbWings(cx, cy, R) {
+  let o = "";
+  for (const sgn of [-1, 1]) { const x0 = cx + sgn * (R * 0.9);
+    const F = [[0,-0.2,1.0],[0.25,0.15,0.9],[0.4,0.5,0.75]];
+    for (let i = 0; i < 3; i++) { const dy = F[i][1], ln = F[i][2];
+      const bx = x0, by = cy - R*0.5 + i*R*0.42, tipx = x0 + sgn*(R*0.55*ln), tipy = by - R*0.35*ln + dy*R*0.3;
+      o += '<path d="M' + bx.toFixed(1) + ' ' + by.toFixed(1) + ' Q' + ((bx+tipx)/2+sgn*4).toFixed(1) + ' ' + (by-10).toFixed(1) + ' ' + tipx.toFixed(1) + ' ' + tipy.toFixed(1) + ' Q' + (tipx-sgn*6).toFixed(1) + ' ' + (tipy+8).toFixed(1) + ' ' + (bx-sgn*3).toFixed(1) + ' ' + (by+6).toFixed(1) + ' Z" fill="url(#rbWing)" stroke="#7a4e0c" stroke-width="0.5"/>';
+    }
+  }
+  return o;
+}
+function rbLaurels(cx, cy, R) {
+  let o = ""; const bottom = cy + R * 0.78;
+  for (const sgn of [-1, 1]) { const x0 = cx + sgn * (R * 0.5);
+    for (let i = 0; i < 5; i++) { const t = i/4, lx = x0 + sgn*(R*0.5*t), ly = bottom + 4 - i*R*0.16, ang = sgn*(30 + i*8);
+      o += '<ellipse cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" rx="6.5" ry="3.1" fill="url(#rbLeaf)" stroke="#7a4e0c" stroke-width="0.4" transform="rotate(' + ang.toFixed(0) + ' ' + lx.toFixed(1) + ' ' + ly.toFixed(1) + ')"/>';
+    }
+  }
+  return o;
+}
+function ratingBadge(level) {
+  const cx = 50, cy = 56, R = 30, lv = Math.max(0, Math.min(MAX_LEVEL, Math.round(level)));
+  const tier = lv >= 141 ? 4 : lv >= 101 ? 3 : lv >= 61 ? 2 : 1;
+  let b = "";
+  if (tier >= 4) b += rbLaurels(cx, cy, R);
+  if (tier >= 3) b += rbWings(cx, cy, R);
+  if (tier >= 2) b += rbCrown(cx, cy, R);
+  b += '<polygon points="' + rbHex(cx, cy, R+3) + '" fill="url(#rbRim)" stroke="#6e460a" stroke-width="1"/>';
+  b += '<polygon points="' + rbHex(cx, cy, R-1) + '" fill="url(#rbFace)"/>';
+  b += '<ellipse cx="' + cx + '" cy="' + (cy-13) + '" rx="20" ry="10" fill="#fff" opacity="0.28"/>';
+  b += '<polygon points="' + rbHex(cx, cy, R-5) + '" fill="none" stroke="#fff3c4" stroke-width="1" opacity="0.5"/>';
+  const fs = lv < 10 ? 30 : lv < 100 ? 27 : 22;
+  b += '<text x="' + cx + '" y="' + (cy+1) + '" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="' + fs + '" fill="#fff" stroke="#5e3908" stroke-width="3.4" paint-order="stroke" stroke-linejoin="round">' + lv + '</text>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + RB_DEFS + b + '</svg>';
+}
+function lvlBadge(el, r) {
+  el.classList.add("lvl");
+  el.innerHTML = ratingBadge(r.level);
+  el.setAttribute("aria-label", T("Уровень ") + r.level);
+}
 function openRating(p) {
   const r = ratingOf(p), me = p.id === state.me.id;
   $("rtLvl").classList.add("big"); lvlBadge($("rtLvl"), r);
