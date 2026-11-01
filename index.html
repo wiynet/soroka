@@ -724,6 +724,119 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .bdg-grid button img { width: 52px; height: 52px; object-fit: contain; }
 .pbdg.gem { width: 1.15em; height: 1.15em; vertical-align: -0.22em; object-fit: contain; filter: drop-shadow(0 0 3px rgb(60 120 255 / .45)); }
 .bdg-grid button[aria-pressed="true"] { border-color: var(--accent); }
+/* ---------- живые пиксельные подарки ---------- */
+@property --c1 { syntax: "<color>"; inherits: true; initial-value: #888888; }
+@property --c2 { syntax: "<color>"; inherits: true; initial-value: #333333; }
+.gv-top.bg-blend { transition: --c1 .45s ease, --c2 .45s ease; }
+.gv-top .pat.pat-in { animation: pat-in .8s ease both; }
+@keyframes pat-in { from { opacity: 0; transform: rotate(-12deg) scale(1.15); } }
+.gv-stage.in { animation: stage-in .3s ease both; }
+@keyframes stage-in { from { opacity: 0; transform: translateY(4px); } }
+.gv-top .num.num-pop { animation: num-pop .45s cubic-bezier(.2,.9,.3,1.4) both; }
+@keyframes num-pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.em .reel-in { display: inline-block; animation: reel-in .16s ease-out both; }
+@keyframes reel-in { from { opacity: 0; transform: translateY(-35%) scale(.9); filter: blur(2px); } }
+.em.pxem { position: relative; display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; }
+.pxl { position: relative; display: inline-block; width: 1.35em; height: 1.35em; line-height: 0; perspective: 300px; }
+.em.pxem > .pxl { grid-area: 1 / 1; }
+.pxl svg { position: relative; z-index: 1; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 .06em .06em rgb(0 0 0 / .35)); }
+.pxl svg g { transform-box: fill-box; }
+.pxl i { position: absolute; display: block; pointer-events: none; }
+/* сундук: свечение изнутри, крышка */
+.t-chest .px-glow { z-index: 0; left: 20%; right: 20%; top: 18%; height: 45%; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 70%); opacity: 0; filter: blur(.05em); }
+.t-chest .px-lid { transform-origin: 50% 100%; }
+/* меч: след удара */
+.t-sword svg { transform-origin: 22% 82%; }
+.t-sword .px-slash { z-index: 2; inset: -6% -10% 10% 20%; border-radius: 50%; border-top: .06em solid #fff; border-right: .06em solid #fff; opacity: 0; transform: rotate(-30deg); filter: drop-shadow(0 0 .08em var(--pl)); }
+/* кристалл: сияние */
+.t-crystal .px-aura { z-index: 0; inset: 5%; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 68%); opacity: .45; }
+.t-crystal svg { filter: drop-shadow(0 0 .08em var(--pl)) drop-shadow(0 .06em .06em rgb(0 0 0 / .3)); }
+/* зелье: пузырьки */
+.t-potion .px-bub { z-index: 2; width: .06em; height: .06em; background: var(--ph); left: calc(44% + var(--i) * 6%); top: 62%; opacity: 0; }
+/* машина: линии скорости и дорога */
+.t-car .px-speed { z-index: 0; height: .035em; width: 22%; left: -10%; top: calc(46% + var(--i) * 9%); background: linear-gradient(90deg, transparent, var(--pl)); border-radius: 1em; opacity: 0; }
+.t-car .px-road { z-index: 0; left: -12%; right: -12%; bottom: 10%; height: .03em; background: repeating-linear-gradient(90deg, rgb(255 255 255 / .35) 0 .12em, transparent .12em .24em); opacity: .6; }
+@media (prefers-reduced-motion: no-preference) {
+  /* спокойная жизнь в окне подарка */
+  .t-chest .px-lid { animation: px-lid 3.4s ease-in-out infinite; }
+  .t-chest .px-glow { animation: px-peek 3.4s ease-in-out infinite; }
+  .t-sword svg { animation: px-swing 2.6s ease-in-out infinite; }
+  .t-sword .px-slash { animation: px-slashfx 2.6s ease-out infinite; }
+  .t-crystal svg { animation: px-turn 3.2s linear infinite; }
+  .t-crystal .px-aura { animation: px-auraP 1.6s ease-in-out infinite; }
+  .t-potion svg { animation: px-wobble 2.4s ease-in-out infinite; transform-origin: 50% 90%; }
+  .t-potion .px-bub { animation: px-bubble 1.8s ease-in calc(var(--i) * .55s) infinite; }
+  .t-car svg { animation: px-rumble .32s steps(2) infinite; }
+  .t-car .px-w1, .t-car .px-w2 { animation: px-wheel .2s steps(2) infinite; }
+  .t-car .px-speed { animation: px-speedfx .6s linear calc(var(--i) * .2s) infinite; }
+  .t-car .px-road { animation: px-roadfx .4s linear infinite; }
+  .px-spk { animation: px-tw 1.4s ease-in-out infinite; }
+  .px-spk:nth-of-type(2n) { animation-delay: -.7s; }
+  @keyframes px-lid { 0%, 58%, 100% { transform: none; } 66%, 84% { transform: translateY(-2px) rotate(-6deg) scaleY(.8); } }
+  @keyframes px-peek { 0%, 58%, 100% { opacity: 0; } 70%, 82% { opacity: .9; } }
+  @keyframes px-swing { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-26deg); } 40% { transform: rotate(18deg); } 52% { transform: rotate(-3deg); } 62% { transform: rotate(0); } }
+  @keyframes px-slashfx { 0%, 36%, 60%, 100% { opacity: 0; } 41% { opacity: 1; transform: rotate(-10deg); } 52% { opacity: 0; transform: rotate(25deg); } }
+  @keyframes px-turn { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+  @keyframes px-auraP { 0%, 100% { opacity: .3; transform: scale(.85); } 50% { opacity: .75; transform: scale(1.12); } }
+  @keyframes px-wobble { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-5deg); } 70% { transform: rotate(5deg); } }
+  @keyframes px-bubble { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-.35em); } }
+  @keyframes px-rumble { 0% { transform: translateY(0); } 100% { transform: translateY(-.015em); } }
+  @keyframes px-wheel { 0% { transform: translateY(0); } 100% { transform: translateY(.5px); } }
+  @keyframes px-speedfx { 0% { opacity: 0; transform: translateX(.3em); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateX(-.4em); } }
+  @keyframes px-roadfx { from { background-position: 0 0; } to { background-position: -.24em 0; } }
+  @keyframes px-tw { 0%, 100% { opacity: .2; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+  /* подсветка при поиске модели */
+  .em.pxem.px-seek::before { content: ""; position: absolute; inset: -12%; border-radius: 50%; background: radial-gradient(circle, var(--seek, #fff), transparent 66%); opacity: .8; transition: background .2s; animation: px-seekP .5s ease-in-out infinite alternate; }
+  @keyframes px-seekP { from { transform: scale(.9); } to { transform: scale(1.08); } }
+  /* общие этапы раскрытия */
+  .pxl.px-next { position: absolute; inset: 0; margin: auto; z-index: 2; }
+  .pxl.px-fade { animation: px-fadeout .5s ease both !important; }
+  @keyframes px-fadeout { to { opacity: 0; transform: scale(.85); } }
+  .pxl.px-shake svg { animation: px-shakeA .08s linear infinite !important; }
+  @keyframes px-shakeA { 0% { transform: translate(-.02em, 0) rotate(-2deg); } 50% { transform: translate(.02em, -.01em) rotate(2deg); } 100% { transform: translate(-.01em, .01em); } }
+  /* сундук открывается, из него поднимается новая модель */
+  .t-chest.px-open .px-lid { animation: px-lidopen .5s cubic-bezier(.2,.9,.3,1.3) both !important; }
+  .t-chest.px-open .px-glow { animation: px-glowup .7s ease-out both !important; }
+  @keyframes px-lidopen { to { transform: translateY(-4px) rotate(-18deg) scaleY(.55); } }
+  @keyframes px-glowup { 0% { opacity: 0; transform: scale(.5); } 60% { opacity: 1; transform: scale(1.4) translateY(-20%); } 100% { opacity: .9; transform: scale(1.6) translateY(-30%); } }
+  .pxl.px-in-rise { animation: px-rise .85s cubic-bezier(.2,.9,.3,1.2) both; }
+  @keyframes px-rise { 0% { opacity: 0; transform: translateY(18%) scale(.35); filter: brightness(2.2); } 55% { opacity: 1; transform: translateY(-14%) scale(1.08); } 100% { transform: none; filter: none; } }
+  /* меч: замах и удар */
+  .t-sword.px-windup svg { animation: px-windupA .42s ease-out both !important; }
+  @keyframes px-windupA { to { transform: rotate(-40deg) scale(1.05); } }
+  .t-sword.px-strike svg { animation: px-strikeA .3s cubic-bezier(.5,0,.2,1) both !important; }
+  .t-sword.px-strike .px-slash { animation: px-slashbig .3s ease-out both !important; }
+  @keyframes px-strikeA { from { transform: rotate(-40deg) scale(1.05); } to { transform: rotate(35deg) scale(1); } }
+  @keyframes px-slashbig { 0% { opacity: 0; transform: rotate(-30deg) scale(.8); } 40% { opacity: 1; } 100% { opacity: 0; transform: rotate(30deg) scale(1.25); } }
+  .em.pxem.px-flash::after { content: ""; position: absolute; inset: -30%; border-radius: 50%; background: radial-gradient(circle, #fff, transparent 65%); animation: px-flashA .45s ease-out both; z-index: 3; }
+  @keyframes px-flashA { from { opacity: .95; transform: scale(.4); } to { opacity: 0; transform: scale(1.4); } }
+  .pxl.px-in-pop { animation: px-pop .6s cubic-bezier(.2,.9,.3,1.4) both; }
+  @keyframes px-pop { 0% { opacity: 0; transform: scale(.4) rotate(-14deg); } 100% { opacity: 1; transform: none; } }
+  /* кристалл: раскручивается, меняет цвет и плавно останавливается */
+  .t-crystal.px-spinfast svg { animation: px-turn .32s linear infinite !important; }
+  .t-crystal.px-spinfast .px-aura { animation: px-auraP .3s ease-in-out infinite !important; opacity: 1; }
+  .t-crystal.px-in-spin svg { animation: px-settle 1.3s cubic-bezier(.1,.6,.2,1) both !important; }
+  @keyframes px-settle { from { transform: rotateY(0); } to { transform: rotateY(1080deg); } }
+  /* зелье: трескается, разлетается, дым цвета вещества, из дыма собирается новое */
+  .t-potion.px-crack svg { filter: brightness(1.6) drop-shadow(0 0 .05em #fff); animation: px-shakeA .05s linear infinite !important; }
+  .t-potion.px-break { animation: px-breakA .25s ease-in both !important; }
+  @keyframes px-breakA { to { opacity: 0; transform: scale(1.12); } }
+  .px-burst { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .px-burst .px-shard { position: absolute; left: 47%; top: 52%; width: .07em; height: .07em; background: #dff6ff; animation: px-shardA .7s cubic-bezier(.2,.7,.3,1) both; }
+  .px-burst .px-shard:nth-child(2n) { background: var(--pc); width: .05em; height: .05em; }
+  @keyframes px-shardA { from { opacity: 1; transform: rotate(calc(var(--i) * 45deg)) translateY(0); } to { opacity: 0; transform: rotate(calc(var(--i) * 45deg + 30deg)) translateY(-.62em); } }
+  .px-burst .px-smoke { position: absolute; left: calc(18% + var(--i) * 9%); top: calc(38% + (var(--i) - 3) * (var(--i) - 3) * 2%); width: .34em; height: .34em; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 70%); animation: px-smokeA 1.6s ease-out calc(var(--i) * .08s) both; }
+  @keyframes px-smokeA { 0% { opacity: 0; transform: translate(0, 0) scale(.3); } 25% { opacity: .95; } 100% { opacity: 0; transform: translate(calc((var(--i) - 3) * .05em), calc(-.55em - var(--i) * .04em)) scale(2.6); } }
+  .pxl.px-in-smoke { animation: px-fromsmoke 1s ease-out .15s both; }
+  @keyframes px-fromsmoke { 0% { opacity: 0; transform: scale(.75); filter: blur(.08em) brightness(1.8); } 100% { opacity: 1; transform: none; filter: none; } }
+  /* машина уезжает, новая заезжает и тормозит */
+  .t-car.px-driveout { animation: px-out .48s cubic-bezier(.6,0,1,.6) both !important; }
+  @keyframes px-out { to { transform: translateX(160%) skewX(-8deg); opacity: 0; } }
+  .pxl.px-in-drive { animation: px-in .9s cubic-bezier(.1,.8,.25,1) both; }
+  @keyframes px-in { 0% { transform: translateX(-170%) skewX(10deg); } 75% { transform: translateX(6%) skewX(-4deg); } 100% { transform: none; } }
+}
+/* в спокойном и экономном режиме замирает только «жизнь» сцены, само улучшение доигрывается */
+:root.calm .em.pxem:not(.pxu) .pxl *, :root[data-lite] .em.pxem:not(.pxu) .pxl * { animation-play-state: paused !important; }
 /* ---------- анимированные эмодзи-стикеры Mestario: одиночный эмодзи из набора показывается как живой стикер ---------- */
 .msg.astkm .astk { margin: 2px 0; }
 .astk { position: relative; width: 150px; height: 150px; display: grid; place-items: center; isolation: isolate; }
@@ -2500,7 +2613,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7cb1077c8c"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=06a855776c"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -10401,6 +10514,88 @@ function paintOrbit(rows, types) {
   hero.prepend(box);
 }
 // «лицо» подарка: у обычных подарков — своя картинка (gift_types.art), иначе эмодзи; у NFT — эмодзи модели
+/* ---------- живые пиксельные подарки: сцены с анимацией у каждого подарка ---------- */
+/* PX-DATA */const PX = {"rows":{"chest":["................","................","...OOOOOOOOOO...","..OB33333333BO..",".OB3H22222222BO.",".OB2222222222BO.",".OCCCCCCCCCCCCO.",".OAAAAOKKOAAAAO.",".OB22OCCCCO22BO.",".OB22OCKKCO22BO.",".OB222OCCO222BO.",".OB2221111222BO.",".OB1111111111BO.",".OAAAAAAAAAAAAO.","..OOOOOOOOOOOO..","................"],"sword":["............OOO.","...........OH3O.","..........OH32O.",".........OH32O..","........OH32O...",".......OH32O....","......OH32O.....","..OO.OH32O......","..OCO332O.......","...OCC2O........","...OKCCO........","..OKOOCCO.......",".OBKO..OCO......","OBBO....OO......","OAO.............",".O.............."],"crystal":["................","......OOOO......",".....OH33CO.....","....OH3332CO....","...OH33322CCO...","..OH3332222CCO..","..O33332222CCO..","..O3333222CCCO..","..O1333222CCAO..","..O1133222CAAO..","...O113222AAO...","....O11222AO....",".....O1122O.....","......O12O......",".......OO.......","................"],"potion":["......KKKK......",".....KBBBBK.....","......OOOO......","......OHCO......","......OCCO......",".....OCCCCO.....","....OCCCCCCO....","...OCH3333CCO...","..OH333323333O..",".O3332333H3333O.",".O222222333222O.",".O222H22222222O.","..O2222222221O..","...O11222211O...","....OOOOOOOO....","................"],"car":["................","................","................","................",".....OOOOOO.....","....OHCCCC3O....","...OHCCOCCC3O...",".OOO333O33333OO.","O3H3333O33333AAO","O222222O222222AO","O222222O2222222O","O1OKKKO11OKKKO1O","..OKBKO..OKBKO..","...OOO....OOO...","................","................"]},"models":{"chest":[{"id":"wood","pal":{"O":"#2a1608","1":"#6b3a12","2":"#9a5a22","3":"#c98a4a","H":"#f3d3a0","A":"#7a5a18","B":"#c9a03a","C":"#f4d36a","K":"#1c0f05"},"sp":[]},{"id":"iron","pal":{"O":"#151a20","1":"#4a5560","2":"#6d7a86","3":"#9aa7b3","H":"#e8eef3","A":"#3a3f45","B":"#8a9097","C":"#c7ccd1","K":"#0d1013"},"sp":[]},{"id":"gold","pal":{"O":"#3a2400","1":"#b07a10","2":"#e0a820","3":"#ffd54a","H":"#fff6c2","A":"#8a5a00","B":"#ffb300","C":"#ffe680","K":"#2a1a00"},"sp":[]},{"id":"emerald","pal":{"O":"#062014","1":"#0f6b3a","2":"#18a05a","3":"#4fd88a","H":"#d6ffe8","A":"#6b5a18","B":"#c9a03a","C":"#f4d36a","K":"#04120b"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"frost","pal":{"O":"#0b2238","1":"#2a6aa0","2":"#4aa0d8","3":"#9ad8ff","H":"#f2fbff","A":"#5a7a9a","B":"#a8c8e8","C":"#e6f4ff","K":"#081626"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"cursed","pal":{"O":"#120420","1":"#3a0f6a","2":"#6a22b0","3":"#a85cf0","H":"#f0d8ff","A":"#1a1a1a","B":"#4a4a4a","C":"#9a4af0","K":"#ff3af0"},"sp":[[1,2,"#ffffff"],[14,3,"#fff6b0"],[2,13,"#ffffff"]]}],"sword":[{"id":"steel","pal":{"O":"#14181d","1":"#5a6570","2":"#8c98a4","3":"#c4ced8","H":"#ffffff","A":"#3a2a14","B":"#7a5a2a","C":"#c9a03a","K":"#2a1a0a"},"sp":[]},{"id":"fire","pal":{"O":"#2a0800","1":"#c0300a","2":"#ff6a1a","3":"#ffb04a","H":"#fff3c0","A":"#3a1a0a","B":"#8a2a0a","C":"#ffcc33","K":"#1a0800"},"sp":[]},{"id":"ice","pal":{"O":"#0a2236","1":"#2c78b8","2":"#5ab0ea","3":"#a8e2ff","H":"#ffffff","A":"#1c3a5a","B":"#4a7aa8","C":"#cfeeff","K":"#0a1a2a"},"sp":[]},{"id":"emerald","pal":{"O":"#05200f","1":"#128a48","2":"#22c070","3":"#7ef0b0","H":"#f0fff6","A":"#3a2a14","B":"#7a5a2a","C":"#ffd54a","K":"#04120a"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"gold","pal":{"O":"#3a2400","1":"#c08a10","2":"#f0b828","3":"#ffe27a","H":"#fffbe0","A":"#5a3a00","B":"#a87810","C":"#fff0a0","K":"#2a1a00"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"shadow","pal":{"O":"#000000","1":"#2a1a3a","2":"#4a2a6a","3":"#8a5ad0","H":"#e0c8ff","A":"#1a1a1a","B":"#3a3a3a","C":"#c040ff","K":"#ff2a6a"},"sp":[[1,2,"#ffffff"],[14,3,"#fff6b0"],[2,13,"#ffffff"]]}],"crystal":[{"id":"amethyst","pal":{"O":"#1e0838","1":"#5a1a9a","2":"#8a3ad8","3":"#c486ff","H":"#f6eaff","A":"#3a0f6a","B":"#6a22b0","C":"#b06aff","K":"#000"},"sp":[]},{"id":"sapphire","pal":{"O":"#06183a","1":"#1446a8","2":"#2a78e8","3":"#7ab8ff","H":"#eaf4ff","A":"#0a2a6a","B":"#1a50b0","C":"#5aa0ff","K":"#000"},"sp":[]},{"id":"ruby","pal":{"O":"#30040c","1":"#9a0f2a","2":"#e02448","3":"#ff7a90","H":"#fff0f2","A":"#5a0818","B":"#a01430","C":"#ff5a78","K":"#000"},"sp":[]},{"id":"emerald","pal":{"O":"#04220f","1":"#0e7a3e","2":"#1cbf64","3":"#7af0a8","H":"#effff5","A":"#064a24","B":"#0e8a46","C":"#5ae090","K":"#000"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"topaz","pal":{"O":"#2e1a00","1":"#b07800","2":"#f0b020","3":"#ffe070","H":"#fffbe6","A":"#6a4600","B":"#b07800","C":"#ffd040","K":"#000"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"rainbow","pal":{"O":"#1a1030","1":"#ff4a8a","2":"#ffb03a","3":"#5af0d0","H":"#ffffff","A":"#4a6aff","B":"#a05aff","C":"#5ad0ff","K":"#000"},"sp":[[1,2,"#ffffff"],[14,3,"#fff6b0"],[2,13,"#ffffff"]]}],"potion":[{"id":"heal","pal":{"O":"#2a1018","1":"#a01030","2":"#e02a4a","3":"#ff7a8a","H":"#ffffff","A":"#5a3a1a","B":"#9a6a3a","C":"#c8e6f0","K":"#6b4423"},"sp":[]},{"id":"mana","pal":{"O":"#0a1430","1":"#1a3aa0","2":"#2a6ae8","3":"#7ab0ff","H":"#ffffff","A":"#5a3a1a","B":"#9a6a3a","C":"#c8e6f0","K":"#6b4423"},"sp":[]},{"id":"poison","pal":{"O":"#0a200a","1":"#2a8a1a","2":"#4ad02a","3":"#a0ff7a","H":"#ffffff","A":"#5a3a1a","B":"#9a6a3a","C":"#c8e6f0","K":"#6b4423"},"sp":[]},{"id":"love","pal":{"O":"#2a0a20","1":"#c02a8a","2":"#ff5ab8","3":"#ffb0e0","H":"#ffffff","A":"#5a3a1a","B":"#9a6a3a","C":"#ffe0f2","K":"#6b4423"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"ghost","pal":{"O":"#1a2230","1":"#8aa0b8","2":"#b8cce0","3":"#e8f2ff","H":"#ffffff","A":"#5a3a1a","B":"#9a6a3a","C":"#ffffff","K":"#6b4423"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"star","pal":{"O":"#050818","1":"#1a1050","2":"#3a2a9a","3":"#8a7aff","H":"#fff6b0","A":"#3a2a1a","B":"#6a4a2a","C":"#e0d8ff","K":"#ffd84a"},"sp":[[1,2,"#ffffff"],[14,3,"#fff6b0"],[2,13,"#ffffff"]]}],"car":[{"id":"red","pal":{"O":"#2a0608","1":"#8a1018","2":"#d0202e","3":"#ff5a5a","H":"#ffffff","A":"#ffe680","B":"#c8ccd2","C":"#bfe8ff","K":"#16181c"},"sp":[]},{"id":"blue","pal":{"O":"#06122e","1":"#123c8a","2":"#1f64d6","3":"#5aa0ff","H":"#ffffff","A":"#ffe680","B":"#c8ccd2","C":"#bfe8ff","K":"#16181c"},"sp":[]},{"id":"taxi","pal":{"O":"#2e2200","1":"#b08400","2":"#f2c200","3":"#ffe45a","H":"#ffffff","A":"#ffffff","B":"#c8ccd2","C":"#bfe8ff","K":"#16181c"},"sp":[]},{"id":"mint","pal":{"O":"#0c2a22","1":"#3a9a80","2":"#6ad0b4","3":"#b8f4e2","H":"#ffffff","A":"#fff3c0","B":"#e8e2d0","C":"#d8f6ff","K":"#16181c"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"black","pal":{"O":"#000000","1":"#141820","2":"#262c38","3":"#4a5468","H":"#9ad8ff","A":"#7af0ff","B":"#5a6270","C":"#3a6a9a","K":"#0a0c10"},"sp":[[1,2,"#fff6b0"],[14,13,"#fff6b0"]]},{"id":"gold","pal":{"O":"#3a2400","1":"#b07a10","2":"#e8b020","3":"#ffe27a","H":"#fffbe0","A":"#fffbe0","B":"#fff0b0","C":"#cfeeff","K":"#2a1a00"},"sp":[[1,2,"#ffffff"],[14,3,"#fff6b0"],[2,13,"#ffffff"]]}]}};/* /PX-DATA */
+function pxModel(type, mid) { const ms = (PX.models || {})[type] || []; return ms.find((m) => m.id === mid) || ms[0] || null; }
+function pxHas(type) { return !!(PX.rows && PX.rows[type]); }
+function pxRects(rows, pal, keep) {
+  let o = "";
+  for (let y = 0; y < rows.length; y++) {
+    const r = rows[y]; let x = 0;
+    while (x < 16) {
+      const ch = r[x];
+      if (ch === "." || !pal[ch] || !keep(x, y)) { x++; continue; }
+      let x2 = x; while (x2 < 16 && r[x2] === ch && keep(x2, y)) x2++;
+      o += '<rect x="' + x + '" y="' + y + '" width="' + (x2 - x) + '" height="1" fill="' + pal[ch] + '"/>';
+      x = x2;
+    }
+  }
+  return o;
+}
+// части, которые двигаются отдельно: крышка сундука, колёса машины
+const PX_PARTS = {
+  chest: { lid: (x, y) => y <= 6 },
+  car: { w1: (x, y) => y >= 11 && y <= 13 && x >= 2 && x <= 6, w2: (x, y) => y >= 11 && y <= 13 && x >= 9 && x <= 13 },
+};
+function pxScene(type, mid) {
+  const rows = PX.rows && PX.rows[type], m = pxModel(type, mid);
+  if (!rows || !m) return null;
+  const parts = PX_PARTS[type] || {}, names = Object.keys(parts), inPart = (x, y) => names.some((n) => parts[n](x, y));
+  let body = '<g class="px-body">' + pxRects(rows, m.pal, (x, y) => !inPart(x, y)) + '</g>';
+  for (const n of names) body += '<g class="px-' + n + '">' + pxRects(rows, m.pal, parts[n]) + '</g>';
+  const spk = (m.sp || []).map((q) => '<g class="px-spk"><rect x="' + q[0] + '" y="' + (q[1] - 1) + '" width="1" height="3" fill="' + q[2] + '"/><rect x="' + (q[0] - 1) + '" y="' + q[1] + '" width="3" height="1" fill="' + q[2] + '"/></g>').join("");
+  const el = h("span", { class: "pxl t-" + type, "aria-hidden": "true" });
+  el.style.setProperty("--pc", m.pal["2"]); el.style.setProperty("--pl", m.pal["3"]); el.style.setProperty("--ph", m.pal.H || "#fff");
+  el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 18 18" shape-rendering="crispEdges">' + body + spk + "</svg>";
+  // украшения сцены
+  if (type === "chest") el.prepend(h("i", { class: "px-glow" }));
+  if (type === "sword") el.append(h("i", { class: "px-slash" }));
+  if (type === "crystal") el.prepend(h("i", { class: "px-aura" }));
+  if (type === "potion") for (let i = 0; i < 3; i++) el.append(h("i", { class: "px-bub", style: "--i:" + i }));
+  if (type === "car") { for (let i = 0; i < 3; i++) el.prepend(h("i", { class: "px-speed", style: "--i:" + i })); el.append(h("i", { class: "px-road" })); }
+  return el;
+}
+// большое «лицо» подарка в окне подарка: живая сцена, если подарок пиксельный
+function giftLive(t, look) {
+  if (!t || !pxHas(t.id)) return giftFace(t, look);
+  const sc = pxScene(t.id, look ? look.m.id : null);
+  return sc ? h("span", { class: "em pxem" }, sc) : giftFace(t, look);
+}
+// раскрытие модели при улучшении — у каждого подарка своё
+async function pxReveal(host, type, toMid) {
+  const old = host.querySelector(".pxl"), next = pxScene(type, toMid);
+  if (!next) return;
+  host.classList.add("pxu");
+  const swap = (cls) => { next.classList.add("px-next", cls); host.append(next); };
+  const done = () => { if (old) old.remove(); next.classList.remove("px-next", "px-in-rise", "px-in-pop", "px-in-smoke", "px-in-drive", "px-in-spin"); };
+  if (type === "chest") {
+    old.classList.add("px-shake"); await wait(650);
+    old.style.setProperty("--pl", next.style.getPropertyValue("--pl"));
+    old.classList.remove("px-shake"); old.classList.add("px-open"); await wait(700);
+    swap("px-in-rise"); old.classList.add("px-fade"); await wait(900);
+  } else if (type === "sword") {
+    old.classList.add("px-windup"); await wait(420);
+    old.classList.remove("px-windup"); old.classList.add("px-strike"); host.classList.add("px-flash"); await wait(320);
+    swap("px-in-pop"); old.classList.add("px-fade"); await wait(700); host.classList.remove("px-flash");
+  } else if (type === "crystal") {
+    old.classList.add("px-spinfast"); await wait(1000);
+    next.classList.add("px-spinfast"); host.append(next); old.remove(); await wait(500);
+    next.classList.remove("px-spinfast"); next.classList.add("px-in-spin"); await wait(1300);
+  } else if (type === "potion") {
+    old.classList.add("px-shake"); await wait(550);
+    old.classList.remove("px-shake"); old.classList.add("px-crack"); await wait(320);
+    const fx = h("span", { class: "px-burst", "aria-hidden": "true" });
+    fx.style.setProperty("--pl", next.style.getPropertyValue("--pl")); fx.style.setProperty("--pc", next.style.getPropertyValue("--pc"));
+    for (let i = 0; i < 8; i++) fx.append(h("i", { class: "px-shard", style: "--i:" + i }));
+    for (let i = 0; i < 7; i++) fx.append(h("i", { class: "px-smoke", style: "--i:" + i }));
+    host.append(fx); old.classList.add("px-break"); await wait(700);
+    swap("px-in-smoke"); await wait(1000); fx.remove();
+  } else if (type === "car") {
+    old.classList.add("px-driveout"); await wait(480);
+    old.style.visibility = "hidden"; swap("px-in-drive"); await wait(900);
+  } else { swap("px-in-pop"); await wait(600); }
+  done();
+}
 // картинка модели (или эмодзи, если своей картинки нет) — для узоров, значков и перебора при улучшении
 function mFace(m) { return m && m.art ? h("img", { class: "mart", src: m.art, alt: m.emoji || "", draggable: "false" }) : document.createTextNode((m && m.emoji) || "\uD83C\uDF81"); }
 function giftFace(t, look, extra) {
@@ -10487,7 +10682,7 @@ async function openGiftView(id, fresh) {
   const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
   const top = $("gvTop");
-  top.replaceChildren(giftFace(t, look), h("h2", {}, t.name),
+  top.replaceChildren(giftLive(t, look), h("h2", {}, t.name),
     ...(look ? [h("span", { class: "num" }, T("Коллекционный №") + g.nft_number)] : []));
   if (look) paintNft(top, look);
   if (fresh) flash(top, 900);
@@ -10687,38 +10882,68 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function playUpgrade(g, t) {
   const models = modelsOf(g.type_id), bds = state.giftBackdrops || [], look = giftLook(g, t);
   if (!look || !models.length || !bds.length || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const top = $("gvTop"), stage = $("gvStage");
-  const em = h("span", { class: "em tick" }, mFace({ art: t.art, emoji: t.emoji })), title = h("h2", {}, t.name), num = h("span", { class: "num" }, "\u00a0");
+  const top = $("gvTop"), stage = $("gvStage"), px = pxHas(g.type_id);
+  const em = px ? h("span", { class: "em pxem" }, pxScene(g.type_id, null)) : h("span", { class: "em tick" }, mFace({ art: t.art, emoji: t.emoji }));
+  const title = h("h2", {}, t.name), num = h("span", { class: "num" }, " ");
   top.className = "gv-top busy";
+  top.style.removeProperty("--c1"); top.style.removeProperty("--c2");
   top.replaceChildren(em, title, num);
   $("gvFacts").replaceChildren(); $("gvHint").textContent = "";
   for (const id of ["gvSell", "gvUp", "gvWear"]) $(id).hidden = true;
   stage.hidden = false;
-  // 1. модель: перебор замедляется и останавливается на выпавшей
-  stage.textContent = T("Ищем модель…");
-  let delay = 70, i = Math.floor(Math.random() * models.length);
-  for (let n = 0; n < 20; n++) { em.replaceChildren(mFace(models[i++ % models.length])); await wait(delay); delay = Math.min(260, delay * 1.09); }
-  em.replaceChildren(mFace(look.m)); em.className = "em lock";
-  stage.textContent = T("Модель: ") + look.m.name + (look.mp ? " · " + look.mp : "");
-  await wait(900);
-  // 2. фон
-  stage.textContent = T("Подбираем фон…");
-  top.className = "gv-top nftg";
-  const pat = h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m))));
-  top.prepend(pat);
+  const say = (txt) => { stage.classList.remove("in"); void stage.offsetWidth; stage.textContent = txt; stage.classList.add("in"); };
+  // 1. модель
+  if (px) {
+    // подсветка перебирает цвета моделей, замедляясь, — потом подарок раскрывает свою модель
+    say(T("Ищем модель…"));
+    em.classList.add("px-seek");
+    let delay = 90, i = Math.floor(Math.random() * models.length);
+    for (let n = 0; n < 12; n++) {
+      const m = pxModel(g.type_id, models[i++ % models.length].id);
+      if (m) em.style.setProperty("--seek", m.pal["3"]);
+      await wait(delay); delay = Math.min(300, delay * 1.16);
+    }
+    em.classList.remove("px-seek");
+    await pxReveal(em, g.type_id, look.m.id);
+  } else {
+    // обычный подарок: плавная лента моделей
+    say(T("Ищем модель…"));
+    let delay = 80, i = Math.floor(Math.random() * models.length);
+    for (let n = 0; n < 16; n++) {
+      const it = h("span", { class: "reel-in" }, mFace(models[i++ % models.length]));
+      em.replaceChildren(it); await wait(delay); delay = Math.min(320, delay * 1.13);
+    }
+    em.replaceChildren(mFace(look.m)); em.className = "em lock";
+  }
+  say(T("Модель: ") + look.m.name + (look.mp ? " · " + look.mp : ""));
+  await wait(1000);
+  // 2. фон: цвета плавно перетекают и замедляются
+  say(T("Подбираем фон…"));
   const setBg = (b) => { top.style.setProperty("--c1", b.c1); top.style.setProperty("--c2", b.c2); };
-  delay = 110; i = Math.floor(Math.random() * bds.length);
-  for (let n = 0; n < 14; n++) { setBg(bds[i++ % bds.length]); await wait(delay); delay = Math.min(300, delay * 1.1); }
-  setBg(look.b); flash(top, 500, "flashbg");
-  stage.textContent = T("Фон: ") + look.b.name + (look.bp ? " · " + look.bp : "");
+  setBg(bds[0]);
+  top.classList.remove("busy"); top.classList.add("nftg", "bg-blend");
+  const pat = h("span", { class: "pat pat-in", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m))));
+  top.prepend(pat);
+  let delay = 170, i = Math.floor(Math.random() * bds.length);
+  for (let n = 0; n < 9; n++) { setBg(bds[i++ % bds.length]); await wait(delay); delay = Math.min(520, delay * 1.18); }
+  setBg(look.b); await wait(500); flash(top, 700, "flashbg");
+  say(T("Фон: ") + look.b.name + (look.bp ? " · " + look.bp : ""));
+  await wait(1000);
+  // 3. номер плавно досчитывает до своего
+  say(T("Присваиваем номер…"));
+  const to = Number(g.nft_number) || 1, from = Math.max(1, to - 40), t0 = performance.now(), dur = 1100;
+  await new Promise((res) => {
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      num.textContent = T("Коллекционный №") + Math.round(from + (to - from) * e);
+      if (k < 1) requestAnimationFrame(step); else res();
+    };
+    requestAnimationFrame(step);
+  });
+  num.classList.add("num-pop");
+  say(T("Готово!"));
   await wait(900);
-  // 3. номер
-  stage.textContent = T("Присваиваем номер…");
-  for (let n = 0; n < 10; n++) { num.textContent = T("Коллекционный №") + (1 + Math.floor(Math.random() * 99)); await wait(70); }
-  num.textContent = T("Коллекционный №") + g.nft_number;
-  stage.textContent = T("Готово!");
-  await wait(700);
-  top.classList.remove("flashbg");
+  top.classList.remove("flashbg", "bg-blend");
   stage.hidden = true;
 }
 $("gvUp").addEventListener("click", async () => {

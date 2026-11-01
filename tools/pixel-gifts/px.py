@@ -91,6 +91,24 @@ SPR['mushroom'] = [
 ".....OOOOOO.....",
 "................",
 ]
+SPR['car'] = [
+"................",
+"................",
+"................",
+"................",
+".....OOOOOO.....",
+"....OHCCCC3O....",
+"...OHCCOCCC3O...",
+".OOO333O33333OO.",
+"O3H3333O33333AAO",
+"O222222O222222AO",
+"O222222O2222222O",
+"O1OKKKO11OKKKO1O",
+"..OKBKO..OKBKO..",
+"...OOO....OOO...",
+"................",
+"................",
+]
 for k, rows in SPR.items():
     assert len(rows) == 16, (k, len(rows))
     for i, r in enumerate(rows):

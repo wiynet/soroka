@@ -9,7 +9,7 @@ TYPES = {
  'sword':   dict(name="Меч",      emoji="🗡️", supply=25,  price=250, up=60,  sort=2),
  'crystal': dict(name="Кристалл", emoji="💠", supply=50,  price=150, up=40,  sort=3),
  'potion':  dict(name="Зелье",    emoji="🧪", supply=100, price=80,  up=25,  sort=4),
- 'mushroom':dict(name="Гриб",     emoji="🍄", supply=200, price=40,  up=15,  sort=5),
+ 'car':     dict(name="Машина",   emoji="🚗", supply=200, price=40,  up=15,  sort=5),
 }
 MODELS = {
  'chest': [
@@ -44,12 +44,12 @@ MODELS = {
   ("ghost",  "Невидимость", "👻", P("#1a2230","#8aa0b8","#b8cce0","#e8f2ff","#ffffff","#5a3a1a","#9a6a3a","#ffffff","#6b4423"), SP1),
   ("star",   "Звёздное",    "🌌", P("#050818","#1a1050","#3a2a9a","#8a7aff","#fff6b0","#3a2a1a","#6a4a2a","#e0d8ff","#ffd84a"), SP2),
  ],
- 'mushroom': [
-  ("amanita","Мухомор",     "🍄", P("#2a0806","#a01a12","#e0301e","#ff6a50","#ffffff","#3a2a1a","#d8c8a8","#f8f0e0","#000"), ()),
-  ("forest", "Лесной",      "🌰", P("#1e1006","#6a3a14","#9a5a26","#c88a4a","#ffe8c8","#3a2a1a","#d8c8a8","#f8f0e0","#000"), ()),
-  ("glow",   "Светящийся",  "✨", P("#021a20","#0a7a8a","#1ad0e0","#8afcff","#ffffff","#0a3a3a","#7ae8e0","#d8fffc","#000"), ()),
-  ("frost",  "Ледяной",     "❄️", P("#0a1e36","#2a6aa8","#5aa8e8","#b0e0ff","#ffffff","#2a3a4a","#c8dcec","#f2faff","#000"), SP1),
-  ("gold",   "Золотой",     "👑", P("#2e1c00","#b07c00","#f0b420","#ffe27a","#fffbe6","#5a3a00","#e8d090","#fff4d0","#000"), SP1),
-  ("cosmic", "Космический", "🌌", P("#0a0420","#3a1a8a","#6a3ae0","#b08aff","#fff6b0","#1a1030","#5a4a9a","#c8b8ff","#000"), SP2),
+ 'car': [
+  ("red",    "Красная",     "🚗", dict(P("#2a0608","#8a1018","#d0202e","#ff5a5a","#ffffff","#ffe680","#c8ccd2","#bfe8ff","#16181c"), A="#ffe680"), ()),
+  ("blue",   "Синяя",       "🚙", dict(P("#06122e","#123c8a","#1f64d6","#5aa0ff","#ffffff","#ffe680","#c8ccd2","#bfe8ff","#16181c"), A="#ffe680"), ()),
+  ("taxi",   "Такси",       "🚕", dict(P("#2e2200","#b08400","#f2c200","#ffe45a","#ffffff","#ffe680","#c8ccd2","#bfe8ff","#16181c"), A="#ffffff"), ()),
+  ("mint",   "Ретро",       "🚘", dict(P("#0c2a22","#3a9a80","#6ad0b4","#b8f4e2","#ffffff","#ffe680","#e8e2d0","#d8f6ff","#16181c"), A="#fff3c0"), SP1),
+  ("black",  "Ночная",      "🌃", dict(P("#000000","#141820","#262c38","#4a5468","#9ad8ff","#7af0ff","#5a6270","#3a6a9a","#0a0c10"), A="#7af0ff"), SP1),
+  ("gold",   "Золотая",     "👑", dict(P("#3a2400","#b07a10","#e8b020","#ffe27a","#fffbe0","#fff6b0","#fff0b0","#cfeeff","#2a1a00"), A="#fffbe0"), SP2),
  ],
 }
