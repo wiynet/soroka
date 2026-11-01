@@ -724,7 +724,7 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .bdg-grid button img { width: 52px; height: 52px; object-fit: contain; }
 .pbdg.gem { width: 1.15em; height: 1.15em; vertical-align: -0.22em; object-fit: contain; filter: drop-shadow(0 0 3px rgb(60 120 255 / .45)); }
 .bdg-grid button[aria-pressed="true"] { border-color: var(--accent); }
-/* ---------- живые пиксельные подарки ---------- */
+/* ---------- живые пиксельные подарки в 3D: пиксели выдавлены в объём слоями, сцена двигается в пространстве ---------- */
 @property --c1 { syntax: "<color>"; inherits: true; initial-value: #888888; }
 @property --c2 { syntax: "<color>"; inherits: true; initial-value: #333333; }
 .gv-top.bg-blend { transition: --c1 .45s ease, --c2 .45s ease; }
@@ -736,55 +736,61 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 @keyframes num-pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .em .reel-in { display: inline-block; animation: reel-in .16s ease-out both; }
 @keyframes reel-in { from { opacity: 0; transform: translateY(-35%) scale(.9); filter: blur(2px); } }
-.em.pxem { position: relative; display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; }
-.pxl { position: relative; display: inline-block; width: 1.35em; height: 1.35em; line-height: 0; perspective: 300px; }
+.em.pxem { position: relative; display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; filter: none !important; }
 .em.pxem > .pxl { grid-area: 1 / 1; }
-.pxl svg { position: relative; z-index: 1; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 .06em .06em rgb(0 0 0 / .35)); }
-.pxl svg g { transform-box: fill-box; }
+.pxl { position: relative; display: inline-block; width: 1.35em; height: 1.35em; line-height: 0; perspective: 5em; }
+.px3d { position: absolute; inset: 0; z-index: 1; transform-style: preserve-3d; }
+.px-part { position: absolute; inset: 0; transform-style: preserve-3d; }
+.px-ly { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.px-ly:not(.px-face) { filter: brightness(.48) saturate(1.15); }
 .pxl i { position: absolute; display: block; pointer-events: none; }
-/* сундук: свечение изнутри, крышка */
-.t-chest .px-glow { z-index: 0; left: 20%; right: 20%; top: 18%; height: 45%; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 70%); opacity: 0; filter: blur(.05em); }
-.t-chest .px-lid { transform-origin: 50% 100%; }
-/* меч: след удара */
-.t-sword svg { transform-origin: 22% 82%; }
+.pxl .px-shadow { z-index: 0; left: 16%; right: 16%; bottom: 1%; height: 10%; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / .5), transparent); }
+/* сундук: крышка на петле сзади, свет изнутри */
+.t-chest .px-p-lid { transform-origin: 50% 16.7% -.08em; }
+.t-chest .px-glow { z-index: 2; left: 18%; right: 18%; top: 4%; height: 42%; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 70%); opacity: 0; mix-blend-mode: screen; }
+/* меч: вращается вокруг рукояти, след удара */
+.t-sword .px3d { transform-origin: 22% 82%; }
 .t-sword .px-slash { z-index: 2; inset: -6% -10% 10% 20%; border-radius: 50%; border-top: .06em solid #fff; border-right: .06em solid #fff; opacity: 0; transform: rotate(-30deg); filter: drop-shadow(0 0 .08em var(--pl)); }
 /* кристалл: сияние */
 .t-crystal .px-aura { z-index: 0; inset: 5%; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 68%); opacity: .45; }
-.t-crystal svg { filter: drop-shadow(0 0 .08em var(--pl)) drop-shadow(0 .06em .06em rgb(0 0 0 / .3)); }
+.t-crystal .px-front { filter: drop-shadow(0 0 .03em var(--pl)); }
 /* зелье: пузырьки */
 .t-potion .px-bub { z-index: 2; width: .06em; height: .06em; background: var(--ph); left: calc(44% + var(--i) * 6%); top: 62%; opacity: 0; }
-/* машина: линии скорости и дорога */
+/* машина: вид в три четверти, линии скорости и дорога */
+.t-car .px3d { transform: rotateY(-30deg) rotateX(8deg); }
 .t-car .px-speed { z-index: 0; height: .035em; width: 22%; left: -10%; top: calc(46% + var(--i) * 9%); background: linear-gradient(90deg, transparent, var(--pl)); border-radius: 1em; opacity: 0; }
 .t-car .px-road { z-index: 0; left: -12%; right: -12%; bottom: 10%; height: .03em; background: repeating-linear-gradient(90deg, rgb(255 255 255 / .35) 0 .12em, transparent .12em .24em); opacity: .6; }
 @media (prefers-reduced-motion: no-preference) {
   /* спокойная жизнь в окне подарка */
-  .t-chest .px-lid { animation: px-lid 3.4s ease-in-out infinite; }
+  .t-chest .px3d { animation: px3-turn 6s ease-in-out infinite; }
+  .t-chest .px-p-lid { animation: px3-lid 3.4s ease-in-out infinite; }
   .t-chest .px-glow { animation: px-peek 3.4s ease-in-out infinite; }
-  .t-sword svg { animation: px-swing 2.6s ease-in-out infinite; }
-  .t-sword .px-slash { animation: px-slashfx 2.6s ease-out infinite; }
-  .t-crystal svg { animation: px-turn 3.2s linear infinite; }
+  .t-sword .px3d { animation: px3-swing 3s ease-in-out infinite; }
+  .t-sword .px-slash { animation: px-slashfx 3s ease-out infinite; }
+  .t-crystal .px3d { animation: px3-spin 4s linear infinite; }
   .t-crystal .px-aura { animation: px-auraP 1.6s ease-in-out infinite; }
-  .t-potion svg { animation: px-wobble 2.4s ease-in-out infinite; transform-origin: 50% 90%; }
+  .t-potion .px3d { animation: px3-float 3.2s ease-in-out infinite; }
   .t-potion .px-bub { animation: px-bubble 1.8s ease-in calc(var(--i) * .55s) infinite; }
-  .t-car svg { animation: px-rumble .32s steps(2) infinite; }
-  .t-car .px-w1, .t-car .px-w2 { animation: px-wheel .2s steps(2) infinite; }
+  .t-car .px3d { animation: px3-rumble .32s steps(2) infinite; }
+  .t-car .px-p-w1, .t-car .px-p-w2 { animation: px3-wheel .2s steps(2) infinite; }
   .t-car .px-speed { animation: px-speedfx .6s linear calc(var(--i) * .2s) infinite; }
   .t-car .px-road { animation: px-roadfx .4s linear infinite; }
   .px-spk { animation: px-tw 1.4s ease-in-out infinite; }
   .px-spk:nth-of-type(2n) { animation-delay: -.7s; }
-  @keyframes px-lid { 0%, 58%, 100% { transform: none; } 66%, 84% { transform: translateY(-2px) rotate(-6deg) scaleY(.8); } }
+  @keyframes px3-turn { 0%, 100% { transform: rotateX(10deg) rotateY(-32deg); } 50% { transform: rotateX(10deg) rotateY(32deg); } }
+  @keyframes px3-lid { 0%, 58%, 100% { transform: none; } 66%, 84% { transform: rotateX(-38deg); } }
   @keyframes px-peek { 0%, 58%, 100% { opacity: 0; } 70%, 82% { opacity: .9; } }
-  @keyframes px-swing { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-26deg); } 40% { transform: rotate(18deg); } 52% { transform: rotate(-3deg); } 62% { transform: rotate(0); } }
+  @keyframes px3-swing { 0%, 100% { transform: rotateY(-22deg) rotateZ(0); } 30% { transform: rotateY(28deg) rotateZ(-28deg); } 42% { transform: rotateY(-18deg) rotateZ(22deg); } 55% { transform: rotateY(-24deg) rotateZ(-2deg); } }
   @keyframes px-slashfx { 0%, 36%, 60%, 100% { opacity: 0; } 41% { opacity: 1; transform: rotate(-10deg); } 52% { opacity: 0; transform: rotate(25deg); } }
-  @keyframes px-turn { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+  @keyframes px3-spin { 0% { transform: translateY(0) rotateY(0); } 50% { transform: translateY(-5%) rotateY(180deg); } 100% { transform: translateY(0) rotateY(360deg); } }
   @keyframes px-auraP { 0%, 100% { opacity: .3; transform: scale(.85); } 50% { opacity: .75; transform: scale(1.12); } }
-  @keyframes px-wobble { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-5deg); } 70% { transform: rotate(5deg); } }
+  @keyframes px3-float { 0%, 100% { transform: translateY(0) rotateY(-34deg) rotateZ(-3deg); } 50% { transform: translateY(-5%) rotateY(34deg) rotateZ(3deg); } }
   @keyframes px-bubble { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-.35em); } }
-  @keyframes px-rumble { 0% { transform: translateY(0); } 100% { transform: translateY(-.015em); } }
-  @keyframes px-wheel { 0% { transform: translateY(0); } 100% { transform: translateY(.5px); } }
+  @keyframes px3-rumble { 0% { transform: rotateY(-30deg) rotateX(8deg) translateY(0); } 100% { transform: rotateY(-30deg) rotateX(8deg) translateY(-1%); } }
+  @keyframes px3-wheel { 0% { transform: translateY(0); } 100% { transform: translateY(1%); } }
   @keyframes px-speedfx { 0% { opacity: 0; transform: translateX(.3em); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateX(-.4em); } }
   @keyframes px-roadfx { from { background-position: 0 0; } to { background-position: -.24em 0; } }
-  @keyframes px-tw { 0%, 100% { opacity: .2; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+  @keyframes px-tw { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
   /* подсветка при поиске модели */
   .em.pxem.px-seek::before { content: ""; position: absolute; inset: -12%; border-radius: 50%; background: radial-gradient(circle, var(--seek, #fff), transparent 66%); opacity: .8; transition: background .2s; animation: px-seekP .5s ease-in-out infinite alternate; }
   @keyframes px-seekP { from { transform: scale(.9); } to { transform: scale(1.08); } }
@@ -792,33 +798,35 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
   .pxl.px-next { position: absolute; inset: 0; margin: auto; z-index: 2; }
   .pxl.px-fade { animation: px-fadeout .5s ease both !important; }
   @keyframes px-fadeout { to { opacity: 0; transform: scale(.85); } }
-  .pxl.px-shake svg { animation: px-shakeA .08s linear infinite !important; }
-  @keyframes px-shakeA { 0% { transform: translate(-.02em, 0) rotate(-2deg); } 50% { transform: translate(.02em, -.01em) rotate(2deg); } 100% { transform: translate(-.01em, .01em); } }
-  /* сундук открывается, из него поднимается новая модель */
-  .t-chest.px-open .px-lid { animation: px-lidopen .5s cubic-bezier(.2,.9,.3,1.3) both !important; }
+  .pxl.px-shake .px3d { animation: px3-shake .08s linear infinite !important; }
+  @keyframes px3-shake { 0% { transform: translate(-1.5%, 0) rotateY(-14deg) rotateZ(-2deg); } 50% { transform: translate(1.5%, -1%) rotateY(14deg) rotateZ(2deg); } 100% { transform: translate(-1%, 1%) rotateY(-8deg); } }
+  /* сундук: крышка откидывается назад, свет вверх, из сундука поднимается новый */
+  .t-chest.px-open .px3d { animation: none !important; transform: rotateX(16deg) rotateY(-14deg); }
+  .t-chest.px-open .px-p-lid { animation: px3-lidopen .6s cubic-bezier(.2,.9,.3,1.25) both !important; }
   .t-chest.px-open .px-glow { animation: px-glowup .7s ease-out both !important; }
-  @keyframes px-lidopen { to { transform: translateY(-4px) rotate(-18deg) scaleY(.55); } }
-  @keyframes px-glowup { 0% { opacity: 0; transform: scale(.5); } 60% { opacity: 1; transform: scale(1.4) translateY(-20%); } 100% { opacity: .9; transform: scale(1.6) translateY(-30%); } }
-  .pxl.px-in-rise { animation: px-rise .85s cubic-bezier(.2,.9,.3,1.2) both; }
-  @keyframes px-rise { 0% { opacity: 0; transform: translateY(18%) scale(.35); filter: brightness(2.2); } 55% { opacity: 1; transform: translateY(-14%) scale(1.08); } 100% { transform: none; filter: none; } }
-  /* меч: замах и удар */
-  .t-sword.px-windup svg { animation: px-windupA .42s ease-out both !important; }
-  @keyframes px-windupA { to { transform: rotate(-40deg) scale(1.05); } }
-  .t-sword.px-strike svg { animation: px-strikeA .3s cubic-bezier(.5,0,.2,1) both !important; }
+  @keyframes px3-lidopen { to { transform: rotateX(-112deg); } }
+  @keyframes px-glowup { 0% { opacity: 0; transform: scale(.5); } 60% { opacity: 1; transform: scale(1.5) translateY(-25%); } 100% { opacity: .9; transform: scale(1.7) translateY(-35%); } }
+  .pxl.px-in-rise { animation: px-rise .9s cubic-bezier(.2,.9,.3,1.2) both; }
+  @keyframes px-rise { 0% { opacity: 0; transform: translateY(18%) scale(.3) rotateY(-180deg); } 55% { opacity: 1; transform: translateY(-14%) scale(1.08) rotateY(20deg); } 100% { transform: none; } }
+  /* меч: замах в глубину и удар */
+  .t-sword.px-windup .px3d { animation: px3-windup .42s ease-out both !important; }
+  @keyframes px3-windup { to { transform: rotateY(40deg) rotateZ(-44deg) scale(1.06); } }
+  .t-sword.px-strike .px3d { animation: px3-strike .3s cubic-bezier(.5,0,.2,1) both !important; }
   .t-sword.px-strike .px-slash { animation: px-slashbig .3s ease-out both !important; }
-  @keyframes px-strikeA { from { transform: rotate(-40deg) scale(1.05); } to { transform: rotate(35deg) scale(1); } }
+  @keyframes px3-strike { from { transform: rotateY(40deg) rotateZ(-44deg) scale(1.06); } to { transform: rotateY(-30deg) rotateZ(38deg); } }
   @keyframes px-slashbig { 0% { opacity: 0; transform: rotate(-30deg) scale(.8); } 40% { opacity: 1; } 100% { opacity: 0; transform: rotate(30deg) scale(1.25); } }
   .em.pxem.px-flash::after { content: ""; position: absolute; inset: -30%; border-radius: 50%; background: radial-gradient(circle, #fff, transparent 65%); animation: px-flashA .45s ease-out both; z-index: 3; }
   @keyframes px-flashA { from { opacity: .95; transform: scale(.4); } to { opacity: 0; transform: scale(1.4); } }
-  .pxl.px-in-pop { animation: px-pop .6s cubic-bezier(.2,.9,.3,1.4) both; }
-  @keyframes px-pop { 0% { opacity: 0; transform: scale(.4) rotate(-14deg); } 100% { opacity: 1; transform: none; } }
-  /* кристалл: раскручивается, меняет цвет и плавно останавливается */
-  .t-crystal.px-spinfast svg { animation: px-turn .32s linear infinite !important; }
+  .pxl.px-in-pop { animation: px-pop .65s cubic-bezier(.2,.9,.3,1.3) both; }
+  @keyframes px-pop { 0% { opacity: 0; transform: scale(.4) rotateY(-120deg); } 100% { opacity: 1; transform: none; } }
+  /* кристалл: раскручивается в объёме, меняет цвет и плавно останавливается */
+  .t-crystal.px-spinfast .px3d { animation: px3-spin .34s linear infinite !important; }
   .t-crystal.px-spinfast .px-aura { animation: px-auraP .3s ease-in-out infinite !important; opacity: 1; }
-  .t-crystal.px-in-spin svg { animation: px-settle 1.3s cubic-bezier(.1,.6,.2,1) both !important; }
-  @keyframes px-settle { from { transform: rotateY(0); } to { transform: rotateY(1080deg); } }
+  .t-crystal.px-in-spin .px3d { animation: px3-settle 1.3s cubic-bezier(.1,.6,.2,1) both !important; }
+  @keyframes px3-settle { from { transform: rotateY(0); } to { transform: rotateY(1080deg); } }
   /* зелье: трескается, разлетается, дым цвета вещества, из дыма собирается новое */
-  .t-potion.px-crack svg { filter: brightness(1.6) drop-shadow(0 0 .05em #fff); animation: px-shakeA .05s linear infinite !important; }
+  .t-potion.px-crack .px3d { animation: px3-shake .05s linear infinite !important; }
+  .t-potion.px-crack .px-front { filter: brightness(1.7); }
   .t-potion.px-break { animation: px-breakA .25s ease-in both !important; }
   @keyframes px-breakA { to { opacity: 0; transform: scale(1.12); } }
   .px-burst { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
@@ -828,12 +836,12 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
   .px-burst .px-smoke { position: absolute; left: calc(18% + var(--i) * 9%); top: calc(38% + (var(--i) - 3) * (var(--i) - 3) * 2%); width: .34em; height: .34em; border-radius: 50%; background: radial-gradient(circle, var(--pl), transparent 70%); animation: px-smokeA 1.6s ease-out calc(var(--i) * .08s) both; }
   @keyframes px-smokeA { 0% { opacity: 0; transform: translate(0, 0) scale(.3); } 25% { opacity: .95; } 100% { opacity: 0; transform: translate(calc((var(--i) - 3) * .05em), calc(-.55em - var(--i) * .04em)) scale(2.6); } }
   .pxl.px-in-smoke { animation: px-fromsmoke 1s ease-out .15s both; }
-  @keyframes px-fromsmoke { 0% { opacity: 0; transform: scale(.75); filter: blur(.08em) brightness(1.8); } 100% { opacity: 1; transform: none; filter: none; } }
-  /* машина уезжает, новая заезжает и тормозит */
-  .t-car.px-driveout { animation: px-out .48s cubic-bezier(.6,0,1,.6) both !important; }
-  @keyframes px-out { to { transform: translateX(160%) skewX(-8deg); opacity: 0; } }
-  .pxl.px-in-drive { animation: px-in .9s cubic-bezier(.1,.8,.25,1) both; }
-  @keyframes px-in { 0% { transform: translateX(-170%) skewX(10deg); } 75% { transform: translateX(6%) skewX(-4deg); } 100% { transform: none; } }
+  @keyframes px-fromsmoke { 0% { opacity: 0; transform: scale(.7) rotateY(90deg); } 100% { opacity: 1; transform: none; } }
+  /* машина уезжает вглубь, новая заезжает и тормозит */
+  .t-car.px-driveout { animation: px-out .5s cubic-bezier(.6,0,1,.6) both !important; }
+  @keyframes px-out { to { transform: translateX(160%) translateY(-12%) scale(.7); opacity: 0; } }
+  .pxl.px-in-drive { animation: px-in .95s cubic-bezier(.1,.8,.25,1) both; }
+  @keyframes px-in { 0% { transform: translateX(-170%) translateY(10%) scale(1.25); } 75% { transform: translateX(6%); } 100% { transform: none; } }
 }
 /* в спокойном и экономном режиме замирает только «жизнь» сцены, само улучшение доигрывается */
 :root.calm .em.pxem:not(.pxu) .pxl *, :root[data-lite] .em.pxem:not(.pxu) .pxl * { animation-play-state: paused !important; }
@@ -10537,22 +10545,33 @@ const PX_PARTS = {
   chest: { lid: (x, y) => y <= 6 },
   car: { w1: (x, y) => y >= 11 && y <= 13 && x >= 2 && x <= 6, w2: (x, y) => y >= 11 && y <= 13 && x >= 9 && x <= 13 },
 };
+const PX_DEPTH = 8, PX_STEP = 0.02;   // 8 слоёв по 0,02em — толщина пикселей около двух «клеточек»
 function pxScene(type, mid) {
   const rows = PX.rows && PX.rows[type], m = pxModel(type, mid);
   if (!rows || !m) return null;
   const parts = PX_PARTS[type] || {}, names = Object.keys(parts), inPart = (x, y) => names.some((n) => parts[n](x, y));
-  let body = '<g class="px-body">' + pxRects(rows, m.pal, (x, y) => !inPart(x, y)) + '</g>';
-  for (const n of names) body += '<g class="px-' + n + '">' + pxRects(rows, m.pal, parts[n]) + '</g>';
   const spk = (m.sp || []).map((q) => '<g class="px-spk"><rect x="' + q[0] + '" y="' + (q[1] - 1) + '" width="1" height="3" fill="' + q[2] + '"/><rect x="' + (q[0] - 1) + '" y="' + q[1] + '" width="3" height="1" fill="' + q[2] + '"/></g>').join("");
+  // часть сцены — стопка одинаковых слоёв со сдвигом по глубине: передний яркий, остальные темнее (бока)
+  const part = (cls, rects, withSpk) => {
+    let o = '<span class="px-part ' + cls + '">';
+    for (let i = 0; i < PX_DEPTH; i++) {
+      const front = i === PX_DEPTH - 1, z = ((i - (PX_DEPTH - 1) / 2) * PX_STEP).toFixed(3);
+      o += '<svg class="px-ly' + (front ? " px-front px-face" : i === 0 ? " px-face" : "") + '" style="transform:translateZ(' + z + 'em)" viewBox="-1 -1 18 18" shape-rendering="crispEdges">' + rects + (front && withSpk ? spk : "") + "</svg>";
+    }
+    return o + "</span>";
+  };
+  let html = '<span class="px3d">' + part("px-p-body", pxRects(rows, m.pal, (x, y) => !inPart(x, y)), true);
+  for (const n of names) html += part("px-p-" + n, pxRects(rows, m.pal, parts[n]), false);
+  html += "</span>";
   const el = h("span", { class: "pxl t-" + type, "aria-hidden": "true" });
   el.style.setProperty("--pc", m.pal["2"]); el.style.setProperty("--pl", m.pal["3"]); el.style.setProperty("--ph", m.pal.H || "#fff");
-  el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 18 18" shape-rendering="crispEdges">' + body + spk + "</svg>";
+  el.innerHTML = '<i class="px-shadow"></i>' + html;
   // украшения сцены
-  if (type === "chest") el.prepend(h("i", { class: "px-glow" }));
+  if (type === "chest") el.append(h("i", { class: "px-glow" }));
   if (type === "sword") el.append(h("i", { class: "px-slash" }));
   if (type === "crystal") el.prepend(h("i", { class: "px-aura" }));
   if (type === "potion") for (let i = 0; i < 3; i++) el.append(h("i", { class: "px-bub", style: "--i:" + i }));
-  if (type === "car") { for (let i = 0; i < 3; i++) el.prepend(h("i", { class: "px-speed", style: "--i:" + i })); el.append(h("i", { class: "px-road" })); }
+  if (type === "car") { for (let i = 0; i < 3; i++) el.prepend(h("i", { class: "px-speed", style: "--i:" + i })); el.prepend(h("i", { class: "px-road" })); }
   return el;
 }
 // большое «лицо» подарка в окне подарка: живая сцена, если подарок пиксельный
