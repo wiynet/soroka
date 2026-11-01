@@ -1929,3 +1929,12 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 -- (perspective + preserve-3d): сундук поворачивается и откидывает крышку назад на петле, меч рубит в глубину,
 -- кристалл крутится вокруг оси, зелье покачивается, машина стоит в три четверти. Тени — отдельным пятном под
 -- предметом (фильтры на 3D-контейнере сплющили бы объём).
+
+-- 2026-11-01: удалены ВСЕ улучшенные (NFT) подарки — 191 шт., тираж вернулся.
+-- Перед удалением сохранены копии (откатить можно из них):
+--   private.gifts_nft_backup          — сами подарки
+--   private.gift_auctions_nft_backup  — их аукционы (открытых со ставками не было)
+--   private.messages_gift_backup      — связь сообщение → подарок (gift_id в messages стал null)
+--   private.worn_gift_backup          — кто что носил (profiles.worn_gift стал null)
+-- delete from public.gifts where nft_number is not null;
+-- Нумерация NFT снова начнётся с №1 (upgrade_gift берёт max(nft_number)+1).
