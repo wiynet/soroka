@@ -1176,6 +1176,8 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .gift.tile .em { position: relative; font-size: clamp(42px, 14vw, 64px); line-height: 1; transform-origin: 50% 85%;
   filter: drop-shadow(0 1px 0 rgb(255 255 255 / .55)) drop-shadow(0 3px 2px rgb(0 0 0 / .25)) drop-shadow(0 12px 14px rgb(0 0 0 / .45)); }
 img.em { width: 1em; height: 1em; object-fit: contain; vertical-align: middle; }
+img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em; }
+.em > img.mart { width: 1.25em; height: 1.25em; vertical-align: middle; }
 /* картинки-подарки рисуются с внутренними полями, поэтому делаем их крупнее эмодзи для той же «массы» */
 .gift.tile img.em { width: 1.4em; height: 1.4em; margin: -.1em 0; }
 .gv img.em { width: 1.28em; height: 1.28em; }
@@ -2498,7 +2500,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=b630ff568a"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7cb1077c8c"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5008,7 +5010,7 @@ function wornLook(p) {
 function marks(p) {
   const out = [];
   const worn = wornLook(p);
-  if (worn) out.push(h("span", { class: "worn", role: "img", title: worn.title, "aria-label": T("Надет подарок: ") + worn.title }, worn.m.emoji));
+  if (worn) out.push(h("span", { class: "worn", role: "img", title: worn.title, "aria-label": T("Надет подарок: ") + worn.title }, mFace(worn.m)));
   // надетый NFT заменяет значок премиума (как статус в Telegram)
   // скрытый значок видит только сам владелец — полупрозрачным, чтобы можно было вернуть
   const self = state.me && p && p.id === state.me.id;
@@ -10291,7 +10293,7 @@ function paintNft(el, look) {
   el.classList.add("nftg");
   el.style.setProperty("--c1", look.b.c1);
   el.style.setProperty("--c2", look.b.c2);
-  el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, look.m.emoji))));
+  el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m)))));
   return el;
 }
 // рейтинг: уровень растёт по квадрату потраченных Mest (25, 100, 225, 400…)
@@ -10399,9 +10401,12 @@ function paintOrbit(rows, types) {
   hero.prepend(box);
 }
 // «лицо» подарка: у обычных подарков — своя картинка (gift_types.art), иначе эмодзи; у NFT — эмодзи модели
+// картинка модели (или эмодзи, если своей картинки нет) — для узоров, значков и перебора при улучшении
+function mFace(m) { return m && m.art ? h("img", { class: "mart", src: m.art, alt: m.emoji || "", draggable: "false" }) : document.createTextNode((m && m.emoji) || "\uD83C\uDF81"); }
 function giftFace(t, look, extra) {
   const cls = "em" + (extra ? " " + extra : "");
-  if (!look && t && t.art) return h("img", { class: cls, src: t.art, alt: (t && t.emoji) || "", loading: "lazy", draggable: "false" });
+  const art = look ? look.m && look.m.art : t && t.art;
+  if (art) return h("img", { class: cls, src: art, alt: (look ? look.m.emoji : t && t.emoji) || "", loading: "lazy", draggable: "false" });
   return h("span", { class: cls }, look ? look.m.emoji : (t && t.emoji) || "\uD83C\uDF81");
 }
 // квадратная плитка подарка: крупная модель, у NFT лента с номером в углу, у обычного значок отправителя
@@ -10683,7 +10688,7 @@ async function playUpgrade(g, t) {
   const models = modelsOf(g.type_id), bds = state.giftBackdrops || [], look = giftLook(g, t);
   if (!look || !models.length || !bds.length || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const top = $("gvTop"), stage = $("gvStage");
-  const em = h("span", { class: "em tick" }, t.emoji), title = h("h2", {}, t.name), num = h("span", { class: "num" }, "\u00a0");
+  const em = h("span", { class: "em tick" }, mFace({ art: t.art, emoji: t.emoji })), title = h("h2", {}, t.name), num = h("span", { class: "num" }, "\u00a0");
   top.className = "gv-top busy";
   top.replaceChildren(em, title, num);
   $("gvFacts").replaceChildren(); $("gvHint").textContent = "";
@@ -10692,14 +10697,14 @@ async function playUpgrade(g, t) {
   // 1. модель: перебор замедляется и останавливается на выпавшей
   stage.textContent = T("Ищем модель…");
   let delay = 70, i = Math.floor(Math.random() * models.length);
-  for (let n = 0; n < 20; n++) { em.textContent = models[i++ % models.length].emoji; await wait(delay); delay = Math.min(260, delay * 1.09); }
-  em.textContent = look.m.emoji; em.className = "em lock";
+  for (let n = 0; n < 20; n++) { em.replaceChildren(mFace(models[i++ % models.length])); await wait(delay); delay = Math.min(260, delay * 1.09); }
+  em.replaceChildren(mFace(look.m)); em.className = "em lock";
   stage.textContent = T("Модель: ") + look.m.name + (look.mp ? " · " + look.mp : "");
   await wait(900);
   // 2. фон
   stage.textContent = T("Подбираем фон…");
   top.className = "gv-top nftg";
-  const pat = h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, look.m.emoji)));
+  const pat = h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m))));
   top.prepend(pat);
   const setBg = (b) => { top.style.setProperty("--c1", b.c1); top.style.setProperty("--c2", b.c2); };
   delay = 110; i = Math.floor(Math.random() * bds.length);
