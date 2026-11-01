@@ -3286,7 +3286,17 @@ void main() {
         <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
         <div class="feat"><span class="pico violet" aria-hidden="true">🛡</span><b>VPN-подписка</b><span>Своя ссылка для подключения VPN через приложение Happ.</span></div>
       </div>
-      <button class="btn ghost" type="button" id="ppBonus">Забрать бонусы и ссылку VPN</button>
+      <div class="set-label" id="ppTools">Бонусы раз в 30 дней</div>
+      <div class="bonus-row">
+        <button class="btn ghost" type="button" id="bonusCoins"></button>
+        <button class="btn ghost" type="button" id="bonusGift"></button>
+      </div>
+      <div class="hint" id="bonusHint"></div>
+      <div class="set-label">VPN для премиума</div>
+      <div class="hint">1. Скачайте приложение Happ. 2. Нажмите кнопку ниже: ссылка скопируется в буфер обмена. 3. Откройте Happ и добавьте подписку из буфера обмена.</div>
+      <input class="input" id="vpnLink" readonly hidden aria-label="Ссылка VPN">
+      <div class="actions"><button class="btn ghost" type="button" id="vpnCopy">Скопировать ссылку VPN</button></div>
+      <button class="btn ghost" type="button" id="ppBonus" hidden>Забрать бонусы и ссылку VPN</button>
     </div>
     <div data-page="lang" hidden>
           <div class="set-label">Язык интерфейса</div>
@@ -3476,6 +3486,7 @@ void main() {
     <div class="error" id="profileErr"></div>
     <div class="actions"><button class="btn" type="submit">Сохранить профиль</button></div>
 
+    <div hidden aria-hidden="true">
     <div class="set-label">Mest</div>
     <div class="coin-card">
       <span class="coin" aria-hidden="true"></span>
@@ -3512,15 +3523,7 @@ void main() {
       <li>Своя VPN-подписка: ссылка для подключения ниже</li>
     </ul>
     <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
-    <div class="bonus-row">
-      <button class="btn ghost" type="button" id="bonusCoins"></button>
-      <button class="btn ghost" type="button" id="bonusGift"></button>
     </div>
-    <div class="hint" id="bonusHint"></div>
-    <div class="set-label">VPN для премиума</div>
-    <div class="hint">1. Скачайте приложение Happ. 2. Нажмите кнопку ниже: ссылка скопируется в буфер обмена. 3. Откройте Happ и добавьте подписку из буфера обмена.</div>
-    <input class="input" id="vpnLink" readonly hidden aria-label="Ссылка VPN">
-    <div class="actions"><button class="btn ghost" type="button" id="vpnCopy">Скопировать ссылку VPN</button></div>
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
 
@@ -11311,6 +11314,7 @@ async function paintPremiumPage() {
   $("ppStatus").textContent = on ? T("Премиум активен до ") + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "") : T("Больше возможностей, бонусы каждый месяц и свой стиль профиля.");
   $("ppBuy").textContent = on ? T("Продлить на 30 дней") : T("Оформить за 150 Mest");
   $("ppBal").textContent = "";
+  renderPremium();   // бонусы раз в 30 дней и VPN теперь на этой странице
   const w = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
   if (w.data && w.data.balance != null) {
     state.balance = Number(w.data.balance);
@@ -11333,10 +11337,7 @@ $("ppBuy").addEventListener("click", async () => {
   paintPremiumPage();
   loadChats();
 });
-$("ppBonus").addEventListener("click", () => {
-  $("btnProfile").click();
-  setTimeout(() => { if ($("bonusCoins")) $("bonusCoins").scrollIntoView({ block: "center" }); }, 350);
-});
+$("ppBonus").addEventListener("click", () => { $("ppTools").scrollIntoView({ block: "start", behavior: "smooth" }); });
 // страница «Мои Mest»: баланс и история операций
 let coinOps = [], coinOpTab = "all";
 (function () {   // россыпь искр вокруг монеты
@@ -11390,8 +11391,8 @@ $("cpTabs").addEventListener("click", (e) => { const b = e.target.closest("[data
 $("cpBuy").addEventListener("click", openSupport);
 $("cpGift").addEventListener("click", () => { $("btnMarket").click(); showMarketTab("gifts"); });
 $("cpEarn").addEventListener("click", () => {
-  $("btnProfile").click();
-  setTimeout(() => { if ($("bonusCoins")) $("bonusCoins").scrollIntoView({ block: "center" }); }, 350);
+  showSetPage("premium");
+  setTimeout(() => $("ppTools").scrollIntoView({ block: "start", behavior: "smooth" }), 350);
 });
 // нажатие на «Mestario» в углу перезагружает страницу: так подтягивается свежая версия
 $("btnReload").addEventListener("click", () => { $("btnReload").classList.add("spin"); location.reload(); });
