@@ -103,6 +103,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const input = await req.json().catch(() => ({}));
+    // раз в час: курс TON/USD для цены в USDT (цена в USDT = цена в TON × курс)
+    if (input.action === "rate") {
+      const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd");
+      const usd = r.ok ? Number((await r.json())?.["the-open-network"]?.usd) : NaN;
+      if (!(usd > 0)) return reply({ error: "rate source" }, 502);
+      return reply({ ton_usd: usd, micro_per_mest: await rpc("usdt_set_rate", { p_ton_usd: usd }) });
+    }
     let scanErr = "";
     try { await scanThrottled(); } catch (e) { scanErr = String(e).slice(0, 120); console.error(e); }
     const code = String(input.code || "").toUpperCase().match(CODE)?.[0];
