@@ -9135,8 +9135,8 @@ function paintMyNames() {
     const key = lotLabel(it), l = listed.get(key);
     if (l) return h("div", { class: "mine-row" }, lotChip(it), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + lotPrice(l)),
       h("button", { class: "btn ghost", type: "button", onclick: () => openLot(l.id) }, T("Открыть лот")));
-    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: T("Цена, Mest"), "aria-label": T("Цена в Mest для ") + key });
-    const ton = h("input", { class: "input ton", inputmode: "decimal", autocomplete: "off", placeholder: T("или TON"), "aria-label": T("Цена в TON для ") + key });
+    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: "Mest", "aria-label": T("Цена в Mest для ") + key });
+    const ton = h("input", { class: "input ton", inputmode: "decimal", autocomplete: "off", placeholder: "TON", "aria-label": T("Цена в TON для ") + key });
     return h("div", { class: "mine-row" }, lotChip(it), h("span", { style: "flex:1" }), price, ton,
       h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
         const p = price.value.trim() ? Math.floor(Number(price.value)) : null;
