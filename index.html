@@ -122,7 +122,7 @@ button { cursor: pointer; }
 .small { font-size: 13px; }
 
 /* ---------- buttons, fields ---------- */
-.btn { border: 0; border-radius: 10px; padding: 11px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn { border: 0; border-radius: 10px; padding: 11px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 600; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
 .btn:disabled { opacity: .55; cursor: default; }
 .btn.ghost { background: var(--panel-2); color: var(--ink); font-weight: 500; }
 .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); font-weight: 500; }
@@ -1387,7 +1387,9 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .coins-bal { display: flex; align-items: center; gap: 10px; }
 .coins-bal b { font: 700 44px/1 var(--display); font-variant-numeric: tabular-nums; }
 .coins-bal .coin { width: 40px; height: 40px; font-size: 18px; }
-.btn.wide { width: 100%; margin-top: 10px; padding: 13px 16px; border-radius: 999px; font-size: 16px; }
+.btn.wide { width: 100%; margin-top: 10px; padding: 13px 22px; border-radius: 999px; font-size: 16px; }
+:root[data-font="wide"] .btn { letter-spacing: -0.02em; }
+:root[data-font="wide"] .btn.wide, :root[data-font="wide"] .pr-btn { font-size: 15px; }
 .coins-card .link { margin-top: 8px; font-size: 15px; }
 /* пополнение Mest в TON */
 .tp-wallet { display: flex; justify-content: center; gap: 8px; font-size: 13px; color: var(--muted); }
@@ -1488,13 +1490,14 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .pr-num .u { margin-left: .22em; font-size: .5em; letter-spacing: 0; }
 .pr-alt { font-size: 14px; color: var(--muted); }
 .pr-alt:empty { display: none; }
-.pr-btn { --pb-a: #2353e6; --pb-b: #3b6cf6; height: 62px; padding: 0 16px; border: 4px solid var(--pb-a); border-radius: 999px; background: linear-gradient(to top, var(--pb-a), var(--pb-b), var(--pb-a)); color: #fff; font: 650 19px/1.1 var(--display); box-shadow: 0 3px 10px color-mix(in srgb, var(--pb-a) 50%, transparent); transition: transform .12s, filter .15s, opacity .15s; }
+.pr-btn { --pb-a: #2353e6; --pb-b: #3b6cf6; min-height: 62px; padding: 8px 18px; line-height: 1.15; text-wrap: balance; border: 4px solid var(--pb-a); border-radius: 999px; background: linear-gradient(to top, var(--pb-a), var(--pb-b), var(--pb-a)); color: #fff; font: 650 19px/1.1 var(--display); box-shadow: 0 3px 10px color-mix(in srgb, var(--pb-a) 50%, transparent); transition: transform .12s, filter .15s, opacity .15s; }
+.pr-btn small { display: block; margin-top: 3px; font: 500 12.5px/1.2 var(--font, inherit); opacity: .85; letter-spacing: 0; }
 .pr-btn.ton { --pb-a: #0088d1; --pb-b: #1aa6f2; }
 .pr-btn.usdt { --pb-a: #1d8c69; --pb-b: #2ab386; }
 .pr-btn:hover:not(:disabled) { filter: brightness(1.07); }
 .pr-btn:active:not(:disabled) { transform: scale(.98); }
 .pr-btn:disabled { opacity: .5; }
-@media (max-width: 480px) { .pr-sw button { padding: 0 2px; font-size: 13.5px; letter-spacing: -.01em; } .pr-feats h3 { font-size: 22px; } .pr-feats ul { gap: 11px; } .pr-feats li { font-size: 14.5px; } .pr-buy { grid-template-columns: 1fr; } .pr-price { justify-items: center; text-align: center; } .pr-num { font-size: 38px; } .pr-btn { height: 56px; } .pr-head { padding: 6px 20px 0; } }
+@media (max-width: 480px) { .pr-sw button { padding: 0 2px; font-size: 13.5px; letter-spacing: -.01em; } .pr-feats h3 { font-size: 22px; } .pr-feats ul { gap: 11px; } .pr-feats li { font-size: 14.5px; } .pr-buy { grid-template-columns: 1fr; } .pr-price { justify-items: center; text-align: center; } .pr-num { font-size: 38px; } .pr-btn { min-height: 56px; } .pr-head { padding: 6px 20px 0; } }
 /* цифры цены прокручиваются, как в счётчике */
 .rd { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; }
 .rs { display: flex; flex-direction: column; transition: transform .75s cubic-bezier(.3, 1.2, .5, 1); }
@@ -1535,6 +1538,22 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .mk-count:empty { display: none; }
 .mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
 .mk-grid:empty { display: none; }
+.mk-type { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-content: stretch; gap: 4px; aspect-ratio: 1 / 1.14; padding: 12px 8px 46px; border: 0; border-radius: 16px; overflow: hidden; background: var(--panel-2); color: var(--ink); cursor: pointer; transition: transform .15s var(--ease); }
+.mk-type:active { transform: scale(.97); }
+.mk-type .art { width: 100%; height: 100%; display: grid; place-items: center; min-height: 0; }
+.mk-type .art .em { font-size: 54px; line-height: 1; }
+.mk-type .art img.em { width: 64%; height: auto; }
+.mk-type .art .pxl { font-size: 62px; }
+.mk-type .nm { font-size: 12.5px; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-type .pp { position: absolute; left: 9px; right: 9px; bottom: 9px; display: flex; justify-content: center; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font: 700 12.5px/1 var(--display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mk-type .pp .coin { width: 14px; height: 14px; font-size: 8px; }
+.mk-type .rb { position: absolute; top: 11px; right: -28px; width: 100px; padding: 3px 0; transform: rotate(45deg); background: #2fbf71; color: #fff; font: 700 10.5px/1 var(--display); text-align: center; }
+.mk-type.none { opacity: .6; }
+.mk-type.none .pp { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--muted); }
+.mk-back { padding-right: 14px !important; color: var(--accent) !important; border: 0; }
+.mk-back::after { display: none; }
+.mk-back b { font-weight: 600; }
+.mk-back .ii { margin-right: 4px; }
 .mk-card { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1.16; padding: 0; border: 0; border-radius: 16px; overflow: hidden; color: #fff; cursor: pointer; transition: transform .15s var(--ease); }
 .mk-card:active { transform: scale(.97); }
 .mk-card .em { position: relative; width: 62%; height: auto; font-size: 60px; line-height: 1; margin-top: -14%; }
@@ -1623,8 +1642,65 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .wl-edit .input { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 13px; }
 /* настройки: без папок, баннеров и поиска; значения справа не вылезают */
 .sidebar.in-settings > .folders, .sidebar.in-settings > .get-apps, .sidebar.in-settings > .site-banner { display: none !important; }
-.srow .sv { max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.srow .st { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* строки настроек не шире колонки: значение справа сокращается, название переносится */
+.set-page .pcard, .set-page .srow, .set-page [data-page] { min-width: 0; max-width: 100%; }
+.srow .sv { max-width: 40%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow .st { min-width: 0; overflow-wrap: anywhere; }
+/* настройки: быстрые плитки сверху и разделы с подписями */
+.set-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.set-tile { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 11px 12px; border: 0; border-radius: 18px; background: var(--panel-2); color: var(--ink); text-align: left; min-width: 0; transition: transform .15s var(--ease, ease), background-color .15s; }
+.set-tile:hover { background: color-mix(in srgb, var(--ink) 7%, var(--panel-2)); }
+.set-tile:active { transform: scale(.97); }
+.set-tile .pico { grid-row: 1 / 3; }
+.set-tile b { font-size: 14.5px; font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-tile .sv { font-size: 12.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-tile .sv:empty::before { content: "\00a0"; }
+.set-menu > .set-label { margin: 6px 0 -4px 12px; }
+/* иконки вместо смайликов */
+.ii { display: inline-flex; vertical-align: -0.18em; margin-right: 7px; }
+.ii svg, [data-i] > svg { width: 1.15em; height: 1.15em; display: block; }
+.pico[data-i] svg { width: 17px; height: 17px; color: #fff; }
+.op .oi svg, .dev .di svg, .news-it .ic svg { width: 20px; height: 20px; }
+.news-badge svg { width: 28px; height: 28px; color: #fff; }
+.code-ico svg { width: 38px; height: 38px; color: var(--accent); margin-inline: auto; }
+.lc-ico svg { width: 42px; height: 42px; color: var(--accent); margin-inline: auto; }
+.mu-edit .mu-ic svg { width: 20px; height: 20px; }
+.gift-card span.em > svg { width: 76px; height: 76px; display: block; color: #fff; filter: drop-shadow(0 6px 12px rgb(0 0 0 / .3)); }
+.gw-card .em.ev-ico svg { width: 46px; height: 46px; color: var(--accent); }
+.gw-won { display: inline-flex; align-items: center; gap: 4px; }
+.gw-won svg { width: 16px; height: 16px; }
+.me-l svg { width: 18px; height: 18px; }
+.att-pen svg { width: 12px; height: 12px; color: #fff; display: block; }
+.cq-p { display: inline-flex !important; align-items: center; gap: 3px; }
+.cq-p svg { width: 11px; height: 11px; }
+.ai-m .meta, .when-t, q + span.sm { display: inline-flex; align-items: center; gap: 4px; }
+.ai-m .meta svg, .when-t svg { width: 13px; height: 13px; }
+q + span.sm svg { width: 15px; height: 15px; flex: none; }
+.intro-badge .e svg { width: 1em; height: 1em; }
+.mk-card .tb svg { width: 13px; height: 13px; color: #fff; }
+.wl-mi svg, .wl-ico svg { width: 55%; height: 55%; color: #fff; }
+.nft.gift-chip { display: inline-flex; align-items: center; gap: 5px; }
+.nft.gift-chip svg { width: 15px; height: 15px; }
+.call-peer-muted .ii, .call-enc .ii { margin-right: 5px; }
+.btn .ii { margin-right: 6px; }
+/* премиум: карточка тарифа вместо блока с ценой */
+.pp-plan { display: grid; gap: 12px; padding: 16px; border-radius: 22px; background: linear-gradient(150deg, color-mix(in srgb, #8b5cf6 22%, var(--panel-2)), var(--panel-2) 70%); border: 1px solid color-mix(in srgb, #8b5cf6 30%, var(--line)); }
+.pp-plan-top { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.pp-plan-ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #a78bfa, #6d28d9); box-shadow: 0 6px 16px rgb(109 40 217 / .35); }
+.pp-plan-ico svg { width: 24px; height: 24px; }
+.pp-plan-tx { min-width: 0; display: grid; gap: 2px; }
+.pp-plan-tx b { font: 650 16.5px/1.25 var(--display); }
+.pp-plan-tx span { font-size: 13px; color: var(--muted); }
+.pp-plan-price { font: 700 17px/1 var(--display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pp-plan-price:empty { display: none; }
+.pp-days { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.pp-days[hidden] { display: none; }
+.pp-bar { height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; }
+.pp-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a78bfa, #7c3aed); transition: width .8s var(--ease, ease); }
+.pp-plan .btn.wide { margin-top: 0; }
+.pp-ways { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.pp-ways span { display: inline-flex; align-items: center; }
+.pp-ways .ii { margin-right: 4px; }
 /* рейтинг вплотную к статусу «в сети» */
 .seen-row { gap: 0; }
 .seen-row .lvl { width: 40px; height: 40px; margin: -10px -2px -10px -8px; }
@@ -3006,7 +3082,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=62b242ed0a"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d08be41fc7"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3437,15 +3513,15 @@ void main() {
                       <svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="56" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="12"/><circle class="ring" cx="75" cy="75" r="56" fill="none" stroke="#3b82f6" stroke-width="12"/></svg>
                       <div><b class="intro-count">0</b><span>Mest на счёте</span></div>
                     </div>
-                    <div class="intro-row intro-w"><span class="av" style="background:#f2c14e;color:#2b2b2b">AI</span><span class="tx"><b>Mestario AI</b><span>Нарисовал тебе кота 🐱</span></span><span class="n">1</span></div>
+                    <div class="intro-row intro-w"><span class="av" style="background:#f2c14e;color:#2b2b2b">AI</span><span class="tx"><b>Mestario AI</b><span>Нарисовал тебе кота</span></span><span class="n">1</span></div>
                     <div class="intro-row intro-w"><span class="av" style="background:linear-gradient(160deg,#6fe08a,#2fae4f)">ГК</span><span class="tx"><b>Горный клуб</b><span>Сбор в 8:00 у станции</span></span><span class="n">3</span></div>
-                    <div class="intro-row intro-w"><span class="av" style="background:linear-gradient(160deg,#ff8fc0,#e0457f)">Л</span><span class="tx"><b>Лейла</b><span>Спасибо за подарок! 🎁</span></span></div>
+                    <div class="intro-row intro-w"><span class="av" style="background:linear-gradient(160deg,#ff8fc0,#e0457f)">Л</span><span class="tx"><b>Лейла</b><span>Спасибо за подарок!</span></span></div>
                   </div>
                   <span class="intro-homebar" aria-hidden="true"></span>
                 </div>
               </div>
-              <div class="intro-badge b1"><span class="e" aria-hidden="true">🎁</span><div><b>NFT-подарок</b><span>«Золото №3» теперь твоё</span></div></div>
-              <div class="intro-badge b2"><span class="e" aria-hidden="true">✨</span><div><b>@ai ответил</b><span>за 3 секунды</span></div></div>
+              <div class="intro-badge b1"><span class="e" data-i="giftf" aria-hidden="true"></span><div><b>NFT-подарок</b><span>«Золото №3» теперь твоё</span></div></div>
+              <div class="intro-badge b2"><span class="e" data-i="sparkle" aria-hidden="true"></span><div><b>ИИ ответил</b><span>за 3 секунды</span></div></div>
             </div>
           </div>
           <div class="intro-copy">
@@ -3482,7 +3558,7 @@ void main() {
       <button class="btn go" type="submit"><span>Войти</span><b aria-hidden="true">→</b></button>
       <button class="link" type="button" data-go="reset">Забыли пароль?</button>
       <button class="link" type="button" data-go="numlogin" id="goNumLogin">Войти по NFT-номеру +555</button>
-      <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden>🌐 Войти через браузер</button>
+      <button class="btn ghost ho-btn" type="button" id="loginBrowser" hidden><span class="ii" data-i="globe" aria-hidden="true"></span>Войти через браузер</button>
       <button class="g-btn" type="button" data-google hidden title="Войти через Google" aria-label="Войти через Google"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="22" height="22" onerror="window.gLogoFail&&gLogoFail(this)"></button>
     </form>
 
@@ -3503,7 +3579,7 @@ void main() {
 
     <form id="numForm" data-view="numlogin" novalidate hidden>
       <div class="code-head">
-        <div class="code-ico" aria-hidden="true">☎</div>
+        <div class="code-ico" data-i="phone" aria-hidden="true"></div>
         <b>Вход по NFT-номеру</b>
         <div class="small muted" id="nlText">Введите свой номер +555. Код придёт от бота «Mestario» в чат на ваших устройствах и на почту.</div>
       </div>
@@ -3569,7 +3645,7 @@ void main() {
     </div>
     <form id="codeForm" data-view="code" novalidate hidden>
       <div class="code-head">
-        <div class="code-ico" aria-hidden="true">✉️</div>
+        <div class="code-ico" data-i="mail" aria-hidden="true"></div>
         <b id="codeTitle">Код из письма</b>
         <div class="small muted" id="codeText"></div>
       </div>
@@ -3629,11 +3705,20 @@ void main() {
             <span id="setMeAv"></span>
             <span class="set-me-tx"><b id="setMeName"></b><span class="small muted" id="setMeUser"></span></span>
           </button>
+          <div class="set-tiles">
+            <button class="set-tile" type="button" data-go="coins"><span class="pico gold" data-ico="coin"></span><b>Мои Mest</b><span class="sv" id="sv_coins"></span></button>
+            <button class="set-tile" type="button" data-go="market"><span class="pico teal" data-ico="store"></span><b>Маркет</b><span class="sv">NFT и подарки</span></button>
+            <button class="set-tile" type="button" data-go="ai"><span class="pico sky" data-ico="ai"></span><b>ИИ-помощник</b><span class="sv" id="sv_ai"></span></button>
+            <button class="set-tile" type="button" data-go="premium"><span class="pico violet" data-ico="star"></span><b>Premium</b><span class="sv" id="sv_premium"></span></button>
+          </div>
+          <div class="set-label">Аккаунт</div>
           <div class="pcard">
             <button class="srow" type="button" data-go="saved"><span class="pico blue" data-ico="bookmark"></span><span class="st">Избранное</span><span class="sv" id="sv_saved"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="accounts"><span class="pico orange" data-ico="users"></span><span class="st">Аккаунты</span><span class="sv" id="sv_accounts"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="contacts"><span class="pico green" data-ico="users"></span><span class="st">Контакты</span><span class="sv" id="sv_contacts"></span><span class="chev" aria-hidden="true">›</span></button>
+            <button class="srow" type="button" data-go="wallets"><span class="pico blue" data-ico="gem"></span><span class="st">Криптокошельки</span><span class="sv" id="sv_wallets"></span><span class="chev" aria-hidden="true">›</span></button>
           </div>
+          <div class="set-label">Настройки</div>
           <div class="pcard">
             <button class="srow" type="button" data-go="notify"><span class="pico red" data-ico="bell"></span><span class="st">Уведомления</span><span class="sv" id="sv_notify"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="privacy"><span class="pico grey" data-ico="lock"></span><span class="st">Конфиденциальность</span><span class="sv" id="sv_privacy"></span><span class="chev" aria-hidden="true">›</span></button>
@@ -3642,14 +3727,11 @@ void main() {
             <button class="srow" type="button" data-go="chat"><span class="pico green" data-ico="bubble"></span><span class="st">Сообщения</span><span class="sv" id="sv_chat"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="lang"><span class="pico violet" data-ico="globe"></span><span class="st">Язык</span><span class="sv" id="sv_lang">Русский</span><span class="chev" aria-hidden="true">›</span></button>
           </div>
+          <div class="set-label">Ещё</div>
           <div class="pcard">
-            <button class="srow" type="button" data-go="premium"><span class="pico violet" data-ico="star"></span><span class="st">Премиум</span><span class="sv" id="sv_premium"></span><span class="chev" aria-hidden="true">›</span></button>
-            <button class="srow" type="button" data-go="ai"><span class="pico sky" data-ico="ai"></span><span class="st">ИИ-помощник</span><span class="sv" id="sv_ai"></span><span class="chev" aria-hidden="true">›</span></button>
-            <button class="srow" type="button" data-go="coins"><span class="pico gold" data-ico="coin"></span><span class="st">Мои Mest</span><span class="sv" id="sv_coins"></span><span class="chev" aria-hidden="true">›</span></button>
-            <button class="srow" type="button" data-go="wallets"><span class="pico blue" data-ico="gem"></span><span class="st">Криптокошельки</span><span class="sv" id="sv_wallets"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="gift"><span class="pico teal" data-ico="gift"></span><span class="st">Отправить подарок</span><span class="sv" id="sv_gift"></span><span class="chev" aria-hidden="true">›</span></button>
-            <button class="srow" type="button" data-go="support"><span class="pico pink" data-ico="help"></span><span class="st">Поддержка</span><span class="sv" id="sv_support"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="invite"><span class="pico green" data-ico="users"></span><span class="st">Пригласить друзей</span><span class="sv">+25 Mest</span><span class="chev" aria-hidden="true">›</span></button>
+            <button class="srow" type="button" data-go="support"><span class="pico pink" data-ico="help"></span><span class="st">Поддержка</span><span class="sv" id="sv_support"></span><span class="chev" aria-hidden="true">›</span></button>
             <a class="srow" id="appApk" href="https://github.com/wiynet/soroka/releases/latest/download/Mestario.apk" hidden><span class="pico green" data-ico="dl"></span><span class="st">Приложение для Android</span><span class="sv">APK</span><span class="chev" aria-hidden="true">›</span></a>
             <button class="srow" type="button" data-go="docs"><span class="pico grey" data-ico="file"></span><span class="st">Соглашение и правила</span><span class="chev" aria-hidden="true">›</span></button>
           </div>
@@ -3843,13 +3925,13 @@ void main() {
     </div>
     <div data-page="wallets" hidden>
       <div class="wl-intro">
-        <span class="wl-ico" aria-hidden="true">💎</span>
+        <span class="wl-ico" data-i="wallet" aria-hidden="true"></span>
         <b>Кошельки аккаунта</b>
         <span class="small muted">На кошелёк TON приходят деньги за ваши лоты, проданные за TON. Адреса видят все, кто открывает ваши NFT-юзернеймы, номера и подарки.</span>
       </div>
       <div class="pcard wl-card">
         <div class="wl-row">
-          <span class="wl-mi ton" aria-hidden="true">💎</span>
+          <span class="wl-mi ton" data-i="gem" aria-hidden="true"></span>
           <div class="wl-tx"><b>TON</b><code id="wlTon">не привязан</code></div>
           <button class="btn ghost" type="button" id="wlTonCopy" hidden>Копировать</button>
         </div>
@@ -3882,29 +3964,31 @@ void main() {
         <h3>Mestario Premium</h3>
         <p id="ppStatus"></p>
       </div>
-      <div class="coins-card">
-        <div class="coins-bal"><b>150</b><span class="coin" aria-hidden="true"></span></div>
-        <div class="muted">Mest за 30 дней</div>
-        <button class="btn wide prem-btn" type="button" id="ppBuy"></button>
-        <button class="btn ghost wide" type="button" id="ppTon">Оплатить в крипте — TON или USDT</button>
-        <div class="small muted" id="ppBal"></div>
+      <div class="pp-plan" id="ppPlan">
+        <div class="pp-plan-top">
+          <span class="pp-plan-ico" data-i="crown" aria-hidden="true"></span>
+          <div class="pp-plan-tx"><b id="ppPlanTitle">Premium на 30 дней</b><span id="ppPlanSub"></span></div>
+          <span class="pp-plan-price" id="ppPlanPrice"></span>
+        </div>
+        <div class="pp-days" id="ppDays" hidden><div class="pp-bar"><i id="ppBarFill"></i></div><span id="ppDaysT"></span></div>
+        <button class="btn wide prem-btn" type="button" id="ppBuy">Оформить Premium</button>
+        <div class="pp-ways"><span><span class="ii" data-i="coinf" aria-hidden="true"></span>Mest</span><span><span class="ii" data-i="gem" aria-hidden="true"></span>TON</span><span><span class="ii" data-i="wallet" aria-hidden="true"></span>USDT</span></div>
       </div>
       <div class="set-label">Что даёт премиум</div>
       <div class="feats">
-        <div class="feat"><span class="pico violet" aria-hidden="true">👑</span><b>Значок премиума</b><span>Кристальная корона рядом с именем в чатах, поиске и профиле.</span></div>
-        <div class="feat"><span class="pico gold" aria-hidden="true">👑</span><b>Корона в подарок</b><span>Один раз при первом премиуме. Её можно улучшить до коллекционной.</span></div>
-        <div class="feat"><span class="pico pink" aria-hidden="true">🎨</span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
-        <div class="feat"><span class="pico gold" aria-hidden="true">🎁</span><b>Скидка 20 % на подарки</b><span>Любой подарок из магазина обходится дешевле.</span></div>
-        <div class="feat"><span class="pico teal" aria-hidden="true">💎</span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
-        <div class="feat"><span class="pico orange" aria-hidden="true">🪙</span><b>50 Mest каждый месяц</b><span>Раз в 30 дней забирайте бонус прямо на счёт.</span></div>
-        <div class="feat"><span class="pico red" aria-hidden="true">🎲</span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
-        <div class="feat"><span class="pico grey" aria-hidden="true">👁</span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
-        <div class="feat"><span class="pico blue" aria-hidden="true">👥</span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
-        <div class="feat"><span class="pico pink" aria-hidden="true">🎞</span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 30 секунд на всю шапку профиля.</span></div>
-        <div class="feat"><span class="pico blue" aria-hidden="true">🖥</span><b>Показ экрана в HD</b><span>В звонках можно выбрать качество «HD» (1080p, 30 кадров/с) и «Плавно» для видео и игр.</span></div>
-        <div class="feat"><span class="pico sky" aria-hidden="true">🌌</span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
-        <div class="feat"><span class="pico green" aria-hidden="true">✍</span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
-        <div class="feat"><span class="pico violet" aria-hidden="true">🛡</span><b>VPN-подписка</b><span>Своя ссылка для подключения VPN через приложение Happ.</span></div>
+        <div class="feat"><span class="pico violet" data-i="crown" aria-hidden="true"></span><b>Значок премиума</b><span>Кристальная корона рядом с именем в чатах, поиске и профиле.</span></div>
+        <div class="feat"><span class="pico gold" data-i="crown" aria-hidden="true"></span><b>Корона в подарок</b><span>Один раз при первом премиуме. Её можно улучшить до коллекционной.</span></div>
+        <div class="feat"><span class="pico pink" data-i="palette" aria-hidden="true"></span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
+        <div class="feat"><span class="pico gold" data-i="giftf" aria-hidden="true"></span><b>Скидка 20 % на подарки</b><span>Любой подарок из магазина обходится дешевле.</span></div>
+        <div class="feat"><span class="pico teal" data-i="gem" aria-hidden="true"></span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
+        <div class="feat"><span class="pico orange" data-i="coinf" aria-hidden="true"></span><b>50 Mest каждый месяц</b><span>Раз в 30 дней забирайте бонус прямо на счёт.</span></div>
+        <div class="feat"><span class="pico red" data-i="dice" aria-hidden="true"></span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
+        <div class="feat"><span class="pico grey" data-i="eye" aria-hidden="true"></span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
+        <div class="feat"><span class="pico blue" data-i="users" aria-hidden="true"></span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
+        <div class="feat"><span class="pico pink" data-i="film" aria-hidden="true"></span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 30 секунд на всю шапку профиля.</span></div>
+        <div class="feat"><span class="pico blue" data-i="screen" aria-hidden="true"></span><b>Показ экрана в HD</b><span>В звонках можно выбрать качество «HD» (1080p, 30 кадров/с) и «Плавно» для видео и игр.</span></div>
+        <div class="feat"><span class="pico sky" data-i="sparkle" aria-hidden="true"></span><b>Особые фоны</b><span>Фоны переписки «Космос» и «Неон».</span></div>
+        <div class="feat"><span class="pico green" data-i="pen" aria-hidden="true"></span><b>Длинное описание</b><span>До 500 символов в разделе «О себе» вместо 200.</span></div>
       </div>
       <div class="set-label" id="ppTools">Бонусы раз в 30 дней</div>
       <div class="bonus-row">
@@ -3912,11 +3996,7 @@ void main() {
         <button class="btn ghost" type="button" id="bonusGift"></button>
       </div>
       <div class="hint" id="bonusHint"></div>
-      <div class="set-label">VPN для премиума</div>
-      <div class="hint">1. Скачайте приложение Happ. 2. Нажмите кнопку ниже: ссылка скопируется в буфер обмена. 3. Откройте Happ и добавьте подписку из буфера обмена.</div>
-      <input class="input" id="vpnLink" readonly hidden aria-label="Ссылка VPN">
-      <div class="actions"><button class="btn ghost" type="button" id="vpnCopy">Скопировать ссылку VPN</button></div>
-      <button class="btn ghost" type="button" id="ppBonus" hidden>Забрать бонусы и ссылку VPN</button>
+      <button class="btn ghost" type="button" id="ppBonus" hidden>Забрать бонусы</button>
     </div>
     <div data-page="lang" hidden>
           <div class="set-label">Язык интерфейса</div>
@@ -4037,11 +4117,11 @@ void main() {
       <span><b id="myProfileName"></b><span class="small muted">Посмотреть свой профиль так, как его видят другие</span></span>
     </button>
     <button class="pick" type="button" id="myGreetRow">
-      <span class="ico">👋</span>
+      <span class="ico" data-i="wave"></span>
       <span><b>Моё приветствие</b><span class="small muted">Заголовок, текст и стикер, которые видят другие в пустом чате с вами</span></span>
     </button>
     <button class="pick" type="button" id="myBotsRow">
-      <span class="ico">🤖</span>
+      <span class="ico" data-i="bot"></span>
       <span><b>Мои боты</b><span class="small muted">Создать бота или изменить своих: команды, кнопки, ИИ</span></span>
     </button>
 
@@ -4081,7 +4161,7 @@ void main() {
     <div class="field"><span>Баннер профиля <b class="prem-tag" style="color:var(--premium)">★ премиум</b></span>
       <div class="bn-edit" id="pfBanner"><div class="bn-empty" id="pfBannerEmpty">Нет баннера</div></div>
       <div class="actions" style="justify-content:flex-start;margin-top:8px">
-        <button class="btn ghost" type="button" id="pfBannerUp">🖼 Фото или видео</button>
+        <button class="btn ghost" type="button" id="pfBannerUp"><span class="ii" data-i="image" aria-hidden="true"></span>Фото или видео</button>
         <button class="btn ghost" type="button" id="pfBannerOff" hidden>Убрать</button>
       </div>
       <input type="file" id="pfBannerFile" accept="image/*,video/mp4,video/webm,video/quicktime" hidden>
@@ -4089,14 +4169,14 @@ void main() {
       <div class="pbg-row" id="pfBgNft" role="radiogroup" aria-label="Фоны NFT-подарков" style="margin-top:10px" hidden></div>
     </div>
     <div class="field"><span>Музыка профиля</span>
-      <div class="mu-edit" id="pfMusic"><span class="mu-ic" id="pfMusicIc" aria-hidden="true">♫</span><span class="mu-t" id="pfMusicT">Нет музыки</span><button class="link" type="button" id="pfMusicPlay" hidden>Послушать</button></div>
+      <div class="mu-edit" id="pfMusic"><span class="mu-ic" id="pfMusicIc" data-i="music" aria-hidden="true"></span><span class="mu-t" id="pfMusicT">Нет музыки</span><button class="link" type="button" id="pfMusicPlay" hidden>Послушать</button></div>
       <div class="mu-search">
         <input class="input" id="pfMusicQ" type="search" maxlength="80" placeholder="Найти песню в Apple Music" aria-label="Найти песню в Apple Music" autocomplete="off">
         <div class="mu-res" id="pfMusicRes" hidden></div>
       </div>
       <input class="input" id="pfMusicName" maxlength="80" placeholder="Название трека" aria-label="Название трека" style="margin-top:8px" hidden>
       <div class="actions" style="justify-content:flex-start;margin-top:8px">
-        <button class="btn ghost" type="button" id="pfMusicUp">🎵 Выбрать трек</button>
+        <button class="btn ghost" type="button" id="pfMusicUp">Выбрать трек</button>
         <button class="btn ghost" type="button" id="pfMusicOff" hidden>Убрать</button>
       </div>
       <input type="file" id="pfMusicFile" accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav,.flac" hidden>
@@ -4140,9 +4220,8 @@ void main() {
       <li>NFT-подарок можно надеть на профиль: его фон и значок увидят все</li>
       <li>Раз в 30 дней: 50 Mest и случайный подарок из тиража, который можно улучшить</li>
       <li>Можно скрыть время, когда вы были в сети</li>
-      <li>Своя VPN-подписка: ссылка для подключения ниже</li>
     </ul>
-    <div class="actions"><button class="btn ghost" type="button" id="premTon">TON / USDT</button><button class="btn" type="button" id="premBuy"></button></div>
+    <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
     </div>
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
@@ -4385,8 +4464,9 @@ void main() {
         <button type="button" role="radio" data-k="num" aria-checked="false">Номера</button>
       </div>
       <div class="mk-filters" id="mkFilters">
+        <button class="mk-f mk-back" type="button" id="mkTypeBack" hidden><span class="ii" data-i="back" aria-hidden="true"></span><b id="mkTypeName">Все подарки</b></button>
         <label class="mk-f"><span>Цена</span><select id="mkSort" aria-label="Сортировка"><option value="new">Новые</option><option value="cheap">Дешевле</option><option value="dear">Дороже</option></select></label>
-        <label class="mk-f"><span>Подарок</span><select id="mkType" aria-label="Подарок"><option value="">Все</option></select></label>
+        <label class="mk-f" hidden><span>Подарок</span><select id="mkType" aria-label="Подарок"><option value="">Все</option></select></label>
         <label class="mk-f"><span>Модель</span><select id="mkModel" aria-label="Модель"><option value="">Все</option></select></label>
         <label class="mk-f"><span>Фон</span><select id="mkBack" aria-label="Фон"><option value="">Все</option></select></label>
       </div>
@@ -4592,7 +4672,7 @@ void main() {
     <h2>Создать</h2>
     <button class="pick" type="button" id="newGroup"><span class="ico" id="icoGroup"></span><span><b>Группа</b><span class="small muted">Общий чат: пишут все участники</span></span></button>
     <button class="pick" type="button" id="newChannel"><span class="ico" id="icoChannel"></span><span><b>Канал</b><span class="small muted">Пишете только вы, остальные читают. Найти и подписаться может любой</span></span></button>
-    <button class="pick" type="button" id="newBot"><span class="ico" id="icoBot">🤖</span><span><b>Бот</b><span class="small muted">Свой бот с кнопками и ответами — собирается в конструкторе, без кода</span></span></button>
+    <button class="pick" type="button" id="newBot"><span class="ico" id="icoBot" data-i="bot"></span><span><b>Бот</b><span class="small muted">Свой бот с кнопками и ответами — собирается в конструкторе, без кода</span></span></button>
     <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button></div>
   </div>
 </dialog>
@@ -4617,12 +4697,12 @@ void main() {
     <div class="me-top"><button class="link" type="button" id="meCancel">Отмена</button><b id="meTitle">Изменить</b><button class="btn" type="button" id="meSave">Готово</button></div>
     <div class="me-stage"><canvas id="meCanvas" width="2" height="2"></canvas><div class="me-busy" id="meBusy" hidden></div></div>
     <div class="me-panel" id="mePanel"></div>
-    <div class="me-tabs" id="meTabs"><button type="button" data-tool="crop">✂️ Кадр</button><button type="button" data-tool="draw">🖌 Рисунок</button><button type="button" data-tool="time" id="meTimeTab">⏱ Время</button></div>
+    <div class="me-tabs" id="meTabs"><button type="button" data-tool="crop"><span class="ii" data-i="crop" aria-hidden="true"></span>Кадр</button><button type="button" data-tool="draw"><span class="ii" data-i="brush" aria-hidden="true"></span>Рисунок</button><button type="button" data-tool="time" id="meTimeTab"><span class="ii" data-i="timer" aria-hidden="true"></span>Время</button></div>
   </div>
 </dialog>
 <dialog id="dlgLoginCode">
   <div class="dlg lc-card">
-    <div class="lc-ico" aria-hidden="true">🔐</div>
+    <div class="lc-ico" data-i="key" aria-hidden="true"></div>
     <h2>Защитить вход кодом?</h2>
     <p class="muted" style="margin:0">При входе в аккаунт, кроме пароля, мы будем присылать на почту код.</p>
     <ul>
@@ -4637,7 +4717,7 @@ void main() {
 <div class="call-ui" id="callUi" hidden role="dialog" aria-label="Звонок">
   <div class="call-top">
     <button class="call-ib" id="callMin" type="button" title="Свернуть — звонок продолжится" aria-label="Свернуть звонок"></button>
-    <span class="call-enc">🔒 Звонок напрямую между устройствами</span>
+    <span class="call-enc"><span class="ii" data-i="lock" aria-hidden="true"></span>Звонок напрямую между устройствами</span>
     <button class="call-ib" id="callFull" type="button" title="Экран собеседника во весь экран" aria-label="Во весь экран"></button>
   </div>
   <video id="callVideo" class="call-video" playsinline autoplay muted hidden></video>
@@ -4645,7 +4725,7 @@ void main() {
     <div class="call-av" id="callAv"></div>
     <div class="call-name" id="callName"></div>
     <div class="call-status" id="callStatus"></div>
-    <div class="call-peer-muted" id="callPeerMuted" hidden>🔇 У собеседника выключен микрофон</div>
+    <div class="call-peer-muted" id="callPeerMuted" hidden><span class="ii" data-i="micoff" aria-hidden="true"></span>У собеседника выключен микрофон</div>
   </div>
   <div class="call-mine" id="callMine" hidden>
     <video id="callMineVid" playsinline autoplay muted></video>
@@ -4666,7 +4746,7 @@ void main() {
 <!-- просьба разрешить микрофон -->
 <dialog id="dlgMic" class="news-dlg">
   <div class="dlg news">
-    <div class="news-head"><span class="news-badge">🎙</span><h2>Доступ к микрофону</h2></div>
+    <div class="news-head"><span class="news-badge" data-i="mic"></span><h2>Доступ к микрофону</h2></div>
     <div class="small" id="micText" style="text-align:center;line-height:1.45"></div>
     <div class="news-list" id="micSteps" hidden></div>
     <div class="actions"><button class="btn ghost" type="button" id="micLater">Позже</button><button class="btn" type="button" id="micAllow">Разрешить</button></div>
@@ -4675,7 +4755,7 @@ void main() {
 <!-- окно «Что нового» -->
 <dialog id="dlgNews" class="news-dlg">
   <div class="dlg news">
-    <div class="news-head"><span class="news-badge">✨</span><h2 id="newsTitle"></h2><div class="small muted" id="newsDate"></div></div>
+    <div class="news-head"><span class="news-badge" data-i="sparkle"></span><h2 id="newsTitle"></h2><div class="small muted" id="newsDate"></div></div>
     <div class="news-imgs" id="newsImgs"></div>
     <div class="news-list" id="newsList"></div>
     <div class="actions"><button class="btn" type="button" id="newsOk">Понятно</button></div>
@@ -4718,7 +4798,7 @@ void main() {
       <textarea id="beAiPrompt" maxlength="3000" placeholder="Характер и знания бота: кто он, о чём рассказывает, как общается. Например: «Ты продавец магазина кроссовок, отвечай дружелюбно, цены: …»"></textarea>
       <div class="be-sub">Помощник: опишите, что должен уметь бот, — ИИ сам соберёт или переделает команды и кнопки.</div>
       <textarea id="beGenText" maxlength="2000" placeholder="Например: «бот-викторина про футбол с 5 вопросами и кнопками ответов» или «добавь раздел Помощь и кнопку Сайт»"></textarea>
-      <button class="btn ghost" type="button" id="beGen">✨ Собрать с ИИ</button>
+      <button class="btn ghost" type="button" id="beGen"><span class="ii" data-i="ai" aria-hidden="true"></span>Собрать с ИИ</button>
       <div class="be-log" id="beGenLog"></div>
     </div>
     <div class="set-label">Приветствие — ответ на «Начать» (/start)</div>
@@ -5005,7 +5085,7 @@ void main() {
         <button type="button" class="qa" id="uSearchQ" hidden><span class="qa-i" data-ic="find"></span><span>Поиск</span></button>
         <button type="button" class="qa" id="uGift"><span class="qa-i" data-ic="giftf"></span><span>Подарить</span></button>
       </div>
-      <button class="btn ghost" type="button" id="uBotEdit" hidden>⚙ Настроить бота</button>
+      <button class="btn ghost" type="button" id="uBotEdit" hidden><span class="ii" data-i="gear" aria-hidden="true"></span>Настроить бота</button>
     </div>
     <div id="uPaneAbout" style="display:grid;gap:12px;justify-items:center;align-self:stretch">
       <div class="plabel">Информация</div>
@@ -5560,6 +5640,34 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const ICONS = {
+  palette: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 1 0 0 20c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-4.9-4.5-8.6-10-8.6z"/></g>',
+  dice: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/></g>',
+  image: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></g>',
+  pen: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></g>',
+  gavel: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></g>',
+  wallet: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3"/><path d="M3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 12h-4a2 2 0 0 0 0 4h4z"/></g>',
+  swap: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></g>',
+  inc: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></g>',
+  dec: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></g>',
+  sparkle: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15v4M17 17h4"/></g>',
+  trophy: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></g>',
+  party: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.8"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.2.8a2.9 2.9 0 0 0-1.9 3.2c.1.8-.5 1.5-1.3 1.5h-.4c-.9 0-1.6.6-1.8 1.4L14 10"/><path d="M8.6 9.4c1.9 1.9 3.8 4.6 3 5.4-.8.8-3.5-1.1-5.4-3s-3.8-4.6-3-5.4c.8-.8 3.5 1.1 5.4 3z"/></g>',
+  film: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></g>',
+  music: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></g>',
+  laptop: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 20h20"/></g>',
+  mobile: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></g>',
+  mail: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m22 7-10 6L2 7"/></g>',
+  key: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></g>',
+  crop: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></g>',
+  bot: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5M9 13h.01M15 13h.01M9.5 16.5h5"/><circle cx="12" cy="3.5" r="1.3"/></g>',
+  refresh: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></g>',
+  undo: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></g>',
+  badge: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 2.1 3.2-.4.9 3.1 2.8 1.6-1.2 3 1.2 3-2.8 1.6-.9 3.1-3.2-.4L12 22l-2.4-2.1-3.2.4-.9-3.1-2.8-1.6 1.2-3-1.2-3 2.8-1.6.9-3.1 3.2.4z"/><path d="m9 12 2 2 4-4"/></g>',
+  grid: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></g>',
+  tag: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></g>',
+  wave: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></g>',
+  zap: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></g>',
+  store: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></g>',
   brush: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L11 18l-5-5z"/><path d="M6 13c-2 0-3 1.500-3 3.500S2 20 2 20s3.500.5 5-1 1.500-3.500 1-4.500"/></g>',
   erase: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.500h9l1-12.500"/><path d="M10 11l4 4M14 11l-4 4"/></g>',
   kbd: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></g>',
@@ -6411,7 +6519,6 @@ function stopApp() {
   state.chats.clear(); state.unread.clear(); state.urls.clear(); state.pins.clear(); state.blocked.clear(); state.blockedMe.clear();
   mentionChats.clear(); folders = []; dailyKey = ""; closeMention(); msgCache.clear();
   $("dlgSettings").close();
-  vpnLink = null; $("vpnLink").value = ""; $("vpnLink").hidden = true;
   if (recorder) stopRecording(false);
   leaveTyping();
   voiceStop();
@@ -7311,7 +7418,7 @@ function msgNode(m, group) {
     // карточка розыгрыша: приз, срок, число участников и кнопка «Участвовать»
     const g = state.giveaways.get(m.giveaway_id);
     el.classList.add("gw");
-    const card = h("div", { class: "gw-card" }, h("span", { class: "em" }, "🎉"));
+    const card = h("div", { class: "gw-card" }, h("span", { class: "em ev-ico" }, icon("party")));
     if (!g) card.append(h("b", {}, T("Розыгрыш")), h("span", { class: "ln" }, T("Загружаем…")));
     else {
       const n = Number(g.entries) || 0, open = g.status === "open" && new Date(g.ends_at) > new Date();
@@ -7326,7 +7433,7 @@ function msgNode(m, group) {
       else {
         const list = Array.isArray(g.winner_list) ? g.winner_list : [];
         card.append(h("span", { class: "win" }, (list.length > 1 ? T("Победители: ") : T("Победитель: ")) + list.map((w) => w.name + " (+" + nf.format(w.won) + ")").join(", ")));
-        if (g.won) card.append(h("b", {}, T("Вы выиграли ") + coins(g.won) + " 🎊"));
+        if (g.won) card.append(h("b", {}, T("Вы выиграли ") + coins(g.won)));
       }
       // список участников со временем входа — только владельцу и админам чата
       if (myRole(c)) card.append(h("button", { class: "link", type: "button", onclick: () => showEntrants(g) }, T("Участники · ") + n));
@@ -7365,7 +7472,7 @@ function msgNode(m, group) {
     // выдача от администратора: такая же карточка по центру, как у подарка
     el.classList.add("giftm");
     const o = c ? other(c) : null;
-    const emoji = { coins: "🪙", premium: "⭐", nft: "💎", verified: "✅", admin: "🛡️" }[m.event_kind] || "🎁";
+    const emoji = icon({ coins: "coinf", premium: "starf", nft: "gem", verified: "badge", admin: "shield" }[m.event_kind] || "giftf");
     el.append(
       h("div", { class: "gift-pill" }, mine ? T("Вы выдали") : T("Вам выдали")),
       h("div", { class: "gift-card" },
@@ -7778,7 +7885,7 @@ async function ensureGiveaways(refresh) {
     if (old && old.status === "open" && g.status === "done" && g.won) won = true;
     state.giveaways.set(g.id, g);
   }
-  if (won) { loadWallet(); toast(T("Вы выиграли в розыгрыше 🎊")); }
+  if (won) { loadWallet(); toast(T("Вы выиграли в розыгрыше")); }
   if (data && data.length && state.activeId === chat) repaintKeep();
 }
 async function showEntrants(g) {
@@ -7792,7 +7899,7 @@ async function showEntrants(g) {
     const d = new Date(u.joined_at);
     const row = personRow(u, () => { $("dlgViewers").close(); showUser(u); });
     row.append(h("span", { class: "small muted", style: "margin-left:auto;flex:none;text-align:right" },
-      u.won ? h("div", { style: "color:var(--coin)" }, "🏆 +" + nf.format(u.won)) : null,
+      u.won ? h("div", { class: "gw-won", style: "color:var(--coin)" }, icon("trophy"), "+" + nf.format(u.won)) : null,
       dFmt.format(d) + ", " + tFmt.format(d)));
     return row;
   }) : [h("div", { class: "small muted" }, error ? T("Не удалось загрузить участников") : T("Пока никто не участвует"))]));
@@ -8125,10 +8232,10 @@ async function checkMicAsk(tries) {
     : T("Чтобы записывать голосовые и видеосообщения, звонить и говорить в голосовых чатах, разрешите Mestario доступ к микрофону. Он включается, только когда вы сами начинаете запись или звонок.");
   $("micSteps").hidden = !denied;
   const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const steps = IN_APP ? [["⚙", T("Откройте настройки телефона → Приложения → Mestario → Разрешения")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Вернитесь в Mestario")]]
-    : ios ? [["ᴬA", T("Нажмите «аА» слева в адресной строке Safari → «Настройки веб-сайта»")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Обновите страницу")]]
-    : [["🔒", T("Нажмите на значок замка или настроек слева от адреса mestario.lol")], ["🎙", T("Микрофон → «Разрешить»")], ["↻", T("Обновите страницу")]];
-  $("micSteps").replaceChildren(...steps.map(([ic, t]) => h("div", { class: "news-it" }, h("span", { class: "ic" }, ic), h("span", {}, t))));
+  const steps = IN_APP ? [["gear", T("Откройте настройки телефона → Приложения → Mestario → Разрешения")], ["mic", T("Микрофон → «Разрешить»")], ["refresh", T("Вернитесь в Mestario")]]
+    : ios ? [["globe", T("Нажмите «аА» слева в адресной строке Safari → «Настройки веб-сайта»")], ["mic", T("Микрофон → «Разрешить»")], ["refresh", T("Обновите страницу")]]
+    : [["lock", T("Нажмите на значок замка или настроек слева от адреса mestario.lol")], ["mic", T("Микрофон → «Разрешить»")], ["refresh", T("Обновите страницу")]];
+  $("micSteps").replaceChildren(...steps.map(([ic, t]) => h("div", { class: "news-it" }, h("span", { class: "ic" }, icon(ic)), h("span", {}, t))));
   $("micAllow").textContent = denied ? T("Понятно") : T("Разрешить");
   $("dlgMic").dataset.denied = denied ? "1" : "";
   $("micLater").hidden = denied;
@@ -8341,7 +8448,7 @@ function openContactEditor(p) {
     h("label", { class: "field" }, h("span", {}, T("Имя в ваших контактах")), name),
     h("div", { class: "set-label", style: "margin:0" }, T("Пузырёк его сообщений (видите только вы)")),
     bubblePicker(bubble, (id) => { bubble = id; }, T("Как выбрал он")),
-    h("button", { class: "btn ghost", type: "button", onclick: () => { d.close(); suggestPhoto(p); } }, "📷 " + T("Предложить ему фото для профиля")),
+    h("button", { class: "btn ghost", type: "button", onclick: () => { d.close(); suggestPhoto(p); } }, icon("cam"), T("Предложить ему фото для профиля")),
     err,
     h("div", { class: "actions" }, del, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, T("Отмена")), save)));
   d.addEventListener("close", () => d.remove());
@@ -8448,7 +8555,7 @@ function openThemePicker(c) {
   grid.append(sw(null), ...CHAT_THEMES.map(sw));
   // своё фото на фон (не больше 1600 px по длинной стороне)
   const cur0 = c.myTheme || c.theme || "";
-  const own = h("button", { type: "button", class: "ct-sw own" + (cur0.startsWith("img:") ? " on" : ""), title: T("Своё фото") }, h("b", {}, cur0.startsWith("img:") ? "" : "🖼"), h("b", {}, T("Своё фото")));
+  const own = h("button", { type: "button", class: "ct-sw own" + (cur0.startsWith("img:") ? " on" : ""), title: T("Своё фото") }, h("b", {}, cur0.startsWith("img:") ? "" : icon("image")), h("b", {}, T("Своё фото")));
   if (cur0.startsWith("img:")) { own.dataset.img = "1"; own.dataset.path = cur0; own.style.background = ctImgBg(cur0.slice(4)); }
   const ofile = h("input", { type: "file", accept: "image/*", hidden: true });
   // уже есть своё фото, но выбрана другая тема — выбираем его; выбрано — нажатие меняет фото
@@ -8676,7 +8783,7 @@ function paintAttachThumbs() {
     const u = URL.createObjectURL(f); attachUrls.push(u);
     const prev = meIsVideo(f) ? h("video", { src: u + "#t=0.1", muted: true, preload: "metadata", playsinline: true }) : h("img", { src: u, alt: "" });
     return h("button", { type: "button", class: "att-th", title: T("Изменить: обрезать, повернуть, порисовать"), "aria-label": T("Изменить ") + (f.name || ""),
-      onclick: () => editPending(i) }, prev, h("span", { class: "att-pen" }, "✏️"));
+      onclick: () => editPending(i) }, prev, h("span", { class: "att-pen" }, icon("pen")));
   }).filter(Boolean));
   box.hidden = !box.children.length;
 }
@@ -9529,7 +9636,7 @@ function marketError(e) {
     : /bad number/.test(m) ? T("Номер: после +555 до 10 символов — цифры и пробелы.")
     : /number taken/.test(m) ? T("Такой номер уже есть (с другими пробелами).")
     : /user not found/.test(m) ? T("Такого пользователя нет.")
-    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте минут через 20.")
+    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте через 5 минут.")
     : /ton only/.test(m) ? T("Этот лот продаётся только за TON.")
     : /need price/.test(m) ? T("Укажите цену в Mest или в TON.")
     : /bad ton price/.test(m) ? T("Цена в TON: от 0,01 до 1 000 000.")
@@ -9542,7 +9649,7 @@ function marketError(e) {
 }
 function nftChip(u) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft" }, g, "@" + u); }
 function numChip(n) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft num" }, g, n); }
-function lotChip(l) { return l.gift_id || l.gift ? h("span", { class: "nft gift-chip" }, "🎁 " + lotLabel(l)) : l.number ? numChip(l.number) : nftChip(l.username); }
+function lotChip(l) { return l.gift_id || l.gift ? h("span", { class: "nft gift-chip" }, icon("giftf"), lotLabel(l)) : l.number ? numChip(l.number) : nftChip(l.username); }
 // цена лота: в Mest, в TON или обе
 function lotPrice(l) { return [l.price != null ? coins(Number(l.price)) : "", l.ton_nano ? tonStr(l.ton_nano) + " TON" : ""].filter(Boolean).join(" · "); }
 // «1,5» / «1.5» → нанотоны; пусто → null; неверно → NaN
@@ -9742,8 +9849,14 @@ async function loadLots() {
 const lotMest = (l) => (l.price != null ? Number(l.price) : Number(l.ton_nano || 0) / TON_NANO);
 function paintKinds() {
   for (const b of $("mkKinds").children) b.setAttribute("aria-checked", String(b.dataset.k === mkKind));
-  $("mkFilters").hidden = false;
-  $("mkType").parentElement.hidden = $("mkModel").parentElement.hidden = $("mkBack").parentElement.hidden = mkKind !== "gift";
+  // подарки: сначала каталог видов, фильтры — когда вид уже выбран
+  const pick = mkKind === "gift" && !$("mkType").value;
+  $("mkFilters").hidden = pick;
+  $("mkType").parentElement.hidden = true;
+  $("mkTypeBack").hidden = mkKind !== "gift";
+  $("mkModel").parentElement.hidden = $("mkBack").parentElement.hidden = mkKind !== "gift";
+  const t = (state.giftTypes || []).find((x) => x.id === $("mkType").value);
+  $("mkTypeName").textContent = t ? t.name : T("Все подарки");
 }
 function fillSelect(sel, items, keep) {
   const v = keep ? sel.value : "";
@@ -9768,6 +9881,7 @@ function paintBuy(types) {
   types = types || state.giftTypes || [];
   const isGift = mkKind === "gift";
   $("mkGiftLots").hidden = !isGift; $("mkLots").hidden = isGift;
+  if (isGift && !$("mkType").value) { paintCatalog(types); return; }
   if (isGift) {
     const ty = $("mkType").value, mo = $("mkModel").value, bk = $("mkBack").value;
     const rows = sortLots(lots.filter((l) => l.gift && (!ty || l.gift.type_id === ty) && (!mo || l.gift.nft_model === mo) && (!bk || l.gift.nft_backdrop === bk)));
@@ -9792,6 +9906,31 @@ function paintBuy(types) {
     return el;
   }) : [h("div", { class: "empty-note" }, lotsErr ? T("Не удалось загрузить лоты.") : mkKind === "num" ? T("Номера сейчас не продаются.") : T("Юзернеймы сейчас не продаются."))]));
 }
+// каталог: сначала выбираем подарок, потом смотрим его NFT. Внизу — цена от самой дешёвой, лента — если есть на продаже
+function lotPriceShort(l) { return l.price != null ? [coinMark(), nf.format(Number(l.price))] : [tonStr(l.ton_nano) + " TON"]; }
+function paintCatalog(types) {
+  const by = new Map();
+  for (const l of lots) if (l.gift) { const a = by.get(l.gift.type_id) || []; a.push(l); by.set(l.gift.type_id, a); }
+  const list = types.filter((t) => by.has(t.id) || canUpgrade(t)).sort((a, b) => (by.get(b.id) || []).length - (by.get(a.id) || []).length);
+  const total = [...by.values()].reduce((n, a) => n + a.length, 0);
+  $("mkCount").textContent = total ? total + " " + plural(total, T("подарок на продаже"), T("подарка на продаже"), T("подарков на продаже")) + T(" · выберите подарок") : "";
+  $("mkGiftLots").replaceChildren(...(list.length ? list.map((t, i) => {
+    const arr = by.get(t.id) || [];
+    const min = arr.slice().sort((a, b) => lotMest(a) - lotMest(b))[0];
+    const el = h("button", { class: "mk-type" + (arr.length ? "" : " none"), type: "button", title: t.name, onclick: () => {
+      if (!arr.length) { toast(T("Сейчас нет NFT «") + t.name + T("» на продаже")); return; }
+      $("mkType").value = t.id; paintFilters(state.giftTypes || []); paintKinds(); paintBuy();
+      $("mkGiftLots").scrollIntoView({ block: "nearest" });
+    } },
+      h("span", { class: "art" }, pxHas(t.id) ? giftLive(t, null) : giftFace(t, null)),
+      h("span", { class: "nm" }, t.name),
+      arr.length ? h("span", { class: "rb", "aria-hidden": "true" }, nf.format(arr.length)) : null,
+      h("span", { class: "pp" }, ...(min ? [T("от "), ...lotPriceShort(min)] : [T("нет в продаже")])));
+    el.style.animationDelay = Math.min(i, 12) * 30 + "ms";
+    return el;
+  }) : [h("div", { class: "mk-empty" }, lotsErr ? T("Не удалось загрузить лоты.") : T("NFT-подарков на продаже пока нет. Свой можно выставить во вкладке «Продать»."))]));
+}
+$("mkTypeBack").addEventListener("click", () => { $("mkType").value = ""; $("mkModel").value = ""; $("mkBack").value = ""; paintKinds(); paintBuy(); });
 // карточка NFT-подарка на витрине: фон и узор подарка, номер на уголке, цена внизу
 function mkCard(l, types) {
   const g = l.gift, t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
@@ -9800,14 +9939,14 @@ function mkCard(l, types) {
   const el = h("button", { class: "mk-card", type: "button", title: t.name + " №" + g.nft_number + " · " + lotPrice(l), onclick: () => openLot(l.id) },
     giftFace(t, look),
     h("span", { class: "rb", "aria-hidden": "true" }, "#" + g.nft_number),
-    l.ton_nano ? h("span", { class: "tb", title: T("Можно купить за TON") }, "💎") : null,
+    l.ton_nano ? h("span", { class: "tb", title: T("Можно купить за TON") }, icon("gem")) : null,
     h("span", { class: "nm" }, l.seller_id === state.me.id ? T("Ваш лот") : t.name),
     h("span", { class: "pp" }, ...price));
   if (look) paintNft(el, look);
   return el;
 }
 $("mkKinds").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (!b) return; mkKind = b.dataset.k; paintKinds(); paintBuy(); });
-$("mkType").addEventListener("change", () => { paintFilters(state.giftTypes || []); paintBuy(); });
+$("mkType").addEventListener("change", () => { paintFilters(state.giftTypes || []); paintKinds(); paintBuy(); });
 for (const id of ["mkModel", "mkBack", "mkSort"]) $(id).addEventListener("change", () => paintBuy());
 
 // свои лоты: открытые и последние сделки
@@ -9848,7 +9987,7 @@ async function paintSell() {
   if (!lots.length) await loadLots();
   // кошелёк для TON
   const wl = $("mkWallet");
-  const ico = h("span", { class: "wl-mi ton", "aria-hidden": "true" }, "💎");
+  const ico = h("span", { class: "wl-mi ton", "aria-hidden": "true" }, icon("gem"));
   wl.replaceChildren(ico, w.ton ? h("span", {}, T("TON придут на "), h("code", {}, shortAddr(w.ton))) : h("span", {}, T("Кошелёк TON не привязан — без него можно продавать только за Mest.")),
     h("button", { class: "btn ghost", type: "button", onclick: async () => { await linkTonWallet(!!w.ton); paintSell(); } }, w.ton ? T("Сменить") : T("Привязать")));
   const onAuc = new Set((auc.data || []).map((a) => a.gift_id));
@@ -10026,11 +10165,11 @@ $("lotBuyTon").addEventListener("click", () => {
   if (!lot || !lot.ton_nano) return;
   const l = lot, label = lotLabel(l);
   openTonPay({
-    kind: "listing", methods: l.price != null ? ["tonc", "tonm", "mest"] : ["tonc", "tonm"],
+    kind: "listing", window: 5, methods: l.price != null ? ["tonc", "tonm", "mest"] : ["tonc", "tonm"],
     nano: () => Number(l.ton_nano), mestPrice: () => (l.price != null ? Number(l.price) : 0),
     payMest: () => sb.rpc("buy_listing", { p_listing: l.id }),
     title: () => T("Купить ") + label, kick: () => T("Маркет Mestario"),
-    sub: () => l.by_admin ? T("Продаёт «Mestario»") : T("TON уходят прямо на кошелёк продавца. После создания заказа лот закреплён за вами на 20 минут."),
+    sub: () => l.by_admin ? T("Продаёт «Mestario»") : T("TON уходят прямо на кошелёк продавца. На оплату — 5 минут: всё это время лот закреплён за вами."),
     hint: () => (l.by_admin ? T("Деньги идут на кошелёк Mestario.") : T("Деньги идут напрямую продавцу, Mestario их не держит.")) + " " + (l.gift ? T("Подарок") : l.number ? T("Номер") : T("Юзернейм")) + T(" перейдёт к вам сам, обычно через 10–30 секунд после подтверждения в кошельке. Окно можно закрыть."),
     create: () => sb.rpc("ton_order_listing", { p_listing: l.id }),
     result: () => ({ ok: true, text: T("Готово! ") + label + T(" теперь ваш"), toast: label + T(" теперь ваш") }),
@@ -10487,11 +10626,11 @@ voiceEl.addEventListener("play", () => { if (profMusic && !profAudio.paused) pro
 function paintMyMusic() {
   const m = state.profile.music || "", meta = state.profile.music_meta || null, apple = /^itunes:/.test(m);
   $("pfMusicT").textContent = m ? (state.profile.music_title || T("Музыка профиля")) + (apple && meta && meta.artist ? " — " + meta.artist : "") : T("Нет музыки");
-  const ic = apple && meta && meta.cover ? h("img", { class: "mu-ic", id: "pfMusicIc", src: meta.cover, alt: "" }) : h("span", { class: "mu-ic", id: "pfMusicIc", "aria-hidden": "true" }, "♫");
+  const ic = apple && meta && meta.cover ? h("img", { class: "mu-ic", id: "pfMusicIc", src: meta.cover, alt: "" }) : h("span", { class: "mu-ic", id: "pfMusicIc", "aria-hidden": "true" }, icon("music"));
   $("pfMusicIc").replaceWith(ic);
   $("pfMusicOff").hidden = $("pfMusicPlay").hidden = !m;
   $("pfMusicName").hidden = !m || apple;
-  $("pfMusicUp").textContent = m ? T("🎵 Заменить трек") : T("🎵 Выбрать трек");
+  $("pfMusicUp").textContent = m ? T("Заменить трек") : T("Выбрать трек");
   if (document.activeElement !== $("pfMusicName")) $("pfMusicName").value = state.profile.music_title || "";
 }
 async function setMyMusic(path, title) {
@@ -10877,6 +11016,8 @@ function paintProfileChat(p) {
   });
 }
 for (const el of $("dlgUser").querySelectorAll("[data-ic]")) el.append(icon(el.dataset.ic));
+// иконки вместо смайликов: <span data-i="имя"> по всей странице
+for (const el of document.querySelectorAll("[data-i]")) { el.textContent = ""; el.append(icon(el.dataset.i)); }
 $("uContactRow").addEventListener("click", () => { if (viewed) openContactEditor(viewed); });
 $("uCallQ").addEventListener("click", () => { const dc = viewed && directWith(viewed.id); if (!dc) return; $("dlgUser").close(); openChat(dc.id); startCall(dc); });
 $("uSearchQ").addEventListener("click", () => {
@@ -12121,34 +12262,18 @@ $("bonusGift").addEventListener("click", async () => {
   renderPremium(); loadMyGifts();
   if (Number(data)) openGiftView(Number(data), true);
 });
-let vpnLink = null;
-$("vpnCopy").addEventListener("click", async () => {
-  if (!isPremium(state.profile)) { toast(T("VPN-подписка доступна только с премиумом")); return; }
-  if (!vpnLink) {
-    $("vpnCopy").disabled = true;
-    const { data, error } = await sb.rpc("premium_vpn");
-    $("vpnCopy").disabled = false;
-    if (error || typeof data !== "string" || !data) { toast(error && /premium/.test(error.message || "") ? T("VPN-подписка доступна только с премиумом") : T("Не удалось получить ссылку VPN")); return; }
-    vpnLink = data;
-  }
-  $("vpnLink").value = vpnLink; $("vpnLink").hidden = false;
-  copyText(vpnLink, T("Ссылка VPN скопирована. Откройте Happ и добавьте её из буфера обмена"));
-});
-$("vpnLink").addEventListener("focus", (e) => e.target.select());
 function renderPremium() {
   const p = state.profile, on = isPremium(p);
   $("premTitle").textContent = on ? T("Премиум активен") : T("Премиум");
   $("premSub").textContent = on ? T("до ") + dyFmt.format(new Date(p.premium_until)) : T("150 Mest за 30 дней");
   premArmed = false;
-  $("premBuy").textContent = on ? T("Продлить на 30 дней за 150 Mest") : T("Купить за 150 Mest");
+  $("premBuy").textContent = on ? T("Продлить Premium") : T("Оформить Premium");
   $("pfBio").maxLength = on ? 500 : 200;
   // бонусы премиума: каждый раз в 30 дней
   const waitDays = (at) => { const left = at ? new Date(at).getTime() + 30 * 86400e3 - Date.now() : 0; return left > 0 ? Math.ceil(left / 86400e3) : 0; };
   const wc = waitDays(p.bonus_coins_at), wg = waitDays(p.bonus_gift_at);
   $("bonusCoins").disabled = !on || wc > 0;
   $("bonusCoins").textContent = wc ? T("50 Mest: через ") + wc + T(" дн.") : T("Получить 50 Mest");
-  $("vpnCopy").textContent = on ? T("Скопировать ссылку VPN") : T("Ссылка VPN: нужен премиум");
-  if (!on) { vpnLink = null; $("vpnLink").hidden = true; $("vpnLink").value = ""; }
   $("bonusGift").disabled = !on || wg > 0;
   $("bonusGift").textContent = wg ? T("Подарок: через ") + wg + T(" дн.") : T("Получить подарок");
   $("bonusHint").textContent = on ? T("Бонусы премиума можно забирать раз в 30 дней. Подарок случайный, из тех, что выпускаются тиражом; его можно улучшить, но нельзя обменять на Mest.")
@@ -12177,21 +12302,7 @@ async function reloadMe() {
   refreshMe();
   renderPremium();
 }
-$("premBuy").addEventListener("click", async () => {
-  if (!premArmed) { premArmed = true; $("premBuy").textContent = T("Подтвердить: списать 150 Mest"); return; }
-  $("premBuy").disabled = true;
-  const { error } = await sb.rpc("buy_premium");
-  $("premBuy").disabled = false;
-  if (error) {
-    toast(/insufficient/.test(error.message || "") ? T("Не хватает Mest: премиум стоит 150") : T("Не удалось купить премиум"));
-    renderPremium();
-    return;
-  }
-  toast(T("Премиум подключён на 30 дней"));
-  await reloadMe();
-  loadWallet();
-  loadChats();
-});
+$("premBuy").addEventListener("click", () => openTonPay(PREMIUM_TON, (Number(state.balance) || 0) >= 150 ? "mest" : "tonc"));
 $("myProfileRow").addEventListener("click", () => showUser(state.profile));
 // свои подарки прямо в настройках: нажатие открывает подарок, там же его можно обменять
 let mgMode = false, mgRows = [];
@@ -12508,6 +12619,7 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   if (go === "look") { showSetPage("look"); paintMyBubble(); return; }
   if (go === "wallets") { showSetPage("wallets"); $("wlTronForm").hidden = true; loadMyWallets(true).then(paintWalletsPage); return; }
   if (go === "ai") { openAiPage(); return; }
+  if (go === "market") { $("btnMarket").click(); return; }
   if (SET_TITLES[go]) { showSetPage(go); return; }
   $("dlgSettings").close();
   if (go === "saved") startDirect(state.me.id);
@@ -12519,7 +12631,6 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   else if (go === "premium") { /* страница открывается выше */ }
 });
 // страница Mestario Premium: что входит и за сколько
-let ppArmed = false;
 (function () {
   const box = $("premSparks"), marks2 = ["✦", "✧", "★", "+"];
   let seed = 23;
@@ -12536,16 +12647,23 @@ let ppArmed = false;
 })();
 async function paintPremiumPage() {
   const p = state.profile, on = isPremium(p);
-  ppArmed = false;
-  $("ppStatus").textContent = on ? T("Премиум активен до ") + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "") : T("Больше возможностей, бонусы каждый месяц и свой стиль профиля.");
-  $("ppBuy").textContent = on ? T("Продлить на 30 дней") : T("Оформить за 150 Mest");
-  $("ppBal").textContent = "";
-  renderPremium();   // бонусы раз в 30 дней и VPN теперь на этой странице
-  const w = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
-  if (w.data && w.data.balance != null) {
-    state.balance = Number(w.data.balance);
-    $("ppBal").textContent = T("На счёте: ") + coins(state.balance) + (state.balance < 150 ? T(". Не хватает: ") + coins(150 - state.balance) : "");
+  $("ppStatus").textContent = on ? T("Спасибо, что вы с нами! Все возможности открыты.") : T("Больше возможностей, бонусы каждый месяц и свой стиль профиля.");
+  $("ppPlanTitle").textContent = on ? T("Premium активен") : T("Premium на 30 дней");
+  $("ppPlanPrice").textContent = on ? "" : "150 Mest";
+  $("ppBuy").textContent = on ? T("Продлить на 30 дней") : T("Оформить Premium");
+  if (on) {
+    const left = Math.max(0, Math.ceil((new Date(p.premium_until).getTime() - Date.now()) / 86400e3));
+    $("ppPlanSub").textContent = T("до ") + dyFmt.format(new Date(p.premium_until)).replace(/\s*г\.$/, "");
+    $("ppDays").hidden = false;
+    $("ppDaysT").textContent = T("Осталось дней: ") + left + T(". Продление прибавится к сроку.");
+    $("ppBarFill").style.width = Math.min(100, Math.round(left / 30 * 100)) + "%";
+  } else {
+    $("ppPlanSub").textContent = T("Оплата Mest, TON или USDT");
+    $("ppDays").hidden = true;
   }
+  renderPremium();   // бонусы раз в 30 дней
+  const w = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
+  if (w.data && w.data.balance != null) state.balance = Number(w.data.balance);
 }
 const PREMIUM_TON = {
   kind: "premium", icon: "★", methods: ["tonc", "tonm", "usdt", "mest"],
@@ -12555,30 +12673,13 @@ const PREMIUM_TON = {
   title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, скидка на подарки и другое"),
   kick: () => T("Больше возможностей"),
   feats: () => [T("Значок премиума у имени"), T("Корона в подарок при первом премиуме"), T("Свой цвет имени"), T("Скидка 20 % на подарки"),
-    T("50 Mest и подарок каждый месяц"), T("Баннер профиля: фото, GIF или видео"), T("VPN-подписка и показ экрана в HD")],
+    T("50 Mest и подарок каждый месяц"), T("Баннер профиля: фото, GIF или видео"), T("Показ экрана в HD и особые фоны")],
   hint: () => T("Премиум включится сам, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть."),
   create: () => sb.rpc("ton_order_premium"),
   result: () => ({ ok: true, text: T("Готово! Премиум подключён на 30 дней"), toast: T("Премиум подключён на 30 дней") }),
   done: async () => { await reloadMe(); try { $("sv_premium").textContent = T("активен"); paintPremiumPage(); } catch (e) {} },
 };
-$("ppTon").addEventListener("click", () => openTonPay(PREMIUM_TON, "tonc"));
-$("premTon").addEventListener("click", () => openTonPay(PREMIUM_TON));
-$("ppBuy").addEventListener("click", async () => {
-  if (!ppArmed) { ppArmed = true; $("ppBuy").textContent = T("Подтвердить: списать 150 Mest"); return; }
-  $("ppBuy").disabled = true;
-  const { error } = await sb.rpc("buy_premium");
-  $("ppBuy").disabled = false;
-  if (error) {
-    toast(/insufficient/.test(error.message || "") ? T("Не хватает Mest: премиум стоит 150") : T("Не удалось купить премиум"));
-    paintPremiumPage();
-    return;
-  }
-  toast(T("Премиум подключён на 30 дней"));
-  await reloadMe();
-  $("sv_premium").textContent = T("активен");
-  paintPremiumPage();
-  loadChats();
-});
+$("ppBuy").addEventListener("click", () => openTonPay(PREMIUM_TON, (Number(state.balance) || 0) >= 150 ? "mest" : "tonc"));
 $("ppBonus").addEventListener("click", () => { $("ppTools").scrollIntoView({ block: "start", behavior: "smooth" }); });
 // страница «Мои Mest»: баланс и история операций
 let coinOps = [], coinOpTab = "all";
@@ -12599,7 +12700,7 @@ let coinOps = [], coinOpTab = "all";
 })();
 function opIcon(reason, a) {
   const r = reason || "";
-  return /Аукцион|ставк/i.test(r) ? "🔨" : /Улучшение/.test(r) ? "✨" : /одар/.test(r) ? "🎁" : /ремиум|бонус/i.test(r) ? "⭐" : /@/.test(r) ? "💎" : a > 0 ? "➕" : "➖";
+  return icon(/Аукцион|ставк/i.test(r) ? "gavel" : /Улучшение/.test(r) ? "sparkle" : /одар/.test(r) ? "giftf" : /ремиум|бонус/i.test(r) ? "starf" : /@|TON|USDT|номер/.test(r) ? "gem" : a > 0 ? "inc" : "dec");
 }
 function paintCoinOps() {
   for (const b of $("cpTabs").children) b.setAttribute("aria-selected", String(b.dataset.op === coinOpTab));
@@ -12718,7 +12819,7 @@ function tonErr(error) {
   const m = String(error && error.message || "");
   return /too many/.test(m) ? T("Слишком много заказов подряд — подождите несколько минут.")
     : /bad amount/.test(m) ? T("Сумма от 10 до 100 000 Mest.")
-    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте минут через 20.")
+    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте через 5 минут.")
     : /not open/.test(m) ? T("Этот лот уже закрыт.")
     : /own listing/.test(m) ? T("Это ваш собственный лот.")
     : /no ton price|bad address/.test(m) ? T("Этот лот нельзя купить за TON.")
@@ -12888,9 +12989,8 @@ function paintTopup() {
   const ok = price !== "—" && tpAvail(tpMethod);
   $("tpPay").disabled = !ok;
   $("tpPay").className = "pr-btn" + (tpMethod === "tonc" || tpMethod === "tonm" ? " ton" : tpMethod === "usdt" ? " usdt" : "");
-  $("tpPay").textContent = tpMethod === "tonc" ? T("Оплатить")
-    : tpMethod === "mest" ? (tpArmed ? T("Подтвердить: списать ") + price : T("Оплатить"))
-    : T("Получить реквизиты");
+  if (tpMethod === "mest" && tpArmed) $("tpPay").replaceChildren(T("Подтвердить"), h("small", {}, T("спишется ") + price));
+  else $("tpPay").textContent = tpMethod === "tonc" || tpMethod === "mest" ? T("Оплатить") : T("Реквизиты");
   $("tpWallet").hidden = tpMethod !== "tonc";
 }
 function tpState(kind, text) {
@@ -12924,14 +13024,7 @@ function tpOrderShow(o, net) {
     $("tpDeep").hidden = true;
     $("tpWarn").textContent = T("Только USDT в сети TRON (TRC-20). Переведите ровно ") + usdtExact(o.micro) + T(" USDT — по точной сумме мы находим ваш платёж. Если перевод идёт с биржи, комиссию сети биржа берёт сверху: на адрес должна прийти вся сумма.");
     paintQr(o.address);
-    const end = new Date(o.expires_at).getTime();
-    const tick = () => {
-      const ms = end - Date.now();
-      $("tpTimer").className = "co-timer" + (ms < 5 * 60000 ? " late" : "");
-      $("tpTimer").textContent = ms > 0 ? T("осталось ") + Math.floor(ms / 60000) + ":" + String(Math.floor(ms / 1000) % 60).padStart(2, "0") : T("время вышло");
-      if (ms <= 0) clearInterval(tpTimerT);
-    };
-    clearInterval(tpTimerT); tick(); tpTimerT = setInterval(tick, 1000);
+    tpTimerStart(o, false);
   } else {
     const cmt = "Mestario " + o.code;
     $("tpNet").textContent = "TON";
@@ -12942,10 +13035,30 @@ function tpOrderShow(o, net) {
     $("tpCmt").textContent = cmt;
     const deep = "ton://transfer/" + o.address + "?amount=" + o.nano + "&text=" + encodeURIComponent(cmt);
     $("tpDeep").href = deep; $("tpDeep").hidden = false;
-    $("tpWarn").textContent = T("Обязательно укажите комментарий — без него платёж не найдётся. Сумма — не меньше указанной.");
+    $("tpWarn").textContent = T("Обязательно укажите комментарий — без него платёж не найдётся. Сумма — не меньше указанной.") + (o.expires_at ? T(" На оплату — 5 минут.") : "");
     clearInterval(tpTimerT); $("tpTimer").textContent = "";
+    if (o.expires_at) tpTimerStart(o, true);
     paintQr(deep);
   }
+}
+// обратный отсчёт заказа; у лотов (hard) по окончании заказ закрывается: 5 минут — нет оплаты, всё
+let tpSentCode = null;   // перевод уже подписан в кошельке — таймер его не отменяет
+function tpTimerStart(o, hard) {
+  const end = new Date(o.expires_at).getTime(), code = o.code;
+  const tick = () => {
+    const ms = end - Date.now();
+    $("tpTimer").className = "co-timer" + (ms < (hard ? 60000 : 5 * 60000) ? " late" : "");
+    $("tpTimer").textContent = ms > 0 ? T("осталось ") + Math.floor(ms / 60000) + ":" + String(Math.floor(ms / 1000) % 60).padStart(2, "0") : T("время вышло");
+    if (ms > 0) return;
+    clearInterval(tpTimerT);
+    if (hard && tpWatchCode === code && tpSentCode !== code) {
+      tpWatchCode = null;
+      tpSteps(-1);
+      $("tpManual").hidden = true;
+      tpState("err", T("Время на оплату вышло — лот снова доступен всем. Можно создать новый заказ. Если вы уже перевели TON, напишите в поддержку с кодом ") + code + ".");
+    }
+  };
+  clearInterval(tpTimerT); tick(); tpTimerT = setInterval(tick, 1000);
 }
 function tpShowManual(o, net) { tpOrderShow(o, net); $("tpManual").hidden = false; setTimeout(() => $("tpOrder").scrollIntoView({ block: "start", behavior: motionOK() ? "smooth" : "auto" }), 60); }
 // ждём подключения кошелька: true — подключён, false — окно закрыли
@@ -12994,13 +13107,13 @@ $("tpPay").addEventListener("click", async () => {
   if (method === "usdt") {
     tpShowManual(o, "usdt");
     tpState("wait", T("Ждём перевод USDT. Как только сеть его подтвердит, заказ выполнится сам."));
-    tpWatch(o.code, mode, false, 60);
+    tpWatch(o.code, mode, false, mode.window || 60);
     return;
   }
   if (method === "tonm") {
     tpShowManual(o, "ton");
     tpState("wait", T("Ждём перевод. Как только сеть его подтвердит, заказ выполнится сам."));
-    tpWatch(o.code, mode, false, 60);
+    tpWatch(o.code, mode, false, mode.window || 60);
     return;
   }
   // TON через кошелёк
@@ -13008,7 +13121,7 @@ $("tpPay").addEventListener("click", async () => {
   let ui;
   try { ui = await tonUIReady(); await ui.connectionRestored; }
   catch (e) {
-    tpShowManual(o, "ton"); tpWatch(o.code, mode, false, 60);
+    tpShowManual(o, "ton"); tpWatch(o.code, mode, false, mode.window || 60);
     tpState("err", T("Не удалось открыть выбор кошелька. Переведите вручную — реквизиты ниже."));
     return;
   }
@@ -13017,18 +13130,19 @@ $("tpPay").addEventListener("click", async () => {
     if (!(await tonConnect(ui))) {
       tpReopen(); tpShowManual(o, "ton");
       tpState("err", T("Кошелёк не подключён. Выберите кошелёк или переведите вручную — реквизиты ниже."));
-      tpWatch(o.code, mode, false, 60); return;
+      tpWatch(o.code, mode, false, mode.window || 60); return;
     }
     await ui.sendTransaction({
-      validUntil: Math.floor(Date.now() / 1000) + 900,
+      validUntil: Math.floor(Math.min(Date.now() + 900000, o.expires_at ? new Date(o.expires_at).getTime() : Infinity) / 1000),
       messages: [{ address: o.address, amount: String(o.nano), payload: tonComment("Mestario " + o.code) }],
     });
   } catch (e) {
     tpReopen(); tpShowManual(o, "ton");
     tpState("err", /Reject/i.test(String(e && (e.name || e.message))) ? T("Вы отменили перевод. Можно попробовать ещё раз или перевести вручную.") : T("Перевод не отправлен. Попробуйте ещё раз или переведите вручную."));
-    tpWatch(o.code, mode, false, 60); return;
+    tpWatch(o.code, mode, false, mode.window || 60); return;
   }
   tpReopen();
+  tpSentCode = o.code;
   tpState("wait", T("Ждём подтверждения сети…"));
   tpWatch(o.code, mode, true, 6);
 });
@@ -13754,7 +13868,7 @@ async function claimDaily() {
   const { data, error } = await sb.rpc("claim_daily");
   if (error || !data) { dailyKey = ""; return; }
   if (!data.claimed) return;
-  toast("🎁 " + T("Ежедневная награда: +") + coins(data.amount) + " · " + T("день ") + data.streak + T(" подряд") + ". " + T("Завтра: +") + coins(data.next));
+  toast(T("Ежедневная награда: +") + coins(data.amount) + " · " + T("день ") + data.streak + T(" подряд") + ". " + T("Завтра: +") + coins(data.next));
   refreshMe();
 }
 
@@ -13866,7 +13980,7 @@ function cacheChanged(m) {
 $("aiIco").append(icon("ai")); $("abIco").append(icon("ai"));
 function credText(n) { return n + " " + plural(n, T("кредит"), T("кредита"), T("кредитов")); }
 let aiCredits = 0;
-const AI = { chats: [], id: null, msgs: [], busy: false, max: 5, effort: 1, att: [], rec: null, urls: new Map(), gal: null };
+const AI = { chats: [], id: null, msgs: [], busy: false, max: 5, effort: 0, att: [], rec: null, urls: new Map(), gal: null };
 const AI_EFF = [{ k: "low", t: T("Быстро") }, { k: "medium", t: T("Обычно") }, { k: "max", t: T("Максимум") }];
 const AI_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function paintAiCredits(n) {
@@ -13979,7 +14093,7 @@ function aiFillModel(body, m) {
   else kids.push(...aiMd(m.body || ""));
   if (m.streaming && m.body) { const last = kids[kids.length - 1]; const cur = h("span", { class: "cur", "aria-hidden": "true" }); if (last && last.tagName === "P") last.append(" ", cur); else kids.push(cur); }
   const im = aiImgs(m.images); if (im) kids.push(im);
-  if (!m.streaming && m.secs != null) kids.push(h("span", { class: "meta" }, "⏱ " + m.secs + T(" с") + (m.charged != null && !state.isAdmin ? " · −" + credText(m.charged) : "")));
+  if (!m.streaming && m.secs != null) kids.push(h("span", { class: "meta" }, icon("clock"), m.secs + T(" с") + (m.charged != null && !state.isAdmin ? " · −" + credText(m.charged) : "")));
   body.replaceChildren(...kids);
 }
 function aiRender() {
@@ -14087,8 +14201,8 @@ function aiPaintEffort(now) {
   setTimeout(() => { w.style.width = ""; }, 320);
 }
 $("aiEffort").addEventListener("mousedown", (e) => e.preventDefault());
-$("aiEffort").addEventListener("click", (e) => { e.stopPropagation(); AI.effort = (AI.effort + 1) % AI_EFF.length; aiPaintEffort(); try { localStorage.setItem("mestario.aiEffort", String(AI.effort)); } catch (x) {} });
-try { const v = localStorage.getItem("mestario.aiEffort"); if (v === "0" || v === "1" || v === "2") AI.effort = Number(v); } catch (e) {}
+$("aiEffort").addEventListener("click", (e) => { e.stopPropagation(); AI.effort = (AI.effort + 1) % AI_EFF.length; aiPaintEffort(); try { localStorage.setItem("mestario.aiEffort2", String(AI.effort)); } catch (x) {} });
+try { const v = localStorage.getItem("mestario.aiEffort2"); if (v === "0" || v === "1" || v === "2") AI.effort = Number(v); } catch (e) {}
 // вложения: до 6 картинок
 $("aiAdd").addEventListener("mousedown", (e) => e.preventDefault());
 $("aiAdd").addEventListener("click", (e) => { e.stopPropagation(); $("aiFile").click(); });
@@ -15612,7 +15726,7 @@ function beReply(r, kind) {
     h("div", { class: "be-sub" }, T("Кнопки под сообщением:")), il,
     h("label", { class: "be-sub" }, hide, T("Убрать клавиатуру после этого ответа")),
     ...(pay ? [h("div", { class: "be-sub" }, T("Продажа за Mest (необязательно): под ответом появится кнопка «Оплатить», Mest придут на баланс бота")), h("div", { class: "be-pay" }, pay, paid),
-      h("div", { class: "be-sub" }, T("🎁 Выплата из фонда бота (игры и бонусы, необязательно). С ценой — это ставка: оплатил → с шансом получает выплату, иначе — ответ после оплаты. Без цены — бонус: выдаётся не чаще выбранного, а при проигрыше показывается основной текст.")),
+      h("div", { class: "be-sub" }, T("Выплата из фонда бота (игры и бонусы, необязательно). С ценой — это ставка: оплатил → с шансом получает выплату, иначе — ответ после оплаты. Без цены — бонус: выдаётся не чаще выбранного, а при проигрыше показывается основной текст.")),
       h("div", { class: "be-pay" }, give, chance, cd, win)] : []));
   box.read = () => {
     const o = { text: ta.value.trim() };
@@ -15718,7 +15832,7 @@ async function paintBeSales(id) {
     paintBeSales(id);
   } }, T("Пополнить бота"));
   box.append(
-    h("div", { class: "be-wallet" }, h("b", {}, T("💰 Баланс бота: ") + bal + " Mest"),
+    h("div", { class: "be-wallet" }, h("b", {}, T("Баланс бота: ") + bal + " Mest"),
       h("span", { class: "sm" }, T("Продаж: ") + (data.count || 0) + T(" · всего получено ") + (data.total || 0) + " Mest"
         + (data.deposited ? T(" · пополнено ") + data.deposited : "") + (data.paid_out ? T(" · выплачено игрокам ") + data.paid_out : "")
         + (data.withdrawn ? T(" · выведено ") + data.withdrawn : ""))),
@@ -15753,7 +15867,7 @@ async function paintBeAi() {
     const { error: e } = await sb.rpc("bot_ai_trial");
     if (e) { toast(/used/.test(e.message || "") ? T("Пробный период уже использован") : T("Пробный период — только с премиумом")); return; }
     toast(T("ИИ для ботов включён на 3 дня")); paintBeAi();
-  } }, T("🎁 3 дня бесплатно (премиум)")));
+  } }, T("3 дня бесплатно (премиум)")));
   for (const [d, label] of [[1, T("1 день")], [7, T("7 дней")], [30, T("30 дней")]]) {
     const price = data.prices && data.prices[String(d)];
     buy.append(h("button", { class: "btn ghost", type: "button", onclick: async () => {
@@ -15783,10 +15897,10 @@ var beGenHist = [];
 function paintGenLog() {
   const log = $("beGenLog");
   log.replaceChildren(...beGenHist.slice(-5).map((x, i, arr) => h("div", { class: "lg" },
-    h("q", {}, x.request), h("span", { class: "sm" }, "🤖 " + x.summary),
+    h("q", {}, x.request), h("span", { class: "sm" }, icon("bot"), x.summary),
     i === arr.length - 1 ? h("button", { class: "link", type: "button", onclick: () => {
       const last = beGenHist.pop(); if (last) { beFill(last.before); paintGenLog(); toast(T("Отменено — вернул как было до этой просьбы")); }
-    } }, T("↶ Отменить этот шаг")) : null)));
+    } }, icon("undo"), T("Отменить этот шаг")) : null)));
   $("beGenText").placeholder = beGenHist.length ? T("Что поправить? Например: «сделай кнопки в два ряда» или «добавь цену 50 Mest к VIP»")
     : T("Например: «бот-викторина про футбол с 5 вопросами и кнопками ответов» или «добавь раздел Помощь и кнопку Сайт»");
 }
@@ -15814,7 +15928,7 @@ $("beGen").addEventListener("click", async () => {
     $("beGenText").value = "";
     toast(T("Готово! Проверьте и нажмите «Сохранить». Можно попросить поправить"));
   } catch (e) { toast(T("Нет связи — попробуйте ещё раз")); }
-  finally { b.disabled = false; b.textContent = T("✨ Собрать с ИИ"); }
+  finally { b.disabled = false; b.replaceChildren(h("span", { class: "ii", "aria-hidden": "true" }, icon("ai")), T("Собрать с ИИ")); }
 });
 function beRead() {
   const cfg = { start: $("beStart").firstChild.read(), cmds: [...$("beCmds").children].map((x) => x.read()).filter((c) => c.on && c.text).slice(0, 200), unknown: $("beUnknown").firstChild.read() };
@@ -16218,7 +16332,7 @@ function callQPick(onPick) {
       return h("button", { class: "cq" + (k === cur ? " sel" : "") + (locked ? " locked" : ""), type: "button", onclick: () => {
         if (locked) { toast(T("«") + T(q.t) + T("» — с Премиумом")); box.hidden = true; call.min = true; callPaint(); $("btnSettings").click(); showSetPage("premium"); paintPremiumPage(); return; }
         settings.shareQ = k; try { localStorage.setItem("soroka.settings", JSON.stringify(settings)); } catch (e) {} box.hidden = true; onPick(k);
-      } }, h("b", {}, T(q.t), q.prem ? h("span", { class: "cq-p" }, "👑 Премиум") : null), h("span", {}, T(q.d)));
+      } }, h("b", {}, T(q.t), q.prem ? h("span", { class: "cq-p" }, icon("crown"), T("Премиум")) : null), h("span", {}, T(q.d)));
     }),
     h("button", { class: "link cq-x", type: "button", onclick: () => { box.hidden = true; } }, T("Отмена")));
   box.hidden = false;
@@ -16564,7 +16678,7 @@ function mePanel() {
     const zoom = h("input", { type: "range", min: "1", max: "4", step: "0.01", value: String(s.zoom), "aria-label": T("Масштаб") });
     zoom.addEventListener("input", () => { s.zoom = Number(zoom.value); s.dirty = true; meClamp(); });
     p.replaceChildren(...[asp,
-      h("div", { class: "me-row" }, h("span", { class: "me-l" }, "🔍"), zoom,
+      h("div", { class: "me-row" }, h("span", { class: "me-l" }, icon("find")), zoom,
         h("button", { type: "button", class: "me-chip", title: T("Повернуть"), onclick: () => { s.rot = (s.rot + 1) % 4; s.zoom = 1; s.dirty = true; const d = meDims(); s.cx = d.rw / 2; s.cy = d.rh / 2; meClamp(); mePanel(); } }, "⟳ " + T("Повернуть"))),
       h("div", { class: "me-hint" }, T("Двигайте пальцем или мышкой, чтобы выбрать часть кадра"))].filter(Boolean));
   } else if (s.tool === "draw") {
@@ -16572,8 +16686,8 @@ function mePanel() {
     size.addEventListener("input", () => { s.size = Number(size.value); });
     p.replaceChildren(
       h("div", { class: "me-colors" }, ...ME_COLORS.map((c) => { const b = h("button", { type: "button", class: "me-col" + (s.color === c ? " on" : ""), "aria-label": c, onclick: () => { s.color = c; mePanel(); } }); b.style.background = c; return b; })),
-      h("div", { class: "me-row" }, h("span", { class: "me-l" }, "✏️"), size,
-        h("button", { type: "button", class: "me-chip", disabled: !s.strokes.length, onclick: () => { s.strokes.pop(); mePanel(); } }, "↶ " + T("Назад")),
+      h("div", { class: "me-row" }, h("span", { class: "me-l" }, icon("pen")), size,
+        h("button", { type: "button", class: "me-chip", disabled: !s.strokes.length, onclick: () => { s.strokes.pop(); mePanel(); } }, icon("undo"), T("Назад")),
         h("button", { type: "button", class: "me-chip", disabled: !s.strokes.length, onclick: () => { s.strokes = []; mePanel(); } }, T("Стереть всё"))),
       h("div", { class: "me-hint" }, T("Рисуйте прямо на фото")));
   } else if (s.tool === "time") {
@@ -17298,7 +17412,7 @@ function deviceName(ua) {
   ua = ua || "";
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
   const br = /YaBrowser/.test(ua) ? "Яндекс Браузер" : /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Chrome|CriOS/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "";
-  return { title: [br, os].filter(Boolean).join(" · ") || T("Неизвестное устройство"), ico: /iPhone|Android.*Mobile/.test(ua) ? "📱" : /iPad|Android/.test(ua) ? "📲" : "💻" };
+  return { title: [br, os].filter(Boolean).join(" · ") || T("Неизвестное устройство"), ico: /iPhone|Android.*Mobile|iPad|Android/.test(ua) ? "mobile" : "laptop" };
 }
 let devArmed = null;
 async function paintDevices() {
@@ -17311,7 +17425,7 @@ async function paintDevices() {
     const n = deviceName(d.user_agent);
     const when = d.current ? T("это устройство") : T("было в сети ") + dFmt.format(new Date(d.active_at)) + ", " + tFmt.format(new Date(d.active_at));
     return h("div", { class: "dev" + (d.current ? " cur" : "") },
-      h("span", { class: "di", "aria-hidden": "true" }, n.ico),
+      h("span", { class: "di", "aria-hidden": "true" }, icon(n.ico)),
       h("span", { class: "dt" }, h("b", {}, n.title), h("small", {}, when), h("small", {}, T("вход ") + dFmt.format(new Date(d.created_at)) + (d.ip ? " · " + d.ip : ""))),
       d.current ? null : d.can_kick
         ? h("button", { class: "btn danger", type: "button", onclick: async (e) => {
@@ -18039,7 +18153,7 @@ async function loadScheduled() {
   schedRows = data || [];
   const self = isSelfChat(state.chats.get(chat));
   $("schedChip").hidden = !schedRows.length;
-  $("schedChip").textContent = "🕒 " + (self ? T("Напоминания: ") : T("Отложенные: ")) + schedRows.length + " · " + T("ближайшее ") + whenFmt(schedRows[0] && schedRows[0].send_at);
+  $("schedChip").textContent = (self ? T("Напоминания: ") : T("Отложенные: ")) + schedRows.length + " · " + T("ближайшее ") + whenFmt(schedRows[0] && schedRows[0].send_at);
   if ($("dlgSchedList").open) paintSchedList();
 }
 function isSelfChat(c) { return !!(c && !c.is_group && !other(c)); }
@@ -18047,7 +18161,7 @@ function whenFmt(d) { if (!d) return ""; const x = new Date(d); return dFmt.form
 function paintSchedList() {
   $("schedList").replaceChildren(...(schedRows.length ? schedRows.map((r) => h("div", { class: "sched-item" },
     h("div", { class: "tx" }, r.body),
-    h("div", { class: "when" }, h("span", {}, "🕒 " + whenFmt(r.send_at)),
+    h("div", { class: "when" }, h("span", { class: "when-t" }, icon("clock"), whenFmt(r.send_at)),
       h("button", { class: "link", type: "button", style: "color:var(--danger)", onclick: async () => {
         const { error } = await sb.rpc("cancel_scheduled", { p_id: r.id });
         if (error) { toast(T("Не удалось отменить")); return; }
@@ -18097,7 +18211,7 @@ $("schedForm").addEventListener("submit", (e) => {
     if (!$("text").value.trim()) return;
     closeCtx();
     const self = isSelfChat(state.chats.get(state.activeId));
-    ctxEl = h("div", { class: "ctx", role: "menu" }, h("button", { type: "button", role: "menuitem", onclick: () => { closeCtx(); openSchedule(); } }, h("span", {}, "🕒 " + (self ? T("Напомнить себе") : T("Отправить позже")))));
+    ctxEl = h("div", { class: "ctx", role: "menu" }, h("button", { type: "button", role: "menuitem", onclick: () => { closeCtx(); openSchedule(); } }, h("span", {}, (self ? T("Напомнить себе") : T("Отправить позже")))));
     document.body.append(ctxEl);
     const r = b.getBoundingClientRect();
     ctxEl.style.left = Math.max(8, Math.min(r.right - ctxEl.offsetWidth, innerWidth - ctxEl.offsetWidth - 8)) + "px";

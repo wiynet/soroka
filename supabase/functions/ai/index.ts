@@ -689,8 +689,9 @@ type Part = { text?: string; inlineData?: { mimeType: string; data: string } };
 type Content = { role: "user" | "model"; parts: Part[] };
 function effortCfg(model: string, effort: string, extra: Record<string, unknown>) {
   if (effort === "low" || noThink.has(model)) return genCfg(model, extra);
-  if (/gemini-2\.5/.test(model)) return { ...extra, thinkingConfig: { thinkingBudget: effort === "max" ? 8192 : 1024 } };
-  if (/gemini-[3-9]/.test(model)) return { ...extra, thinkingConfig: { thinkingLevel: effort === "max" ? "high" : "low" } };
+  // думаем по минимуму: «обычно» — коротко, «максимум» — умеренно (долгое раздумье только тормозит ответ)
+  if (/gemini-2\.5/.test(model)) return { ...extra, thinkingConfig: { thinkingBudget: effort === "max" ? 2048 : 256 } };
+  if (/gemini-[3-9]/.test(model)) return { ...extra, thinkingConfig: { thinkingLevel: effort === "max" ? "medium" : "low" } };
   return extra;
 }
 async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void) {
@@ -698,7 +699,7 @@ async function streamContents(k: string, model: string, contents: Content[], eff
     headers: { "content-type": "application/json", "x-goog-api-key": k },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYS }] }, contents, generationConfig: gc }) });
   const c = new AbortController();
-  const first = effort === "max" ? 70000 : effort === "medium" ? 35000 : 15000;   // до первых слов: думать дольше — ждём дольше
+  const first = effort === "max" ? 40000 : effort === "medium" ? 20000 : 12000;   // до первых слов: думать дольше — ждём дольше
   let tm = setTimeout(() => c.abort(), first);
   let got = "";
   try {
@@ -778,8 +779,9 @@ async function aiChat(req: Request, input: any) {
         for (const r of rows) {
           const parts: Part[] = [];
           if (r.role === "user" && withImg.includes(r.id)) {
-            for (const path of (r.images || []).slice(0, left)) {
-              const { data: blob } = await sb.storage.from("ai").download(path);
+            const paths = (r.images || []).slice(0, left);
+            const blobs = await Promise.all(paths.map((path: string) => sb.storage.from("ai").download(path).then((x: any) => x.data).catch(() => null)));
+            for (const blob of blobs) {
               if (!blob) continue;
               parts.push({ inlineData: { mimeType: blob.type || "image/jpeg", data: b64(new Uint8Array(await blob.arrayBuffer())) } });
               left--;
