@@ -1,4 +1,4 @@
-// Mestario: проверка оплат в TON (пополнение Mest, премиум, NFT-лоты). Смотрит последние входящие переводы
+// Mestario: проверка оплат в TON и USDT TRC-20 (пополнение Mest, премиум, NFT-лоты). Смотрит последние входящие переводы
 // на кошелёк Mestario и на кошельки продавцов (публичный API toncenter), находит комментарий с кодом заказа «MST-XXXXXX» и зачисляет Mest
 // через public.ton_settle — один раз на заказ и один раз на транзакцию.
 // Вызывают: экран оплаты (с токеном пользователя, body {code}) и расписание раз в минуту (без body).
@@ -68,11 +68,34 @@ async function scan(): Promise<number> {
   }
   return paid;
 }
+// USDT TRC-20: переводы без комментария, заказ узнаём по точной сумме (к цене добавлены уникальные центы)
+const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+async function scanUsdt(): Promise<number> {
+  let p: any;
+  try { p = await rpc("usdt_pending"); } catch { return 0; }   // USDT ещё не настроен
+  const orders: any[] = p && p.address ? (p.orders || []) : [];
+  if (!orders.length) return 0;
+  const r = await fetch(`https://api.trongrid.io/v1/accounts/${p.address}/transactions/trc20?only_to=true&only_confirmed=true&limit=100&contract_address=${USDT}`);
+  if (!r.ok) throw new Error("trongrid " + r.status);
+  const j = await r.json();
+  let paid = 0;
+  for (const tx of j.data || []) {
+    if (tx.to !== p.address || tx.type !== "Transfer" || tx.token_info?.address !== USDT) continue;
+    const o = orders.find((x) => x.micro === String(tx.value) && Number(tx.block_timestamp) >= Number(x.created) - 60000);
+    if (!o) continue;
+    const res = await rpc("usdt_settle", { p_code: o.code, p_tx: "tron:" + tx.transaction_id, p_micro: Number(tx.value), p_from: String(tx.from || ""), p_to: p.address, p_ts_ms: Number(tx.block_timestamp) });
+    if (res === "paid") { paid++; orders.splice(orders.indexOf(o), 1); }
+  }
+  return paid;
+}
 function scanThrottled(): Promise<number> {
   if (running) return running;
   if (Date.now() - lastScan < 2500) return Promise.resolve(0);
   lastScan = Date.now();
-  running = scan().finally(() => { running = null; });
+  running = Promise.allSettled([scan(), scanUsdt()]).then((rs) => {
+    for (const x of rs) if (x.status === "rejected") console.error(x.reason);
+    return rs.reduce((n, x) => n + (x.status === "fulfilled" ? x.value : 0), 0);
+  }).finally(() => { running = null; });
   return running;
 }
 
