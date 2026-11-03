@@ -11875,7 +11875,8 @@ $("tpPay").addEventListener("click", async () => {
     tpState("err", T("Не удалось открыть выбор кошелька. Переведите вручную — данные ниже."));
     $("tpManual").open = true; return;
   }
-  $("dlgTopup").close();   // окно TON Connect должно быть сверху
+  // окно TON Connect рисуется обычным слоем, а открытые <dialog> всегда выше — закрываем все
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
   try {
     if (!(await tonConnect(ui))) {
       tpReopen(); $("tpPay").disabled = false;
