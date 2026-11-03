@@ -12049,7 +12049,7 @@ function openTonPay(mode, method) {
   if (!$("dlgTopup").open) $("dlgTopup").showModal();
   tonUIReady().then(paintTonWallet).catch(() => {});
   loadPayInfo().then(() => { if (tpMode === mode) paintTopup(); });
-  if (state.balance == null) sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle().then(({ data }) => { state.balance = data ? Number(data.balance) : 0; if (tpMode === mode) paintTopup(); });
+  if (mode.methods.includes("mest")) sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle().then(({ data }) => { if (data) state.balance = Number(data.balance); if (tpMode === mode) paintTopup(); });
 }
 function tpAmount() {
   const own = $("tpOwn").value.trim();
