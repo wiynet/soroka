@@ -11905,7 +11905,7 @@ $("cpBuy").addEventListener("click", openTopup);
 // с кодом заказа — остаётся подтвердить. Сервер (функция ton-check) находит перевод в блокчейне и начисляет Mest.
 const TON_UI_SRC = "https://cdn.jsdelivr.net/npm/@tonconnect/ui@5.0.1/dist/tonconnect-ui.min.js";
 const TON_PACKS = [100, 500, 1000, 5000];
-const TON_NANO = 10000000; // нанотонов за 1 Mest (0,01 TON); сервер берёт курс из своей настройки
+let TON_NANO = 2000000; // нанотонов за 1 Mest (0,002 TON); точное значение приходит с сервера (pay_info)
 let tonUI = null, tonUILoad = null, tpMest = 500, tpWatchCode = null;
 const tonNf = new Intl.NumberFormat(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU", { maximumFractionDigits: 4 });
 const tonStr = (nano) => tonNf.format(Number(nano) / 1e9);
@@ -11973,10 +11973,14 @@ async function paintQr(text) {
 }
 // настройки оплаты с сервера: включён ли USDT, адрес и курс
 function loadPayInfo() {
-  return payInfoLoad || (payInfoLoad = sb.rpc("pay_info").then(({ data }) => { payInfo = data || {}; }, () => { payInfo = {}; }));
+  return payInfoLoad || (payInfoLoad = sb.rpc("pay_info").then(({ data }) => {
+    payInfo = data || {};
+    if (Number(payInfo.nano_per_mest) > 0) TON_NANO = Number(payInfo.nano_per_mest);
+  }, () => { payInfo = {}; payInfoLoad = null; }));
 }
 const usdtOn = () => !!(payInfo && payInfo.usdt_on && payInfo.usdt_address);
-const usdtMicro = (units) => units * Number(payInfo && payInfo.usdt_micro_per_mest || 0);
+// цена в USDT = цена в TON × курс; до целых центов вверх (к заказу сервер добавит ещё 1–99 уникальных центов)
+const usdtMicro = (units) => Math.ceil(units * Number(payInfo && payInfo.usdt_micro_per_mest || 0) / 10000) * 10000;
 const usdtStr = (micro) => (Number(micro) / 1e6).toFixed(2).replace(/\.00$/, "") ;
 const usdtExact = (micro) => (Number(micro) / 1e6).toFixed(2);
 function tonErr(error) {
@@ -12022,7 +12026,7 @@ function paintMethods() {
 }
 const TOPUP_MODE = {
   kind: "mest", pick: true, methods: ["tonc", "tonm", "usdt"],
-  title: () => T("Пополнить Mest"), sub: () => T("1 Mest = 0,01 TON"),
+  title: () => T("Пополнить Mest"), sub: () => "1 Mest = " + tonStr(TON_NANO) + " TON" + (usdtOn() && payInfo.ton_usd ? " ≈ $" + (TON_NANO / 1e9 * Number(payInfo.ton_usd)).toFixed(5).replace(/0+$/, "") : ""),
   hint: () => T("Mest зачисляются сами, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть — зачисление всё равно пройдёт."),
   nano: () => { const m = tpAmount(); return m >= 10 && m <= 100000 ? m * TON_NANO : 0; },
   units: () => { const m = tpAmount(); return m >= 10 && m <= 100000 ? m : 0; },
@@ -12053,7 +12057,11 @@ function tpAmount() {
 }
 function paintTopup() {
   if (!tpMode) return;
-  if (tpMode.pick) for (const b of $("tpPacks").children) b.setAttribute("aria-pressed", String(!$("tpOwn").value.trim() && Number(b.dataset.m) === tpMest));
+  if (tpMode.pick) for (const b of $("tpPacks").children) {
+    b.setAttribute("aria-pressed", String(!$("tpOwn").value.trim() && Number(b.dataset.m) === tpMest));
+    b.lastChild.textContent = tonStr(Number(b.dataset.m) * TON_NANO) + " TON";
+  }
+  $("tpSub").textContent = tpMode.sub();
   if (!tpAvail(tpMethod)) tpMethod = tpMode.methods.find((m) => tpAvail(m)) || tpMode.methods[0];
   paintMethods();
   const price = tpPrice(tpMethod);

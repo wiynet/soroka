@@ -2363,3 +2363,9 @@ grant execute on function public.ton_settle(text, text, bigint, text, text) to s
 update public.ton_orders set pay_to = (select address from private.ton_config) where pay_to is null;
 commit;
 -- <<< TON2 END
+
+-- 2026-11-03: USDT TRC-20 (адрес TNtTdMRDPksZf9zSoRtWmzgLZK6g9dNEeP) и новый курс 1 Mest = 0,002 TON.
+-- Цена в USDT = цена в TON × курс TON/USD (CoinGecko), обновляется каждый час (cron usdt-rate → ton-check {"action":"rate"}).
+-- USDT-заказ узнаётся по точной сумме: цена до целых центов вверх + 1–99 уникальных центов.
+-- Применено через SQL Editor; полный текст — в истории сессии (pay_info, usdt_order, usdt_pending, usdt_settle,
+-- usdt_set_rate, private.usdt_config, private.usdt_rate_poll; ton_settle начисляет по курсу самого заказа).
