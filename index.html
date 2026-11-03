@@ -3145,7 +3145,7 @@ void main() {
         <b>Вход по NFT-номеру</b>
         <div class="small muted" id="nlText">Введите свой номер +555. Код придёт от бота «Mestario» в чат на ваших устройствах и на почту.</div>
       </div>
-      <label class="field" id="nlNumWrap"><span>Номер</span><div class="num-wrap"><input class="input" id="nlNum" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="12 34 56"></div></label>
+      <label class="field" id="nlNumWrap"><span>Номер</span><div class="num-wrap"><input class="input" id="nlNum" maxlength="13" inputmode="numeric" autocomplete="off" placeholder="55 555"></div></label>
       <input class="input code-input" id="nlCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="000000" aria-label="Код" hidden>
       <div class="error" id="nlErr"></div>
       <button class="btn go" type="submit"><span id="nlGo">Получить код</span><b aria-hidden="true">→</b></button>
@@ -9113,7 +9113,7 @@ function paintMyNames() {
 }
 // номер: только цифры и одиночные пробелы, не длиннее 10 символов после +555
 function numInput(el) {
-  el.addEventListener("input", () => { el.value = el.value.replace(/^\+?555\s*/, "").replace(/[^0-9 ]/g, "").replace(/ {2,}/g, " ").replace(/^ /, "").slice(0, 10); });
+  el.addEventListener("input", () => { el.value = el.value.replace(/^\+\s*555\s*/, "").replace(/[^0-9 ]/g, "").replace(/ {2,}/g, " ").replace(/^ /, "").slice(0, 10); });
 }
 numInput($("mkNewNum"));
 $("mkNewNumAdd").addEventListener("click", async () => {
@@ -9121,7 +9121,7 @@ $("mkNewNumAdd").addEventListener("click", async () => {
   if (!/[0-9]/.test(num)) { toast(T("Введите номер после +555")); return; }
   if (!(price > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
   $("mkNewNumAdd").disabled = true;
-  const { error } = await sb.rpc("admin_list_number", { p_number: num, p_price: price });
+  const { error } = await sb.rpc("admin_list_number", { p_number: "+555 " + num, p_price: price });
   $("mkNewNumAdd").disabled = false;
   if (error) { toast(marketError(error)); return; }
   $("mkNewNum").value = ""; $("mkNewNumPrice").value = "";
@@ -9476,7 +9476,7 @@ $("adNumGo").addEventListener("click", async () => {
   if (!owner) { err.textContent = T("Укажите, кому выдать: обычный юзернейм человека."); return; }
   err.textContent = "";
   $("adNumGo").disabled = true;
-  const { data, error } = await sb.rpc("admin_grant_number", { p_number: num, p_owner: owner });
+  const { data, error } = await sb.rpc("admin_grant_number", { p_number: "+555 " + num, p_owner: owner });
   $("adNumGo").disabled = false;
   if (error) {
     const m = error.message || "";
@@ -13537,7 +13537,68 @@ $("haNo").addEventListener("click", () => decideApprove(false));
 
 /* ---------- вход по NFT-номеру: код от бота @mest в чат и на почту ---------- */
 let nlReq = null;
-numInput($("nlNum"));
+// поле номера при входе: человек вводит цифры, а пробелы встают ровно там, где они стоят у настоящего номера
+// («55555» → «55 555», «676767» → «676767»). Номера открыты всем (маркет), список грузим один раз.
+let nlNums = null, nlNumsLoad = null;
+function nlLoadNums() {
+  if (nlNums || nlNumsLoad) return nlNumsLoad;
+  nlNumsLoad = sb.from("collectible_numbers").select("number").limit(5000).then(({ data }) => {
+    nlNums = (data || []).map((r) => String(r.number || "").replace(/^\+\s*555\s*/, "").trim()).filter((n) => /^[0-9][0-9 ]*$/.test(n));
+    nlFmt();
+  }, () => { nlNumsLoad = null; });
+  return nlNumsLoad;
+}
+// шаблон пробелов: точное совпадение по цифрам, иначе самый короткий номер, который начинается с этих цифр
+function nlShape(d) {
+  if (!d || !nlNums) return "";
+  let best = null;
+  for (const n of nlNums) {
+    const nd = n.replace(/ /g, "");
+    if (!nd.startsWith(d)) continue;
+    if (nd === d) return n;
+    if (!best || nd.length < best.replace(/ /g, "").length || (nd.length === best.replace(/ /g, "").length && n < best)) best = n;
+  }
+  return best || "";
+}
+function nlFormat(d) {
+  const t = nlShape(d);
+  if (!t) return d;
+  let out = "", i = 0;
+  for (const ch of t) {
+    if (i >= d.length) break;
+    if (ch === " ") out += " "; else out += d[i++];
+  }
+  return out + d.slice(i);   // лишние цифры сверх шаблона — как есть
+}
+function nlFmt() {
+  const el = $("nlNum");
+  const pos = el.selectionStart == null ? el.value.length : el.selectionStart;
+  const before = el.value.slice(0, pos).replace(/^\+\s*555\s*/, "").replace(/\D/g, "").length;   // сколько цифр до курсора
+  const d = el.value.replace(/^\+\s*555\s*/, "").replace(/\D/g, "").slice(0, 10);
+  const v = nlFormat(d).slice(0, 10);
+  if (v === el.value) return;
+  el.value = v;
+  let c = 0, k = 0;
+  while (k < v.length && c < before) { if (v[k] !== " ") c++; k++; }
+  if (document.activeElement === el) el.setSelectionRange(k, k);
+}
+$("nlNum").addEventListener("input", nlFmt);
+$("nlNum").addEventListener("focus", nlLoadNums);
+// Backspace сразу после пробела стирает цифру перед ним, иначе пробел тут же вернулся бы
+$("nlNum").addEventListener("keydown", (e) => {
+  const el = e.target, p = el.selectionStart;
+  if (e.key === "Backspace" && p === el.selectionEnd && p > 0 && el.value[p - 1] === " ") {
+    e.preventDefault();
+    el.value = el.value.slice(0, p - 2) + el.value.slice(p);
+    el.setSelectionRange(p - 2, p - 2);
+    nlFmt();
+  } else if (e.key === "Delete" && p === el.selectionEnd && el.value[p] === " ") {
+    e.preventDefault();
+    el.value = el.value.slice(0, p) + el.value.slice(p + 2);
+    el.setSelectionRange(p, p);
+    nlFmt();
+  }
+});
 function nlReset() {
   nlReq = null;
   $("nlNumWrap").hidden = false; $("nlCode").hidden = true; $("nlAgain").hidden = true;
@@ -13545,7 +13606,7 @@ function nlReset() {
   $("nlGo").textContent = T("Получить код");
   $("nlText").textContent = T("Введите свой номер +555. Код придёт от бота «Mestario» в чат на ваших устройствах и на почту.");
 }
-$("goNumLogin").addEventListener("click", () => { nlReset(); setTimeout(() => { if (canAutoFocus()) $("nlNum").focus(); }, 50); });
+$("goNumLogin").addEventListener("click", () => { nlReset(); nlLoadNums(); setTimeout(() => { if (canAutoFocus()) $("nlNum").focus(); }, 50); });
 $("nlAgain").addEventListener("click", () => { nlReset(); $("nlNum").focus(); });
 async function nlCall(body) {
   try {
@@ -13561,7 +13622,7 @@ $("numForm").addEventListener("submit", async (e) => {
     const num = $("nlNum").value.trim();
     if (!/[0-9]/.test(num)) { err.textContent = T("Введите номер после +555."); return; }
     btn.disabled = true;
-    const r = await nlCall({ action: "start", number: num });
+    const r = await nlCall({ action: "start", number: "+555 " + num });
     btn.disabled = false;
     if (!r.id) {
       err.textContent = r.error === "not found" ? T("Такого NFT-номера нет или он никому не принадлежит.") : r.error === "wait" ? T("Код уже отправлен. Новый можно запросить через минуту.")
