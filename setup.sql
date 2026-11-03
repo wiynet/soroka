@@ -2029,3 +2029,5 @@ begin
 end $$;
 select cron.schedule('ton-check', '* * * * *', 'select private.ton_poll()');
 -- Заодно: в en.js 36 строк со старым названием валюты «soroks» исправлены на «Mest».
+-- Применено 2026-11-03 через SQL Editor (кнопка «Run and enable RLS» — включена RLS и на private.ton_config,
+-- функции security definer её не замечают). Задача cron «ton-check» — jobid 8.
