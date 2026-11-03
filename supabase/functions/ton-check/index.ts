@@ -1,5 +1,5 @@
-// Mestario: проверка оплаты Mest в TON. Смотрит последние входящие переводы на кошелёк Mestario
-// (публичный API toncenter), находит комментарий с кодом заказа «MST-XXXXXX» и зачисляет Mest
+// Mestario: проверка оплат в TON (пополнение Mest, премиум, NFT-лоты). Смотрит последние входящие переводы
+// на кошелёк Mestario и на кошельки продавцов (публичный API toncenter), находит комментарий с кодом заказа «MST-XXXXXX» и зачисляет Mest
 // через public.ton_settle — один раз на заказ и один раз на транзакцию.
 // Вызывают: экран оплаты (с токеном пользователя, body {code}) и расписание раз в минуту (без body).
 // Начисление зависит только от данных блокчейна, поэтому лишний вызов ничего не даёт — только сканирование.
@@ -30,24 +30,41 @@ function commentOf(m: any): string {
 
 let lastScan = 0;
 let running: Promise<number> | null = null;
-async function scan(): Promise<number> {
-  const p = await rpc("ton_pending");
-  const want = new Set<string>((p.orders || []).map((o: any) => o.code));
-  if (!want.size || !p.address) return 0;
-  const r = await fetch(`https://toncenter.com/api/v2/getTransactions?address=${encodeURIComponent(p.address)}&limit=100&archival=true`);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// входящие переводы на один адрес; toncenter без ключа пускает ~1 запрос в секунду
+async function txsOf(addr: string): Promise<any[]> {
+  const r = await fetch(`https://toncenter.com/api/v2/getTransactions?address=${encodeURIComponent(addr)}&limit=100&archival=true`);
   if (!r.ok) throw new Error("toncenter " + r.status);
   const j = await r.json();
   if (!j.ok || !Array.isArray(j.result)) throw new Error("toncenter: " + JSON.stringify(j).slice(0, 200));
-  let paid = 0;
-  for (const tx of j.result) {
-    const m = tx.in_msg;
-    if (!m || !m.source) continue; // внешние сообщения (свои исходящие) пропускаем
-    const code = commentOf(m).match(CODE)?.[0];
-    if (!code || !want.has(code)) continue;
-    const nano = Number(m.value);
-    if (!Number.isFinite(nano) || nano <= 0) continue;
-    const res = await rpc("ton_settle", { p_code: code, p_tx: String(tx.transaction_id?.hash || ""), p_nano: nano, p_from: String(m.source) });
-    if (res === "paid") { paid++; want.delete(code); }
+  return j.result;
+}
+async function scan(): Promise<number> {
+  const p = await rpc("ton_pending");
+  // заказы по адресам: кошелёк Mestario (пополнение, премиум, лоты Mestario) и кошельки продавцов (их лоты)
+  const byAddr = new Map<string, Set<string>>();
+  for (const o of p.orders || []) {
+    const to = String(o.to || p.address || "");
+    if (!to) continue;
+    if (!byAddr.has(to)) byAddr.set(to, new Set());
+    byAddr.get(to)!.add(o.code);
+  }
+  let paid = 0, first = true;
+  for (const [addr, want] of [...byAddr.entries()].slice(0, 8)) {
+    if (!first) await sleep(1100);
+    first = false;
+    let txs: any[];
+    try { txs = await txsOf(addr); } catch (e) { console.error(addr.slice(0, 6), e); continue; }
+    for (const tx of txs) {
+      const m = tx.in_msg;
+      if (!m || !m.source) continue; // внешние сообщения (свои исходящие) пропускаем
+      const code = commentOf(m).match(CODE)?.[0];
+      if (!code || !want.has(code)) continue;
+      const nano = Number(m.value);
+      if (!Number.isFinite(nano) || nano <= 0) continue;
+      const res = await rpc("ton_settle", { p_code: code, p_tx: String(tx.transaction_id?.hash || ""), p_nano: nano, p_from: String(m.source), p_to: addr });
+      if (res === "paid" || res === "short" || res === "review") { paid++; want.delete(code); }
+    }
   }
   return paid;
 }
@@ -72,10 +89,10 @@ Deno.serve(async (req) => {
     const u = await fetch(`${URL}/auth/v1/user`, { headers: { apikey: KEY, Authorization: auth } });
     const me = u.ok ? (await u.json())?.id : null;
     if (!me) return reply({ error: "auth" }, 401);
-    const o = await fetch(`${URL}/rest/v1/ton_orders?code=eq.${code}&select=user_id,status,credited`, { headers: svc }).then((r) => r.json());
+    const o = await fetch(`${URL}/rest/v1/ton_orders?code=eq.${code}&select=user_id,status,credited,kind,note`, { headers: svc }).then((r) => r.json());
     const row = Array.isArray(o) ? o[0] : null;
     if (!row || row.user_id !== me) return reply({ error: "not found" }, 404);
-    return reply({ status: row.status, credited: row.credited, ...(scanErr ? { retry: true } : {}) });
+    return reply({ status: row.status, credited: row.credited, kind: row.kind, note: row.note, ...(scanErr ? { retry: true } : {}) });
   } catch (e) {
     console.error(e);
     return reply({ error: "server" }, 500);

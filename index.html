@@ -1024,6 +1024,9 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .mine-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mine-row .input { width: 120px; padding: 7px 10px; }
 .mine-row .btn { padding: 7px 12px; font-size: 13px; }
+.mine-row .input.ton { width: 96px; }
+.btn.ton-btn { background: #0098ea; color: #fff; }
+.lot .price small { display: block; font: 600 12px/1.2 var(--display); color: #0098ea; text-align: right; }
 .offer-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; flex-wrap: wrap; }
 .offer-row .txt { flex: 1; min-width: 120px; }
 .offer-row .btn { padding: 6px 12px; font-size: 13px; }
@@ -2644,7 +2647,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=586d8a3ec2"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f7d9b6cf3f"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3489,6 +3492,7 @@ void main() {
         <div class="coins-bal"><b>150</b><span class="coin" aria-hidden="true"></span></div>
         <div class="muted">Mest за 30 дней</div>
         <button class="btn wide prem-btn" type="button" id="ppBuy"></button>
+        <button class="btn ghost wide" type="button" id="ppTon">Оплатить 1,5 TON через кошелёк</button>
         <div class="small muted" id="ppBal"></div>
       </div>
       <div class="set-label">Что даёт премиум</div>
@@ -3744,7 +3748,7 @@ void main() {
       <li>Можно скрыть время, когда вы были в сети</li>
       <li>Своя VPN-подписка: ссылка для подключения ниже</li>
     </ul>
-    <div class="actions"><button class="btn" type="button" id="premBuy"></button></div>
+    <div class="actions"><button class="btn ghost" type="button" id="premTon">1,5 TON</button><button class="btn" type="button" id="premBuy"></button></div>
     </div>
     <div class="set-label">Цвет имени</div>
     <div class="swatches" id="nameHues" role="radiogroup" aria-label="Цвет имени"></div>
@@ -3976,7 +3980,7 @@ void main() {
     </div>
 
     <div data-mkpane="nft" style="display:grid;gap:14px">
-      <div class="hint">NFT-юзернейм или номер +555 можно купить сразу по цене продавца или предложить свою цену ниже. Mest за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете.</div>
+      <div class="hint">NFT-юзернейм или номер +555 можно купить сразу по цене продавца — за Mest или за TON — или предложить свою цену ниже. Mest за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете. TON при покупке уходят прямо на кошелёк продавца.</div>
       <div class="lots" id="mkLots"></div>
       <div class="set-label">Мои NFT-юзернеймы и номера</div>
       <div id="mkMine" style="display:grid;gap:8px"></div>
@@ -3985,12 +3989,14 @@ void main() {
         <div class="ad-grid">
           <div class="at-wrap"><input class="input" id="mkNewName" maxlength="32" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="юзернейм"></div>
           <input class="input" id="mkNewPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Цена в Mest">
+          <input class="input" id="mkNewTon" inputmode="decimal" autocomplete="off" placeholder="и/или цена в TON">
         </div>
         <div class="actions"><button class="btn" type="button" id="mkNewAdd">Выставить на продажу</button></div>
         <div class="set-label">Выставить новый номер +555 (админ)</div>
         <div class="ad-grid">
           <div class="num-wrap"><input class="input" id="mkNewNum" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="12 34 56"></div>
           <input class="input" id="mkNewNumPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Цена в Mest">
+          <input class="input" id="mkNewNumTon" inputmode="decimal" autocomplete="off" placeholder="и/или цена в TON">
         </div>
         <div class="actions"><button class="btn" type="button" id="mkNewNumAdd">Выставить номер</button></div>
       </div>
@@ -4018,6 +4024,7 @@ void main() {
     <div id="lotFacts" class="small"></div>
     <div class="actions" style="justify-content:flex-start">
       <button class="btn" type="button" id="lotBuy"></button>
+      <button class="btn ton-btn" type="button" id="lotBuyTon" hidden></button>
       <button class="btn danger" type="button" id="lotCancel" hidden>Снять с продажи</button>
     </div>
     <div id="lotOfferBox" style="display:flex;gap:8px">
@@ -4054,14 +4061,16 @@ void main() {
 <dialog id="dlgTopup">
   <div class="dlg">
     <div class="tp-head">
-      <span class="coin" aria-hidden="true"></span>
-      <h2>Пополнить Mest</h2>
-      <div class="small muted">Оплата в TON: 1 Mest = 0,01 TON</div>
+      <span class="coin" id="tpIco" aria-hidden="true"></span>
+      <h2 id="tpTitle">Пополнить Mest</h2>
+      <div class="small muted" id="tpSub">Оплата в TON: 1 Mest = 0,01 TON</div>
     </div>
+    <div id="tpPick" style="display:grid;gap:14px">
     <div class="tp-packs" id="tpPacks"></div>
     <label class="tp-own">Или своя сумма в Mest
       <input class="input" id="tpOwn" type="number" inputmode="numeric" min="10" max="100000" step="1" placeholder="Например, 250">
     </label>
+    </div>
     <div class="tp-sum"><span class="muted">К оплате</span><b id="tpSum">5 TON</b></div>
     <button class="btn wide" type="button" id="tpPay">Оплатить через кошелёк</button>
     <div class="tp-wallet" id="tpWallet"></div>
@@ -4072,7 +4081,7 @@ void main() {
       <div class="tp-row"><div><small>Сумма, TON</small><code id="tpAmt"></code></div><button class="btn ghost" type="button" data-copy="tpAmt">Копировать</button></div>
       <div class="tp-row"><div><small>Комментарий — обязательно</small><code id="tpCmt"></code></div><button class="btn ghost" type="button" data-copy="tpCmt">Копировать</button></div>
     </details>
-    <div class="hint">Деньги идут напрямую на кошелёк Mestario в сети TON. Mest зачисляются сами, обычно через 10–30 секунд после подтверждения. Окно можно закрыть — зачисление всё равно пройдёт.</div>
+    <div class="hint" id="tpHint">Деньги идут напрямую на кошелёк Mestario в сети TON. Mest зачисляются сами, обычно через 10–30 секунд после подтверждения. Окно можно закрыть — зачисление всё равно пройдёт.</div>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
@@ -9027,11 +9036,40 @@ function marketError(e) {
     : /bad number/.test(m) ? T("Номер: после +555 до 10 символов — цифры и пробелы.")
     : /number taken/.test(m) ? T("Такой номер уже есть (с другими пробелами).")
     : /user not found/.test(m) ? T("Такого пользователя нет.")
+    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте минут через 20.")
+    : /ton only/.test(m) ? T("Этот лот продаётся только за TON.")
+    : /need price/.test(m) ? T("Укажите цену в Mest или в TON.")
+    : /bad ton price/.test(m) ? T("Цена в TON: от 0,01 до 1 000 000.")
+    : /bad address/.test(m) ? T("Не получилось взять адрес кошелька. Подключите кошелёк заново.")
     : T("Не получилось. Попробуйте ещё раз.");
 }
 function nftChip(u) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft" }, g, "@" + u); }
 function numChip(n) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft num" }, g, n); }
 function lotChip(l) { return l.number ? numChip(l.number) : nftChip(l.username); }
+// цена лота: в Mest, в TON или обе
+function lotPrice(l) { return [l.price != null ? coins(Number(l.price)) : "", l.ton_nano ? tonStr(l.ton_nano) + " TON" : ""].filter(Boolean).join(" · "); }
+// «1,5» / «1.5» → нанотоны; пусто → null; неверно → NaN
+function parseTon(v) {
+  const t = String(v || "").trim().replace(",", ".");
+  if (!t) return null;
+  if (!/^\d{1,7}(\.\d{1,9})?$/.test(t)) return NaN;
+  const [a, b = ""] = t.split(".");
+  return Number(a) * 1e9 + Number((b + "000000000").slice(0, 9));
+}
+// адрес кошелька продавца: подключаем кошелёк через TON Connect и берём адрес из него (руками не вводим)
+async function tonSellerAddr() {
+  let ui;
+  try { ui = await tonUIReady(); await ui.connectionRestored; } catch (e) { toast(T("Не удалось открыть выбор кошелька. Проверьте интернет.")); return null; }
+  if (!ui.connected) {
+    tonHide();
+    let ok = false;
+    try { ok = await tonConnect(ui); } finally { tonShow(); }
+    if (!ok) { toast(T("Чтобы продавать за TON, подключите кошелёк — на него придут деньги.")); return null; }
+  }
+  const acc = ui.account;
+  if (!acc || acc.chain === "-3") { toast(T("Подключён кошелёк тестовой сети. Нужен обычный кошелёк TON.")); return null; }
+  try { return window.TON_CONNECT_UI.toUserFriendlyAddress(acc.address); } catch (e) { return null; }
+}
 async function loadMarketBalance() {
   const { data } = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
   state.balance = data ? Number(data.balance) : 0;
@@ -9071,7 +9109,7 @@ let lots = [];
 async function loadLots() {
   $("mkAdmin").hidden = !state.isAdmin;
   const { data, error } = await sb.from("nft_listings")
-    .select("id,username,number,price,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
+    .select("id,username,number,price,ton_nano,ton_to,hold_by,hold_until,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
     .eq("status", "open").order("id", { ascending: false }).limit(100);
   lots = error || !data ? [] : data;
   $("mkLots").replaceChildren(...(lots.length ? lots.map((l, i) => {
@@ -9083,7 +9121,7 @@ async function loadLots() {
       h("span", { class: "txt small muted" },
         (l.by_admin ? T("Продаёт «Mestario»") : T("Продаёт ") + (l.seller ? l.seller.display_name : T("владелец"))) +
         (top ? T(" · лучшее предложение ") + nf.format(top) : T(" · предложений нет")) + (mine ? T(" · ваше: ") + nf.format(Number(mine.amount)) : "")),
-      h("span", { class: "price" }, coins(Number(l.price))));
+      h("span", { class: "price" }, l.price != null ? coins(Number(l.price)) : null, l.ton_nano ? (l.price != null ? h("small", {}, tonStr(l.ton_nano) + " TON") : tonStr(l.ton_nano) + " TON") : null));
     el.style.animationDelay = Math.min(i, 10) * 30 + "ms";
     return el;
   }) : [h("div", { class: "empty-note" }, error ? T("Не удалось загрузить лоты.") : T("Сейчас ничего не продаётся."))]));
@@ -9095,18 +9133,24 @@ function paintMyNames() {
   const listed = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [lotLabel(l), l]));
   $("mkMine").replaceChildren(...(mine.length ? mine.map((it) => {
     const key = lotLabel(it), l = listed.get(key);
-    if (l) return h("div", { class: "mine-row" }, lotChip(it), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + coins(Number(l.price))),
+    if (l) return h("div", { class: "mine-row" }, lotChip(it), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + lotPrice(l)),
       h("button", { class: "btn ghost", type: "button", onclick: () => openLot(l.id) }, T("Открыть лот")));
-    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: T("Цена"), "aria-label": T("Цена для ") + key });
-    return h("div", { class: "mine-row" }, lotChip(it), h("span", { style: "flex:1" }), price,
+    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: T("Цена, Mest"), "aria-label": T("Цена в Mest для ") + key });
+    const ton = h("input", { class: "input ton", inputmode: "decimal", autocomplete: "off", placeholder: T("или TON"), "aria-label": T("Цена в TON для ") + key });
+    return h("div", { class: "mine-row" }, lotChip(it), h("span", { style: "flex:1" }), price, ton,
       h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
-        const p = Math.floor(Number(price.value));
-        if (!(p > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
+        const p = price.value.trim() ? Math.floor(Number(price.value)) : null;
+        const tn = parseTon(ton.value);
+        if (p == null && tn == null) { toast(T("Укажите цену в Mest или в TON")); return; }
+        if (p != null && !(p > 0)) { toast(T("Цена в Mest: целое число больше нуля")); return; }
+        if (tn != null && !(tn >= 10000000)) { toast(T("Цена в TON: число от 0,01, например 1,5")); return; }
         e.target.disabled = true;
-        const { error } = it.number ? await sb.rpc("list_my_number", { p_number: it.number, p_price: p }) : await sb.rpc("list_my_username", { p_name: it.username, p_price: p });
+        let to = null;
+        if (tn != null) { to = await tonSellerAddr(); if (!to) { e.target.disabled = false; return; } }
+        const { error } = await sb.rpc("list_mine", { p_username: it.number ? null : it.username, p_number: it.number || null, p_price: p, p_ton_nano: tn, p_ton_to: to });
         e.target.disabled = false;
         if (error) { toast(marketError(error)); return; }
-        toast(key + T(" выставлен за ") + coins(p));
+        toast(key + T(" выставлен за ") + lotPrice({ price: p, ton_nano: tn }) + (to ? T(". TON придут на кошелёк ") + to.slice(0, 4) + "…" + to.slice(-4) : ""));
         loadLots();
       } }, T("Продать")));
   }) : [h("div", { class: "small muted" }, T("У вас пока нет NFT-юзернеймов и номеров. Их можно купить здесь или получить от администратора."))]));
@@ -9117,28 +9161,32 @@ function numInput(el) {
 }
 numInput($("mkNewNum"));
 $("mkNewNumAdd").addEventListener("click", async () => {
-  const num = $("mkNewNum").value.trim(), price = Math.floor(Number($("mkNewNumPrice").value));
+  const num = $("mkNewNum").value.trim(), price = $("mkNewNumPrice").value.trim() ? Math.floor(Number($("mkNewNumPrice").value)) : null, tn = parseTon($("mkNewNumTon").value);
   if (!/[0-9]/.test(num)) { toast(T("Введите номер после +555")); return; }
-  if (!(price > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
+  if (price == null && tn == null) { toast(T("Укажите цену в Mest или в TON")); return; }
+  if (price != null && !(price > 0)) { toast(T("Цена в Mest: целое число больше нуля")); return; }
+  if (tn != null && !(tn >= 10000000)) { toast(T("Цена в TON: число от 0,01, например 1,5")); return; }
   $("mkNewNumAdd").disabled = true;
-  const { error } = await sb.rpc("admin_list_number", { p_number: "+555 " + num, p_price: price });
+  const { error } = await sb.rpc("admin_list_lot", { p_username: null, p_number: "+555 " + num, p_price: price, p_ton_nano: tn });
   $("mkNewNumAdd").disabled = false;
   if (error) { toast(marketError(error)); return; }
-  $("mkNewNum").value = ""; $("mkNewNumPrice").value = "";
-  toast("+555 " + num + T(" выставлен за ") + coins(price));
+  $("mkNewNum").value = ""; $("mkNewNumPrice").value = ""; $("mkNewNumTon").value = "";
+  toast("+555 " + num + T(" выставлен за ") + lotPrice({ price, ton_nano: tn }));
   loadLots();
 });
 $("mkNewName").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""); });
 $("mkNewAdd").addEventListener("click", async () => {
-  const name = $("mkNewName").value, price = Math.floor(Number($("mkNewPrice").value));
+  const name = $("mkNewName").value, price = $("mkNewPrice").value.trim() ? Math.floor(Number($("mkNewPrice").value)) : null, tn = parseTon($("mkNewTon").value);
   if (!name) { toast(T("Введите юзернейм")); return; }
-  if (!(price > 0)) { toast(T("Введите цену: целое число больше нуля")); return; }
+  if (price == null && tn == null) { toast(T("Укажите цену в Mest или в TON")); return; }
+  if (price != null && !(price > 0)) { toast(T("Цена в Mest: целое число больше нуля")); return; }
+  if (tn != null && !(tn >= 10000000)) { toast(T("Цена в TON: число от 0,01, например 1,5")); return; }
   $("mkNewAdd").disabled = true;
-  const { error } = await sb.rpc("admin_list_username", { p_name: name, p_price: price });
+  const { error } = await sb.rpc("admin_list_lot", { p_username: name, p_number: null, p_price: price, p_ton_nano: tn });
   $("mkNewAdd").disabled = false;
   if (error) { toast(marketError(error)); return; }
-  $("mkNewName").value = ""; $("mkNewPrice").value = "";
-  toast("@" + name + T(" выставлен за ") + coins(price));
+  $("mkNewName").value = ""; $("mkNewPrice").value = ""; $("mkNewTon").value = "";
+  toast("@" + name + T(" выставлен за ") + lotPrice({ price, ton_nano: tn }));
   loadLots();
 });
 let lot = null, buyArmed = false;
@@ -9149,12 +9197,18 @@ async function openLot(id) {
   lot = l; buyArmed = false;
   const own = !l.by_admin && l.seller_id === state.me.id;
   $("lotName").replaceChildren(lotChip(l));
-  $("lotFacts").textContent = T("Цена: ") + coins(Number(l.price)) + " · " + (l.by_admin ? T("продаёт «Mestario»") : T("продаёт ") + (l.seller ? l.seller.display_name + " (@" + l.seller.username + ")" : T("владелец")));
-  $("lotBuy").hidden = own;
-  $("lotBuy").textContent = T("Купить за ") + coins(Number(l.price));
+  $("lotFacts").textContent = T("Цена: ") + lotPrice(l) + " · " + (l.by_admin ? T("продаёт «Mestario»") : T("продаёт ") + (l.seller ? l.seller.display_name + " (@" + l.seller.username + ")" : T("владелец")))
+    + (l.ton_nano && !l.by_admin && l.ton_to ? T(". TON уходят прямо на кошелёк продавца ") + l.ton_to.slice(0, 4) + "…" + l.ton_to.slice(-4) : "");
+  const held = l.hold_until && new Date(l.hold_until) > new Date() && l.hold_by !== state.me.id;
+  $("lotBuy").hidden = own || l.price == null;
+  $("lotBuy").disabled = !!held;
+  if (l.price != null) $("lotBuy").textContent = T("Купить за ") + coins(Number(l.price));
+  $("lotBuyTon").hidden = own || !l.ton_nano;
+  $("lotBuyTon").disabled = !!held;
+  if (l.ton_nano) $("lotBuyTon").textContent = T("Купить за ") + tonStr(l.ton_nano) + " TON";
   $("lotOfferBox").hidden = own;
   $("lotCancel").hidden = !lotManaged(l);
-  $("lotOfferAmt").value = ""; $("lotErr").textContent = "";
+  $("lotOfferAmt").value = ""; $("lotErr").textContent = held ? T("Сейчас этот лот оплачивает другой покупатель — до ") + tFmt.format(new Date(l.hold_until)) + "." : "";
   $("lotOffers").replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
   if (!$("dlgLot").open) $("dlgLot").showModal();
   const { data } = await sb.from("nft_offers")
@@ -9198,6 +9252,19 @@ $("lotBuy").addEventListener("click", async () => {
   $("lotBuy").disabled = false;
   if (error) { $("lotErr").textContent = marketError(error); buyArmed = false; $("lotBuy").textContent = T("Купить за ") + coins(Number(lot.price)); return; }
   afterTrade(lotLabel(lot) + T(" теперь ваш"), true);
+});
+$("lotBuyTon").addEventListener("click", () => {
+  if (!lot || !lot.ton_nano) return;
+  const l = lot, label = lotLabel(l);
+  openTonPay({
+    nano: Number(l.ton_nano),
+    title: () => T("Купить ") + label,
+    sub: () => l.by_admin ? T("Оплата в TON на кошелёк Mestario") : T("Оплата в TON прямо на кошелёк продавца. Лот закреплён за вами на 20 минут."),
+    hint: () => (l.by_admin ? T("Деньги идут на кошелёк Mestario.") : T("Деньги идут напрямую продавцу, Mestario их не держит.")) + " " + (l.number ? T("Номер") : T("Юзернейм")) + T(" перейдёт к вам сам, обычно через 10–30 секунд после подтверждения в кошельке. Окно можно закрыть."),
+    create: () => sb.rpc("ton_order_listing", { p_listing: l.id }),
+    result: () => ({ ok: true, text: T("Готово! ") + label + T(" теперь ваш"), toast: label + T(" теперь ваш") }),
+    done: async () => { await Promise.all([reloadMe(), loadLots()]); if ($("dlgLot").open) $("dlgLot").close(); },
+  });
 });
 $("lotOffer").addEventListener("click", async () => {
   if (!lot) return;
@@ -11696,6 +11763,16 @@ async function paintPremiumPage() {
     $("ppBal").textContent = T("На счёте: ") + coins(state.balance) + (state.balance < 150 ? T(". Не хватает: ") + coins(150 - state.balance) : "");
   }
 }
+const PREMIUM_TON = {
+  icon: "★", get nano() { return 150 * TON_NANO; },   // TON_NANO объявлен ниже — считаем при открытии
+  title: () => T("Mestario Premium на 30 дней"), sub: () => T("Оплата в TON на кошелёк Mestario"),
+  hint: () => T("Премиум включится сам, обычно через 10–30 секунд после подтверждения в кошельке. Окно можно закрыть."),
+  create: () => sb.rpc("ton_order_premium"),
+  result: () => ({ ok: true, text: T("Готово! Премиум подключён на 30 дней"), toast: T("Премиум подключён на 30 дней") }),
+  done: async () => { await reloadMe(); try { $("sv_premium").textContent = T("активен"); paintPremiumPage(); } catch (e) {} },
+};
+$("ppTon").addEventListener("click", () => openTonPay(PREMIUM_TON));
+$("premTon").addEventListener("click", () => openTonPay(PREMIUM_TON));
 $("ppBuy").addEventListener("click", async () => {
   if (!ppArmed) { ppArmed = true; $("ppBuy").textContent = T("Подтвердить: списать 150 Mest"); return; }
   $("ppBuy").disabled = true;
@@ -11808,11 +11885,46 @@ function paintTonWallet() {
   box.replaceChildren(h("span", {}, T("Кошелёк") + ": " + a.slice(0, 4) + "…" + a.slice(-4)),
     h("button", { class: "link", type: "button", onclick: async () => { try { await tonUI.disconnect(); } catch (e) {} paintTonWallet(); } }, T("Сменить")));
 }
+// окно оплаты в TON общее: пополнение Mest, премиум, покупка лота. tpMode — что сейчас оплачиваем
+let tpMode = null;
+function tonErr(error) {
+  const m = String(error && error.message || "");
+  return /too many/.test(m) ? T("Слишком много заказов подряд — подождите несколько минут.")
+    : /bad amount/.test(m) ? T("Сумма от 10 до 100 000 Mest.")
+    : /reserved/.test(m) ? T("Этот лот сейчас оплачивает другой покупатель. Попробуйте минут через 20.")
+    : /not open/.test(m) ? T("Этот лот уже закрыт.")
+    : /own listing/.test(m) ? T("Это ваш собственный лот.")
+    : /no ton price|bad address/.test(m) ? T("Этот лот нельзя купить за TON.")
+    : T("Не удалось создать заказ. Попробуйте ещё раз.");
+}
+const TOPUP_MODE = {
+  pick: true,
+  title: () => T("Пополнить Mest"), sub: () => T("Оплата в TON: 1 Mest = 0,01 TON"),
+  hint: () => T("Деньги идут напрямую на кошелёк Mestario в сети TON. Mest зачисляются сами, обычно через 10–30 секунд после подтверждения. Окно можно закрыть — зачисление всё равно пройдёт."),
+  create: () => sb.rpc("ton_order_create", { p_mest: tpAmount() }),
+  result: (st) => { const got = Number(st.credited) || 0; return { ok: true, text: T("Готово! Зачислено") + " " + nf.format(got) + " Mest", toast: T("Зачислено") + " " + nf.format(got) + " Mest" }; },
+  done: async () => { try { await loadCoinsPage(); } catch (e) {} },
+};
+function openTonPay(mode) {
+  tpMode = mode;
+  $("tpTitle").textContent = mode.title();
+  $("tpSub").textContent = mode.sub();
+  $("tpHint").textContent = mode.hint ? mode.hint() : "";
+  $("tpPick").hidden = !mode.pick;
+  $("tpIco").className = "coin" + (mode.icon ? " big prem" : "");
+  $("tpIco").textContent = mode.icon || "";
+  $("tpManual").hidden = true;
+  if (!tpWatchCode) tpState(null);
+  paintTopup();
+  if (!$("dlgTopup").open) $("dlgTopup").showModal();
+  tonUIReady().then(paintTonWallet).catch(() => {});
+}
 function tpAmount() {
   const own = $("tpOwn").value.trim();
   return own ? Math.floor(Number(own)) : tpMest;
 }
 function paintTopup() {
+  if (tpMode && !tpMode.pick) { $("tpSum").textContent = tonStr(tpMode.nano) + " TON"; $("tpPay").disabled = false; return; }
   const m = tpAmount();
   for (const b of $("tpPacks").children) b.setAttribute("aria-pressed", String(!$("tpOwn").value.trim() && Number(b.dataset.m) === tpMest));
   const okAmt = Number.isFinite(m) && m >= 10 && m <= 100000;
@@ -11830,10 +11942,7 @@ function openTopup() {
     $("tpPacks").replaceChildren(...TON_PACKS.map((m) => h("button", { class: "tp-pack", type: "button", "data-m": m, onclick: () => { tpMest = m; $("tpOwn").value = ""; paintTopup(); } },
       h("b", { "aria-label": nf.format(m) + " Mest" }, h("span", { class: "coin sm", "aria-hidden": "true" }), nf.format(m)), h("span", {}, tonStr(m * TON_NANO) + " TON"))));
   }
-  if (!tpWatchCode) { tpState(null); }
-  paintTopup();
-  if (!$("dlgTopup").open) $("dlgTopup").showModal();
-  tonUIReady().then(paintTonWallet).catch(() => {});
+  openTonPay(TOPUP_MODE);
 }
 $("tpOwn").addEventListener("input", paintTopup);
 $("dlgTopup").addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) copyText($(b.dataset.copy).textContent); });
@@ -11854,34 +11963,41 @@ function tonConnect(ui) {
     ui.openModal().catch(() => fin(false));
   });
 }
-function tpReopen() { if (!$("dlgTopup").open) $("dlgTopup").showModal(); }
+// окно TON Connect рисуется обычным слоем, а открытые <dialog> всегда выше: на время работы с кошельком
+// прячем их и потом возвращаем (окно оплаты — последним, чтобы оно было сверху)
+let tonHidden = [];
+function tonHide() { tonHidden = [...document.querySelectorAll("dialog[open]")]; for (const d of tonHidden) d.close(); }
+function tonShow() {
+  const back = tonHidden; tonHidden = [];
+  for (const d of back) if (d.id !== "dlgTopup" && !d.open) { try { d.showModal(); } catch (e) {} }
+  if (back.some((d) => d.id === "dlgTopup") && !$("dlgTopup").open) $("dlgTopup").showModal();
+}
+function tpReopen() { tonShow(); if (!$("dlgTopup").open) $("dlgTopup").showModal(); }
 $("tpPay").addEventListener("click", async () => {
-  const mest = tpAmount();
-  if (!(mest >= 10 && mest <= 100000)) return;
+  const mode = tpMode || TOPUP_MODE;
+  if (mode.pick) { const mest = tpAmount(); if (!(mest >= 10 && mest <= 100000)) return; }
   $("tpPay").disabled = true;
   tpState("wait", T("Создаём заказ…"));
-  const { data: o, error } = await sb.rpc("ton_order_create", { p_mest: mest });
+  const { data: o, error } = await mode.create();
   if (error || !o) {
     $("tpPay").disabled = false;
-    const m = String(error && error.message || "");
-    tpState("err", /too many/.test(m) ? T("Слишком много заказов подряд — подождите несколько минут.") : /bad amount/.test(m) ? T("Сумма от 10 до 100 000 Mest.") : T("Не удалось создать заказ. Попробуйте ещё раз."));
+    tpState("err", tonErr(error));
     return;
   }
   tpShowManual(o);
   let ui;
   try { ui = await tonUIReady(); await ui.connectionRestored; }
   catch (e) {
-    $("tpPay").disabled = false; tpWatch(o.code, o.mest);
+    $("tpPay").disabled = false; tpWatch(o.code, mode);
     tpState("err", T("Не удалось открыть выбор кошелька. Переведите вручную — данные ниже."));
     $("tpManual").open = true; return;
   }
-  // окно TON Connect рисуется обычным слоем, а открытые <dialog> всегда выше — закрываем все
-  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  tonHide();
   try {
     if (!(await tonConnect(ui))) {
       tpReopen(); $("tpPay").disabled = false;
       tpState("err", T("Кошелёк не подключён. Выберите кошелёк или переведите вручную."));
-      tpWatch(o.code, o.mest); return;
+      tpWatch(o.code, mode); return;
     }
     await ui.sendTransaction({
       validUntil: Math.floor(Date.now() / 1000) + 900,
@@ -11890,14 +12006,14 @@ $("tpPay").addEventListener("click", async () => {
   } catch (e) {
     tpReopen(); $("tpPay").disabled = false;
     tpState("err", /Reject/i.test(String(e && (e.name || e.message))) ? T("Вы отменили перевод.") : T("Перевод не отправлен. Попробуйте ещё раз или переведите вручную."));
-    tpWatch(o.code, o.mest); return;
+    tpWatch(o.code, mode); return;
   }
   tpReopen(); $("tpPay").disabled = false;
   tpState("wait", T("Ждём подтверждения сети…"));
-  tpWatch(o.code, o.mest, true);
+  tpWatch(o.code, mode, true);
 });
 // проверяем зачисление: сервер смотрит входящие переводы; заодно его раз в минуту проверяет и расписание
-async function tpWatch(code, mest, sent) {
+async function tpWatch(code, mode, sent) {
   tpWatchCode = code;
   const until = Date.now() + (sent ? 6 : 15) * 60000;
   while (tpWatchCode === code && Date.now() < until) {
@@ -11905,16 +12021,20 @@ async function tpWatch(code, mest, sent) {
     if (tpWatchCode !== code) return;
     let st = null;
     try { const r = await sb.functions.invoke("ton-check", { body: { code } }); st = r.data; } catch (e) {}
-    if (st && st.status === "paid") {
+    if (st && (st.status === "paid" || st.status === "review")) {
       tpWatchCode = null;
-      const got = Number(st.credited) || mest;
-      tpState("ok", T("Готово! Зачислено") + " " + nf.format(got) + " Mest");
-      toast(T("Зачислено") + " " + nf.format(got) + " Mest");
-      try { await loadCoinsPage(); } catch (e) {}
+      const r = st.status === "review"
+        ? { ok: false, text: T("Перевод пришёл, но лот уже недоступен. Напишите в поддержку и укажите код") + " " + code + T(" — разберёмся.") }
+        : st.note === "short" && st.kind === "premium"
+          ? { ok: false, text: T("Пришло меньше, чем стоит премиум. Сумму зачислили в Mest") + (st.credited ? ": " + nf.format(Number(st.credited)) + " Mest" : "") + "." }
+          : mode.result(st);
+      tpState(r.ok ? "ok" : "err", r.text);
+      if (r.toast) toast(r.toast);
+      try { await mode.done(st); } catch (e) {}
       return;
     }
   }
-  if (tpWatchCode === code && sent) { tpWatchCode = null; tpState("err", T("Перевод пока не найден. Если он ушёл — Mest придут автоматически, обычно в течение пары минут.")); }
+  if (tpWatchCode === code && sent) { tpWatchCode = null; tpState("err", T("Перевод пока не найден. Если он ушёл, всё зачислится автоматически, обычно в течение пары минут.")); }
 }
 $("cpGift").addEventListener("click", () => { $("btnMarket").click(); showMarketTab("gifts"); });
 $("cpEarn").addEventListener("click", () => {
