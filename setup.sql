@@ -1938,3 +1938,94 @@ alter policy gifts_select on public.gifts using ((not hidden) or (to_id = (selec
 --   private.worn_gift_backup          — кто что носил (profiles.worn_gift стал null)
 -- delete from public.gifts where nft_number is not null;
 -- Нумерация NFT снова начнётся с №1 (upgrade_gift берёт max(nft_number)+1).
+
+-- ============================================================================
+-- 2026-11-03: Оплата Mest в TON через TON Connect (1 Mest = 0,01 TON).
+-- Экран «Пополнить Mest» создаёт заказ (ton_order_create) с кодом MST-XXXXXX, кошелёк (Tonkeeper,
+-- Telegram Wallet…) открывается с готовым переводом на адрес из private.ton_config и комментарием
+-- «Mestario MST-XXXXXX». Функция ton-check (verify_jwt false) читает входящие переводы через toncenter
+-- и вызывает ton_settle: один раз на заказ и один раз на транзакцию, начисляет по факту пришедшей суммы.
+-- Расписание ton-check раз в минуту — на случай, если вкладку закрыли. Манифест: /tonconnect-manifest.json.
+create table if not exists private.ton_config (
+  id boolean primary key default true check (id),
+  address text not null,
+  nano_per_mest bigint not null default 10000000,
+  min_mest integer not null default 10,
+  max_mest integer not null default 100000
+);
+insert into private.ton_config (address) values ('UQCMCGTc0oE-MbGb65Snb0qDGx01DK3MKxWjoAKfg_W7_hgL')
+on conflict (id) do update set address = excluded.address;
+create table if not exists public.ton_orders (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  code text not null unique,
+  mest bigint not null check (mest > 0),
+  nano bigint not null check (nano > 0),
+  status text not null default 'pending' check (status in ('pending', 'paid')),
+  tx_hash text unique, paid_nano bigint, credited bigint, from_addr text,
+  created_at timestamptz not null default now(), paid_at timestamptz
+);
+create index if not exists ton_orders_pending on public.ton_orders (created_at) where status = 'pending';
+create index if not exists ton_orders_user on public.ton_orders (user_id, created_at desc);
+alter table public.ton_orders enable row level security;
+drop policy if exists ton_orders_own on public.ton_orders;
+create policy ton_orders_own on public.ton_orders for select to authenticated using (user_id = auth.uid());
+revoke all on public.ton_orders from anon, authenticated;
+grant select on public.ton_orders to authenticated;
+create or replace function public.ton_order_create(p_mest integer)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare me uuid := auth.uid(); c private.ton_config; v_code text; abc text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; b bytea; i int;
+begin
+  if me is null or private.is_banned() then raise exception 'not allowed'; end if;
+  select * into c from private.ton_config;
+  if p_mest is null or p_mest < c.min_mest or p_mest > c.max_mest then raise exception 'bad amount'; end if;
+  if (select count(*) from public.ton_orders where user_id = me and created_at > now() - interval '10 minutes') >= 10 then
+    raise exception 'too many orders';
+  end if;
+  loop
+    b := extensions.gen_random_bytes(6); v_code := 'MST-';
+    for i in 0..5 loop v_code := v_code || substr(abc, (get_byte(b, i) % 32) + 1, 1); end loop;
+    exit when not exists (select 1 from public.ton_orders o where o.code = v_code);
+  end loop;
+  insert into public.ton_orders (user_id, code, mest, nano) values (me, v_code, p_mest, p_mest::bigint * c.nano_per_mest);
+  return jsonb_build_object('code', v_code, 'mest', p_mest, 'nano', (p_mest::bigint * c.nano_per_mest)::text, 'address', c.address);
+end $$;
+revoke all on function public.ton_order_create(integer) from public, anon;
+grant execute on function public.ton_order_create(integer) to authenticated;
+create or replace function public.ton_pending()
+returns jsonb language sql stable security definer set search_path to '' as $$
+  select jsonb_build_object('address', (select address from private.ton_config),
+    'orders', coalesce((select jsonb_agg(jsonb_build_object('code', code, 'nano', nano::text)) from public.ton_orders
+                        where status = 'pending' and created_at > now() - interval '3 days'), '[]'::jsonb));
+$$;
+revoke all on function public.ton_pending() from public, anon, authenticated;
+grant execute on function public.ton_pending() to service_role;
+create or replace function public.ton_settle(p_code text, p_tx text, p_nano bigint, p_from text)
+returns text language plpgsql security definer set search_path to '' as $$
+declare o public.ton_orders; c private.ton_config; gain bigint;
+begin
+  select * into c from private.ton_config;
+  select * into o from public.ton_orders where code = upper(trim(p_code)) for update;
+  if not found then return 'unknown'; end if;
+  if o.status = 'paid' then return 'already'; end if;
+  if coalesce(p_tx, '') = '' or p_nano is null or p_nano <= 0 then return 'bad'; end if;
+  if exists (select 1 from public.ton_orders where tx_hash = p_tx) then return 'tx used'; end if;
+  gain := least(p_nano / c.nano_per_mest, o.mest * 10);
+  if gain <= 0 then return 'too small'; end if;
+  update public.ton_orders set status = 'paid', tx_hash = p_tx, paid_nano = p_nano, credited = gain, from_addr = left(p_from, 100), paid_at = now()
+   where id = o.id;
+  perform private.credit(o.user_id, gain, 'Пополнение TON · ' || o.code);
+  return 'paid';
+end $$;
+revoke all on function public.ton_settle(text, text, bigint, text) from public, anon, authenticated;
+grant execute on function public.ton_settle(text, text, bigint, text) to service_role;
+create or replace function private.ton_poll()
+returns void language plpgsql security definer set search_path to '' as $$
+begin
+  if exists (select 1 from public.ton_orders where status = 'pending' and created_at > now() - interval '3 days') then
+    perform net.http_post(url := 'https://zgjptlyhflfwbnmzpdsa.supabase.co/functions/v1/ton-check',
+                          body := '{}'::jsonb, headers := '{"Content-Type": "application/json"}'::jsonb);
+  end if;
+end $$;
+select cron.schedule('ton-check', '* * * * *', 'select private.ton_poll()');
+-- Заодно: в en.js 36 строк со старым названием валюты «soroks» исправлены на «Mest».

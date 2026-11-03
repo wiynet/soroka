@@ -1384,6 +1384,29 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .coins-bal .coin { width: 40px; height: 40px; font-size: 18px; }
 .btn.wide { width: 100%; margin-top: 10px; padding: 13px 16px; border-radius: 999px; font-size: 16px; }
 .coins-card .link { margin-top: 8px; font-size: 15px; }
+/* пополнение Mest в TON */
+.tp-head { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.tp-head .coin { width: 64px; height: 64px; }
+.tp-packs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tp-pack { display: grid; gap: 2px; justify-items: start; padding: 12px 14px; border: 2px solid transparent; border-radius: 16px; background: var(--panel-2); color: var(--ink); text-align: left; }
+.tp-pack b { font: 700 20px/1.1 var(--display); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.tp-pack span { font-size: 13px; color: var(--muted); }
+.tp-pack[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
+.tp-own { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.tp-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 2px 0; }
+.tp-sum b { font: 700 22px/1 var(--display); font-variant-numeric: tabular-nums; }
+.tp-wallet { display: flex; justify-content: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.tp-wallet:empty { display: none; }
+.tp-state { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); font-size: 14px; }
+.tp-state.ok { background: color-mix(in srgb, #2fbf71 18%, var(--panel-2)); }
+.tp-state.err { background: color-mix(in srgb, #e5484d 16%, var(--panel-2)); }
+.tp-spin { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--ink) 20%, transparent); border-top-color: var(--accent); animation: tpspin .8s linear infinite; }
+@keyframes tpspin { to { transform: rotate(360deg); } }
+.tp-manual { border-radius: 14px; background: var(--panel-2); padding: 10px 14px; font-size: 14px; }
+.tp-manual summary { cursor: pointer; font-weight: 600; }
+.tp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 8px; }
+.tp-row small { display: block; color: var(--muted); font-size: 12px; }
+.tp-row code { display: block; overflow-wrap: anywhere; font-size: 13px; }
 .coins-earn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: 18px; background: var(--panel-2); color: var(--ink); text-align: left; }
 .coins-earn b { display: block; font-weight: 600; }
 .coins-earn > span:last-child { min-width: 0; display: grid; gap: 2px; }
@@ -2621,7 +2644,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=06a855776c"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=586d8a3ec2"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4025,6 +4048,31 @@ void main() {
       <input class="input" id="supText" maxlength="2000" placeholder="Опишите вопрос или проблему" autocomplete="off" aria-label="Ваш запрос">
       <button class="btn" type="submit">Отправить</button>
     </form>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+<dialog id="dlgTopup">
+  <div class="dlg">
+    <div class="tp-head">
+      <span class="coin" aria-hidden="true"></span>
+      <h2>Пополнить Mest</h2>
+      <div class="small muted">Оплата в TON: 1 Mest = 0,01 TON</div>
+    </div>
+    <div class="tp-packs" id="tpPacks"></div>
+    <label class="tp-own">Или своя сумма в Mest
+      <input class="input" id="tpOwn" type="number" inputmode="numeric" min="10" max="100000" step="1" placeholder="Например, 250">
+    </label>
+    <div class="tp-sum"><span class="muted">К оплате</span><b id="tpSum">5 TON</b></div>
+    <button class="btn wide" type="button" id="tpPay">Оплатить через кошелёк</button>
+    <div class="tp-wallet" id="tpWallet"></div>
+    <div class="tp-state" id="tpState" role="status" hidden></div>
+    <details class="tp-manual" id="tpManual" hidden>
+      <summary>Перевести вручную</summary>
+      <div class="tp-row"><div><small>Адрес</small><code id="tpAddr"></code></div><button class="btn ghost" type="button" data-copy="tpAddr">Копировать</button></div>
+      <div class="tp-row"><div><small>Сумма, TON</small><code id="tpAmt"></code></div><button class="btn ghost" type="button" data-copy="tpAmt">Копировать</button></div>
+      <div class="tp-row"><div><small>Комментарий — обязательно</small><code id="tpCmt"></code></div><button class="btn ghost" type="button" data-copy="tpCmt">Копировать</button></div>
+    </details>
+    <div class="hint">Деньги идут напрямую на кошелёк Mestario в сети TON. Mest зачисляются сами, обычно через 10–30 секунд после подтверждения. Окно можно закрыть — зачисление всё равно пройдёт.</div>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
@@ -9313,7 +9361,7 @@ async function loadTickets() {
   }) : [h("div", { class: "empty-note" }, error ? T("Не удалось загрузить запросы.") : T("Запросов без ответа нет."))]));
 }
 $("btnSupport").addEventListener("click", openSupport);
-$("coinBuy").addEventListener("click", openSupport);
+$("coinBuy").addEventListener("click", () => openTopup());
 async function loadSupportAdmin() {
   $("adSupport").hidden = !state.isChief;
   if (!state.isChief) return;
@@ -11715,7 +11763,158 @@ async function loadCoinsPage() {
   paintCoinOps();
 }
 $("cpTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-op]"); if (b) { coinOpTab = b.dataset.op; paintCoinOps(); } });
-$("cpBuy").addEventListener("click", openSupport);
+$("cpBuy").addEventListener("click", openTopup);
+// ===== Пополнение Mest в TON через TON Connect =====
+// Человек выбирает кошелёк (Tonkeeper, Telegram Wallet…), там уже заполнены адрес, сумма и комментарий
+// с кодом заказа — остаётся подтвердить. Сервер (функция ton-check) находит перевод в блокчейне и начисляет Mest.
+const TON_UI_SRC = "https://cdn.jsdelivr.net/npm/@tonconnect/ui@5.0.1/dist/tonconnect-ui.min.js";
+const TON_PACKS = [100, 500, 1000, 5000];
+const TON_NANO = 10000000; // нанотонов за 1 Mest (0,01 TON); сервер берёт курс из своей настройки
+let tonUI = null, tonUILoad = null, tpMest = 500, tpWatchCode = null;
+const tonNf = new Intl.NumberFormat(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU", { maximumFractionDigits: 4 });
+const tonStr = (nano) => tonNf.format(Number(nano) / 1e9);
+// комментарий к переводу в виде BoC (одна ячейка: 32 нулевых бита + текст), как его ждут кошельки
+function tonComment(text) {
+  const body = [0, 0, 0, 0, ...new TextEncoder().encode(text)];
+  if (body.length > 127) throw new Error("comment too long");
+  const cell = [0, body.length * 2, ...body];
+  const boc = [0xb5, 0xee, 0x9c, 0x72, 0x01, 0x01, 0x01, 0x01, 0x00, cell.length, 0x00, ...cell];
+  return btoa(String.fromCharCode(...boc));
+}
+function tonUIReady() {
+  if (tonUI) return Promise.resolve(tonUI);
+  return tonUILoad || (tonUILoad = new Promise((ok, no) => {
+    const sc = document.createElement("script");
+    sc.src = TON_UI_SRC; sc.async = true; sc.crossOrigin = "anonymous";
+    sc.onload = () => {
+      try {
+        const L = window.TON_CONNECT_UI;
+        const dark = document.documentElement.getAttribute("data-theme") === "dark" || (document.documentElement.getAttribute("data-theme") !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        tonUI = new L.TonConnectUI({ manifestUrl: "https://mestario.lol/tonconnect-manifest.json", language: window.SOROKA_LANG === "en" ? "en" : "ru", uiPreferences: { theme: dark ? L.THEME.DARK : L.THEME.LIGHT } });
+        tonUI.onStatusChange(() => paintTonWallet());
+        ok(tonUI);
+      } catch (e) { tonUILoad = null; no(e); }
+    };
+    sc.onerror = () => { tonUILoad = null; sc.remove(); no(new Error("tonconnect load")); };
+    document.head.append(sc);
+  }));
+}
+function paintTonWallet() {
+  const box = $("tpWallet");
+  const acc = tonUI && tonUI.account;
+  if (!acc) { box.replaceChildren(); return; }
+  let a = acc.address;
+  try { a = window.TON_CONNECT_UI.toUserFriendlyAddress(acc.address); } catch (e) {}
+  box.replaceChildren(h("span", {}, T("Кошелёк") + ": " + a.slice(0, 4) + "…" + a.slice(-4)),
+    h("button", { class: "link", type: "button", onclick: async () => { try { await tonUI.disconnect(); } catch (e) {} paintTonWallet(); } }, T("Сменить")));
+}
+function tpAmount() {
+  const own = $("tpOwn").value.trim();
+  return own ? Math.floor(Number(own)) : tpMest;
+}
+function paintTopup() {
+  const m = tpAmount();
+  for (const b of $("tpPacks").children) b.setAttribute("aria-pressed", String(!$("tpOwn").value.trim() && Number(b.dataset.m) === tpMest));
+  const okAmt = Number.isFinite(m) && m >= 10 && m <= 100000;
+  $("tpSum").textContent = okAmt ? tonStr(m * TON_NANO) + " TON" : "—";
+  $("tpPay").disabled = !okAmt;
+}
+function tpState(kind, text) {
+  const el = $("tpState");
+  if (!kind) { el.hidden = true; return; }
+  el.hidden = false; el.className = "tp-state" + (kind === "ok" ? " ok" : kind === "err" ? " err" : "");
+  el.replaceChildren(...(kind === "wait" ? [h("span", { class: "tp-spin", "aria-hidden": "true" })] : []), h("span", {}, text));
+}
+function openTopup() {
+  if (!$("tpPacks").children.length) {
+    $("tpPacks").replaceChildren(...TON_PACKS.map((m) => h("button", { class: "tp-pack", type: "button", "data-m": m, onclick: () => { tpMest = m; $("tpOwn").value = ""; paintTopup(); } },
+      h("b", { "aria-label": nf.format(m) + " Mest" }, h("span", { class: "coin sm", "aria-hidden": "true" }), nf.format(m)), h("span", {}, tonStr(m * TON_NANO) + " TON"))));
+  }
+  if (!tpWatchCode) { tpState(null); }
+  paintTopup();
+  if (!$("dlgTopup").open) $("dlgTopup").showModal();
+  tonUIReady().then(paintTonWallet).catch(() => {});
+}
+$("tpOwn").addEventListener("input", paintTopup);
+$("dlgTopup").addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) copyText($(b.dataset.copy).textContent); });
+function tpShowManual(o) {
+  $("tpAddr").textContent = o.address;
+  $("tpAmt").textContent = String(Number(o.nano) / 1e9);
+  $("tpCmt").textContent = "Mestario " + o.code;
+  $("tpManual").hidden = false;
+}
+// ждём подключения кошелька: true — подключён, false — окно закрыли
+function tonConnect(ui) {
+  return new Promise((ok) => {
+    if (ui.connected) return ok(true);
+    let done = false;
+    const fin = (v) => { if (done) return; done = true; offS(); offM(); ok(v); };
+    const offS = ui.onStatusChange((w) => { if (w) fin(true); });
+    const offM = ui.onModalStateChange((st) => { if (st && st.status === "closed") setTimeout(() => fin(!!ui.connected), 300); });
+    ui.openModal().catch(() => fin(false));
+  });
+}
+function tpReopen() { if (!$("dlgTopup").open) $("dlgTopup").showModal(); }
+$("tpPay").addEventListener("click", async () => {
+  const mest = tpAmount();
+  if (!(mest >= 10 && mest <= 100000)) return;
+  $("tpPay").disabled = true;
+  tpState("wait", T("Создаём заказ…"));
+  const { data: o, error } = await sb.rpc("ton_order_create", { p_mest: mest });
+  if (error || !o) {
+    $("tpPay").disabled = false;
+    const m = String(error && error.message || "");
+    tpState("err", /too many/.test(m) ? T("Слишком много заказов подряд — подождите несколько минут.") : /bad amount/.test(m) ? T("Сумма от 10 до 100 000 Mest.") : T("Не удалось создать заказ. Попробуйте ещё раз."));
+    return;
+  }
+  tpShowManual(o);
+  let ui;
+  try { ui = await tonUIReady(); await ui.connectionRestored; }
+  catch (e) {
+    $("tpPay").disabled = false; tpWatch(o.code, o.mest);
+    tpState("err", T("Не удалось открыть выбор кошелька. Переведите вручную — данные ниже."));
+    $("tpManual").open = true; return;
+  }
+  $("dlgTopup").close();   // окно TON Connect должно быть сверху
+  try {
+    if (!(await tonConnect(ui))) {
+      tpReopen(); $("tpPay").disabled = false;
+      tpState("err", T("Кошелёк не подключён. Выберите кошелёк или переведите вручную."));
+      tpWatch(o.code, o.mest); return;
+    }
+    await ui.sendTransaction({
+      validUntil: Math.floor(Date.now() / 1000) + 900,
+      messages: [{ address: o.address, amount: String(o.nano), payload: tonComment("Mestario " + o.code) }],
+    });
+  } catch (e) {
+    tpReopen(); $("tpPay").disabled = false;
+    tpState("err", /Reject/i.test(String(e && (e.name || e.message))) ? T("Вы отменили перевод.") : T("Перевод не отправлен. Попробуйте ещё раз или переведите вручную."));
+    tpWatch(o.code, o.mest); return;
+  }
+  tpReopen(); $("tpPay").disabled = false;
+  tpState("wait", T("Ждём подтверждения сети…"));
+  tpWatch(o.code, o.mest, true);
+});
+// проверяем зачисление: сервер смотрит входящие переводы; заодно его раз в минуту проверяет и расписание
+async function tpWatch(code, mest, sent) {
+  tpWatchCode = code;
+  const until = Date.now() + (sent ? 6 : 15) * 60000;
+  while (tpWatchCode === code && Date.now() < until) {
+    await new Promise((r) => setTimeout(r, sent ? 4000 : 8000));
+    if (tpWatchCode !== code) return;
+    let st = null;
+    try { const r = await sb.functions.invoke("ton-check", { body: { code } }); st = r.data; } catch (e) {}
+    if (st && st.status === "paid") {
+      tpWatchCode = null;
+      const got = Number(st.credited) || mest;
+      tpState("ok", T("Готово! Зачислено") + " " + nf.format(got) + " Mest");
+      toast(T("Зачислено") + " " + nf.format(got) + " Mest");
+      try { await loadCoinsPage(); } catch (e) {}
+      return;
+    }
+  }
+  if (tpWatchCode === code && sent) { tpWatchCode = null; tpState("err", T("Перевод пока не найден. Если он ушёл — Mest придут автоматически, обычно в течение пары минут.")); }
+}
 $("cpGift").addEventListener("click", () => { $("btnMarket").click(); showMarketTab("gifts"); });
 $("cpEarn").addEventListener("click", () => {
   showSetPage("premium");
