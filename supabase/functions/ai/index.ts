@@ -679,10 +679,191 @@ function plural(n: number) {
   return a === 1 && b !== 11 ? "кредит" : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? "кредита" : "кредитов";
 }
 
+// ---------- новый ИИ-помощник: свои чаты в настройках (ai_chats/ai_msgs), картинки, «сколько думать» ----------
+const AI_SYS = `Ты — ИИ-помощник мессенджера Mestario. Отвечай на языке пользователя (обычно по-русски), ясно и по делу.
+Можно использовать Markdown: короткие списки (- пункт), **жирный** для главного, заголовки ###. Любой код — блоком \`\`\`язык ... \`\`\`.
+Ты видишь присланные изображения: описывай, распознавай текст, решай задачи с фото, объясняй.
+Если просят нарисовать или изменить картинку, ответь ТОЛЬКО одной строкой: [[IMAGE: подробное описание картинки на английском]] — без других слов.
+Не выдумывай фактов; если не уверен — скажи. Не помогай с опасными, незаконными или вредными просьбами.`;
+type Part = { text?: string; inlineData?: { mimeType: string; data: string } };
+type Content = { role: "user" | "model"; parts: Part[] };
+function effortCfg(model: string, effort: string, extra: Record<string, unknown>) {
+  if (effort === "low" || noThink.has(model)) return genCfg(model, extra);
+  if (/gemini-2\.5/.test(model)) return { ...extra, thinkingConfig: { thinkingBudget: effort === "max" ? 8192 : 1024 } };
+  if (/gemini-[3-9]/.test(model)) return { ...extra, thinkingConfig: { thinkingLevel: effort === "max" ? "high" : "low" } };
+  return extra;
+}
+async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void) {
+  const send = (gc: any, signal: AbortSignal) => fetch(`${GL}/models/${model}:streamGenerateContent?alt=sse`, { method: "POST", signal,
+    headers: { "content-type": "application/json", "x-goog-api-key": k },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYS }] }, contents, generationConfig: gc }) });
+  const c = new AbortController();
+  const first = effort === "max" ? 70000 : effort === "medium" ? 35000 : 15000;   // до первых слов: думать дольше — ждём дольше
+  let tm = setTimeout(() => c.abort(), first);
+  let got = "";
+  try {
+    const base = { maxOutputTokens: 8192, temperature: 0.7 };
+    let r = await send(effortCfg(model, effort, base), c.signal);
+    if (!r.ok) {
+      const err = await r.text().catch(() => "");
+      if (!thinkRejected(r.status, err)) return { ok: false, status: r.status, err: err.slice(0, 300) };
+      noThink.add(model);
+      r = await send(base, c.signal);
+      if (!r.ok) return { ok: false, status: r.status, err: (await r.text().catch(() => "")).slice(0, 300) };
+    }
+    const rd = r.body!.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        try {
+          const j = JSON.parse(line.slice(5));
+          const piece = ((j.candidates || [])[0]?.content?.parts || []).filter((p: any) => !p.thought).map((p: any) => p.text || "").join("");
+          if (piece) {
+            if (!got) { clearTimeout(tm); tm = setTimeout(() => c.abort(), 90000); }
+            got += piece; onText(piece);
+          }
+        } catch (_) { /* неполная строка */ }
+      }
+    }
+  } catch (e) {
+    if (!got) return { ok: false, status: 504, err: "timeout " + String(e).slice(0, 100) };
+  } finally { clearTimeout(tm); }
+  return { ok: !!got.trim(), status: 200, text: got, err: got ? "" : "empty" };
+}
+async function aiChat(req: Request, input: any) {
+  const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const { data: au } = await sb.auth.getUser(jwt);
+  const uid = au?.user?.id;
+  if (!uid) return reply({ error: "auth" }, 401);
+  const [{ data: p }, { data: chat }] = await Promise.all([
+    sb.from("profiles").select("banned_at,deleted_at,is_admin").eq("id", uid).maybeSingle(),
+    sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle()]);
+  if (!p || p.banned_at || p.deleted_at) return reply({ error: "not allowed" }, 403);
+  if (!chat || chat.user_id !== uid) return reply({ error: "not found" }, 404);
+  const text = String(input.text ?? "").trim().slice(0, 8000);
+  const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
+    .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
+  if (!text && !imgs.length) return reply({ error: "empty" }, 400);
+  const effort = ["low", "medium", "max"].includes(input.effort) ? input.effort : "medium";
+  const unlimited = !!p.is_admin;
+  const balance = unlimited ? 0 : Number((await sb.rpc("ai_balance", { p_user: uid })).data) || 0;
+  if (!unlimited && balance < 1) return reply({ error: "credits" }, 402);
+  const k = await key();
+  if (!k) return reply({ error: "not configured" }, 503);
+
+  const { data: um, error: uerr } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "user", body: text, images: imgs }).select("id").single();
+  if (uerr || !um) return reply({ error: "db" }, 500);
+  const title = chat.title === "Новый чат" ? (text ? text.replace(/\s+/g, " ").slice(0, 48) : "Картинка") : chat.title;
+  await sb.from("ai_chats").update({ updated_at: new Date().toISOString(), title }).eq("id", chat.id);
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(ctl) {
+      const out = (o: unknown) => { try { ctl.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch (_) { /* клиент ушёл */ } };
+      const t0 = Date.now();
+      const fail = async (code: string) => { await sb.from("ai_msgs").delete().eq("id", um.id); out({ error: code }); ctl.close(); };
+      try {
+        // история: последние 24 сообщения; картинки — из трёх последних сообщений с картинками (не больше 8)
+        const { data: hist } = await sb.from("ai_msgs").select("id,role,body,images").eq("chat_id", chat.id).lte("id", um.id).order("id", { ascending: false }).limit(24);
+        const rows = (hist || []).reverse();
+        const withImg = rows.filter((r: any) => r.role === "user" && (r.images || []).length).slice(-3).map((r: any) => r.id);
+        let left = 8;
+        const contents: Content[] = [];
+        for (const r of rows) {
+          const parts: Part[] = [];
+          if (r.role === "user" && withImg.includes(r.id)) {
+            for (const path of (r.images || []).slice(0, left)) {
+              const { data: blob } = await sb.storage.from("ai").download(path);
+              if (!blob) continue;
+              parts.push({ inlineData: { mimeType: blob.type || "image/jpeg", data: b64(new Uint8Array(await blob.arrayBuffer())) } });
+              left--;
+            }
+          }
+          const body = String(r.body || "").trim();
+          if (body) parts.push({ text: body });
+          else if (r.role === "user" && parts.length) parts.push({ text: "(картинка без подписи — опиши её)" });
+          if (!parts.length) continue;
+          const role = r.role === "model" ? "model" : "user";
+          const prev = contents[contents.length - 1];
+          if (prev && prev.role === role) prev.parts.push(...parts); else contents.push({ role, parts });
+        }
+        while (contents.length && contents[0].role === "model") contents.shift();
+
+        let answer = "", imagePrompt = "", english = false, hidden = false;
+        if (wantsImage(text) && !imgs.length) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
+        else {
+          let res: any = null, sent = "", held = "";
+          // ответ идёт кусками; строку-команду «нарисовать» не показываем (первые символы придерживаем, пока не ясно)
+          const onPiece = (piece: string) => {
+            sent += piece;
+            if (hidden) return;
+            if (/^\s*\[\[/.test(sent)) { hidden = true; return; }
+            if (sent.trim().length < 2) { held += piece; return; }
+            out({ d: held + piece }); held = "";
+          };
+          const list = (await pickModels(k)).filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 6);
+          for (const m of list) {
+            if (Date.now() - t0 > 100000) break;
+            res = await streamContents(k, m, contents, effort, onPiece);
+            if (res.ok) break;
+            if (sent) break;   // часть ответа уже ушла — не начинаем заново
+            if (res.status === 429) blocked.set(m, Date.now() + 30 * 60_000);
+            else if ([403, 404, 504].includes(res.status)) blocked.set(m, Date.now() + 10 * 60_000);
+          }
+          if ((!res || !res.ok) && !sent && !imgs.length) {
+            // запасной ИИ без картинок
+            const fb = await pollinationsText(contents.map((c) => ({ role: c.role, text: c.parts.map((x) => x.text || "").join("\n") })) as Turn[], AI_SYS);
+            if (fb.ok) { res = fb; onPiece(fb.text); }
+          }
+          if (!res || (!res.ok && !sent)) return await fail(res?.status === 429 ? "busy" : "ai");
+          if (held && !hidden) out({ d: held });
+          answer = sent.trim();
+          const mk = /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(answer);
+          if (mk) { imagePrompt = mk[1].trim(); english = true; answer = ""; }
+        }
+        const images: string[] = [];
+        if (imagePrompt) {
+          out({ drawing: true });
+          const im = await makeImage(imagePrompt, english);
+          if (!im.ok) return await fail(im.status === 429 ? "busy" : "image");
+          const ext = String(im.mime).includes("jpeg") ? "jpg" : String(im.mime).includes("webp") ? "webp" : "png";
+          const path = `${uid}/gen-${crypto.randomUUID()}.${ext}`;
+          const up = await sb.storage.from("ai").upload(path, im.bytes, { contentType: im.mime });
+          if (up.error) return await fail("image");
+          images.push(path);
+          answer = (im.text || "").trim();
+          if (answer) out({ d: answer });
+        }
+        const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
+        let charged: number | null = null, credits: number | null = null;
+        if (!unlimited) {
+          const c = (await sb.rpc("ai_charge", { p_user: uid, p_cost: secs })).data || { charged: secs, left: balance - secs };
+          charged = c.charged; credits = c.left;
+        }
+        const { data: mm } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs }).select("id,role,body,images,secs,created_at").single();
+        await sb.from("ai_chats").update({ updated_at: new Date().toISOString() }).eq("id", chat.id);
+        out({ done: true, msg: mm, user_id: um.id, charged, credits, title });
+        ctl.close();
+      } catch (e) {
+        console.error("aiChat", e);
+        await fail("ai");
+      }
+    },
+  });
+  return new Response(stream, { headers: { ...cors, "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const input = await req.json().catch(() => ({}));
+    if (input.ai_chat) return await aiChat(req, input);
     // бот пользователя: ответ ИИ, когда готовой команды нет (вызывает база с секретом или приложение собеседника)
     if (input.bot_message) {
       const id = Number(input.bot_message);

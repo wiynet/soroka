@@ -1104,7 +1104,7 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .msg .resend .danger { color: var(--danger); }
 .msg.hit { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* подарок в чате: служебная карточка по центру, как отдельное событие, а не обычное сообщение */
-.msg.giftm, .msg.giftm.mine { align-self: center; max-width: min(88%, 290px); padding: 0; background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; display: grid; justify-items: center; gap: 6px; }
+.msg.giftm, .msg.giftm.mine { align-self: center; max-width: min(88%, 290px); padding: 0; background: none !important; box-shadow: none !important; border: 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-radius: 0; display: grid; justify-items: center; gap: 6px; }
 .gift-pill, .gift-card { --gc: hsl(var(--h) 42% 22% / .9); background: var(--gc); color: #fff; backdrop-filter: blur(10px); }
 .gift-pill { padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; text-align: center; }
 .gift-card { display: grid; justify-items: center; gap: 4px; width: 100%; padding: 14px 18px 16px; border-radius: 22px; text-align: center; }
@@ -1506,6 +1506,269 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 @keyframes prIn { from { opacity: 0; transform: translateY(-20px); filter: blur(10px); } }
 @keyframes prCut { from { transform: translateY(-105%); } }
 @media (prefers-reduced-motion: reduce) { .pr-on .r, .pr-on .pr-title .w > span { animation: none; } .pr-pill, .rs { transition: none; } }
+/* ===== маркет: вкладки, фильтры, сетка NFT-подарков как в витрине ===== */
+#dlgMarket { width: min(780px, calc(100% - 24px)); height: min(860px, calc(100dvh - 48px)); }
+#dlgMarket > .dlg.mk { height: 100%; max-height: none; gap: 12px; padding: 16px 16px 20px; }
+@media (max-width: 640px) { #dlgMarket { width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; } #dlgMarket > .dlg.mk { padding-top: calc(14px + env(safe-area-inset-top, 0px)); } }
+.mk-head { display: flex; align-items: center; gap: 10px; }
+.mk-head h2 { font-size: 22px !important; flex: none; }
+.mk-bal { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-x svg, .ai-top svg, .ai-new svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.mk-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+.mk-tabs::-webkit-scrollbar { display: none; }
+.mk-tabs button { flex: none; padding: 8px 15px; border: 0; border-radius: 999px; background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background-color .18s, color .18s; }
+.mk-tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); }
+.mk-pane { display: grid; gap: 12px; align-content: start; }
+.mk-pane[hidden] { display: none; }
+.mk-kinds { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: 12px; background: var(--panel-2); }
+.mk-kinds button { padding: 8px 6px; border: 0; border-radius: 10px; background: none; color: var(--muted); font-weight: 600; font-size: 14px; }
+.mk-kinds button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .14); }
+.mk-filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.mk-filters::-webkit-scrollbar { display: none; }
+.mk-filters[hidden] { display: none; }
+.mk-f { position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 30px 7px 13px; border-radius: 999px; background: var(--panel-2); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.mk-f::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); pointer-events: none; }
+.mk-f span { color: var(--muted); font-weight: 500; }
+.mk-f select { appearance: none; border: 0; background: none; color: inherit; font: inherit; padding: 0; max-width: 130px; cursor: pointer; }
+.mk-f select:focus { outline: none; }
+.mk-f:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+.mk-count:empty { display: none; }
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.mk-grid:empty { display: none; }
+.mk-card { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1.16; padding: 0; border: 0; border-radius: 16px; overflow: hidden; color: #fff; cursor: pointer; transition: transform .15s var(--ease); }
+.mk-card:active { transform: scale(.97); }
+.mk-card .em { position: relative; width: 62%; height: auto; font-size: 60px; line-height: 1; margin-top: -14%; }
+.mk-card span.em { width: auto; }
+.mk-card .pxl { font-size: 70px; }
+.mk-card .rb { position: absolute; z-index: 2; top: 13px; right: -30px; width: 108px; padding: 3px 0; transform: rotate(45deg); background: rgb(255 255 255 / .26); font: 700 10.5px/1 var(--display); letter-spacing: .02em; text-align: center; }
+.mk-card .tb { position: absolute; z-index: 2; top: 8px; left: 8px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgb(0 0 0 / .22); font-size: 12px; }
+.mk-card .pp { position: absolute; z-index: 2; left: 9px; right: 9px; bottom: 9px; display: flex; justify-content: center; align-items: center; gap: 5px; padding: 6px 4px; border-radius: 999px; background: rgb(255 255 255 / .24); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font: 700 13px/1 var(--display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mk-card .pp .coin { width: 15px; height: 15px; font-size: 8px; }
+.mk-card .own { position: absolute; z-index: 2; top: 8px; left: 8px; padding: 2px 7px; border-radius: 999px; background: rgb(0 0 0 / .28); font-size: 10.5px; font-weight: 600; }
+.mk-card .nm { position: absolute; z-index: 2; bottom: 42px; left: 6px; right: 6px; font-size: 11.5px; font-weight: 600; text-align: center; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-empty { grid-column: 1 / -1; padding: 30px 10px; text-align: center; color: var(--muted); font-size: 14px; }
+.mk-wallet { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 14px; background: var(--panel-2); font-size: 13.5px; }
+.mk-wallet .wl-mi { flex: none; }
+.mk-wallet > span { flex: 1; min-width: 0; }
+.mk-wallet code { font-size: 12.5px; }
+.mk-sell { display: grid; gap: 8px; }
+.sell-row { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 16px; }
+.sell-row .mini { width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: var(--panel-2); font-size: 28px; }
+.sell-row .mini img.em { width: 70%; height: auto; }
+.sell-row .mini .nft { font-size: 11px; }
+.sell-row .ttl { min-width: 0; display: grid; gap: 2px; }
+.sell-row .ttl b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sell-row .ttl span { font-size: 12.5px; color: var(--muted); }
+.sell-row .frm { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+.sell-row .frm .input { padding: 8px 11px; min-width: 0; }
+.sell-row .frm .btn { padding: 8px 14px; font-size: 13.5px; }
+.sell-row.listed .frm { grid-template-columns: 1fr auto; }
+.my-lot { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid var(--line); border-radius: 14px; background: none; color: var(--ink); text-align: left; width: 100%; }
+.my-lot .mini { width: 46px; height: 46px; border-radius: 11px; display: grid; place-items: center; overflow: hidden; background: var(--panel-2); font-size: 24px; }
+.my-lot .mini img.em { width: 72%; height: auto; }
+.my-lot .ttl { min-width: 0; display: grid; gap: 2px; }
+.my-lot .ttl b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.my-lot .ttl span { font-size: 12.5px; color: var(--muted); }
+.my-lot .st { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.my-lot .st.open { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.my-lot .st.sold { background: color-mix(in srgb, #2fbf71 18%, transparent); color: #1f9d5a; }
+/* таблица фактов: как в карточке NFT */
+.gv-facts { display: grid; grid-template-columns: minmax(96px, auto) 1fr; margin: 0; align-self: stretch; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; text-align: left; font-size: 14px; }
+.gv-facts dt, .gv-facts dd { margin: 0; padding: 10px 12px; border-top: 1px solid var(--line); min-width: 0; }
+.gv-facts dt { color: var(--muted); background: color-mix(in srgb, var(--panel-2) 60%, transparent); border-right: 1px solid var(--line); }
+.gv-facts dt:first-of-type, .gv-facts dt:first-of-type + dd { border-top: 0; }
+.gv-facts dd { overflow-wrap: anywhere; }
+.gv-facts dd .pct { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--mine); color: var(--accent); font-size: 12px; font-weight: 600; }
+.gv-facts:empty, .gv-facts[hidden] { display: none; }
+.gv .gv-facts { gap: 0; }
+.lot-dlg, .nft-sheet, .dlg.mk { outline: none; }
+.lot-dlg { gap: 12px; }
+.lot-top { padding: 20px 14px 16px; border-radius: 20px; }
+.lot-top .em { font-size: 96px; }
+.lot-top img.em { width: 120px; height: auto; }
+.lot-top .num { font-size: 14px; opacity: .9; }
+.lot-buy { display: grid; gap: 8px; }
+.lot-buy .btn { width: 100%; padding: 13px 16px; border-radius: 999px; font-size: 16px; }
+.lot-buy .btn small { display: block; font-size: 12px; font-weight: 500; opacity: .85; margin-top: 2px; }
+.lot-buy .btn[hidden] { display: none; }
+/* окно NFT-юзернейма или номера */
+.nft-sheet { gap: 14px; }
+.nft-hero { display: grid; justify-items: center; gap: 8px; padding: 26px 14px 20px; border-radius: 20px; text-align: center; color: #fff; background: radial-gradient(circle at 50% 30%, #4f7dff, #1d2f8f 85%); position: relative; overflow: hidden; }
+.nft-hero .gemb { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 18px; background: rgb(255 255 255 / .18); }
+.nft-hero .gemb .ico { width: 30px; height: 30px; }
+.nft-hero b { font: 700 26px/1.15 var(--display); overflow-wrap: anywhere; }
+.nft-hero span { font-size: 13.5px; opacity: .85; }
+.nft-sheet code, .gv-facts code { font-size: 12.5px; overflow-wrap: anywhere; }
+.nft-sheet .btn.wide[hidden] { display: none; }
+.wl-copy { margin-left: 6px; padding: 2px 9px; border: 0; border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 12px; font-weight: 600; }
+.wl-none { color: var(--muted); }
+/* страница «Криптокошельки» */
+.wl-intro { display: grid; justify-items: center; gap: 6px; padding: 10px 8px 4px; text-align: center; }
+.wl-ico { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 20px; background: linear-gradient(160deg, #3a8bff, #0058d6); font-size: 32px; box-shadow: 0 8px 22px rgb(0 88 214 / .35); }
+.wl-intro b { font: 650 19px/1.2 var(--display); }
+.wl-card { display: grid; gap: 10px; padding: 14px !important; }
+.wl-row { display: flex; align-items: center; gap: 12px; }
+.wl-mi { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font: 700 19px/1 var(--display); flex: none; }
+.wl-mi.ton { background: #0098ea; }
+.wl-mi.usdt { background: #26a17b; }
+.wl-tx { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.wl-tx b { font-size: 15px; }
+.wl-tx code { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.wl-tx code.on { color: var(--ink); }
+.wl-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.wl-acts .btn { flex: 1; min-width: 140px; }
+.wl-acts .btn[hidden], .wl-row .btn[hidden] { display: none; }
+.wl-edit { display: flex; gap: 8px; }
+.wl-edit[hidden] { display: none; }
+.wl-edit .input { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 13px; }
+/* настройки: без папок, баннеров и поиска; значения справа не вылезают */
+.sidebar.in-settings > .folders, .sidebar.in-settings > .get-apps, .sidebar.in-settings > .site-banner { display: none !important; }
+.srow .sv { max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow .st { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* рейтинг вплотную к статусу «в сети» */
+.seen-row { gap: 0; }
+.seen-row .lvl { width: 40px; height: 40px; margin: -10px -2px -10px -8px; }
+/* ===== новый ИИ-помощник ===== */
+dialog.ai-win { background: var(--bg); }
+@media (min-width: 761px) { dialog.full.ai-win { width: min(1180px, calc(100% - 48px)); } }
+.ai-app { display: grid; grid-template-columns: 280px minmax(0, 1fr); height: 100%; min-height: 0; }
+.ai-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 14px 12px 12px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); border-right: 1px solid var(--line); background: var(--panel); }
+.ai-side-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 4px; }
+.ai-side-head b { font: 650 17px/1.2 var(--display); }
+.ai-new { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; }
+.ai-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 2px; margin: 0 -4px; padding: 0 4px; }
+.ai-chat { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 9px 6px 9px 10px; border-radius: 12px; cursor: pointer; }
+.ai-chat:hover { background: var(--panel-2); }
+.ai-chat[aria-current="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--panel-2)); }
+.ai-chat b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-chat small { display: block; font-size: 12px; color: var(--muted); }
+.ai-chat .del { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); opacity: 0; }
+.ai-chat:hover .del, .ai-chat[aria-current="true"] .del, .ai-chat .del.armed { opacity: 1; }
+.ai-chat .del.armed { background: #e5484d; color: #fff; }
+.ai-chat .del svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (pointer: coarse) { .ai-chat .del { opacity: 1; } }
+.ai-cred-box { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
+.ai-cred-box b { grid-row: 2; font: 650 17px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.ai-cred-box .btn { grid-row: 1 / 3; grid-column: 2; padding: 7px 14px; }
+.ai-cred-box .btn[hidden] { display: none; }
+.ai-scrim { display: none; }
+.ai-main { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
+.ai-top { display: flex; align-items: center; gap: 8px; padding: 10px 14px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 86%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); z-index: 3; }
+.ai-top .u-round { flex: none; color: var(--ink); background: var(--panel-2); }
+.ai-menu { display: none !important; }
+.ai-title-wrap { flex: 1; min-width: 0; display: grid; }
+.ai-title { justify-self: start; max-width: 100%; padding: 0; border: 0; background: none; color: var(--ink); font: 650 16px/1.25 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; cursor: text; }
+.ai-title-in { font: 650 16px/1.25 var(--display); padding: 3px 8px; border: 1px solid var(--accent); border-radius: 8px; background: var(--panel); color: var(--ink); min-width: 0; }
+.ai-top .ai-ico { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(140deg, #7a5cff, #2f8cff); }
+.ai-top .ai-ico .ico { width: 20px; height: 20px; }
+.ai-feed { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 14px; }
+.ai-feed > * { width: 100%; max-width: 760px; margin-inline: auto; }
+.ai-u { display: grid; justify-items: end; gap: 6px; }
+.ai-u .bub { max-width: min(82%, 560px); padding: 9px 14px; border-radius: 18px 18px 6px 18px; background: var(--mine); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: 15px; line-height: 1.45; }
+.ai-imgs { display: flex; flex-wrap: wrap; gap: 6px; max-width: min(82%, 560px); justify-content: flex-end; }
+.ai-m .ai-imgs { justify-content: flex-start; max-width: 100%; }
+.ai-imgs button { padding: 0; border: 0; border-radius: 14px; overflow: hidden; background: var(--panel-2); cursor: zoom-in; }
+.ai-imgs img { display: block; width: 132px; height: 132px; object-fit: cover; }
+.ai-m .ai-imgs img { width: min(320px, 100%); height: auto; max-height: 420px; object-fit: contain; }
+.ai-m { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
+.ai-m .av { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #7a5cff, #2f8cff); }
+.ai-m .av .ico { width: 17px; height: 17px; }
+.ai-m .md { min-width: 0; display: grid; gap: 8px; font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; word-break: break-word; }
+.ai-m .md p { margin: 0; white-space: pre-wrap; }
+.ai-m .md h4 { margin: 4px 0 0; font: 650 15.5px/1.35 var(--display); }
+.ai-m .md ul, .ai-m .md ol { margin: 0; padding-left: 22px; display: grid; gap: 3px; }
+.ai-m .md code.ic { padding: 1px 5px; border-radius: 6px; background: var(--panel-2); font-size: .9em; }
+.ai-m .md .code-card { max-width: 100%; }
+.ai-m .md .code-pre { max-width: 100%; overflow-x: auto; }
+.ai-m .meta { font-size: 12px; color: var(--muted); }
+.ai-m .md .cur { display: inline-block; width: 8px; height: 1em; vertical-align: -2px; border-radius: 2px; background: var(--accent); animation: ai-blink 1s steps(2) infinite; }
+@keyframes ai-blink { 50% { opacity: 0; } }
+.ai-dots { display: inline-flex; gap: 5px; padding: 8px 0; }
+.ai-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: ai-dot 1.1s ease-in-out infinite; }
+.ai-dots i:nth-child(2) { animation-delay: .15s; } .ai-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-5px); opacity: 1; } }
+.ai-hello { margin: auto; display: grid; justify-items: center; gap: 12px; padding: 30px 8px; text-align: center; }
+.ai-hello .big { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 20px; color: #fff; background: linear-gradient(140deg, #7a5cff, #2f8cff); box-shadow: 0 10px 30px rgb(80 90 255 / .35); }
+.ai-hello .big .ico { width: 34px; height: 34px; }
+.ai-hello h3 { margin: 0; font: 650 24px/1.2 var(--display); }
+.ai-hello p { margin: 0; max-width: 420px; color: var(--muted); font-size: 14.5px; line-height: 1.45; }
+.ai-sugg { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 560px; }
+.ai-sugg button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink); font-size: 13.5px; }
+.ai-sugg button:hover { background: var(--panel-2); }
+.ai-dock { padding: 8px 14px 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; justify-items: center; gap: 6px; }
+.ai-foot { font-size: 11.5px; color: var(--muted); text-align: center; }
+@media (max-width: 760px) {
+  .ai-app { grid-template-columns: minmax(0, 1fr); }
+  .ai-side { position: absolute; z-index: 5; top: 0; bottom: 0; left: 0; width: min(300px, 84vw); transform: translateX(-102%); transition: transform .32s cubic-bezier(.2, .8, .2, 1); box-shadow: 0 0 40px rgb(0 0 0 / .3); }
+  .ai-app.side-open .ai-side { transform: none; }
+  .ai-scrim { display: block; position: absolute; inset: 0; z-index: 4; background: rgb(0 0 0 / .4); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .ai-app.side-open .ai-scrim { opacity: 1; pointer-events: auto; }
+  .ai-menu { display: grid !important; }
+  .ai-feed { padding: 14px 12px 10px; }
+}
+/* поле ввода в стиле PromptInput: пилюля раскрывается в карточку, вложения выезжают из-за неё */
+.pi { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 360px; transition: max-width .4s cubic-bezier(.175, .885, .32, 1.275); }
+.pi[data-open="true"] { max-width: 760px; }
+.pi.smooth { transition: max-width .15s ease-out; }
+.pi-att-wrap { position: relative; z-index: 0; height: 0; overflow: hidden; transition: height .4s cubic-bezier(.175, .885, .32, 1.275); }
+.pi.has-att[data-open="true"] .pi-att-wrap { height: 68px; }
+.pi-att { position: absolute; left: 20px; right: 20px; bottom: -8px; height: 68px; display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 4px; border: 1px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; background: var(--panel-2); overflow-x: auto; transform: translateY(100%); opacity: 0; transition: transform .4s cubic-bezier(.175, .885, .32, 1.275), opacity .3s ease-out; }
+.pi.has-att[data-open="true"] .pi-att { transform: none; opacity: 1; }
+.pi-th { position: relative; flex: none; width: 48px; height: 48px; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); animation: pi-th-in .4s cubic-bezier(.175, .885, .32, 1.275) backwards; transition: transform .2s cubic-bezier(.175, .885, .32, 1.275); }
+.pi-th:hover { transform: scale(1.04); }
+.pi-th:active { transform: scale(.96); }
+.pi-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pi-th .x { position: absolute; top: 3px; right: 3px; width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; background: rgb(255 255 255 / .92); color: #222; font-size: 11px; line-height: 1; opacity: 0; transform: scale(.5); transition: opacity .2s, transform .2s cubic-bezier(.175, .885, .32, 1.275); }
+.pi-th:hover .x, .pi-th:focus-visible .x { opacity: 1; transform: none; }
+@media (pointer: coarse) { .pi-th .x { opacity: 1; transform: none; } }
+@keyframes pi-th-in { from { opacity: 0; transform: translateY(-12px) scale(.9); } }
+.pi-card { position: relative; z-index: 1; width: 100%; height: 48px; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: 0 2px 10px rgb(0 0 0 / .07); overflow: hidden; transition: height .4s cubic-bezier(.175, .885, .32, 1.275), border-color .2s, box-shadow .2s; }
+.pi.smooth .pi-card { transition: height .15s ease-out; }
+.pi[data-open="true"] .pi-card { overflow: visible; cursor: text; }
+.pi-card:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 2px 12px rgb(0 0 0 / .08); }
+.pi-ph { position: absolute; inset: 0 48px 0 0; z-index: 1; padding: 0 16px; border: 0; background: none; color: var(--muted); font-size: 14.5px; font-weight: 500; text-align: left; cursor: text; transition: opacity .4s cubic-bezier(.175, .885, .32, 1.275), transform .4s cubic-bezier(.175, .885, .32, 1.275); }
+.pi[data-open="true"] .pi-ph { opacity: 0; transform: scale(1.05) translateY(4px); pointer-events: none; }
+.pi-ta { position: absolute; z-index: 1; top: 0; left: 0; right: 0; height: 68px; padding: 13px 48px 13px 16px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 22px; resize: none; outline: none; overflow-y: hidden; opacity: 0; transform: scale(.95) translateY(-4px); pointer-events: none; transition: opacity .3s ease-out, transform .3s ease-out, height .4s cubic-bezier(.175, .885, .32, 1.275); scrollbar-width: thin; }
+.pi.smooth .pi-ta { transition: height .15s ease-out; }
+.pi[data-open="true"] .pi-ta { opacity: 1; transform: none; pointer-events: auto; }
+.pi-ta.scroll { overflow-y: auto; }
+.pi-ta::placeholder { color: var(--muted); font-weight: 500; }
+.pi-fade { position: absolute; z-index: 2; left: 16px; right: 48px; height: 26px; pointer-events: none; opacity: 0; }
+.pi-fade.top { top: 0; background: linear-gradient(to bottom, var(--panel), color-mix(in srgb, var(--panel) 85%, transparent), transparent); border-radius: 24px 24px 0 0; }
+.pi-fade.bot { background: linear-gradient(to top, var(--panel), color-mix(in srgb, var(--panel) 85%, transparent), transparent); transition: top .4s cubic-bezier(.175, .885, .32, 1.275); }
+.pi-bar { position: absolute; z-index: 3; left: 10px; right: 48px; bottom: 8px; display: flex; align-items: center; gap: 2px; opacity: 0; filter: blur(4px); transform: translateY(8px); pointer-events: none; transition: opacity .3s, filter .3s, transform .3s cubic-bezier(.175, .885, .32, 1.275); }
+.pi[data-open="true"]:not(.rec) .pi-bar { opacity: 1; filter: none; transform: none; pointer-events: auto; }
+.pi-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background-color .2s, color .2s; }
+.pi-chip:hover { background: var(--panel-2); color: var(--ink); }
+.pi-chip svg { width: 14px; height: 14px; fill: currentColor; }
+.pi-chip svg rect { transition: opacity .3s; }
+.pi-morph { position: relative; display: inline-flex; overflow: hidden; transition: width .3s cubic-bezier(.175, .885, .32, 1.275); white-space: nowrap; }
+.pi-morph > span { display: inline-block; animation: pi-morph .3s ease both; }
+@keyframes pi-morph { from { opacity: 0; transform: scale(.95); } }
+.pi-plus { margin-left: auto; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; transition: background-color .2s, color .2s; }
+.pi-plus:hover { background: var(--panel-2); color: var(--ink); }
+.pi-plus:disabled { opacity: .4; pointer-events: none; }
+.pi-plus svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.pi-wave { position: absolute; z-index: 3; right: 48px; bottom: 8px; height: 32px; width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 3px; opacity: 0; transform: translateX(16px); overflow: hidden; pointer-events: none; transition: width .4s cubic-bezier(.175, .885, .32, 1.275), opacity .4s, transform .4s cubic-bezier(.175, .885, .32, 1.275); }
+.pi.rec .pi-wave { width: 64px; opacity: 1; transform: none; }
+.pi-wave i { width: 4px; height: 4px; border-radius: 999px; background: var(--accent); transition: height .075s ease-out; }
+.pi-go { position: absolute; z-index: 3; right: 8px; bottom: 7px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--panel); cursor: pointer; transition: opacity .3s, transform .15s; }
+.pi-go:hover { opacity: .88; }
+.pi-go:active { transform: scale(.94); }
+.pi-go:disabled { opacity: .35; cursor: default; }
+.pi-i { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: scale(.5) rotate(45deg); filter: blur(1px); pointer-events: none; transition: opacity .3s, transform .3s cubic-bezier(.175, .885, .32, 1.275), filter .3s; }
+.pi-i svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pi-i.stop svg { fill: currentColor; stroke: none; }
+.pi-i.mic { transform: scale(.5) rotate(-45deg); }
+.pi[data-act="up"] .pi-i.up, .pi[data-act="mic"] .pi-i.mic, .pi[data-act="stop"] .pi-i.stop { opacity: 1; transform: none; filter: none; }
+.pi-gal { position: absolute; inset: 0; z-index: 50; }
+.pi-gal .bg { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; transition: opacity .4s; }
+.pi-gal.open .bg { opacity: 1; }
+.pi-gal .ph { position: fixed; overflow: hidden; background: var(--panel-2); }
+.pi-gal .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pi-gal .x { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--panel) 90%, transparent); color: var(--ink); font-size: 16px; opacity: 0; transform: scale(.7); transition: opacity .3s, transform .3s cubic-bezier(.175, .885, .32, 1.275); }
+.pi-gal.open .x { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .pi, .pi-card, .pi-ta, .pi-att, .pi-att-wrap, .pi-bar, .pi-ph, .pi-i, .pi-wave, .ai-side { transition: none !important; } .pi-th { animation: none; } }
 .coins-earn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: 18px; background: var(--panel-2); color: var(--ink); text-align: left; }
 .coins-earn b { display: block; font-weight: 600; }
 .coins-earn > span:last-child { min-width: 0; display: grid; gap: 2px; }
@@ -2743,7 +3006,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=003f5aa046"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=62b242ed0a"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -3383,6 +3646,7 @@ void main() {
             <button class="srow" type="button" data-go="premium"><span class="pico violet" data-ico="star"></span><span class="st">Премиум</span><span class="sv" id="sv_premium"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="ai"><span class="pico sky" data-ico="ai"></span><span class="st">ИИ-помощник</span><span class="sv" id="sv_ai"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="coins"><span class="pico gold" data-ico="coin"></span><span class="st">Мои Mest</span><span class="sv" id="sv_coins"></span><span class="chev" aria-hidden="true">›</span></button>
+            <button class="srow" type="button" data-go="wallets"><span class="pico blue" data-ico="gem"></span><span class="st">Криптокошельки</span><span class="sv" id="sv_wallets"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="gift"><span class="pico teal" data-ico="gift"></span><span class="st">Отправить подарок</span><span class="sv" id="sv_gift"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="support"><span class="pico pink" data-ico="help"></span><span class="st">Поддержка</span><span class="sv" id="sv_support"></span><span class="chev" aria-hidden="true">›</span></button>
             <button class="srow" type="button" data-go="invite"><span class="pico green" data-ico="users"></span><span class="st">Пригласить друзей</span><span class="sv">+25 Mest</span><span class="chev" aria-hidden="true">›</span></button>
@@ -3576,6 +3840,40 @@ void main() {
         </div>
         <div id="cpList"></div>
       </div>
+    </div>
+    <div data-page="wallets" hidden>
+      <div class="wl-intro">
+        <span class="wl-ico" aria-hidden="true">💎</span>
+        <b>Кошельки аккаунта</b>
+        <span class="small muted">На кошелёк TON приходят деньги за ваши лоты, проданные за TON. Адреса видят все, кто открывает ваши NFT-юзернеймы, номера и подарки.</span>
+      </div>
+      <div class="pcard wl-card">
+        <div class="wl-row">
+          <span class="wl-mi ton" aria-hidden="true">💎</span>
+          <div class="wl-tx"><b>TON</b><code id="wlTon">не привязан</code></div>
+          <button class="btn ghost" type="button" id="wlTonCopy" hidden>Копировать</button>
+        </div>
+        <div class="wl-acts">
+          <button class="btn ton-btn" type="button" id="wlTonGo">Подключить кошелёк TON</button>
+          <button class="btn ghost danger" type="button" id="wlTonDel" hidden>Отвязать</button>
+        </div>
+      </div>
+      <div class="pcard wl-card">
+        <div class="wl-row">
+          <span class="wl-mi usdt" aria-hidden="true">₮</span>
+          <div class="wl-tx"><b>TRON · USDT TRC-20</b><code id="wlTron">не привязан</code></div>
+          <button class="btn ghost" type="button" id="wlTronCopy" hidden>Копировать</button>
+        </div>
+        <form class="wl-edit" id="wlTronForm" hidden>
+          <input class="input" id="wlTronIn" maxlength="34" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Адрес TRON, начинается с T" aria-label="Адрес кошелька TRON">
+          <button class="btn" type="submit" id="wlTronSave">Сохранить</button>
+        </form>
+        <div class="wl-acts">
+          <button class="btn ghost" type="button" id="wlTronGo">Указать адрес TRON</button>
+          <button class="btn ghost danger" type="button" id="wlTronDel" hidden>Отвязать</button>
+        </div>
+      </div>
+      <div class="hint" id="wlHint">Кошелёк TON подключается через TON Connect (Tonkeeper, Telegram Wallet, MyTonWallet) — адрес берётся из самого кошелька. Сменить кошелёк можно в любой момент: открытые лоты сразу начнут принимать TON на новый адрес.</div>
     </div>
     <div data-page="premium" hidden>
       <div class="coins-hero prem-hero">
@@ -4064,22 +4362,56 @@ void main() {
   </div>
 </dialog>
 
-<!-- маркет: NFT-юзернеймы и подарки -->
+<!-- маркет: NFT-подарки, юзернеймы и номера; аукцион; свои лоты; продажа; подарить -->
 <dialog id="dlgMarket">
-  <div class="dlg">
-    <h2>Маркет</h2>
-    <div class="small muted" id="mkBal"></div>
-    <div class="seg" id="mkTabs" role="tablist">
-      <button type="button" role="tab" data-mk="nft" aria-checked="true">NFT</button>
-      <button type="button" role="tab" data-mk="gifts" aria-checked="false">Подарки</button>
-      <button type="button" role="tab" data-mk="auction" aria-checked="false">Аукцион</button>
+  <div class="dlg mk" tabindex="-1" autofocus>
+    <div class="mk-head">
+      <h2>Маркет</h2>
+      <span class="mk-bal" id="mkBal"></span>
+      <button class="icon-btn mk-x" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="mk-tabs" id="mkTabs" role="tablist">
+      <button type="button" role="tab" data-mk="buy" aria-selected="true">Купить</button>
+      <button type="button" role="tab" data-mk="auction" aria-selected="false">Аукцион</button>
+      <button type="button" role="tab" data-mk="mine" aria-selected="false">Мои лоты</button>
+      <button type="button" role="tab" data-mk="sell" aria-selected="false">Продать</button>
+      <button type="button" role="tab" data-mk="gifts" aria-selected="false">Подарить</button>
     </div>
 
-    <div data-mkpane="nft" style="display:grid;gap:14px">
-      <div class="hint">NFT-юзернейм или номер +555 можно купить сразу по цене продавца — за Mest или за TON — или предложить свою цену ниже. Mest за предложение замораживаются и возвращаются, если продавец откажет или вы передумаете. TON при покупке уходят прямо на кошелёк продавца.</div>
-      <div class="lots" id="mkLots"></div>
-      <div class="set-label">Мои NFT-юзернеймы и номера</div>
-      <div id="mkMine" style="display:grid;gap:8px"></div>
+    <div data-mkpane="buy" class="mk-pane">
+      <div class="mk-kinds" id="mkKinds" role="radiogroup" aria-label="Что показать">
+        <button type="button" role="radio" data-k="gift" aria-checked="true">Подарки</button>
+        <button type="button" role="radio" data-k="name" aria-checked="false">Юзернеймы</button>
+        <button type="button" role="radio" data-k="num" aria-checked="false">Номера</button>
+      </div>
+      <div class="mk-filters" id="mkFilters">
+        <label class="mk-f"><span>Цена</span><select id="mkSort" aria-label="Сортировка"><option value="new">Новые</option><option value="cheap">Дешевле</option><option value="dear">Дороже</option></select></label>
+        <label class="mk-f"><span>Подарок</span><select id="mkType" aria-label="Подарок"><option value="">Все</option></select></label>
+        <label class="mk-f"><span>Модель</span><select id="mkModel" aria-label="Модель"><option value="">Все</option></select></label>
+        <label class="mk-f"><span>Фон</span><select id="mkBack" aria-label="Фон"><option value="">Все</option></select></label>
+      </div>
+      <div class="mk-count small muted" id="mkCount"></div>
+      <div class="mk-grid" id="mkGiftLots"></div>
+      <div class="lots" id="mkLots" hidden></div>
+    </div>
+
+    <div data-mkpane="auction" class="mk-pane" hidden>
+      <div class="hint">NFT-подарки на торгах. Ставка замораживается; если её перебьют, Mest сразу вернутся. Свой подарок можно выставить из его окна.</div>
+      <div class="gift-grid" id="mkAuctions"></div>
+    </div>
+
+    <div data-mkpane="mine" class="mk-pane" hidden>
+      <div class="hint">Ваши лоты на продаже и последние сделки. Открытый лот можно снять — предложения вернутся покупателям.</div>
+      <div class="lots" id="mkMyLots"></div>
+    </div>
+
+    <div data-mkpane="sell" class="mk-pane" hidden>
+      <div class="mk-wallet" id="mkWallet"></div>
+      <div class="hint">Укажите цену в Mest, в TON или в обеих валютах. Mest придут на счёт сразу после покупки, TON — прямо на ваш кошелёк.</div>
+      <div class="set-label">NFT-подарки</div>
+      <div id="mkSellGifts" class="mk-sell"></div>
+      <div class="set-label">NFT-юзернеймы и номера</div>
+      <div id="mkMine" class="mk-sell"></div>
       <div id="mkAdmin" style="display:grid;gap:8px" hidden>
         <div class="set-label">Выставить новый юзернейм (админ)</div>
         <div class="ad-grid">
@@ -4098,38 +4430,45 @@ void main() {
       </div>
     </div>
 
-    <div data-mkpane="auction" style="display:grid;gap:10px" hidden>
-      <div class="hint">NFT-подарки, выставленные на торги. Ставка замораживается; если её перебьют, Mest сразу вернутся. Свой подарок можно выставить из его окна.</div>
-      <div class="gift-grid" id="mkAuctions"></div>
-    </div>
-
-    <div data-mkpane="gifts" style="display:grid;gap:10px" hidden>
+    <div data-mkpane="gifts" class="mk-pane" hidden>
       <div class="hint">Выберите, кому подарить. Подарок появится у человека в профиле и в вашем личном чате.</div>
       <input class="input" id="mkGiftSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
       <div class="scroll" id="mkGiftPeople" style="max-height:320px"></div>
     </div>
-
-    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
 
-<!-- лот: покупка и предложения -->
+<!-- лот: покупка и предложения (у подарка — карточка как в окне подарка) -->
 <dialog id="dlgLot">
-  <div class="dlg">
+  <div class="dlg lot-dlg" tabindex="-1" autofocus>
+    <div class="gv-top lot-top" id="lotTop" hidden></div>
     <h2 id="lotName"></h2>
+    <dl class="gv-facts lot-facts" id="lotTable" hidden></dl>
     <div id="lotFacts" class="small"></div>
-    <div class="actions" style="justify-content:flex-start">
-      <button class="btn" type="button" id="lotBuy"></button>
-      <button class="btn ton-btn" type="button" id="lotBuyTon" hidden></button>
+    <div class="lot-buy">
+      <button class="btn lot-main" type="button" id="lotBuy"></button>
+      <button class="btn ton-btn lot-main" type="button" id="lotBuyTon" hidden></button>
       <button class="btn danger" type="button" id="lotCancel" hidden>Снять с продажи</button>
     </div>
     <div id="lotOfferBox" style="display:flex;gap:8px">
-      <input class="input" id="lotOfferAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="Своя цена, ниже цены лота" style="flex:1">
+      <input class="input" id="lotOfferAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="Своя цена в Mest, ниже цены лота" style="flex:1">
       <button class="btn ghost" type="button" id="lotOffer">Предложить</button>
     </div>
     <div class="error" id="lotErr"></div>
     <div class="set-label">Предложения</div>
     <div id="lotOffers"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+  </div>
+</dialog>
+
+<!-- NFT-юзернейм или номер: чей он и на каком кошельке владелец -->
+<dialog id="dlgNft">
+  <div class="dlg nft-sheet" tabindex="-1" autofocus>
+    <div class="nft-hero" id="nftHero"></div>
+    <dl class="gv-facts" id="nftFacts"></dl>
+    <div class="hint" id="nftHint"></div>
+    <button class="btn wide" type="button" id="nftCopy">Скопировать юзернейм</button>
+    <button class="btn ghost wide" type="button" id="nftLot" hidden>Открыть лот на маркете</button>
     <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
   </div>
 </dialog>
@@ -4464,7 +4803,7 @@ void main() {
   <div class="dlg gv">
     <div class="gv-top" id="gvTop"></div>
     <div class="gv-stage" id="gvStage" hidden></div>
-    <dl id="gvFacts"></dl>
+    <dl class="gv-facts" id="gvFacts"></dl>
     <div class="hint" id="gvHint"></div>
     <div class="auc-form" id="gvBid" hidden>
       <input class="input" id="gvBidAmt" type="number" min="1" step="1" inputmode="numeric" aria-label="Ваша ставка">
@@ -4489,6 +4828,7 @@ void main() {
       <button class="btn" type="button" id="gvWear" hidden></button>
       <button class="btn ghost" type="button" id="gvGive" hidden>Передать</button>
       <button class="btn ghost" type="button" id="gvAuc" hidden></button>
+      <button class="btn" type="button" id="gvMarket" hidden></button>
     </div>
     <div class="gv-more">
       <button class="link" type="button" id="gvLink">Скопировать ссылку</button>
@@ -4652,7 +4992,7 @@ void main() {
       </div>
       <span id="uAvatar"></span>
       <h2 id="uName"></h2>
-      <button class="u-num" type="button" id="uNum" title="Скопировать номер" hidden></button>
+      <button class="u-num" type="button" id="uNum" title="NFT-номер: владелец и кошелёк" hidden></button>
       <div class="seen-row">
         <button class="lvl" type="button" id="uLvl" hidden></button>
         <div class="small muted" id="uSeen"></div>
@@ -4929,23 +5269,47 @@ void main() {
   </form>
 </dialog>
 
-<dialog id="dlgAi">
-  <div class="dlg">
-    <h2 class="ai-h"><span class="ai-ico" id="aiIco"></span>ИИ-помощник<span class="ai-cred" id="aiCred"></span></h2>
-    <div class="small muted" id="aiNote">Один вопрос — один ИИ-кредит. Уточнить ответ потом нельзя, поэтому опишите всё в одном сообщении. Если ответ не пришёл, кредит возвращается.</div>
-    <div class="ai-lock" id="aiLock" hidden>
-      <b>ИИ-кредитов нет</b>
-      <span class="small muted">Кредиты платные. Чтобы купить, напишите @boss.</span>
-      <button class="btn" type="button" id="aiBuy">Написать @boss</button>
-    </div>
-    <form id="aiForm" class="ai-form" hidden>
-      <textarea class="input" id="aiQ" rows="4" maxlength="1000" placeholder="Ваш вопрос" aria-label="Ваш вопрос"></textarea>
-      <div class="ai-row"><span class="small muted" id="aiLeft">0 / 1000</span><button class="btn" type="submit" id="aiSend">Спросить</button></div>
-    </form>
-    <div class="ai-answer" id="aiAnswer" hidden></div>
-    <div class="set-label" style="margin:0" id="aiHistLabel" hidden>Прошлые вопросы</div>
-    <div class="scroll" id="aiHist" style="max-height:280px"></div>
-    <div class="actions"><button class="btn ghost" type="button" data-close>Закрыть</button></div>
+<!-- новый ИИ-помощник: свои чаты (5 без премиума, 20 с премиумом), картинки, голосовой ввод -->
+<dialog id="dlgAi" class="full ai-win">
+  <div class="ai-app" id="aiApp">
+    <aside class="ai-side" id="aiSide" aria-label="Чаты с ИИ">
+      <div class="ai-side-head"><b>Чаты с ИИ</b><span class="small muted" id="aiCount"></span></div>
+      <button class="btn ai-new" type="button" id="aiNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Новый чат</button>
+      <div class="ai-list" id="aiList"></div>
+      <div class="ai-cred-box"><span class="small muted">ИИ-кредиты</span><b id="aiCred">…</b><button class="btn ghost" type="button" id="aiBuyBtn">Купить</button></div>
+    </aside>
+    <div class="ai-scrim" id="aiScrim"></div>
+    <section class="ai-main">
+      <header class="ai-top">
+        <button class="u-round" type="button" id="aiBack" title="Выйти из ИИ" aria-label="Выйти из ИИ"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="u-round ai-menu" type="button" id="aiMenu" title="Чаты" aria-label="Чаты с ИИ"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+        <div class="ai-title-wrap"><button class="ai-title" type="button" id="aiTitle" title="Переименовать чат">Новый чат</button><span class="small muted" id="aiSub">ИИ-помощник</span></div>
+        <span class="ai-ico" id="aiIco"></span>
+      </header>
+      <div class="ai-feed" id="aiFeed" aria-live="polite"></div>
+      <div class="ai-dock">
+        <div class="pi" id="aiPi" data-open="false">
+          <input type="file" id="aiFile" accept="image/*" multiple hidden>
+          <div class="pi-att-wrap" id="aiAttWrap" aria-hidden="true"><div class="pi-att" id="aiAtt"></div></div>
+          <div class="pi-card" id="aiCard">
+            <button class="pi-ph" type="button" id="aiPh">Спросите что угодно</button>
+            <textarea class="pi-ta" id="aiQ" rows="1" maxlength="8000" placeholder="Спросите что угодно" aria-label="Сообщение для ИИ"></textarea>
+            <div class="pi-fade top" id="aiFadeT"></div><div class="pi-fade bot" id="aiFadeB"></div>
+            <div class="pi-bar" id="aiBar">
+              <button class="pi-chip" type="button" id="aiEffort" title="Сколько думать над ответом"><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="8" width="2.5" height="4.5" rx="1"/><rect class="b2" x="5.75" y="5" width="2.5" height="7.5" rx="1"/><rect class="b3" x="10" y="2" width="2.5" height="10.5" rx="1"/></svg><span class="pi-morph" id="aiEffortW"><span id="aiEffortT">Обычно</span></span></button>
+              <button class="pi-plus" type="button" id="aiAdd" title="Добавить картинку" aria-label="Добавить картинку"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2.5V11.5M2.5 7H11.5"/></svg></button>
+            </div>
+            <div class="pi-wave" id="aiWave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <button class="pi-go" type="button" id="aiGo" aria-label="Голосовой ввод">
+              <span class="pi-i up"><svg viewBox="0 0 14 14"><path d="M7 12V2M7 2L2.5 6.5M7 2L11.5 6.5"/></svg></span>
+              <span class="pi-i mic"><svg viewBox="0 0 14 14"><rect x="5" y="1" width="4" height="7" rx="2"/><path d="M2.75 6.5V7a4.25 4.25 0 0 0 8.5 0v-.5M7 11.25V13"/></svg></span>
+              <span class="pi-i stop"><svg viewBox="0 0 14 14"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/></svg></span>
+            </button>
+          </div>
+        </div>
+        <div class="ai-foot" id="aiFoot">1 кредит — 1 секунда работы над ответом. ИИ может ошибаться.</div>
+      </div>
+    </section>
   </div>
 </dialog>
 
@@ -5273,7 +5637,11 @@ function icon(name) {
 function nfts(p) { return ((p && p.collectible_usernames) || []).map((x) => x.username); }
 // NFT-номера +555: выдают админы, продаются на маркете
 function nums(p) { return ((p && p.collectible_numbers) || []).map((x) => x.number).sort(); }
-function lotLabel(l) { return l.number ? l.number : "@" + l.username; }
+function lotLabel(l) { return l.gift_id || l.gift ? giftLotName(l.gift) : l.number ? l.number : "@" + l.username; }
+function giftLotName(g) {
+  const t = g && (state.giftTypes || []).find((x) => x.id === g.type_id);
+  return (t ? t.name : T("Подарок")) + (g && g.nft_number != null ? " №" + g.nft_number : "");
+}
 function gem(p) {
   if (!nfts(p).length) return null;
   const g = icon("gem");
@@ -5430,8 +5798,8 @@ function fmtSeen(p) {
 function nftChips(p, tap) {
   return nfts(p).map((u) => {
     const g = icon("gem"); g.classList.add("gem");
-    const attrs = { class: "nft", title: tap ? T("Скопировать @") + u : T("NFT-юзернейм") };
-    if (tap) { attrs.type = "button"; attrs.onclick = () => { try { navigator.clipboard.writeText("@" + u); toast(T("Юзернейм скопирован")); } catch (e) {} }; }
+    const attrs = { class: "nft", title: T("NFT-юзернейм") };
+    if (tap) { attrs.type = "button"; attrs.title = T("NFT-юзернейм: владелец и кошелёк"); attrs.onclick = () => openNftInfo("name", u, p); }
     return h(tap ? "button" : "span", attrs, g, "@" + u);
   });
 }
@@ -6239,7 +6607,8 @@ function chatRowCached(c) {
 }
 function pinMark() { const k = icon("pin"); k.classList.add("pinm"); k.setAttribute("aria-label", T("Закреплён")); return k; }
 // чат, удалённый «у себя», не виден в списке, пока в нём не появится новое сообщение
-function chatHidden(c) { return !!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt)); }
+// старый чат с ботом @ai не показываем: ИИ теперь живёт в настройках
+function chatHidden(c) { return isAiChat(c) || (!!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt))); }
 
 /* ---------- меню чата в списке: правая кнопка мыши или долгое нажатие ---------- */
 let ctxEl = null, archView = false, heldRows = false;
@@ -9149,10 +9518,10 @@ function marketError(e) {
   return /insufficient/.test(m) ? T("Не хватает Mest.")
     : /use buy/.test(m) ? T("Предложение должно быть ниже цены лота. За эту сумму юзернейм можно просто купить.")
     : /not open/.test(m) ? T("Этот лот уже закрыт.")
-    : /stale listing/.test(m) ? T("Юзернейм больше не принадлежит продавцу, лот недействителен.")
+    : /stale listing/.test(m) ? T("Лот больше не принадлежит продавцу и недействителен.")
     : /name owned/.test(m) ? T("У этого юзернейма уже есть владелец.")
     : /name in use/.test(m) ? T("Такой юзернейм занят как обычный.")
-    : /already listed/.test(m) ? T("Этот юзернейм уже выставлен на продажу.")
+    : /already listed/.test(m) ? T("Это уже выставлено на продажу.")
     : /own listing/.test(m) ? T("Это ваш собственный лот.")
     : /bad price|bad amount/.test(m) ? T("Введите целое число больше нуля.")
     : /bad name/.test(m) ? T("Недопустимый юзернейм: латинские буквы, цифры и _.")
@@ -9165,11 +9534,15 @@ function marketError(e) {
     : /need price/.test(m) ? T("Укажите цену в Mest или в TON.")
     : /bad ton price/.test(m) ? T("Цена в TON: от 0,01 до 1 000 000.")
     : /bad address/.test(m) ? T("Не получилось взять адрес кошелька. Подключите кошелёк заново.")
+    : /no wallet/.test(m) ? T("Сначала привяжите кошелёк TON в настройках → «Криптокошельки».")
+    : /on auction/.test(m) ? T("Подарок сейчас на аукционе — сначала снимите его с торгов.")
+    : /listed/.test(m) ? T("Подарок выставлен на маркете — сначала снимите его с продажи.")
+    : /not nft/.test(m) ? T("Продавать можно только коллекционные (NFT) подарки.")
     : T("Не получилось. Попробуйте ещё раз.");
 }
 function nftChip(u) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft" }, g, "@" + u); }
 function numChip(n) { const g = icon("gem"); g.classList.add("gem"); return h("span", { class: "nft num" }, g, n); }
-function lotChip(l) { return l.number ? numChip(l.number) : nftChip(l.username); }
+function lotChip(l) { return l.gift_id || l.gift ? h("span", { class: "nft gift-chip" }, "🎁 " + lotLabel(l)) : l.number ? numChip(l.number) : nftChip(l.username); }
 // цена лота: в Mest, в TON или обе
 function lotPrice(l) { return [l.price != null ? coins(Number(l.price)) : "", l.ton_nano ? tonStr(l.ton_nano) + " TON" : ""].filter(Boolean).join(" · "); }
 // «1,5» / «1.5» → нанотоны; пусто → null; неверно → NaN
@@ -9180,31 +9553,157 @@ function parseTon(v) {
   const [a, b = ""] = t.split(".");
   return Number(a) * 1e9 + Number((b + "000000000").slice(0, 9));
 }
-// адрес кошелька продавца: подключаем кошелёк через TON Connect и берём адрес из него (руками не вводим)
-async function tonSellerAddr() {
+// ===== криптокошельки аккаунта: TON (через TON Connect) и TRON (адрес вручную) =====
+async function loadMyWallets(force) {
+  if (state.wallets && !force) return state.wallets;
+  const { data, error } = await sb.from("user_wallets").select("ton,tron").eq("user_id", state.me.id).maybeSingle();
+  state.wallets = error ? { ton: null, tron: null, err: true } : { ton: (data && data.ton) || null, tron: (data && data.tron) || null };
+  return state.wallets;
+}
+function walletErr(e) {
+  const m = (e && e.message) || "";
+  return /wallet in use/.test(m) ? T("У вас есть лоты с ценой в TON. Чтобы отвязать кошелёк, сначала снимите их или смените кошелёк на другой.")
+    : /bad address/.test(m) ? T("Неверный адрес кошелька.") : T("Не удалось сохранить кошелёк. Попробуйте ещё раз.");
+}
+const shortAddr = (a) => (a ? a.slice(0, 6) + "…" + a.slice(-6) : "");
+// адрес из TON Connect; fresh — отключить текущий кошелёк, чтобы выбрать другой
+async function tonConnectAddr(fresh) {
   let ui;
   try { ui = await tonUIReady(); await ui.connectionRestored; } catch (e) { toast(T("Не удалось открыть выбор кошелька. Проверьте интернет.")); return null; }
+  if (fresh && ui.connected) { try { await ui.disconnect(); } catch (e) {} }
   if (!ui.connected) {
     tonHide();
     let ok = false;
     try { ok = await tonConnect(ui); } finally { tonShow(); }
-    if (!ok) { toast(T("Чтобы продавать за TON, подключите кошелёк — на него придут деньги.")); return null; }
+    if (!ok) return null;
   }
   const acc = ui.account;
   if (!acc || acc.chain === "-3") { toast(T("Подключён кошелёк тестовой сети. Нужен обычный кошелёк TON.")); return null; }
   try { return window.TON_CONNECT_UI.toUserFriendlyAddress(acc.address); } catch (e) { return null; }
 }
+async function linkTonWallet(fresh) {
+  const a = await tonConnectAddr(fresh);
+  if (!a) return null;
+  const { data, error } = await sb.rpc("set_my_wallet", { p_kind: "ton", p_addr: a });
+  if (error) { toast(walletErr(error)); return null; }
+  state.wallets = { ton: data && data.ton, tron: data && data.tron };
+  toast(T("Кошелёк TON привязан: ") + shortAddr(a));
+  paintWalletsPage();
+  return a;
+}
+// кошелёк, на который придут TON за лот: из профиля, а если его нет — подключаем
+async function myTonWallet() {
+  const w = await loadMyWallets();
+  if (w.ton) return w.ton;
+  toast(T("Чтобы продавать за TON, привяжите кошелёк — на него придут деньги."));
+  return linkTonWallet(false);
+}
+async function paintWalletsPage() {
+  if (!$("wlTon")) return;
+  const w = state.wallets || await loadMyWallets(true);
+  $("wlTon").textContent = w.ton || T("не привязан"); $("wlTon").classList.toggle("on", !!w.ton);
+  $("wlTron").textContent = w.tron || T("не привязан"); $("wlTron").classList.toggle("on", !!w.tron);
+  $("wlTonCopy").hidden = !w.ton; $("wlTronCopy").hidden = !w.tron;
+  $("wlTonGo").textContent = w.ton ? T("Сменить кошелёк TON") : T("Подключить кошелёк TON");
+  $("wlTonDel").hidden = !w.ton; $("wlTronDel").hidden = !w.tron;
+  $("wlTronGo").textContent = w.tron ? T("Сменить адрес TRON") : T("Указать адрес TRON");
+  $("sv_wallets").textContent = [w.ton && "TON", w.tron && "TRON"].filter(Boolean).join(" · ");
+}
+$("wlTonGo").addEventListener("click", async () => {
+  $("wlTonGo").disabled = true;
+  try { await linkTonWallet(!!(state.wallets && state.wallets.ton)); } finally { $("wlTonGo").disabled = false; }
+});
+let wlDelArmed = "";
+async function unlinkWallet(kind, btn) {
+  if (wlDelArmed !== kind) { wlDelArmed = kind; btn.textContent = T("Точно отвязать?"); setTimeout(() => { if (wlDelArmed === kind) { wlDelArmed = ""; btn.textContent = T("Отвязать"); } }, 4000); return; }
+  wlDelArmed = ""; btn.disabled = true;
+  const { data, error } = await sb.rpc("set_my_wallet", { p_kind: kind, p_addr: null });
+  btn.disabled = false; btn.textContent = T("Отвязать");
+  if (error) { toast(walletErr(error)); return; }
+  state.wallets = { ton: data && data.ton, tron: data && data.tron };
+  toast(kind === "ton" ? T("Кошелёк TON отвязан") : T("Адрес TRON отвязан"));
+  paintWalletsPage();
+}
+$("wlTonDel").addEventListener("click", (e) => unlinkWallet("ton", e.currentTarget));
+$("wlTronDel").addEventListener("click", (e) => unlinkWallet("tron", e.currentTarget));
+$("wlTonCopy").addEventListener("click", () => copyText(state.wallets && state.wallets.ton, T("Адрес скопирован")));
+$("wlTronCopy").addEventListener("click", () => copyText(state.wallets && state.wallets.tron, T("Адрес скопирован")));
+$("wlTronGo").addEventListener("click", () => {
+  const f = $("wlTronForm");
+  f.hidden = !f.hidden;
+  if (!f.hidden) { $("wlTronIn").value = (state.wallets && state.wallets.tron) || ""; $("wlTronIn").focus(); }
+});
+$("wlTronIn").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\s+/g, ""); });
+$("wlTronForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const a = $("wlTronIn").value.trim();
+  if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a)) { toast(T("Адрес TRON: 34 символа, начинается с T")); return; }
+  $("wlTronSave").disabled = true;
+  const { data, error } = await sb.rpc("set_my_wallet", { p_kind: "tron", p_addr: a });
+  $("wlTronSave").disabled = false;
+  if (error) { toast(walletErr(error)); return; }
+  state.wallets = { ton: data && data.ton, tron: data && data.tron };
+  $("wlTronForm").hidden = true;
+  toast(T("Адрес TRON сохранён"));
+  paintWalletsPage();
+});
+
+// ===== окно NFT-юзернейма или номера: владелец, его кошельки, продаётся ли =====
+let nftCopyText = "", nftLotId = null;
+async function openNftInfo(kind, value, owner) {
+  const isNum = kind === "num", label = isNum ? value : "@" + value;
+  nftCopyText = label; nftLotId = null;
+  const gm = icon("gem");
+  $("nftHero").replaceChildren(h("span", { class: "gemb" }, gm), h("b", {}, label), h("span", {}, isNum ? T("Коллекционный номер") : T("Коллекционный юзернейм")));
+  $("nftCopy").textContent = isNum ? T("Скопировать номер") : T("Скопировать юзернейм");
+  $("nftLot").hidden = true;
+  $("nftHint").textContent = "";
+  const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
+  const ownerLine = owner ? owner.display_name + " · @" + owner.username : T("скрыт");
+  $("nftFacts").replaceChildren(...fact(T("Владелец"), ownerLine), ...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("загружаем…"))));
+  if (!$("dlgNft").open) $("dlgNft").showModal();
+  const [w, lt] = await Promise.all([
+    owner ? sb.from("user_wallets").select("ton,tron").eq("user_id", owner.id).maybeSingle() : Promise.resolve({ data: null }),
+    sb.from("nft_listings").select("id,price,ton_nano").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle()]);
+  if (nftCopyText !== label) return;
+  const ws = w.data || {};
+  const addr = (a) => h("span", {}, h("code", { title: a }, shortAddr(a)), h("button", { class: "wl-copy", type: "button", onclick: () => copyText(a, T("Адрес скопирован")) }, T("Копировать")));
+  const rows = [...fact(T("Владелец"), ownerLine)];
+  if (ws.ton || ws.tron) {
+    if (ws.ton) rows.push(...fact(T("Кошелёк TON"), addr(ws.ton)));
+    if (ws.tron) rows.push(...fact(T("Кошелёк TRON"), addr(ws.tron)));
+  } else rows.push(...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("не привязан"))));
+  if (lt.data && lt.data.id) { rows.push(...fact(T("Маркет"), T("продаётся за ") + lotPrice(lt.data))); nftLotId = lt.data.id; $("nftLot").hidden = false; }
+  $("nftFacts").replaceChildren(...rows);
+  const mine = owner && owner.id === state.me.id;
+  $("nftHint").textContent = ws.ton || ws.tron ? "" : mine ? T("Привяжите кошелёк в настройках → «Криптокошельки», и он будет показан здесь.") : T("Владелец ещё не привязал криптокошелёк к аккаунту.");
+}
+$("nftCopy").addEventListener("click", () => copyText(nftCopyText, $("nftCopy").textContent.includes(T("номер")) ? T("Номер скопирован") : T("Юзернейм скопирован")));
+$("nftLot").addEventListener("click", async () => {
+  const id = nftLotId;
+  $("dlgNft").close();
+  if (!$("dlgMarket").open) { $("dlgMarket").showModal(); loadMarketBalance(); }
+  await loadLots();
+  openLot(id);
+});
+
 async function loadMarketBalance() {
   const { data } = await sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle();
   state.balance = data ? Number(data.balance) : 0;
   $("mkBal").replaceChildren(coinMark(), T("У вас ") + coins(state.balance));
 }
+let mkTab = "buy", mkKind = "gift";
 function showMarketTab(name) {
-  for (const b of $("mkTabs").children) b.setAttribute("aria-checked", String(b.dataset.mk === name));
+  mkTab = name;
+  for (const b of $("mkTabs").children) b.setAttribute("aria-selected", String(b.dataset.mk === name));
   for (const pane of $("dlgMarket").querySelectorAll("[data-mkpane]")) pane.hidden = pane.dataset.mkpane !== name;
-  if (name === "nft") loadLots();
+  const sel = $("mkTabs").querySelector('[aria-selected="true"]');
+  if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (name === "buy") loadLots();
   if (name === "gifts") paintGiftPeople("");
   if (name === "auction") loadAuctions();
+  if (name === "mine") loadMyLots();
+  if (name === "sell") paintSell();
 }
 function leftFmt(ends) {
   const ms = new Date(ends).getTime() - Date.now();
@@ -9229,55 +9728,172 @@ async function loadAuctions() {
   }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? T("Не удалось загрузить торги.") : T("Сейчас на аукционе ничего нет."))]));
 }
 $("mkTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-mk]"); if (b) showMarketTab(b.dataset.mk); });
-let lots = [];
+let lots = [], lotsErr = false;
+const LOT_SEL = "id,username,number,gift_id,price,ton_nano,ton_to,hold_by,hold_until,by_admin,seller_id,status,created_at,closed_at,sold_price,sold_ton_nano,"
+  + "seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),gift:gifts!nft_listings_gift_id_fkey(id,type_id,nft_number,nft_model,nft_backdrop,to_id),nft_offers(id,amount,status,bidder_id)";
 async function loadLots() {
   $("mkAdmin").hidden = !state.isAdmin;
-  const { data, error } = await sb.from("nft_listings")
-    .select("id,username,number,price,ton_nano,ton_to,hold_by,hold_until,by_admin,seller_id,seller:profiles!nft_listings_seller_id_fkey(id,username,display_name),nft_offers(id,amount,status,bidder_id)")
-    .eq("status", "open").order("id", { ascending: false }).limit(100);
-  lots = error || !data ? [] : data;
-  $("mkLots").replaceChildren(...(lots.length ? lots.map((l, i) => {
+  const [types, res] = await Promise.all([giftTypes(), sb.from("nft_listings").select(LOT_SEL).eq("status", "open").order("id", { ascending: false }).limit(300)]);
+  lotsErr = !!res.error;
+  lots = res.error || !res.data ? [] : res.data.filter((l) => !l.gift_id || l.gift);
+  paintKinds(); paintFilters(types); paintBuy(types);
+}
+// цена лота в Mest для сортировки: TON пересчитываем по курсу
+const lotMest = (l) => (l.price != null ? Number(l.price) : Number(l.ton_nano || 0) / TON_NANO);
+function paintKinds() {
+  for (const b of $("mkKinds").children) b.setAttribute("aria-checked", String(b.dataset.k === mkKind));
+  $("mkFilters").hidden = false;
+  $("mkType").parentElement.hidden = $("mkModel").parentElement.hidden = $("mkBack").parentElement.hidden = mkKind !== "gift";
+}
+function fillSelect(sel, items, keep) {
+  const v = keep ? sel.value : "";
+  sel.replaceChildren(h("option", { value: "" }, T("Все")), ...items.map((x) => h("option", { value: x.id }, x.name)));
+  sel.value = items.some((x) => x.id === v) ? v : "";
+}
+function paintFilters(types) {
+  const gl = lots.filter((l) => l.gift);
+  const tIds = new Set(gl.map((l) => l.gift.type_id));
+  fillSelect($("mkType"), types.filter((t) => tIds.has(t.id)), true);
+  const ty = $("mkType").value;
+  const mIds = new Set(gl.filter((l) => !ty || l.gift.type_id === ty).map((l) => l.gift.nft_model));
+  fillSelect($("mkModel"), (state.giftModels || []).filter((m) => (!ty || m.type_id === ty) && mIds.has(m.id)).map((m) => ({ id: m.id, name: m.name })), true);
+  const bIds = new Set(gl.map((l) => l.gift.nft_backdrop));
+  fillSelect($("mkBack"), (state.giftBackdrops || []).filter((b) => bIds.has(b.id)), true);
+}
+function sortLots(arr) {
+  const by = $("mkSort").value;
+  return arr.slice().sort((a, b) => by === "cheap" ? lotMest(a) - lotMest(b) : by === "dear" ? lotMest(b) - lotMest(a) : b.id - a.id);
+}
+function paintBuy(types) {
+  types = types || state.giftTypes || [];
+  const isGift = mkKind === "gift";
+  $("mkGiftLots").hidden = !isGift; $("mkLots").hidden = isGift;
+  if (isGift) {
+    const ty = $("mkType").value, mo = $("mkModel").value, bk = $("mkBack").value;
+    const rows = sortLots(lots.filter((l) => l.gift && (!ty || l.gift.type_id === ty) && (!mo || l.gift.nft_model === mo) && (!bk || l.gift.nft_backdrop === bk)));
+    $("mkCount").textContent = rows.length ? rows.length + " " + plural(rows.length, T("подарок на продаже"), T("подарка на продаже"), T("подарков на продаже")) : "";
+    $("mkGiftLots").replaceChildren(...(rows.length ? rows.map((l, i) => { const el = mkCard(l, types); el.style.animationDelay = Math.min(i, 12) * 30 + "ms"; return el; })
+      : [h("div", { class: "mk-empty" }, lotsErr ? T("Не удалось загрузить лоты.") : ty || mo || bk ? T("С такими фильтрами ничего нет.") : T("NFT-подарков на продаже пока нет. Свой можно выставить во вкладке «Продать»."))]));
+    return;
+  }
+  const rows = sortLots(lots.filter((l) => !l.gift_id && (mkKind === "num" ? !!l.number : !!l.username)));
+  $("mkCount").textContent = "";
+  $("mkLots").replaceChildren(...(rows.length ? rows.map((l, i) => {
     const pend = (l.nft_offers || []).filter((o) => o.status === "pending");
     const top = pend.reduce((a, o) => Math.max(a, Number(o.amount)), 0);
     const mine = pend.find((o) => o.bidder_id === state.me.id);
     const el = h("button", { class: "lot", type: "button", onclick: () => openLot(l.id) },
       lotChip(l),
       h("span", { class: "txt small muted" },
-        (l.by_admin ? T("Продаёт «Mestario»") : T("Продаёт ") + (l.seller ? l.seller.display_name : T("владелец"))) +
-        (top ? T(" · лучшее предложение ") + nf.format(top) : T(" · предложений нет")) + (mine ? T(" · ваше: ") + nf.format(Number(mine.amount)) : "")),
+        (l.by_admin ? T("Продаёт «Mestario»") : l.seller_id === state.me.id ? T("Ваш лот") : T("Продаёт ") + (l.seller ? l.seller.display_name : T("владелец"))) +
+        (top ? T(" · лучшее предложение ") + nf.format(top) : "") + (mine ? T(" · ваше: ") + nf.format(Number(mine.amount)) : "")),
       h("span", { class: "price" }, l.price != null ? coins(Number(l.price)) : null, l.ton_nano ? (l.price != null ? h("small", {}, tonStr(l.ton_nano) + " TON") : tonStr(l.ton_nano) + " TON") : null));
     el.style.animationDelay = Math.min(i, 10) * 30 + "ms";
     return el;
-  }) : [h("div", { class: "empty-note" }, error ? T("Не удалось загрузить лоты.") : T("Сейчас ничего не продаётся."))]));
-  paintMyNames();
+  }) : [h("div", { class: "empty-note" }, lotsErr ? T("Не удалось загрузить лоты.") : mkKind === "num" ? T("Номера сейчас не продаются.") : T("Юзернеймы сейчас не продаются."))]));
 }
-function paintMyNames() {
-  // свои NFT-юзернеймы и номера: каждый можно выставить на продажу
-  const mine = [...nums(state.profile).map((n) => ({ number: n })), ...nfts(state.profile).map((u) => ({ username: u }))];
-  const listed = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [lotLabel(l), l]));
-  $("mkMine").replaceChildren(...(mine.length ? mine.map((it) => {
-    const key = lotLabel(it), l = listed.get(key);
-    if (l) return h("div", { class: "mine-row" }, lotChip(it), h("span", { class: "small muted", style: "flex:1" }, T("на продаже за ") + lotPrice(l)),
-      h("button", { class: "btn ghost", type: "button", onclick: () => openLot(l.id) }, T("Открыть лот")));
-    const price = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: "Mest", "aria-label": T("Цена в Mest для ") + key });
-    const ton = h("input", { class: "input ton", inputmode: "decimal", autocomplete: "off", placeholder: "TON", "aria-label": T("Цена в TON для ") + key });
-    return h("div", { class: "mine-row" }, lotChip(it), h("span", { style: "flex:1" }), price, ton,
-      h("button", { class: "btn ghost", type: "button", onclick: async (e) => {
-        const p = price.value.trim() ? Math.floor(Number(price.value)) : null;
-        const tn = parseTon(ton.value);
-        if (p == null && tn == null) { toast(T("Укажите цену в Mest или в TON")); return; }
-        if (p != null && !(p > 0)) { toast(T("Цена в Mest: целое число больше нуля")); return; }
-        if (tn != null && !(tn >= 10000000)) { toast(T("Цена в TON: число от 0,01, например 1,5")); return; }
-        e.target.disabled = true;
-        let to = null;
-        if (tn != null) { to = await tonSellerAddr(); if (!to) { e.target.disabled = false; return; } }
-        const { error } = await sb.rpc("list_mine", { p_username: it.number ? null : it.username, p_number: it.number || null, p_price: p, p_ton_nano: tn, p_ton_to: to });
-        e.target.disabled = false;
-        if (error) { toast(marketError(error)); return; }
-        toast(key + T(" выставлен за ") + lotPrice({ price: p, ton_nano: tn }) + (to ? T(". TON придут на кошелёк ") + to.slice(0, 4) + "…" + to.slice(-4) : ""));
-        loadLots();
-      } }, T("Продать")));
-  }) : [h("div", { class: "small muted" }, T("У вас пока нет NFT-юзернеймов и номеров. Их можно купить здесь или получить от администратора."))]));
+// карточка NFT-подарка на витрине: фон и узор подарка, номер на уголке, цена внизу
+function mkCard(l, types) {
+  const g = l.gift, t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
+  const look = giftLook(g, t);
+  const price = l.price != null ? [coinMark(), nf.format(Number(l.price))] : [tonStr(l.ton_nano) + " TON"];
+  const el = h("button", { class: "mk-card", type: "button", title: t.name + " №" + g.nft_number + " · " + lotPrice(l), onclick: () => openLot(l.id) },
+    giftFace(t, look),
+    h("span", { class: "rb", "aria-hidden": "true" }, "#" + g.nft_number),
+    l.ton_nano ? h("span", { class: "tb", title: T("Можно купить за TON") }, "💎") : null,
+    h("span", { class: "nm" }, l.seller_id === state.me.id ? T("Ваш лот") : t.name),
+    h("span", { class: "pp" }, ...price));
+  if (look) paintNft(el, look);
+  return el;
+}
+$("mkKinds").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (!b) return; mkKind = b.dataset.k; paintKinds(); paintBuy(); });
+$("mkType").addEventListener("change", () => { paintFilters(state.giftTypes || []); paintBuy(); });
+for (const id of ["mkModel", "mkBack", "mkSort"]) $(id).addEventListener("change", () => paintBuy());
+
+// свои лоты: открытые и последние сделки
+async function loadMyLots() {
+  const box = $("mkMyLots");
+  box.replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
+  const [types, res] = await Promise.all([giftTypes(), sb.from("nft_listings").select(LOT_SEL).eq("seller_id", state.me.id).eq("by_admin", false).order("id", { ascending: false }).limit(40)]);
+  const rows = res.data || [];
+  for (const l of rows) if (l.status === "open" && !lots.some((x) => x.id === l.id)) lots.push(l);
+  box.replaceChildren(...(rows.length ? rows.map((l) => {
+    const st = l.status === "open" ? T("на продаже") : l.status === "sold" ? T("продан") : T("снят");
+    const when = new Date(l.closed_at || l.created_at);
+    const sold = l.status === "sold" ? (l.sold_ton_nano ? tonStr(l.sold_ton_nano) + " TON" : coins(Number(l.sold_price || 0))) : lotPrice(l);
+    return h("button", { class: "my-lot", type: "button", onclick: () => (l.status === "open" ? openLot(l.id) : l.gift ? openGiftView(l.gift.id) : null) },
+      lotMini(l, types),
+      h("span", { class: "ttl" }, h("b", {}, lotLabel(l)), h("span", {}, (l.status === "sold" ? T("продан за ") : "") + sold + " · " + dFmt.format(when))),
+      h("span", { class: "st " + l.status }, st));
+  }) : [h("div", { class: "empty-note" }, res.error ? T("Не удалось загрузить лоты.") : T("Вы ещё ничего не выставляли. Это можно сделать во вкладке «Продать»."))]));
+}
+function lotMini(l, types) {
+  if (l.gift) {
+    const t = (types || state.giftTypes || []).find((x) => x.id === l.gift.type_id) || { emoji: "🎁", name: T("Подарок") };
+    const look = giftLook(l.gift, t), el = h("span", { class: "mini" }, giftFace(t, look));
+    if (look) { el.style.background = "radial-gradient(circle at 50% 34%, " + look.b.c1 + ", " + look.b.c2 + " 82%)"; }
+    return el;
+  }
+  const gm = icon("gem"); gm.classList.add("gem");
+  return h("span", { class: "mini", style: "color:var(--accent)" }, gm);
+}
+
+// продать: свои NFT-подарки, юзернеймы и номера
+async function paintSell() {
+  const box = $("mkSellGifts");
+  box.replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
+  const [types, w, gs, auc] = await Promise.all([giftTypes(), loadMyWallets(true),
+    sb.from("gifts").select("id,type_id,nft_number,nft_model,nft_backdrop,hidden").eq("to_id", state.me.id).is("sold_at", null).not("nft_number", "is", null).order("id", { ascending: false }).limit(100),
+    sb.from("gift_auctions").select("gift_id").eq("seller_id", state.me.id).eq("status", "open")]);
+  if (!lots.length) await loadLots();
+  // кошелёк для TON
+  const wl = $("mkWallet");
+  const ico = h("span", { class: "wl-mi ton", "aria-hidden": "true" }, "💎");
+  wl.replaceChildren(ico, w.ton ? h("span", {}, T("TON придут на "), h("code", {}, shortAddr(w.ton))) : h("span", {}, T("Кошелёк TON не привязан — без него можно продавать только за Mest.")),
+    h("button", { class: "btn ghost", type: "button", onclick: async () => { await linkTonWallet(!!w.ton); paintSell(); } }, w.ton ? T("Сменить") : T("Привязать")));
+  const onAuc = new Set((auc.data || []).map((a) => a.gift_id));
+  const mineOpen = new Map(lots.filter((l) => !l.by_admin && l.seller_id === state.me.id).map((l) => [l.gift_id ? "g" + l.gift_id : lotLabel(l), l]));
+  const gifts = (gs.data || []);
+  box.replaceChildren(...(gifts.length ? gifts.map((g) => {
+    const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
+    const l = mineOpen.get("g" + g.id);
+    return sellRow(lotMini({ gift: g }, types), t.name + " №" + g.nft_number, giftLook(g, t) ? giftLook(g, t).m.name + " · " + giftLook(g, t).b.name : "",
+      l, onAuc.has(g.id) ? T("на аукционе") : "", (mest, ton) => listItem({ gift: g.id }, mest, ton));
+  }) : [h("div", { class: "small muted" }, T("Коллекционных подарков нет. Обычный подарок можно улучшить до NFT в его окне."))]));
+  const names = [...nums(state.profile).map((n) => ({ number: n })), ...nfts(state.profile).map((u) => ({ username: u }))];
+  $("mkMine").replaceChildren(...(names.length ? names.map((it) => sellRow(lotMini(it), lotLabel(it), it.number ? T("Коллекционный номер") : T("Коллекционный юзернейм"),
+    mineOpen.get(lotLabel(it)), "", (mest, ton) => listItem(it, mest, ton)))
+    : [h("div", { class: "small muted" }, T("NFT-юзернеймов и номеров нет. Их можно купить на вкладке «Купить»."))]));
+}
+function sellRow(mini, title, sub, listed, blocked, onList) {
+  const row = h("div", { class: "sell-row" + (listed ? " listed" : "") }, mini, h("span", { class: "ttl" }, h("b", {}, title), h("span", {}, sub)));
+  if (listed) {
+    row.append(h("div", { class: "frm" }, h("span", { class: "small muted", style: "align-self:center" }, T("На продаже за ") + lotPrice(listed)),
+      h("button", { class: "btn ghost", type: "button", onclick: () => openLot(listed.id) }, T("Открыть лот"))));
+    return row;
+  }
+  if (blocked) { row.append(h("div", { class: "frm", style: "grid-template-columns:1fr" }, h("span", { class: "small muted" }, T("Сейчас ") + blocked + T(" — продать нельзя")))); return row; }
+  const mest = h("input", { class: "input", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: "Mest", "aria-label": T("Цена в Mest для ") + title });
+  const ton = h("input", { class: "input", inputmode: "decimal", autocomplete: "off", placeholder: "TON", "aria-label": T("Цена в TON для ") + title });
+  const go = h("button", { class: "btn", type: "button", onclick: async () => { go.disabled = true; try { await onList(mest.value, ton.value); } finally { go.disabled = false; } } }, T("Выставить"));
+  row.append(h("div", { class: "frm" }, mest, ton, go));
+  return row;
+}
+async function listItem(it, mestRaw, tonRaw) {
+  const p = String(mestRaw || "").trim() ? Math.floor(Number(mestRaw)) : null;
+  const tn = parseTon(tonRaw);
+  if (p == null && tn == null) { toast(T("Укажите цену в Mest или в TON")); return; }
+  if (p != null && !(p > 0)) { toast(T("Цена в Mest: целое число больше нуля")); return; }
+  if (tn != null && !(tn >= 10000000)) { toast(T("Цена в TON: число от 0,01, например 1,5")); return; }
+  let to = null;
+  if (tn != null) { to = await myTonWallet(); if (!to) return; }
+  const { error } = it.gift ? await sb.rpc("list_gift", { p_gift: it.gift, p_price: p, p_ton_nano: tn })
+    : await sb.rpc("list_mine", { p_username: it.number ? null : it.username, p_number: it.number || null, p_price: p, p_ton_nano: tn, p_ton_to: to });
+  if (error) { toast(marketError(error)); return; }
+  toast(T("Выставлено за ") + lotPrice({ price: p, ton_nano: tn }) + (to ? T(". TON придут на ") + shortAddr(to) : ""));
+  await loadLots();
+  if (mkTab === "sell") paintSell();
+  if (it.gift) giftChanged(it.gift);
 }
 // номер: только цифры и одиночные пробелы, не длиннее 10 символов после +555
 function numInput(el) {
@@ -9316,20 +9932,46 @@ $("mkNewAdd").addEventListener("click", async () => {
 let lot = null, buyArmed = false;
 function lotManaged(l) { return l.by_admin ? state.isAdmin : l.seller_id === state.me.id; }
 async function openLot(id) {
-  const l = lots.find((x) => x.id === id);
-  if (!l) return;
+  let l = lots.find((x) => x.id === id);
+  if (!l) {
+    const { data } = await sb.from("nft_listings").select(LOT_SEL).eq("id", id).maybeSingle();
+    if (!data || data.status !== "open") { toast(T("Этот лот уже закрыт.")); return; }
+    lots.push(data); l = data;
+  }
   lot = l; buyArmed = false;
   const own = !l.by_admin && l.seller_id === state.me.id;
-  $("lotName").replaceChildren(lotChip(l));
-  $("lotFacts").textContent = T("Цена: ") + lotPrice(l) + " · " + (l.by_admin ? T("продаёт «Mestario»") : T("продаёт ") + (l.seller ? l.seller.display_name + " (@" + l.seller.username + ")" : T("владелец")))
-    + (l.ton_nano && !l.by_admin && l.ton_to ? T(". TON уходят прямо на кошелёк продавца ") + l.ton_to.slice(0, 4) + "…" + l.ton_to.slice(-4) : "");
+  const seller = l.by_admin ? T("«Mestario»") : l.seller ? l.seller.display_name + " · @" + l.seller.username : T("владелец");
+  // NFT-подарок: карточка с фоном и таблица, как у самого подарка
+  if (l.gift) {
+    const types = await giftTypes();
+    const t = types.find((x) => x.id === l.gift.type_id) || { emoji: "🎁", name: T("Подарок") };
+    const look = giftLook(l.gift, t), top = $("lotTop");
+    top.className = "gv-top lot-top";
+    top.replaceChildren(giftLive(t, look), h("h2", {}, t.name), h("span", { class: "num" }, T("Коллекционный №") + l.gift.nft_number));
+    if (look) paintNft(top, look);
+    top.hidden = false;
+    $("lotName").hidden = true;
+    const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
+    $("lotTable").replaceChildren(
+      ...fact(T("Продавец"), seller),
+      ...(look ? [...fact(T("Модель"), look.m.name, look.mp && h("span", { class: "pct" }, look.mp)), ...fact(T("Фон"), look.b.name, look.bp && h("span", { class: "pct" }, look.bp))] : []),
+      ...fact(T("Цена"), lotPrice(l)),
+      ...(l.ton_nano && l.ton_to && !l.by_admin ? fact(T("TON уйдут на"), h("code", { title: l.ton_to }, shortAddr(l.ton_to))) : []));
+    $("lotTable").hidden = false;
+    $("lotFacts").textContent = "";
+  } else {
+    $("lotTop").hidden = true; $("lotTable").hidden = true; $("lotName").hidden = false;
+    $("lotName").replaceChildren(lotChip(l));
+    $("lotFacts").textContent = T("Цена: ") + lotPrice(l) + " · " + T("продаёт ") + seller
+      + (l.ton_nano && !l.by_admin && l.ton_to ? T(". TON уходят прямо на кошелёк продавца ") + shortAddr(l.ton_to) : "");
+  }
   const held = l.hold_until && new Date(l.hold_until) > new Date() && l.hold_by !== state.me.id;
   $("lotBuy").hidden = own || l.price == null;
   $("lotBuy").disabled = !!held;
   if (l.price != null) $("lotBuy").textContent = T("Купить за ") + coins(Number(l.price));
   $("lotBuyTon").hidden = own || !l.ton_nano;
   $("lotBuyTon").disabled = !!held;
-  if (l.ton_nano) $("lotBuyTon").textContent = T("Купить за ") + tonStr(l.ton_nano) + " TON";
+  if (l.ton_nano) $("lotBuyTon").replaceChildren(T("Купить за ") + tonStr(l.ton_nano) + " TON", ...(TON_NANO ? [h("small", {}, T("≈ ") + coins(Math.round(Number(l.ton_nano) / TON_NANO)))] : []));
   $("lotOfferBox").hidden = own;
   $("lotCancel").hidden = !lotManaged(l);
   $("lotOfferAmt").value = ""; $("lotErr").textContent = held ? T("Сейчас этот лот оплачивает другой покупатель — до ") + tFmt.format(new Date(l.hold_until)) + "." : "";
@@ -9355,13 +9997,16 @@ async function afterTrade(msg, close) {
   if (close) $("dlgLot").close();
   await Promise.all([loadMarketBalance(), reloadMe()]);
   await loadLots();
+  if (mkTab === "mine") loadMyLots();
+  if (mkTab === "sell") paintSell();
+  if (lot && lot.gift) giftChanged(lot.gift.id);
   if (!close && lot) { if (lots.some((x) => x.id === lot.id)) openLot(lot.id); else $("dlgLot").close(); }
   loadChats();
 }
 async function answerOffer(o, accept) {
   const { error } = await sb.rpc("answer_offer", { p_offer: o.id, p_accept: accept });
   if (error) { $("lotErr").textContent = marketError(error); return; }
-  afterTrade(accept ? (lot && lot.number ? T("Предложение принято, номер продан за ") : T("Предложение принято, юзернейм продан за ")) + coins(Number(o.amount)) : T("Предложение отклонено, Mest возвращены покупателю"), accept);
+  afterTrade(accept ? T("Предложение принято: ") + (lot ? lotLabel(lot) : "") + T(" продан за ") + coins(Number(o.amount)) : T("Предложение отклонено, Mest возвращены покупателю"), accept);
 }
 async function cancelOffer(o) {
   const { error } = await sb.rpc("cancel_offer", { p_offer: o.id });
@@ -9386,10 +10031,10 @@ $("lotBuyTon").addEventListener("click", () => {
     payMest: () => sb.rpc("buy_listing", { p_listing: l.id }),
     title: () => T("Купить ") + label, kick: () => T("Маркет Mestario"),
     sub: () => l.by_admin ? T("Продаёт «Mestario»") : T("TON уходят прямо на кошелёк продавца. После создания заказа лот закреплён за вами на 20 минут."),
-    hint: () => (l.by_admin ? T("Деньги идут на кошелёк Mestario.") : T("Деньги идут напрямую продавцу, Mestario их не держит.")) + " " + (l.number ? T("Номер") : T("Юзернейм")) + T(" перейдёт к вам сам, обычно через 10–30 секунд после подтверждения в кошельке. Окно можно закрыть."),
+    hint: () => (l.by_admin ? T("Деньги идут на кошелёк Mestario.") : T("Деньги идут напрямую продавцу, Mestario их не держит.")) + " " + (l.gift ? T("Подарок") : l.number ? T("Номер") : T("Юзернейм")) + T(" перейдёт к вам сам, обычно через 10–30 секунд после подтверждения в кошельке. Окно можно закрыть."),
     create: () => sb.rpc("ton_order_listing", { p_listing: l.id }),
     result: () => ({ ok: true, text: T("Готово! ") + label + T(" теперь ваш"), toast: label + T(" теперь ваш") }),
-    done: async () => { await Promise.all([reloadMe(), loadLots()]); if ($("dlgLot").open) $("dlgLot").close(); },
+    done: async () => { await Promise.all([reloadMe(), loadLots()]); if (l.gift) giftChanged(l.gift.id); if ($("dlgLot").open) $("dlgLot").close(); },
   });
 });
 $("lotOffer").addEventListener("click", async () => {
@@ -9426,7 +10071,7 @@ $("btnMarket").addEventListener("click", () => {
   $("mkGiftSearch").value = "";
   $("dlgMarket").showModal();
   loadMarketBalance();
-  showMarketTab("nft");
+  showMarketTab(mkTab === "gifts" ? "buy" : mkTab);
 });
 
 // поддержка: один аккаунт открывается сразу, из нескольких человек выбирает сам
@@ -10921,7 +11566,7 @@ async function openGiftView(id, fresh) {
   $("gvTop").className = "gv-top";
   $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, T("Подарок")));
   $("gvFacts").replaceChildren(); $("gvHint").textContent = T("Загружаем…"); $("gvStage").hidden = true;
-  for (const x of ["gvSell", "gvUp", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink", "gvPin"]) $(x).hidden = true;
+  for (const x of ["gvSell", "gvUp", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink", "gvPin", "gvMarket"]) $(x).hidden = true;
   delGiftArmed = false; $("gvDel").textContent = T("Удалить");
   gvAuction = null;
   if (!$("dlgGiftView").open) $("dlgGiftView").showModal();
@@ -10935,6 +11580,9 @@ async function openGiftView(id, fresh) {
   routeSync(true);
   const ar = g.nft_number != null ? await sb.from("gift_auctions").select("id,seller_id,start_price,top_bid,top_bidder,bids_count,ends_at,bidder:profiles!gift_auctions_top_bidder_fkey(id,username,display_name)").eq("gift_id", g.id).eq("status", "open").maybeSingle() : { data: null };
   const auc = gvAuction = ar.data && ar.data.id ? ar.data : null;
+  // выставлен ли подарок на маркете
+  const lr = g.nft_number != null && !g.sold_at ? await sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq("gift_id", g.id).eq("status", "open").maybeSingle() : { data: null };
+  const onSale = lr && lr.data && lr.data.id ? lr.data : null;
   const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
   const look = giftLook(g, t), st = stats.get(g.type_id) || { sold: 0, nfts: 0 };
   const mine = g.to_id === state.me.id && !g.sold_at;
@@ -10958,6 +11606,7 @@ async function openGiftView(id, fresh) {
       ...fact(T("Аукцион"), auc.top_bid ? T("текущая ставка ") + coins(auc.top_bid) + T(" · ставок: ") + auc.bids_count : T("стартовая цена ") + coins(auc.start_price) + T(", ставок пока нет")),
       ...(auc.top_bid ? fact(T("Лидер"), auc.top_bidder === state.me.id ? T("вы") : who(auc.bidder)) : []),
       ...fact(T("До конца"), leftFmt(auc.ends_at))] : []),
+    ...(onSale ? fact(T("Маркет"), T("продаётся за ") + lotPrice(onSale)) : []),
     ...fact(g.granted ? T("Выдал") : T("От кого"), g.from ? whoLink(g.from) : T("отправитель скрыт")),
     ...fact(T("Когда"), dyFmt.format(new Date(g.created_at))),
     ...(g.price_paid > 0 ? fact(T("Стоимость"), coins(g.price_paid)) : []),
@@ -10966,7 +11615,7 @@ async function openGiftView(id, fresh) {
     ...(g.hidden && !g.sold_at ? fact(T("Видимость"), mine ? T("скрыт: виден только вам") : T("владелец скрыл подарок")) : []),
     ...(g.sold_at ? fact(T("Статус"), g.sold_for ? T("обменян на ") + coins(g.sold_for) : T("удалён")) : []));
   $("gvLink").hidden = !!g.sold_at;
-  $("gvHide").hidden = !mine || !!auc;
+  $("gvHide").hidden = !mine || !!auc || !!onSale;
   $("gvPin").hidden = !(mine && look) || !!g.hidden;
   $("gvPin").textContent = g.pinned_at ? T("Открепить от профиля") : T("Закрепить в профиле");
   $("gvHide").textContent = g.hidden ? T("Показывать в профиле") : T("Скрыть из профиля");
@@ -10983,8 +11632,17 @@ async function openGiftView(id, fresh) {
   $("gvUp").hidden = !mineToUp;
   $("gvUp").textContent = mineToUp ? T("Улучшить за ") + coins(t.upgrade_price) : "";
   // передать можно любой свой подарок, на аукцион идут только коллекционные
-  $("gvGive").hidden = !mine || !!auc;
-  $("gvAuc").hidden = !(mine && look);
+  $("gvGive").hidden = !mine || !!auc || !!onSale;
+  $("gvAuc").hidden = !(mine && look) || !!onSale;
+  // маркет: купить чужой лот, открыть свой или выставить подарок на продажу
+  $("gvMarket").hidden = !(onSale || (mine && look && !auc));
+  $("gvMarket").className = onSale && !mine ? "btn" : "btn ghost";
+  $("gvMarket").textContent = onSale ? (mine ? T("Мой лот на маркете") : T("Купить за ") + lotPrice(onSale)) : T("Продать на маркете");
+  $("gvMarket").onclick = async () => {
+    $("dlgGiftView").close();
+    if (!$("dlgMarket").open) { $("dlgMarket").showModal(); loadMarketBalance(); }
+    if (onSale) { showMarketTab("buy"); await loadLots(); openLot(onSale.id); } else showMarketTab("sell");
+  };
   $("gvAuc").textContent = auc ? T("Снять с аукциона") : T("На аукцион");
   if (auc) {
     const need = auc.top_bid ? auc.top_bid + Math.max(1, Math.ceil(auc.top_bid * 0.05)) : auc.start_price;
@@ -11439,9 +12097,7 @@ async function paintBlockList() {
 }
 $("uCopyLink").append(icon("link"));
 $("uCopyLink").addEventListener("click", () => { if (viewed) copyText(SITE + "#@" + viewed.username, T("Ссылка на профиль скопирована")); });
-$("uNum").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText($("uNum").textContent.split(" · ")[0]); toast(T("Номер скопирован")); } catch (e) {}
-});
+$("uNum").addEventListener("click", () => { if (viewed) openNftInfo("num", $("uNum").textContent.split(" · ")[0], viewed); });
 $("uUser").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uUser").textContent); toast(T("Юзернейм скопирован")); } catch (e) {}
 });
@@ -11806,7 +12462,7 @@ function openProfileEdit() {
 $("setEdit").addEventListener("click", () => $("btnProfile").click());
 $("setMe").addEventListener("click", () => showUser(state.profile));
 // меню настроек: страницы внутри одного окна
-const SET_TITLES = { contacts: T("Контакты"), premium: "Mestario Premium", coins: T("Мои Mest"), menu: T("Настройки"), notify: T("Уведомления"), privacy: T("Конфиденциальность"), security: T("Безопасность"), look: T("Оформление"), chat: T("Сообщения"), accounts: T("Аккаунты"), lang: T("Язык") };
+const SET_TITLES = { wallets: T("Криптокошельки"), contacts: T("Контакты"), premium: "Mestario Premium", coins: T("Мои Mest"), menu: T("Настройки"), notify: T("Уведомления"), privacy: T("Конфиденциальность"), security: T("Безопасность"), look: T("Оформление"), chat: T("Сообщения"), accounts: T("Аккаунты"), lang: T("Язык") };
 const SET_ICONS = { star: "starf", coin: "coinf", gift: "giftf" };
 for (const el of document.querySelectorAll("#dlgSettings [data-ico]")) el.append(icon(SET_ICONS[el.dataset.ico] || el.dataset.ico));
 $("setBack").append(icon("back"));
@@ -11850,6 +12506,8 @@ $("dlgSettings").querySelector(".set-menu").addEventListener("click", (e) => {
   if (go === "premium") { showSetPage("premium"); paintPremiumPage(); return; }
   if (go === "contacts") { showSetPage("contacts"); $("cnSearch").value = ""; paintContactsPage(); return; }
   if (go === "look") { showSetPage("look"); paintMyBubble(); return; }
+  if (go === "wallets") { showSetPage("wallets"); $("wlTronForm").hidden = true; loadMyWallets(true).then(paintWalletsPage); return; }
+  if (go === "ai") { openAiPage(); return; }
   if (SET_TITLES[go]) { showSetPage(go); return; }
   $("dlgSettings").close();
   if (go === "saved") startDirect(state.me.id);
@@ -12451,6 +13109,7 @@ $("btnSettings").addEventListener("click", () => {
   $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл.");
   $("sv_premium").textContent = isPremium(state.profile) ? T("активен") : "";
   refreshAiCredits();
+  loadMyWallets(true).then(paintWalletsPage);
   $("dlgSettings").showModal();
   paintNotify().then(() => { $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл."); });
   loadWalletValue();
@@ -13203,77 +13862,461 @@ function cacheChanged(m) {
   idbTouch(m.chat_id);
 }
 
-/* ---------- ИИ-помощник: один вопрос — один ИИ-кредит ---------- */
+/* ---------- ИИ-помощник: свои чаты (5 без премиума, 20 с премиумом), картинки, голосовой ввод ---------- */
 $("aiIco").append(icon("ai")); $("abIco").append(icon("ai"));
-const AI_SELLER = "boss";   // кредиты пока продаёт он
-// **жирный** из ответа показываем жирным, остальное — как есть
-function aiText(t) {
-  return String(t || "").replace(/^#{1,6}\s+/gm, "").split(/\*\*(.+?)\*\*/g).map((x, i) => i % 2 ? h("b", {}, x) : x);
-}
-function aiItem(r) {
-  const d = new Date(r.created_at);
-  return h("div", { class: "ai-item" }, h("span", { class: "when" }, dFmt.format(d) + ", " + tFmt.format(d)),
-    h("div", { class: "ai-q" }, r.question), h("div", { class: "ai-a" }, ...aiText(r.answer)));
-}
 function credText(n) { return n + " " + plural(n, T("кредит"), T("кредита"), T("кредитов")); }
 let aiCredits = 0;
+const AI = { chats: [], id: null, msgs: [], busy: false, max: 5, effort: 1, att: [], rec: null, urls: new Map(), gal: null };
+const AI_EFF = [{ k: "low", t: T("Быстро") }, { k: "medium", t: T("Обычно") }, { k: "max", t: T("Максимум") }];
+const AI_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function paintAiCredits(n) {
   aiCredits = Math.max(0, Number(n) || 0);
-  $("aiCred").textContent = credText(aiCredits);
-  $("aiLock").hidden = aiCredits > 0;
-  $("aiForm").hidden = aiCredits <= 0;
-  if ($("sv_ai")) $("sv_ai").textContent = credText(aiCredits);
+  const unl = !!state.isAdmin;
+  $("aiCred").textContent = unl ? T("без ограничений") : nf.format(aiCredits);
+  $("aiBuyBtn").hidden = unl;
+  if ($("sv_ai")) $("sv_ai").textContent = unl ? "∞" : nf.format(aiCredits);
 }
-async function openAi() {
-  $("aiAnswer").hidden = true;
-  $("aiForm").hidden = true; $("aiLock").hidden = true;
-  $("aiCred").textContent = "…";
+async function openAiPage() {
   if (!$("dlgAi").open) $("dlgAi").showModal();
-  const [c, hist] = await Promise.all([sb.rpc("my_ai_credits"),
-    sb.from("ai_history").select("id,question,answer,status,created_at").eq("status", "done").order("id", { ascending: false }).limit(20)]);
-  paintAiCredits(c.data);
-  const rows = Array.isArray(hist.data) ? hist.data : [];
-  $("aiHistLabel").hidden = !rows.length;
-  $("aiHist").replaceChildren(...rows.map(aiItem));
-  if (aiCredits > 0) setTimeout(() => $("aiQ").focus(), 50);
+  $("aiApp").classList.remove("side-open");
+  aiPaintEffort(true);
+  aiCollapse(true);
+  await aiLoadChats();
+  if (AI.id && AI.chats.some((c) => c.id === AI.id)) aiOpenChat(AI.id); else aiNewDraft();
 }
-$("aiQ").addEventListener("input", () => { $("aiLeft").textContent = $("aiQ").value.length + " / 1000"; });
-$("aiBuy").addEventListener("click", async () => {
-  const { data } = await sb.from("profiles").select("id").eq("username", AI_SELLER).maybeSingle();
-  if (!data) { toast(T("Не удалось открыть чат")); return; }
-  $("dlgAi").close();
-  if (!$("dlgSettings").hidden) $("dlgSettings").close();
-  await startDirect(data.id);
-  if (!$("text").value) { $("text").value = T("Здравствуйте! Хочу купить ИИ-кредиты для Mestario."); fitText(); syncComposer(); }
-});
-let aiBusy = false;
-$("aiForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const q = $("aiQ").value.trim();
-  if (!q || aiBusy) return;
-  aiBusy = true;
-  $("aiSend").disabled = true; $("aiQ").disabled = true;
-  $("aiAnswer").hidden = false;
-  $("aiAnswer").replaceChildren(h("div", { class: "ai-q" }, q), h("div", { class: "ai-wait" }, h("i"), h("i"), h("i"), h("span", {}, T("ИИ пишет ответ…"))));
-  let res;
-  try { res = await sb.functions.invoke("ai", { body: { question: q } }); } catch (x) { res = { error: x }; }
-  aiBusy = false;
-  $("aiSend").disabled = false; $("aiQ").disabled = false;
-  if (res.error || !res.data || !res.data.answer) {
-    let code = "";
-    try { code = (await res.error.context.json()).error || ""; } catch (x) {}
-    $("aiAnswer").hidden = true;
-    toast(code === "credits" ? T("ИИ-кредиты закончились. Купить их можно у @boss.")
-      : code === "busy" ? T("ИИ сейчас перегружен. Попробуйте через минуту — кредит не списан.")
-      : code === "not configured" ? T("ИИ-помощник ещё не подключён. Загляните чуть позже, кредит не списан.")
-      : T("Не удалось получить ответ. Кредит не списан — попробуйте ещё раз."));
-    if (code === "credits") openAi();
+async function aiLoadChats() {
+  const [c, lim] = await Promise.all([sb.from("ai_chats").select("id,title,updated_at").order("updated_at", { ascending: false }).limit(40), sb.rpc("ai_chat_limit")]);
+  AI.chats = Array.isArray(c.data) ? c.data : [];
+  if (lim.data) { AI.max = Number(lim.data.max) || 5; paintAiCredits(lim.data.credits); }
+  aiPaintList();
+}
+function aiPaintList() {
+  $("aiCount").textContent = AI.chats.length + " " + T("из") + " " + AI.max;
+  $("aiList").replaceChildren(...(AI.chats.length ? AI.chats.map((c) => {
+    const del = h("button", { class: "del", type: "button", title: T("Удалить чат"), "aria-label": T("Удалить чат") });
+    del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+    del.addEventListener("click", (e) => { e.stopPropagation(); aiDelChat(c, del); });
+    return h("div", { class: "ai-chat", role: "button", tabindex: "0", "aria-current": String(c.id === AI.id), onclick: () => aiOpenChat(c.id),
+      onkeydown: (e) => { if (e.key === "Enter") aiOpenChat(c.id); } },
+      h("span", {}, h("b", {}, c.title), h("small", {}, dFmt.format(new Date(c.updated_at)))), del);
+  }) : [h("div", { class: "small muted", style: "padding:8px 6px" }, T("Чатов пока нет. Напишите первый вопрос — чат создастся сам."))]));
+}
+function aiNewDraft() {
+  AI.id = null; AI.msgs = [];
+  $("aiTitle").textContent = T("Новый чат");
+  $("aiSub").textContent = AI.chats.length >= AI.max ? T("Достигнут лимит чатов — удалите старый") : T("ИИ-помощник");
+  aiPaintList(); aiRender();
+  $("aiApp").classList.remove("side-open");
+}
+async function aiOpenChat(id) {
+  AI.id = id;
+  const c = AI.chats.find((x) => x.id === id);
+  $("aiTitle").textContent = c ? c.title : T("Чат");
+  $("aiSub").textContent = T("ИИ-помощник");
+  aiPaintList();
+  $("aiApp").classList.remove("side-open");
+  $("aiFeed").replaceChildren(h("div", { class: "small muted", style: "text-align:center" }, T("Загружаем…")));
+  const { data } = await sb.from("ai_msgs").select("id,role,body,images,secs,created_at").eq("chat_id", id).order("id").limit(300);
+  if (AI.id !== id) return;
+  AI.msgs = Array.isArray(data) ? data : [];
+  aiRender(); aiScroll(false);
+}
+// разметка ответа: блоки кода — карточкой, списки, заголовки, **жирный** и `код`
+function aiInline(t) {
+  return String(t).split(/(`[^`\n]+`|\*\*[^*\n]+\*\*)/g).flatMap((x) => {
+    if (/^`[^`]+`$/.test(x)) return [h("code", { class: "ic" }, x.slice(1, -1))];
+    if (/^\*\*[^*]+\*\*$/.test(x)) return [h("b", {}, ...linkify(x.slice(2, -2)))];
+    return x ? linkify(x) : [];
+  });
+}
+function aiProse(t) {
+  const out = [];
+  for (const blk of String(t).replace(/\r/g, "").split(/\n{2,}/)) {
+    const lines = blk.split("\n").filter((x) => x.trim() !== "");
+    if (!lines.length) continue;
+    let k = 0;
+    while (k < lines.length) {
+      const ln = lines[k];
+      if (/^\s*#{1,6}\s+/.test(ln)) { out.push(h("h4", {}, ...aiInline(ln.replace(/^\s*#{1,6}\s+/, "")))); k++; continue; }
+      if (/^\s*([-*•])\s+/.test(ln)) { const ul = h("ul"); while (k < lines.length && /^\s*([-*•])\s+/.test(lines[k])) ul.append(h("li", {}, ...aiInline(lines[k++].replace(/^\s*[-*•]\s+/, "")))); out.push(ul); continue; }
+      if (/^\s*\d+[.)]\s+/.test(ln)) { const ol = h("ol"); while (k < lines.length && /^\s*\d+[.)]\s+/.test(lines[k])) ol.append(h("li", {}, ...aiInline(lines[k++].replace(/^\s*\d+[.)]\s+/, "")))); out.push(ol); continue; }
+      const para = [];
+      while (k < lines.length && !/^\s*(#{1,6}|[-*•]|\d+[.)])\s+/.test(lines[k])) para.push(lines[k++]);
+      out.push(h("p", {}, ...aiInline(para.join("\n"))));
+    }
+  }
+  return out;
+}
+function aiMd(text) {
+  const out = [], re = /```([\w+#.-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g;
+  let last = 0, mm, n = 0;
+  while ((mm = re.exec(text))) {
+    if (mm.index > last) out.push(...aiProse(text.slice(last, mm.index)));
+    out.push(codeCard((mm[1] || "").toLowerCase(), mm[2].replace(/\s+$/, ""), ++n));
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(...aiProse(text.slice(last)));
+  return out;
+}
+function aiImgs(paths) {
+  if (!paths || !paths.length) return null;
+  return h("div", { class: "ai-imgs" }, ...paths.map((p) => {
+    const img = h("img", { alt: T("Картинка"), loading: "lazy", "data-path": p });
+    if (AI.urls.has(p)) img.src = AI.urls.get(p);
+    return h("button", { type: "button", title: T("Открыть"), onclick: (e) => { if (img.src) aiGallery(img.src, e.currentTarget.getBoundingClientRect(), img.naturalWidth, img.naturalHeight); } }, img);
+  }));
+}
+function aiMsgEl(m) {
+  if (m.role === "user") return h("div", { class: "ai-u", "data-id": String(m.id) }, aiImgs(m.images), m.body ? h("div", { class: "bub" }, m.body) : null);
+  const av = h("span", { class: "av", "aria-hidden": "true" }, icon("ai"));
+  const body = h("div", { class: "md" });
+  aiFillModel(body, m);
+  return h("div", { class: "ai-m", "data-id": String(m.id) }, av, body);
+}
+function aiFillModel(body, m) {
+  const kids = [];
+  if (m.streaming && !m.body) kids.push(m.drawing ? h("span", { class: "small muted" }, T("Рисую картинку…")) : h("span", { class: "ai-dots", "aria-label": T("ИИ думает") }, h("i"), h("i"), h("i")));
+  else kids.push(...aiMd(m.body || ""));
+  if (m.streaming && m.body) { const last = kids[kids.length - 1]; const cur = h("span", { class: "cur", "aria-hidden": "true" }); if (last && last.tagName === "P") last.append(" ", cur); else kids.push(cur); }
+  const im = aiImgs(m.images); if (im) kids.push(im);
+  if (!m.streaming && m.secs != null) kids.push(h("span", { class: "meta" }, "⏱ " + m.secs + T(" с") + (m.charged != null && !state.isAdmin ? " · −" + credText(m.charged) : "")));
+  body.replaceChildren(...kids);
+}
+function aiRender() {
+  const feed = $("aiFeed");
+  if (!AI.msgs.length) {
+    const big = h("span", { class: "big", "aria-hidden": "true" }, icon("ai"));
+    const sug = [[T("Объясни простыми словами, как работает блокчейн"), 0], [T("Напиши на Python функцию, которая сортирует список"), 0], [T("Что изображено на этой картинке?"), 1], [T("Нарисуй кота-космонавта в стиле пиксель-арт"), 0]];
+    feed.replaceChildren(h("div", { class: "ai-hello" }, big, h("h3", {}, T("Чем могу помочь?")),
+      h("p", {}, T("Спрашивайте о чём угодно, присылайте картинки — я их рассмотрю, — или попросите что-нибудь нарисовать.")),
+      h("div", { class: "ai-sugg" }, ...sug.map(([t, pic]) => h("button", { type: "button", onclick: () => { $("aiQ").value = t; aiExpand(); aiSize(); aiAct(); if (pic) $("aiFile").click(); } }, t)))));
     return;
   }
-  $("aiQ").value = ""; $("aiLeft").textContent = "0 / 1000";
-  $("aiAnswer").replaceChildren(h("div", { class: "ai-q" }, q), h("div", { class: "ai-a" }, ...aiText(res.data.answer)));
-  paintAiCredits(res.data.credits);
+  feed.replaceChildren(...AI.msgs.map(aiMsgEl));
+  aiSignImgs(feed);
+}
+async function aiSignImgs(root) {
+  const imgs = [...root.querySelectorAll("img[data-path]")].filter((x) => !x.src);
+  const need = [...new Set(imgs.map((x) => x.dataset.path))];
+  if (!need.length) return;
+  const { data } = await sb.storage.from("ai").createSignedUrls(need, 3600);
+  for (const r of data || []) if (r && r.signedUrl && r.path) AI.urls.set(r.path, r.signedUrl);
+  for (const x of imgs) if (AI.urls.has(x.dataset.path)) x.src = AI.urls.get(x.dataset.path);
+}
+function aiScroll(smooth) { const f = $("aiFeed"); f.scrollTo({ top: f.scrollHeight, behavior: smooth && motionOK() ? "smooth" : "auto" }); }
+let aiLiveRaf = 0;
+function aiUpdLive(m) {
+  if (aiLiveRaf) return;
+  aiLiveRaf = requestAnimationFrame(() => {
+    aiLiveRaf = 0;
+    const el = $("aiFeed").querySelector('[data-id="' + m.id + '"] .md');
+    if (!el) return;
+    const f = $("aiFeed"), stick = f.scrollHeight - f.scrollTop - f.clientHeight < 80;
+    aiFillModel(el, m);
+    if (stick) f.scrollTop = f.scrollHeight;
+  });
+}
+// ----- поле ввода: пилюля раскрывается в карточку -----
+const aiPi = $("aiPi"), aiTa = $("aiQ");
+function aiHasVal() { return aiTa.value.trim() !== "" || AI.att.length > 0; }
+function aiAct() {
+  const act = AI.rec ? "stop" : aiHasVal() || !AI_SR ? "up" : "mic";
+  aiPi.dataset.act = act;
+  $("aiGo").disabled = AI.busy || (act === "up" && !aiHasVal());
+  $("aiGo").setAttribute("aria-label", act === "stop" ? T("Остановить запись") : act === "mic" ? T("Голосовой ввод") : T("Отправить"));
+}
+function aiExpand(smooth) {
+  aiPi.classList.toggle("smooth", !!smooth);
+  aiPi.dataset.open = "true";
+  aiSize();
+  // фокус сразу, в том же нажатии — иначе на телефоне не откроется клавиатура
+  const put = () => { if (AI.rec) return; aiTa.focus({ preventScroll: true }); const n = aiTa.value.length; try { aiTa.setSelectionRange(n, n); } catch (e) {} };
+  put(); setTimeout(put, 50);
+}
+function aiCollapse(force) {
+  if (!force && (aiHasVal() || AI.rec)) return;
+  aiPi.classList.remove("smooth");
+  aiPi.dataset.open = "false";
+  $("aiCard").style.height = "";
+  aiTa.style.height = "";
+}
+function aiSize() {
+  if (aiPi.dataset.open !== "true") return;
+  const cur = aiTa.style.height;
+  aiTa.style.transition = "none"; aiTa.style.height = "0px";
+  const sh = aiTa.scrollHeight;
+  aiTa.style.height = cur; void aiTa.offsetHeight; aiTa.style.transition = "";
+  const nh = Math.max(68, Math.min(sh, 160));
+  aiTa.style.height = nh + "px";
+  aiTa.classList.toggle("scroll", sh > 160);
+  $("aiCard").style.height = Math.max(116, nh + 48) + "px";
+  $("aiFadeB").style.top = (nh - 26) + "px";
+  setTimeout(aiFades, 0);
+}
+function aiFades() {
+  const st = aiTa.scrollTop, sh = aiTa.scrollHeight, ch = aiTa.clientHeight;
+  $("aiFadeT").style.opacity = String(Math.min(st / 20, 1));
+  $("aiFadeB").style.opacity = String(Math.min(Math.max(sh - ch - st - 16, 0) / 10, 1));
+}
+$("aiPh").addEventListener("click", () => aiExpand(false));
+aiTa.addEventListener("input", () => { aiPi.classList.add("smooth"); aiSize(); aiAct(); });
+aiTa.addEventListener("scroll", aiFades);
+aiTa.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!AI.busy) aiSend(); }
+  if (e.key === "Escape" && !aiHasVal()) { e.preventDefault(); aiCollapse(true); }
 });
+aiPi.addEventListener("focusout", (e) => {
+  if (e.relatedTarget && (aiPi.contains(e.relatedTarget) || (AI.gal && AI.gal.contains(e.relatedTarget)))) return;
+  setTimeout(() => { if (!aiPi.contains(document.activeElement) && !AI.gal) aiCollapse(false); }, 120);
+});
+$("aiCard").addEventListener("mousedown", (e) => {
+  if (aiPi.dataset.open === "true" && e.target !== aiTa && !e.target.closest("button") && !AI.rec) { e.preventDefault(); aiTa.focus(); }
+});
+// сколько думать: быстро / обычно / максимум
+function aiPaintEffort(now) {
+  const w = $("aiEffortW"), from = w.offsetWidth;
+  $("aiEffortT").remove();
+  w.append(h("span", { id: "aiEffortT" }, AI_EFF[AI.effort].t));
+  const svg = $("aiEffort").querySelector("svg");
+  svg.querySelector(".b2").style.opacity = AI.effort >= 1 ? "1" : ".3";
+  svg.querySelector(".b3").style.opacity = AI.effort >= 2 ? "1" : ".3";
+  $("aiEffort").title = T("Сколько думать: ") + AI_EFF[AI.effort].t.toLowerCase();
+  if (now || !from) { w.style.width = ""; return; }
+  w.style.width = "auto"; const to = w.offsetWidth;
+  w.style.width = from + "px"; void w.offsetWidth; w.style.width = to + "px";
+  setTimeout(() => { w.style.width = ""; }, 320);
+}
+$("aiEffort").addEventListener("mousedown", (e) => e.preventDefault());
+$("aiEffort").addEventListener("click", (e) => { e.stopPropagation(); AI.effort = (AI.effort + 1) % AI_EFF.length; aiPaintEffort(); try { localStorage.setItem("mestario.aiEffort", String(AI.effort)); } catch (x) {} });
+try { const v = localStorage.getItem("mestario.aiEffort"); if (v === "0" || v === "1" || v === "2") AI.effort = Number(v); } catch (e) {}
+// вложения: до 6 картинок
+$("aiAdd").addEventListener("mousedown", (e) => e.preventDefault());
+$("aiAdd").addEventListener("click", (e) => { e.stopPropagation(); $("aiFile").click(); });
+$("aiFile").addEventListener("change", (e) => {
+  const files = [...(e.target.files || [])].filter((f) => f.type.startsWith("image/"));
+  e.target.value = "";
+  if (!files.length) return;
+  const room = Math.max(0, 6 - AI.att.length);
+  if (files.length > room) toast(T("Можно приложить до 6 картинок"));
+  if (aiPi.dataset.open !== "true") aiExpand(false); else aiPi.classList.add("smooth");
+  for (const f of files.slice(0, room)) AI.att.push({ id: Math.random().toString(36).slice(2), file: f, url: URL.createObjectURL(f), name: f.name });
+  aiPaintAtt(); aiAct();
+});
+function aiPaintAtt() {
+  aiPi.classList.toggle("has-att", AI.att.length > 0);
+  $("aiAdd").disabled = AI.att.length >= 6;
+  $("aiAtt").replaceChildren(...AI.att.map((a, i) => {
+    const b = h("button", { class: "pi-th", type: "button", title: a.name, "aria-label": T("Открыть картинку ") + a.name },
+      h("img", { src: a.url, alt: a.name, draggable: "false" }),
+      h("span", { class: "x", role: "button", "aria-label": T("Убрать ") + a.name, onclick: (e) => { e.stopPropagation(); aiPi.classList.add("smooth"); URL.revokeObjectURL(a.url); AI.att = AI.att.filter((x) => x !== a); aiPaintAtt(); aiAct(); } }, "✕"));
+    b.style.animationDelay = i * 35 + "ms";
+    b.addEventListener("mousedown", (e) => e.preventDefault());
+    b.addEventListener("click", () => { const im = b.querySelector("img"); aiGallery(a.url, b.getBoundingClientRect(), im.naturalWidth, im.naturalHeight); });
+    return b;
+  }));
+}
+// просмотр картинки: вырастает из миниатюры и возвращается в неё
+function aiGallery(src, from, nw, nh) {
+  if (AI.gal) return;
+  const W = innerWidth, H = innerHeight;
+  const maxW = Math.min(W * 0.86, 560), maxH = Math.min(H * 0.78, 720);
+  const k = Math.min(maxW / (nw || 800), maxH / (nh || 600), 1.6), w = (nw || 800) * k, hh = (nh || 600) * k;
+  const to = { top: (H - hh) / 2, left: (W - w) / 2, width: w, height: hh, r: 20 };
+  const fr = { top: from.top, left: from.left, width: from.width, height: from.height, r: 12 };
+  const ph = h("div", { class: "ph" }, h("img", { src, alt: "" }));
+  const x = h("button", { class: "x", type: "button", "aria-label": T("Закрыть") }, "✕");
+  const g = AI.gal = h("div", { class: "pi-gal", role: "dialog", "aria-modal": "true" }, h("div", { class: "bg" }), ph, x);
+  const put = (r, dur, ease) => { ph.style.transition = dur ? ["top", "left", "width", "height", "border-radius"].map((p) => p + " " + dur + " " + ease).join(",") : "none"; ph.style.top = r.top + "px"; ph.style.left = r.left + "px"; ph.style.width = r.width + "px"; ph.style.height = r.height + "px"; ph.style.borderRadius = r.r + "px"; ph.style.boxShadow = r === to ? "0 24px 60px -12px rgb(0 0 0 / .35)" : "none"; };
+  put(fr, 0);
+  $("dlgAi").append(g);
+  requestAnimationFrame(() => requestAnimationFrame(() => { g.classList.add("open"); put(to, ".45s", "cubic-bezier(.175,.885,.32,1.275)"); }));
+  const close = () => {
+    if (g.dataset.closing) return; g.dataset.closing = "1";
+    g.classList.remove("open"); put(fr, ".3s", "ease-out");
+    setTimeout(() => { g.remove(); if (AI.gal === g) AI.gal = null; }, 320);
+  };
+  g.addEventListener("click", (e) => { if (e.target !== ph && !ph.contains(e.target)) close(); });
+  g.close = close;
+  x.focus();
+}
+$("dlgAi").addEventListener("cancel", (e) => { if (AI.gal) { e.preventDefault(); AI.gal.close(); } else if ($("aiApp").classList.contains("side-open")) { e.preventDefault(); $("aiApp").classList.remove("side-open"); } });
+// голосовой ввод: распознавание речи браузера, рядом — живые полоски громкости
+async function aiStartRec() {
+  if (!AI_SR || AI.rec) return;
+  aiExpand(false);
+  let stream = null;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { toast(T("Нет доступа к микрофону. Разрешите его в настройках браузера.")); return; }
+  const rec = AI.rec = { stream, ctx: null, raf: 0, sr: null };
+  aiPi.classList.add("rec"); aiAct();
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext, ctx = rec.ctx = new AC(), an = ctx.createAnalyser();
+    an.fftSize = 64; ctx.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.frequencyBinCount), bars = $("aiWave").children, step = Math.floor(data.length / 5);
+    const tick = () => { an.getByteFrequencyData(data); for (let i = 0; i < 5; i++) { let sum = 0; for (let j = 0; j < step; j++) sum += data[i * step + j]; bars[i].style.height = Math.max(4, sum / step / 255 * 24) + "px"; } rec.raf = requestAnimationFrame(tick); };
+    tick();
+  } catch (e) {}
+  const sr = rec.sr = new AI_SR();
+  sr.lang = window.SOROKA_LANG === "en" ? "en-US" : "ru-RU"; sr.continuous = true; sr.interimResults = true;
+  let base = aiTa.value;
+  sr.onresult = (e) => {
+    let fin = "", inter = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) fin += e.results[i][0].transcript; else inter += e.results[i][0].transcript; }
+    if (fin) base += (base && !/\s$/.test(base) ? " " : "") + fin.trim();
+    aiTa.value = (base + (inter ? " " + inter.trim() : "")).trim();
+    aiPi.classList.add("smooth"); aiSize(); aiTa.scrollTop = aiTa.scrollHeight;
+  };
+  sr.onerror = (e) => { if (e && e.error === "not-allowed") toast(T("Нет доступа к микрофону. Разрешите его в настройках браузера.")); aiStopRec(); };
+  sr.onend = () => aiStopRec();
+  try { sr.start(); } catch (e) { aiStopRec(); }
+}
+function aiStopRec() {
+  const r = AI.rec;
+  if (!r) return;
+  AI.rec = null;
+  try { if (r.sr) { r.sr.onend = null; r.sr.stop(); } } catch (e) {}
+  cancelAnimationFrame(r.raf);
+  for (const t of r.stream.getTracks()) t.stop();
+  try { if (r.ctx) r.ctx.close(); } catch (e) {}
+  aiPi.classList.remove("rec");
+  for (const b of $("aiWave").children) b.style.height = "";
+  aiAct();
+  aiTa.focus();
+}
+$("aiGo").addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); });
+$("aiGo").addEventListener("click", (e) => { e.preventDefault(); if (AI.rec) aiStopRec(); else if (aiHasVal()) aiSend(); else if (AI_SR) aiStartRec(); });
+// картинка перед отправкой: не больше 1600 px по длинной стороне, JPEG
+async function aiShrink(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = url; });
+    const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((ok) => c.toBlob((b) => ok(b || file), "image/jpeg", 0.86));
+  } catch (e) { return file; } finally { URL.revokeObjectURL(url); }
+}
+async function aiSend() {
+  if (AI.busy) return;
+  if (AI.rec) aiStopRec();
+  const text = aiTa.value.trim(), atts = AI.att.slice();
+  if (!text && !atts.length) return;
+  if (!state.isAdmin && aiCredits < 1) { toast(T("ИИ-кредиты закончились. 1 Mest = 1 кредит.")); openAiBuy(); return; }
+  AI.busy = true; aiAct();
+  try {
+    let id = AI.id;
+    if (!id) {
+      const { data, error } = await sb.rpc("ai_new_chat");
+      if (error || !data) {
+        toast(/chat limit/.test((error && error.message) || "") ? (AI.max >= 20 ? T("Можно держать до 20 чатов. Удалите старый, чтобы начать новый.") : T("Без премиума можно до 5 чатов, с премиумом — до 20. Удалите старый чат или оформите премиум.")) : T("Не удалось создать чат"));
+        if (error && /chat limit/.test(error.message || "")) $("aiApp").classList.add("side-open");
+        return;
+      }
+      id = AI.id = data;
+      AI.chats.unshift({ id, title: T("Новый чат"), updated_at: new Date().toISOString() });
+      aiPaintList();
+    }
+    const paths = [];
+    for (const a of atts) {
+      const blob = await aiShrink(a.file), path = state.me.id + "/" + crypto.randomUUID() + ".jpg";
+      const up = await sb.storage.from("ai").upload(path, blob, { contentType: "image/jpeg" });
+      if (up.error) { toast(T("Не удалось загрузить картинку. Попробуйте ещё раз.")); return; }
+      paths.push(path); AI.urls.set(path, a.url);
+    }
+    aiTa.value = ""; AI.att = []; aiPaintAtt(); aiCollapse(true); aiTa.blur();
+    const um = { id: "u" + Date.now(), role: "user", body: text, images: paths };
+    const mm = { id: "m" + Date.now(), role: "model", body: "", images: [], streaming: true };
+    AI.msgs.push(um, mm);
+    aiRender(); aiScroll(true);
+    await aiStream(id, text, paths, um, mm);
+  } finally { AI.busy = false; aiAct(); }
+}
+async function aiStream(id, text, paths, um, mm) {
+  let r;
+  try {
+    const { data } = await sb.auth.getSession();
+    const tok = data && data.session ? data.session.access_token : "";
+    r = await fetch(SUPABASE_URL + "/functions/v1/ai", { method: "POST",
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (tok || SUPABASE_KEY) },
+      body: JSON.stringify({ ai_chat: id, text, images: paths, effort: AI_EFF[AI.effort].k }) });
+  } catch (e) { return aiFail(um, mm, text, "net"); }
+  if (!r.ok || !r.body) { let code = ""; try { code = (await r.json()).error || ""; } catch (e) {} return aiFail(um, mm, text, code); }
+  const rd = r.body.getReader(), dec = new TextDecoder();
+  let buf = "", done = null;
+  for (;;) {
+    let chunk;
+    try { chunk = await rd.read(); } catch (e) { break; }
+    if (chunk.done) break;
+    buf += dec.decode(chunk.value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line) continue;
+      let j; try { j = JSON.parse(line); } catch (e) { continue; }
+      if (j.d) { mm.body += j.d; aiUpdLive(mm); }
+      else if (j.drawing) { mm.drawing = true; mm.body = ""; aiUpdLive(mm); }
+      else if (j.error) return aiFail(um, mm, text, j.error);
+      else if (j.done) done = j;
+    }
+  }
+  if (!done) return aiFail(um, mm, text, "ai");
+  Object.assign(mm, done.msg || {}, { streaming: false, drawing: false, charged: done.charged });
+  if (done.user_id) um.id = done.user_id;
+  if (done.credits != null) paintAiCredits(done.credits);
+  const c = AI.chats.find((x) => x.id === id);
+  if (c) { if (done.title) c.title = done.title; c.updated_at = new Date().toISOString(); AI.chats.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)); }
+  if (AI.id === id) { $("aiTitle").textContent = c ? c.title : $("aiTitle").textContent; aiRender(); aiScroll(true); }
+  aiPaintList();
+}
+function aiFail(um, mm, text, code) {
+  AI.msgs = AI.msgs.filter((x) => x !== um && x !== mm);
+  aiRender();
+  if (text && !aiTa.value) { aiTa.value = text; aiExpand(false); aiAct(); }
+  toast(code === "credits" ? T("ИИ-кредиты закончились. 1 Mest = 1 кредит.")
+    : code === "busy" ? T("ИИ сейчас перегружен. Попробуйте через минуту — кредиты не списаны.")
+    : code === "not configured" ? T("ИИ-помощник ещё не подключён. Загляните чуть позже.")
+    : code === "image" ? T("Не получилось нарисовать. Кредиты не списаны — опишите картинку иначе.")
+    : T("Не удалось получить ответ. Кредиты не списаны — попробуйте ещё раз."));
+  if (code === "credits") openAiBuy();
+}
+// удалить чат (два нажатия) вместе с его картинками
+async function aiDelChat(c, btn) {
+  if (!btn.classList.contains("armed")) { btn.classList.add("armed"); btn.title = T("Нажмите ещё раз, чтобы удалить"); setTimeout(() => btn.classList.remove("armed"), 3500); return; }
+  const { data: rows } = await sb.from("ai_msgs").select("images").eq("chat_id", c.id);
+  const { error } = await sb.from("ai_chats").delete().eq("id", c.id);
+  if (error) { toast(T("Не удалось удалить чат")); return; }
+  const paths = (rows || []).flatMap((r) => r.images || []);
+  if (paths.length) sb.storage.from("ai").remove(paths).catch(() => {});
+  AI.chats = AI.chats.filter((x) => x.id !== c.id);
+  toast(T("Чат удалён"));
+  if (AI.id === c.id) aiNewDraft(); else aiPaintList();
+}
+// переименовать: нажать на название
+$("aiTitle").addEventListener("click", () => {
+  if (!AI.id) return;
+  const id = AI.id, old = $("aiTitle").textContent;
+  const inp = h("input", { class: "ai-title-in", maxlength: "80", value: old, "aria-label": T("Название чата") });
+  $("aiTitle").hidden = true; $("aiTitle").after(inp); inp.focus(); inp.select();
+  let fin = false;
+  const done = async (save) => {
+    if (fin) return; fin = true;
+    const t = inp.value.trim(); inp.remove(); $("aiTitle").hidden = false;
+    if (!save || !t || t === old) return;
+    $("aiTitle").textContent = t;
+    const { error } = await sb.rpc("ai_rename_chat", { p_chat: id, p_title: t });
+    if (error) { $("aiTitle").textContent = old; toast(T("Не удалось переименовать")); return; }
+    const c = AI.chats.find((x) => x.id === id); if (c) c.title = t; aiPaintList();
+  };
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); done(true); } if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); } });
+  inp.addEventListener("blur", () => done(true));
+});
+$("aiNew").addEventListener("click", () => { aiNewDraft(); aiExpand(false); });
+$("aiMenu").addEventListener("click", () => $("aiApp").classList.toggle("side-open"));
+$("aiScrim").addEventListener("click", () => $("aiApp").classList.remove("side-open"));
+$("aiBack").addEventListener("click", () => $("dlgAi").close());
+$("aiBuyBtn").addEventListener("click", () => openAiBuy());
+$("dlgAi").addEventListener("close", () => { if (AI.rec) aiStopRec(); if (AI.gal) { AI.gal.remove(); AI.gal = null; } refreshAiCredits(); });
+aiPaintEffort(true); aiAct();
 /* ---------- чат с ботом @ai ---------- */
 const CODE_EXT = { python: "py", py: "py", javascript: "js", js: "js", jsx: "jsx", typescript: "ts", ts: "ts", tsx: "tsx", html: "html", css: "css",
   json: "json", bash: "sh", sh: "sh", shell: "sh", powershell: "ps1", sql: "sql", java: "java", c: "c", cpp: "cpp", "c++": "cpp", csharp: "cs", cs: "cs",
@@ -13313,8 +14356,7 @@ function isAiChat(c) { const o = c && !c.is_group ? other(c) : null; return !!(o
 async function refreshAiCredits() {
   const r = await sb.rpc("my_ai_credits");
   if (r.error) return;
-  aiCredits = Math.max(0, Number(r.data) || 0);
-  if ($("sv_ai")) $("sv_ai").textContent = state.isAdmin ? T("без ограничений") : credText(aiCredits);
+  paintAiCredits(r.data);
   const c = state.chats.get(state.activeId);
   if (isAiChat(c)) renderHead();
 }
