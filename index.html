@@ -1656,6 +1656,22 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .set-tile .sv { font-size: 12.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .set-tile .sv:empty::before { content: "\00a0"; }
 .set-menu > .set-label { margin: 6px 0 -4px 12px; }
+/* телефон: без «пятен» и лишней работы видеокарты */
+@media (max-width: 760px) {
+  /* открытый раньше чат не подсвечивается в списке, когда мы снова в списке */
+  #app:not(.chat-open) #chatList .row.active { background: transparent; }
+}
+@media (pointer: coarse) {
+  /* размытие под тем, что едет при прокрутке, пересчитывается каждый кадр — на телефоне заменяем плотной подложкой */
+  .gift-pill, .gift-card, .greet-card, :root[data-wall="live"] .placeholder { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  .greet-card { background: color-mix(in srgb, var(--panel) 94%, transparent); }
+  .tabbar { -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; }
+  /* живые пиксельные подарки в каталоге маркета — неподвижные */
+  .mk-type .pxl, .mk-type .pxl * { animation: none !important; }
+  .msg { transition: none; }
+}
+/* пока список или чат прокручивают — бегущие обои и вечные анимации на паузе */
+:root.scrolling[data-wall="crystal"] .pane::before, :root.scrolling .tabbar, :root.scrolling .gem, :root.scrolling .nft::after, :root.scrolling .worn { animation-play-state: paused !important; }
 /* иконки вместо смайликов */
 .ii { display: inline-flex; vertical-align: -0.18em; margin-right: 7px; }
 .ii svg, [data-i] > svg { width: 1.15em; height: 1.15em; display: block; }
@@ -3017,6 +3033,36 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .18s; animation-timing-function: ease-out; }
 }
 </style>
+<script>
+/* Сенсорный экран без мыши: правила :hover «залипают» после касания — строка остаётся подсвеченной, пока не ткнёшь
+   в другое место. На таких устройствах убираем из стилей все правила наведения (на ПК всё остаётся как было). */
+(function () {
+  if (!window.matchMedia || !matchMedia("(hover: none)").matches) return;
+  function parts(sel) {   // делим список селекторов по запятым верхнего уровня
+    var out = [], depth = 0, cur = "";
+    for (var i = 0; i < sel.length; i++) {
+      var ch = sel[i];
+      if (ch === "(" || ch === "[") depth++;
+      else if (ch === ")" || ch === "]") depth--;
+      if (ch === "," && depth === 0) { out.push(cur); cur = ""; } else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+  function clean(list) {
+    for (var i = list.cssRules.length - 1; i >= 0; i--) {
+      var r = list.cssRules[i];
+      if (r.cssRules && !r.selectorText) { try { clean(r); } catch (e) {} continue; }
+      if (!r.selectorText || r.selectorText.indexOf(":hover") < 0) continue;
+      var keep = parts(r.selectorText).filter(function (x) { return x.indexOf(":hover") < 0; });
+      try { if (keep.length) r.selectorText = keep.join(","); else list.deleteRule(i); } catch (e) {}
+    }
+  }
+  function run() { for (var k = 0; k < document.styleSheets.length; k++) { try { clean(document.styleSheets[k]); } catch (e) {} } }
+  run();
+  document.addEventListener("DOMContentLoaded", run);
+})();
+</script>
 <script>
 /* На защищённый адрес переходим, только убедившись, что он открывается:
    пока сертификат домена не готов, принудительный переход оставил бы людей с ошибкой браузера. */
@@ -17089,21 +17135,47 @@ function msgsGone(before) {
     });
   }
 }
-// «волна» от пальца или курсора на кнопках и строках
-document.addEventListener("pointerdown", (e) => {
-  if (!motionOK() || e.button > 0) return;
-  const t = e.target.closest && e.target.closest(".btn, .row, .srow, .pick, .sb-item .sb-app, #folderBar button, .ga");
-  if (!t || t.disabled) return;
+// «волна» от пальца или курсора на кнопках и строках.
+// На сенсорном экране волна появляется, только если палец не поехал (не прокрутка) — иначе на чатах оставались «пятна»
+function rippleAt(t, x, y) {
   const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
   const cs = getComputedStyle(t);
   if (cs.position === "static") t.style.position = "relative";
   if (cs.overflow === "visible") { t.style.overflow = "hidden"; setTimeout(() => { t.style.overflow = ""; }, 600); }
   const w = document.createElement("span");
   w.className = "ripple";
-  w.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+  w.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (x - r.left - d / 2) + "px;top:" + (y - r.top - d / 2) + "px";
   t.append(w);
   setTimeout(() => w.remove(), 600);
+  return w;
+}
+let rpTouch = null;
+document.addEventListener("pointerdown", (e) => {
+  if (!motionOK() || e.button > 0) return;
+  const t = e.target.closest && e.target.closest(".btn, .row, .srow, .pick, .sb-item .sb-app, #folderBar button, .ga");
+  if (!t || t.disabled) return;
+  if (e.pointerType !== "touch") { rippleAt(t, e.clientX, e.clientY); return; }
+  // палец: ждём чуть-чуть — если это прокрутка, браузер пришлёт pointercancel или палец сдвинется
+  const st = { t, x: e.clientX, y: e.clientY, id: e.pointerId, timer: 0 };
+  st.timer = setTimeout(() => { if (rpTouch === st) { rpTouch = null; rippleAt(t, st.x, st.y); } }, 90);
+  rpTouch = st;
 }, { passive: true });
+const rpCancel = () => { if (rpTouch) { clearTimeout(rpTouch.timer); rpTouch = null; } };
+document.addEventListener("pointermove", (e) => { if (rpTouch && e.pointerId === rpTouch.id && (Math.abs(e.clientX - rpTouch.x) > 8 || Math.abs(e.clientY - rpTouch.y) > 8)) rpCancel(); }, { passive: true });
+document.addEventListener("pointercancel", rpCancel, { passive: true });
+document.addEventListener("pointerup", (e) => {
+  // быстрый тап (меньше 90 мс): волна сразу по отпусканию
+  if (rpTouch && e.pointerId === rpTouch.id) { const st = rpTouch; rpCancel(); rippleAt(st.t, st.x, st.y); }
+}, { passive: true });
+// на телефоне прокрутка «приглушает» фон: пока список едет, бегущие обои не тратят кадры
+(function () {
+  const root = document.documentElement;
+  let t = 0;
+  addEventListener("scroll", () => {
+    if (!root.classList.contains("scrolling")) root.classList.add("scrolling");
+    clearTimeout(t); t = setTimeout(() => root.classList.remove("scrolling"), 160);
+  }, { passive: true, capture: true });
+})();
 
 /* ---------- Android-приложение: ссылка на APK, проверка новой версии, тихое обновление интерфейса ---------- */
 const APK_URL = "https://github.com/wiynet/soroka/releases/latest/download/Mestario.apk";
