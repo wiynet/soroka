@@ -11499,60 +11499,85 @@ function ratingOf(p) {
   const tier = level >= 200 ? 6 : level >= 130 ? 5 : level >= 70 ? 4 : level >= 30 ? 3 : level >= 10 ? 2 : level >= 1 ? 1 : 0;
   return { pts, level, from, to, max, tier, share: max ? 1 : Math.min(1, (pts - from) / (to - from)) };
 }
-// значок рейтинга: золотой герб, усложняется с уровнем (корона → крылья → лавры), число внутри
-const RB_DEFS = '<defs>'
-  + '<linearGradient id="rbRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe9a0"/><stop offset="48%" stop-color="#e3a82f"/><stop offset="100%" stop-color="#8a560d"/></linearGradient>'
-  + '<radialGradient id="rbFace" cx="50%" cy="34%" r="75%"><stop offset="0%" stop-color="#fff6cf"/><stop offset="45%" stop-color="#ffd24a"/><stop offset="100%" stop-color="#c2800f"/></radialGradient>'
-  + '<linearGradient id="rbWing" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe390"/><stop offset="100%" stop-color="#a66c12"/></linearGradient>'
-  + '<linearGradient id="rbLeaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffdf85"/><stop offset="100%" stop-color="#9c650f"/></linearGradient>'
-  + '</defs>';
-function rbHex(cx, cy, R) {
-  const w = R * 0.86, pts = [[cx-w*0.62,cy-R*0.78],[cx+w*0.62,cy-R*0.78],[cx+w,cy],[cx+w*0.62,cy+R*0.78],[cx-w*0.62,cy+R*0.78],[cx-w,cy]];
-  return pts.map((q) => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" ");
+// значок рейтинга: металлическое золото с фасками; форма усложняется с уровнем
+// 0–1 круг · 2–9 пятиугольник · 10–40 шестиугольник · 41–60 грань сверху · 61–100 гребень и крылья ·
+// 101–140 корона и шеврон снизу · 141–200 большие крылья, лавры и высокий шпиль
+let rbSeq = 0;
+function rbTier(lv) { return lv <= 1 ? 0 : lv < 10 ? 1 : lv <= 20 ? 2 : lv <= 40 ? 3 : lv <= 60 ? 4 : lv <= 80 ? 5 : lv <= 100 ? 6 : lv <= 120 ? 7 : lv <= 140 ? 8 : lv <= 160 ? 9 : lv <= 180 ? 10 : 11; }
+const rbF = (n) => n.toFixed(1);
+function rbPoly(n, cx, cy, R, rot) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const a = rot + i * 2 * Math.PI / n; pts.push(rbF(cx + R * Math.cos(a)) + "," + rbF(cy + R * Math.sin(a))); }
+  return pts.join(" ");
 }
-function rbCrown(cx, cy, R) {
-  const top = cy - R * 0.78; let o = "";
-  const xs = [cx-R*0.52, cx-R*0.26, cx, cx+R*0.26, cx+R*0.52], hs = [8,11,14,11,8];
-  for (let i = 0; i < 5; i++) { const x = xs[i], h = hs[i];
-    o += '<path d="M' + (x-5).toFixed(1) + ' ' + top.toFixed(1) + ' L' + x.toFixed(1) + ' ' + (top-h).toFixed(1) + ' L' + (x+5).toFixed(1) + ' ' + top.toFixed(1) + ' Z" fill="url(#rbRim)" stroke="#7a4e0c" stroke-width="0.6"/>';
-    o += '<circle cx="' + x.toFixed(1) + '" cy="' + (top-h-1).toFixed(1) + '" r="1.6" fill="#fff3c4"/>';
-  }
-  return o;
+// грань с ребром посередине: светлая и тёмная половины, как у гранёного металла
+function rbFacet(p, ids) {
+  const [b1, tip, b2] = p, m = [(b1[0] + b2[0]) / 2, (b1[1] + b2[1]) / 2];
+  const pt = (q) => rbF(q[0]) + "," + rbF(q[1]);
+  return '<polygon points="' + [b1, tip, m].map(pt).join(" ") + '" fill="url(#' + ids.lt + ')" stroke="#b5781c" stroke-width=".6" stroke-linejoin="round"/>'
+    + '<polygon points="' + [m, tip, b2].map(pt).join(" ") + '" fill="url(#' + ids.dk + ')" stroke="#b5781c" stroke-width=".6" stroke-linejoin="round"/>';
 }
-function rbWings(cx, cy, R) {
-  let o = "";
-  for (const sgn of [-1, 1]) { const x0 = cx + sgn * (R * 0.9);
-    const F = [[0,-0.2,1.0],[0.25,0.15,0.9],[0.4,0.5,0.75]];
-    for (let i = 0; i < 3; i++) { const dy = F[i][1], ln = F[i][2];
-      const bx = x0, by = cy - R*0.5 + i*R*0.42, tipx = x0 + sgn*(R*0.55*ln), tipy = by - R*0.35*ln + dy*R*0.3;
-      o += '<path d="M' + bx.toFixed(1) + ' ' + by.toFixed(1) + ' Q' + ((bx+tipx)/2+sgn*4).toFixed(1) + ' ' + (by-10).toFixed(1) + ' ' + tipx.toFixed(1) + ' ' + tipy.toFixed(1) + ' Q' + (tipx-sgn*6).toFixed(1) + ' ' + (tipy+8).toFixed(1) + ' ' + (bx-sgn*3).toFixed(1) + ' ' + (by+6).toFixed(1) + ' Z" fill="url(#rbWing)" stroke="#7a4e0c" stroke-width="0.5"/>';
-    }
-  }
-  return o;
+// перо/шип: от основания (x, y) под углом a (градусы, 0 — вправо, 90 — вверх), длина L, ширина w
+function rbSpike(x, y, a, L, w, ids) {
+  const r = a * Math.PI / 180, dx = Math.cos(r), dy = -Math.sin(r), px = -dy, py = dx;
+  return rbFacet([[x + px * w / 2, y + py * w / 2], [x + dx * L, y + dy * L], [x - px * w / 2, y - py * w / 2]], ids);
 }
-function rbLaurels(cx, cy, R) {
-  let o = ""; const bottom = cy + R * 0.78;
-  for (const sgn of [-1, 1]) { const x0 = cx + sgn * (R * 0.5);
-    for (let i = 0; i < 5; i++) { const t = i/4, lx = x0 + sgn*(R*0.5*t), ly = bottom + 4 - i*R*0.16, ang = sgn*(30 + i*8);
-      o += '<ellipse cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" rx="6.5" ry="3.1" fill="url(#rbLeaf)" stroke="#7a4e0c" stroke-width="0.4" transform="rotate(' + ang.toFixed(0) + ' ' + lx.toFixed(1) + ' ' + ly.toFixed(1) + ')"/>';
-    }
-  }
-  return o;
+function rbKite(x, y, a, L, w, ids, sh) {
+  const r = a * Math.PI / 180, ux = Math.cos(r), uy = -Math.sin(r), vx = -uy, vy = ux, k = sh == null ? 0.38 : sh;
+  const P = (u, v) => [x + ux * u + vx * v, y + uy * u + vy * v];
+  const B = P(-5, 0), S1 = P(L * k, w / 2), Tp = P(L, 0), S2 = P(L * k, -w / 2);
+  const pt = (q) => rbF(q[0]) + "," + rbF(q[1]);
+  return '<polygon points="' + [B, S1, Tp].map(pt).join(" ") + '" fill="url(#' + ids.lt + ')" stroke="#b5781c" stroke-width=".7" stroke-linejoin="round"/>'
+    + '<polygon points="' + [B, Tp, S2].map(pt).join(" ") + '" fill="url(#' + ids.dk + ')" stroke="#b5781c" stroke-width=".7" stroke-linejoin="round"/>';
 }
 function ratingBadge(level) {
-  const cx = 50, cy = 56, R = 30, lv = Math.max(0, Math.min(MAX_LEVEL, Math.round(level)));
-  const tier = lv >= 141 ? 4 : lv >= 101 ? 3 : lv >= 61 ? 2 : 1;
-  let b = "";
-  if (tier >= 4) b += rbLaurels(cx, cy, R);
-  if (tier >= 3) b += rbWings(cx, cy, R);
-  if (tier >= 2) b += rbCrown(cx, cy, R);
-  b += '<polygon points="' + rbHex(cx, cy, R+3) + '" fill="url(#rbRim)" stroke="#6e460a" stroke-width="1"/>';
-  b += '<polygon points="' + rbHex(cx, cy, R-1) + '" fill="url(#rbFace)"/>';
-  b += '<ellipse cx="' + cx + '" cy="' + (cy-13) + '" rx="20" ry="10" fill="#fff" opacity="0.28"/>';
-  b += '<polygon points="' + rbHex(cx, cy, R-5) + '" fill="none" stroke="#fff3c4" stroke-width="1" opacity="0.5"/>';
-  const fs = lv < 10 ? 30 : lv < 100 ? 27 : 22;
-  b += '<text x="' + cx + '" y="' + (cy+1) + '" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="' + fs + '" fill="#fff" stroke="#5e3908" stroke-width="3.4" paint-order="stroke" stroke-linejoin="round">' + lv + '</text>';
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + RB_DEFS + b + '</svg>';
+  const lv = Math.max(0, Math.min(200, Math.round(level))), t = rbTier(lv), id = "rb" + (++rbSeq);
+  const ids = { rim: id + "r", face: id + "f", lt: id + "l", dk: id + "d", gl: id + "g" };
+  const defs = '<defs>'
+    + '<linearGradient id="' + ids.rim + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a3"/><stop offset=".35" stop-color="#f3c44f"/><stop offset=".7" stop-color="#d99a2b"/><stop offset="1" stop-color="#f6cf68"/></linearGradient>'
+    + '<linearGradient id="' + ids.face + '" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#dfa53a"/><stop offset=".55" stop-color="#c98a26"/><stop offset="1" stop-color="#b3761c"/></linearGradient>'
+    + '<linearGradient id="' + ids.lt + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset="1" stop-color="#f0bd4a"/></linearGradient>'
+    + '<linearGradient id="' + ids.dk + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2a737"/><stop offset="1" stop-color="#b87a1d"/></linearGradient>'
+    + '<linearGradient id="' + ids.gl + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+    + '</defs>';
+  // основная форма
+  const n = t === 0 ? 0 : t === 1 ? 5 : 6, rot = -Math.PI / 2;
+  const R = [36, 36, 34, 35, 33, 31, 30, 29, 28, 28, 27, 27][t];
+  const cx = 50, cy = t >= 8 ? 49 : t >= 4 ? 54 : 51;
+  const shape = (r, attrs) => n ? '<polygon points="' + rbPoly(n, cx, cy, r, rot) + '" ' + attrs + '/>' : '<circle cx="' + cx + '" cy="' + cy + '" r="' + rbF(r) + '" ' + attrs + '/>';
+  let back = "";
+  const top = cy - R;
+  const kTo = (x1, y1, x2, y2, w, sh) => { const L = Math.hypot(x2 - x1, y2 - y1), a = Math.atan2(-(y2 - y1), x2 - x1) * 180 / Math.PI; return rbKite(x1, y1, a, L, w, ids, sh); };
+  // крылья: узкие гранёные перья вдоль боков, смотрят вверх-наружу; с уровнем их больше и они длиннее
+  const wings = t >= 9 ? 4 : t >= 7 ? 3 : t >= 6 ? 2 : t >= 5 ? 1 : 0;
+  const wl = t >= 10 ? 0.86 : t >= 8 ? 0.78 : 0.68;
+  for (let i = wings - 1; i >= 0; i--) for (const s of [-1, 1]) {
+    const by = cy - R * 0.2 + i * R * 0.27, bx = cx + s * R * 0.84;
+    const ang = 52 - i * 12, L = R * wl - i * 2;
+    back += rbKite(bx, by, s > 0 ? ang : 180 - ang, L, R * 0.3, ids, 0.42);
+  }
+  // низ: точка под значком (101+), шеврон «V» (121+), шире и с внешним рядом (161+)
+  if (t >= 7) back += rbKite(cx, cy + R - 4, 270, R * (t >= 8 ? 0.55 : 0.4), 12, ids, 0.4);
+  if (t >= 8) {
+    const tipY = cy + R + (t >= 10 ? 13 : 10);
+    if (t >= 10) for (const s of [-1, 1]) back += kTo(cx + s * R * 0.95, cy + R * 0.42, cx + s * 4, tipY + 3, 9, 0.35);
+    for (const s of [-1, 1]) back += kTo(cx + s * R * 0.7, cy + R * 0.58, cx + s * 1, tipY, 10, 0.35);
+  }
+  // гребень: гранёная вершина (41+), листки по бокам (61+), второй ряд (101+), высокий шпиль (181+)
+  if (t >= 7) for (const s of [-1, 1]) back += rbKite(cx + s * R * 0.5, top + R * 0.3, 90 - s * 48, R * 0.42, R * 0.26, ids, 0.42);
+  if (t >= 5) for (const s of [-1, 1]) back += rbKite(cx + s * R * 0.26, top + R * 0.14, 90 - s * 26, R * (t >= 8 ? 0.55 : 0.47), R * 0.3, ids, 0.42);
+  if (t >= 4) back += rbKite(cx, top + 3, 90, t >= 11 ? R * 1.02 : t >= 8 ? R * 0.8 : t >= 5 ? R * 0.68 : R * 0.6, R * (t >= 11 ? 0.55 : 0.72), ids, t >= 11 ? 0.32 : 0.5);
+  let b = back;
+  b += shape(R + 1.4, 'fill="#a86c16" transform="translate(0 1.2)"');                          // тень снизу
+  b += shape(R, 'fill="url(#' + ids.rim + ')" stroke="url(#' + ids.rim + ')" stroke-width="4" stroke-linejoin="round"');   // ободок
+  b += shape(R + 2, 'fill="none" stroke="#c48a26" stroke-width=".8" stroke-linejoin="round"');   // кромка
+  b += shape(R - 4.2, 'fill="#a96d17" stroke="#a96d17" stroke-width="2" stroke-linejoin="round"');   // скос внутрь
+  b += shape(R - 5, 'fill="url(#' + ids.face + ')" stroke="url(#' + ids.face + ')" stroke-width="2" stroke-linejoin="round"');   // лицо
+  b += shape(R - 5, 'fill="url(#' + ids.gl + ')"');                                              // блик
+  const d = String(lv).length, fs = (R - 5) * (d === 1 ? 1.15 : d === 2 ? 0.98 : 0.78);
+  b += '<text x="' + cx + '" y="' + rbF(cy + fs * 0.36) + '" text-anchor="middle" font-family="Inter,\'SF Pro Display\',Arial,Helvetica,sans-serif" font-weight="800" font-size="' + rbF(fs) + '" letter-spacing="-.5" fill="#6b3f06" opacity=".35" transform="translate(0 1)">' + lv + '</text>';
+  b += '<text x="' + cx + '" y="' + rbF(cy + fs * 0.36) + '" text-anchor="middle" font-family="Inter,\'SF Pro Display\',Arial,Helvetica,sans-serif" font-weight="800" font-size="' + rbF(fs) + '" letter-spacing="-.5" fill="#fff">' + lv + '</text>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + defs + b + '</svg>';
 }
 function lvlBadge(el, r) {
   el.classList.add("lvl");
