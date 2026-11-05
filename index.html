@@ -1308,6 +1308,28 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .gift.tile img.em { width: 1.4em; height: 1.4em; margin: -.1em 0; }
 .gv img.em { width: 1.28em; height: 1.28em; }
 #giftTypes img.em { width: 1.75em; height: 1.75em; margin: -.25em 0 -.1em; }
+.craft-win { display: flex; flex-direction: column; gap: 10px; }
+.cr-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cr-slot { aspect-ratio: 1; border-radius: 18px; border: 1.5px dashed color-mix(in srgb, currentColor 28%, transparent); display: grid; place-items: center;
+  font: 700 22px/1 var(--display, inherit); color: color-mix(in srgb, currentColor 35%, transparent); }
+.cr-slots .gift.tile { aspect-ratio: 1; }
+.cr-pick { max-height: 240px; overflow: auto; }
+.cr-pick .gift.tile[aria-pressed="true"] { outline: 2.5px solid var(--accent, #4f8dff); outline-offset: 2px; }
+.cr-pick .gift.tile:disabled { opacity: .45; }
+.cr-out { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cr-m { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; min-width: 0; padding: 8px 4px; border-radius: 14px;
+  background: color-mix(in srgb, currentColor 6%, transparent); }
+.cr-m .art img.mart { width: 54px; height: 54px; }
+.cr-m b { font-size: 11.5px; line-height: 1.2; overflow-wrap: anywhere; }
+.rar { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.rar.r-common { background: #8a93a6; color: #fff; }
+.rar.r-rare { background: #2f7bff; color: #fff; }
+.rar.r-epic { background: #8b4dff; color: #fff; }
+.rar.r-legendary { background: linear-gradient(135deg, #ffe08a, #e5a51c); color: #3a2600; }
+@media (max-width: 520px) { .cr-out { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.cr-slots.merge > * { animation: cr-merge .7s cubic-bezier(.5, 0, .7, .4) both; }
+.cr-slots.merge > :first-child { --dx: 105%; } .cr-slots.merge > :last-child { --dx: -105%; }
+@keyframes cr-merge { 60% { transform: translateX(var(--dx, 0)) scale(.8); filter: brightness(1.6); } 100% { transform: translateX(var(--dx, 0)) scale(.2); opacity: 0; filter: brightness(3); } }
 .gift-card img.em { width: 1.3em; height: 1.3em; }
 .gw-card img.em, .orb img.em { width: 1.3em; height: 1.3em; }
 .gift.tile img.em, .gv img.em, .gift-card img.em, .gw-card img.em, .orb img.em { filter: drop-shadow(0 5px 7px rgb(0 0 0 / .3)); }
@@ -3129,7 +3151,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=c1a3f2c771"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=2d5d62d1da"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4923,6 +4945,24 @@ void main() {
   </div>
 </dialog>
 
+<!-- крафт: три NFT одного вида сгорают, взамен один с крафтовой моделью -->
+<dialog id="dlgCraft">
+  <div class="dlg craft-win">
+    <h2 id="crTitle">Крафт</h2>
+    <div class="small muted" id="crHint"></div>
+    <div class="cr-slots" id="crSlots"></div>
+    <div class="set-label">Ваши NFT</div>
+    <div class="gift-grid cr-pick" id="crPick"></div>
+    <div class="set-label">Что может выпасть</div>
+    <div class="cr-out" id="crOut"></div>
+    <div class="error" id="crErr"></div>
+    <div class="actions">
+      <button class="btn ghost" type="button" data-close>Закрыть</button>
+      <button class="btn" type="button" id="crGo" disabled>Скрафтить</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- подарок: подробности и продажа -->
 <dialog id="dlgGiftView">
   <div class="dlg gv">
@@ -4950,6 +4990,7 @@ void main() {
       <button class="btn ghost" type="button" data-close>Закрыть</button>
       <button class="btn" type="button" id="gvSell" hidden></button>
       <button class="btn" type="button" id="gvUp" hidden></button>
+      <button class="btn ghost" type="button" id="gvCraft" hidden>Крафт</button>
       <button class="btn" type="button" id="gvWear" hidden></button>
       <button class="btn ghost" type="button" id="gvGive" hidden>Передать</button>
       <button class="btn ghost" type="button" id="gvAuc" hidden></button>
@@ -11471,16 +11512,21 @@ async function giftStats() {
   const { data } = await sb.rpc("gift_stats");
   return new Map((Array.isArray(data) ? data : []).map((r) => [r.type_id, r]));
 }
-function modelsOf(typeId) { return (state.giftModels || []).filter((m) => m.type_id === typeId); }
+function allModelsOf(typeId) { return (state.giftModels || []).filter((m) => m.type_id === typeId); }
+function modelsOf(typeId) { return allModelsOf(typeId).filter((m) => !m.craft_only); }        // выпадают при улучшении
+function craftModelsOf(typeId) { return allModelsOf(typeId).filter((m) => m.craft_only); }    // только из крафта
+const RARITY = { common: "Обычная", rare: "Редкая", epic: "Эпическая", legendary: "Легендарная" };
+function rarityLabel(r) { return RARITY[r] ? T(RARITY[r]) : ""; }
 function canUpgrade(t) { return !!(t && t.upgrade_price && modelsOf(t.id).length); }
 // внешний вид улучшенного подарка: модель, фон и их редкость; null, если подарок обычный
 function giftLook(g, t) {
   if (!g || g.nft_number == null) return null;
   const models = modelsOf(g.type_id), bds = state.giftBackdrops || [];
-  const m = models.find((x) => x.id === g.nft_model) || { name: T("Модель"), emoji: (t && t.emoji) || "🎁", weight: 0 };
+  const m = allModelsOf(g.type_id).find((x) => x.id === g.nft_model) || { name: T("Модель"), emoji: (t && t.emoji) || "🎁", weight: 0 };
   const b = bds.find((x) => x.id === g.nft_backdrop) || { name: T("Фон"), c1: "#888888", c2: "#333333", weight: 0 };
   const pct = (w, arr) => { const sum = arr.reduce((a, x) => a + x.weight, 0); return sum && w ? String(Math.round(w / sum * 1000) / 10).replace(".", ",") + " %" : ""; };
-  return { m, b, mp: pct(m.weight, models), bp: pct(b.weight, bds) };
+  // у крафтовых моделей вместо шанса — редкость
+  return { m, b, mp: m.craft_only ? rarityLabel(m.rarity) : pct(m.weight, models), bp: pct(b.weight, bds), craft: !!m.craft_only };
 }
 function paintNft(el, look) {
   el.classList.add("nftg");
@@ -11777,7 +11823,7 @@ async function openGiftView(id, fresh) {
   $("gvTop").className = "gv-top";
   $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, T("Подарок")));
   $("gvFacts").replaceChildren(); $("gvHint").textContent = T("Загружаем…"); $("gvStage").hidden = true;
-  for (const x of ["gvSell", "gvUp", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink", "gvPin", "gvMarket"]) $(x).hidden = true;
+  for (const x of ["gvSell", "gvUp", "gvCraft", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink", "gvPin", "gvMarket"]) $(x).hidden = true;
   delGiftArmed = false; $("gvDel").textContent = T("Удалить");
   gvAuction = null;
   if (!$("dlgGiftView").open) $("dlgGiftView").showModal();
@@ -11808,6 +11854,7 @@ async function openGiftView(id, fresh) {
   giftSound(t.id);
   const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
   const who = (p) => p ? p.display_name + " · @" + p.username : T("скрыт");
+  const crafted = !!(g.granted && !g.from && /^Крафт из /.test(g.note || ""));   // получен крафтом из трёх NFT
   $("gvFacts").replaceChildren(
     ...(look ? [
       ...fact(T("Владелец"), whoLink(g.to)),
@@ -11819,11 +11866,12 @@ async function openGiftView(id, fresh) {
       ...(auc.top_bid ? fact(T("Лидер"), auc.top_bidder === state.me.id ? T("вы") : who(auc.bidder)) : []),
       ...fact(T("До конца"), leftFmt(auc.ends_at))] : []),
     ...(onSale ? fact(T("Маркет"), T("продаётся за ") + lotPrice(onSale)) : []),
-    ...fact(g.granted ? T("Выдал") : T("От кого"), g.from ? whoLink(g.from) : T("отправитель скрыт")),
+    ...(crafted ? fact(T("Получен"), T("крафтом из ") + g.note.replace(/^Крафт из /, ""))
+      : fact(g.granted ? T("Выдал") : T("От кого"), g.from ? whoLink(g.from) : T("отправитель скрыт"))),
     ...fact(T("Когда"), dyFmt.format(new Date(g.created_at))),
     ...(g.price_paid > 0 ? fact(T("Стоимость"), coins(g.price_paid)) : []),
     ...(!look && t.supply ? fact(T("Тираж"), T("куплено ") + Math.min(st.sold, t.supply) + T(" из ") + t.supply) : []),
-    ...(g.note ? fact(T("Подпись"), "«" + g.note + "»") : []),
+    ...(g.note && !crafted ? fact(T("Подпись"), "«" + g.note + "»") : []),
     ...(g.hidden && !g.sold_at ? fact(T("Видимость"), mine ? T("скрыт: виден только вам") : T("владелец скрыл подарок")) : []),
     ...(g.sold_at ? fact(T("Статус"), g.sold_for ? T("обменян на ") + coins(g.sold_for) : T("удалён")) : []));
   $("gvLink").hidden = !!g.sold_at;
@@ -11845,6 +11893,9 @@ async function openGiftView(id, fresh) {
   $("gvUp").textContent = mineToUp ? T("Улучшить за ") + coins(t.upgrade_price) : "";
   // передать можно любой свой подарок, на аукцион идут только коллекционные
   $("gvGive").hidden = !mine || !!auc || !!onSale;
+  // крафт: свой NFT вида, у которого есть крафтовые модели
+  $("gvCraft").hidden = !(mine && look && craftModelsOf(g.type_id).length) || !!auc || !!onSale;
+  $("gvCraft").onclick = () => openCraft(g, t);
   $("gvAuc").hidden = !(mine && look) || !!onSale;
   // маркет: купить чужой лот, открыть свой или выставить подарок на продажу
   $("gvMarket").hidden = !(onSale || (mine && look && !auc));
@@ -12019,7 +12070,7 @@ async function playUpgrade(g, t) {
   top.style.removeProperty("--c1"); top.style.removeProperty("--c2");
   top.replaceChildren(em, title, num);
   $("gvFacts").replaceChildren(); $("gvHint").textContent = "";
-  for (const id of ["gvSell", "gvUp", "gvWear"]) $(id).hidden = true;
+  for (const id of ["gvSell", "gvUp", "gvCraft", "gvWear"]) $(id).hidden = true;
   stage.hidden = false;
   const say = (txt) => { stage.classList.remove("in"); void stage.offsetWidth; stage.textContent = txt; stage.classList.add("in"); };
   // 1. модель
@@ -12076,6 +12127,68 @@ async function playUpgrade(g, t) {
   top.classList.remove("flashbg", "bg-blend");
   stage.hidden = true;
 }
+/* ---------- крафт ---------- */
+let crType = null, crSel = [], crMine = [], crBusy = new Set();
+async function openCraft(g, t) {
+  crType = t; crSel = [g.id]; crMine = [g]; crBusy = new Set();
+  $("crTitle").textContent = T("Крафт · ") + t.name;
+  $("crHint").textContent = T("Положите 3 NFT этого подарка: они сгорят, а взамен выпадет один с крафтовой моделью. Эти модели не выпадают при улучшении.");
+  $("crErr").textContent = "";
+  $("crSlots").classList.remove("merge");
+  $("crOut").replaceChildren(...craftModelsOf(t.id).map((m) => h("div", { class: "cr-m" }, h("span", { class: "art" }, mFace(m)), h("b", {}, m.name), h("span", { class: "rar r-" + (m.rarity || "common") }, rarityLabel(m.rarity)))));
+  paintCraft();
+  $("crPick").replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
+  if (!$("dlgCraft").open) $("dlgCraft").showModal();
+  const [gs, auc, lots] = await Promise.all([
+    sb.from("gifts").select("id,type_id,nft_number,nft_model,nft_backdrop").eq("to_id", state.me.id).eq("type_id", t.id).is("sold_at", null).not("nft_number", "is", null).order("nft_number").limit(200),
+    sb.from("gift_auctions").select("gift_id").eq("seller_id", state.me.id).eq("status", "open"),
+    sb.from("nft_listings").select("gift_id").eq("seller_id", state.me.id).eq("status", "open").not("gift_id", "is", null)]);
+  crMine = Array.isArray(gs.data) && gs.data.length ? gs.data : [g];
+  crBusy = new Set([...(auc.data || []), ...(lots.data || [])].map((x) => x.gift_id));
+  crSel = crSel.filter((id) => !crBusy.has(id));
+  paintCraft();
+}
+function paintCraft() {
+  const t = crType, byId = new Map(crMine.map((g) => [g.id, g]));
+  $("crSlots").replaceChildren(...[0, 1, 2].map((i) => {
+    const g = byId.get(crSel[i]);
+    if (!g) return h("div", { class: "cr-slot" }, h("span", {}, String(i + 1)));
+    const el = giftTile(g, t, "button", { type: "button", title: T("Убрать из крафта"), onclick: () => { crSel = crSel.filter((x) => x !== g.id); paintCraft(); } });
+    el.classList.add("cr-in");
+    return el;
+  }));
+  const free = crMine.filter((g) => !crBusy.has(g.id));
+  $("crPick").replaceChildren(...crMine.map((g) => {
+    const on = crSel.includes(g.id), busy = crBusy.has(g.id);
+    const el = giftTile(g, t, "button", { type: "button", "aria-pressed": String(on), disabled: busy, title: busy ? T("На маркете или аукционе") : "",
+      onclick: () => { if (on) crSel = crSel.filter((x) => x !== g.id); else if (crSel.length < 3) crSel.push(g.id); paintCraft(); } });
+    if (on) el.classList.add("picked");
+    return el;
+  }));
+  $("crErr").textContent = free.length < 3 ? T("Нужно 3 свободных NFT «") + t.name + T("», у вас ") + free.length + "." : "";
+  $("crGo").disabled = crSel.length !== 3;
+  $("crGo").textContent = crSel.length === 3 ? T("Скрафтить") : T("Выбрано ") + crSel.length + T(" из 3");
+}
+$("crGo").addEventListener("click", async () => {
+  if (crSel.length !== 3) return;
+  const used = crSel.slice();
+  $("crGo").disabled = true;
+  const { data, error } = await sb.rpc("craft_gifts", { p_gifts: used });
+  if (error) {
+    const m = error.message || "";
+    $("crErr").textContent = /on auction/.test(m) ? T("Один из подарков на аукционе") : /on market/.test(m) ? T("Один из подарков выставлен на маркете") : /same type/.test(m) ? T("Нужны NFT одного вида") : T("Не удалось скрафтить");
+    $("crGo").disabled = false;
+    return;
+  }
+  $("crSlots").classList.add("merge");
+  await wait(matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 750);
+  $("dlgCraft").close();
+  for (const id of used) state.giftInfo.delete(id);
+  toast(T("Крафт готов"));
+  if (data) await openGiftView(Number(data), true);
+  if (viewed && viewed.id === state.me.id && $("dlgUser").open) loadUserGifts(viewed.id);
+  if ($("dlgProfile").open) loadMyGifts();
+});
 $("gvUp").addEventListener("click", async () => {
   if (!gvGift) return;
   const g = gvGift;
@@ -12217,8 +12330,9 @@ $("uPremDays").addEventListener("click", (e) => { const b = e.target.closest("[d
 $("uPremOff").addEventListener("click", () => grantPremium(0));
 function fillNftModels() {
   const pct = (w, arr) => String(Math.round(w / arr.reduce((a, x) => a + x.weight, 0) * 1000) / 10).replace(".", ",") + " %";
-  const ms = modelsOf($("uNftType").value), bs = state.giftBackdrops || [];
-  $("uNftModel").replaceChildren(h("option", { value: "" }, T("Модель: случайная")), ...ms.map((m) => h("option", { value: m.id }, m.emoji + " " + m.name + " · " + pct(m.weight, ms))));
+  const ms = modelsOf($("uNftType").value), cm = craftModelsOf($("uNftType").value), bs = state.giftBackdrops || [];
+  $("uNftModel").replaceChildren(h("option", { value: "" }, T("Модель: случайная")), ...ms.map((m) => h("option", { value: m.id }, m.emoji + " " + m.name + " · " + pct(m.weight, ms))),
+    ...cm.map((m) => h("option", { value: m.id }, m.emoji + " " + m.name + " · " + T("крафт, ") + rarityLabel(m.rarity).toLowerCase())));
   $("uNftBack").replaceChildren(h("option", { value: "" }, T("Фон: случайный")), ...bs.map((b) => h("option", { value: b.id }, b.name + " · " + pct(b.weight, bs))));
 }
 async function fillNftAdmin() {

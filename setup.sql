@@ -2380,3 +2380,11 @@ commit;
 
 -- 2026-11-05: скидки премиума 20 % на подарки больше нет: send_gift берёт полную цену (supabase/sql/2026-11-05-gift-no-discount.sql),
 -- клиент giftPrice(t) = t.price, пункт про скидку убран из описания премиума.
+
+-- 2026-11-05: модели NFT-кепки и крафт (supabase/sql/2026-11-05-cap-models-craft.sql).
+--   gift_models.rarity, gift_models.craft_only. Mestario Cap улучшается за 30 Mest: 15 моделей, шанс по редкости
+--   (обычная 16 %, редкая 5 %, эпическая 1,4 %, легендарная 0,4 %). 5 моделей только из крафта (Winter Wool, Reflex 360,
+--   Crown M, Deep Ocean, Founder 2026) — в окне крафта показана редкость, а не процент.
+--   public.craft_gifts(p_gifts bigint[]): 3 своих NFT одного вида (не на аукционе и не на маркете) сгорают
+--   (sold_at, sold_for = 0), взамен NFT с крафтовой моделью: granted (вне тиража), note «Крафт из №…». Бесплатно.
+--   Картинки моделей: /gifts/m/cap/<id>.svg, генератор tools/capmodels.py.
