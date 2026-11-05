@@ -2388,3 +2388,8 @@ commit;
 --   public.craft_gifts(p_gifts bigint[]): 3 своих NFT одного вида (не на аукционе и не на маркете) сгорают
 --   (sold_at, sold_for = 0), взамен NFT с крафтовой моделью: granted (вне тиража), note «Крафт из №…». Бесплатно.
 --   Картинки моделей: /gifts/m/cap/<id>.svg, генератор tools/capmodels.py.
+
+-- 2026-11-05: модели кепки — настоящий 3D (three.js, tools/cap3d): кадры → анимированный WebP 200×200
+--   (/gifts/m/cap/cap_<id>.webp) и статичная картинка для узора NFT (cap_<id>-s.png). gift_models.art → .webp.
+-- 2026-11-05: крафт с шансом — public.craft_gift_try(p_gifts bigint[]) → jsonb {ok, chance, gift, burned}:
+--   1–3 NFT одного вида, шанс 33 / 66 / 100 %, положенные NFT сгорают всегда. Старая craft_gifts закрыта (revoke).

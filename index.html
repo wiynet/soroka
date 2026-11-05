@@ -1327,6 +1327,13 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .rar.r-epic { background: #8b4dff; color: #fff; }
 .rar.r-legendary { background: linear-gradient(135deg, #ffe08a, #e5a51c); color: #3a2600; }
 @media (max-width: 520px) { .cr-out { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.cr-chance { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; }
+.cr-chance .ok { color: #3fd68a; white-space: nowrap; } .cr-chance .no { color: #ff6b5f; white-space: nowrap; }
+.cr-chance .bar { flex: 1; height: 8px; border-radius: 99px; background: #ff6b5f55; overflow: hidden; }
+.cr-chance .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2fbf74, #3fd68a); transition: width .35s; }
+.cr-slots.burn > .gift { animation: cr-burn 1.05s ease-in both; }
+@keyframes cr-burn { 30% { filter: brightness(1.6) sepia(1) saturate(4) hue-rotate(-30deg); transform: scale(1.04); }
+  100% { filter: brightness(.2) sepia(1) saturate(6) hue-rotate(-40deg) blur(3px); transform: scale(.7) translateY(12px); opacity: 0; } }
 .cr-slots.merge > * { animation: cr-merge .7s cubic-bezier(.5, 0, .7, .4) both; }
 .cr-slots.merge > :first-child { --dx: 105%; } .cr-slots.merge > :last-child { --dx: -105%; }
 @keyframes cr-merge { 60% { transform: translateX(var(--dx, 0)) scale(.8); filter: brightness(1.6); } 100% { transform: translateX(var(--dx, 0)) scale(.2); opacity: 0; filter: brightness(3); } }
@@ -3151,7 +3158,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=2d5d62d1da"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=bbc7fe088a"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4951,6 +4958,7 @@ void main() {
     <h2 id="crTitle">Крафт</h2>
     <div class="small muted" id="crHint"></div>
     <div class="cr-slots" id="crSlots"></div>
+    <div class="cr-chance" id="crChance" hidden></div>
     <div class="set-label">Ваши NFT</div>
     <div class="gift-grid cr-pick" id="crPick"></div>
     <div class="set-label">Что может выпасть</div>
@@ -11532,7 +11540,7 @@ function paintNft(el, look) {
   el.classList.add("nftg");
   el.style.setProperty("--c1", look.b.c1);
   el.style.setProperty("--c2", look.b.c2);
-  el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m)))));
+  el.prepend(h("span", { class: "pat", "aria-hidden": "true" }, Array.from({ length: 36 }, () => h("span", {}, mFace(look.m, true)))));
   return el;
 }
 // рейтинг: уровень растёт по квадрату потраченных Mest (25, 100, 225, 400…)
@@ -11759,7 +11767,12 @@ async function pxReveal(host, type, toMid) {
   done();
 }
 // картинка модели (или эмодзи, если своей картинки нет) — для узоров, значков и перебора при улучшении
-function mFace(m) { return m && m.art ? h("img", { class: "mart", src: m.art, alt: m.emoji || "", draggable: "false" }) : document.createTextNode((m && m.emoji) || "\uD83C\uDF81"); }
+// still — для узора на фоне NFT: у анимированных WebP-моделей рядом лежит статичная картинка «-s.png» (36 анимаций разом тяжелы)
+function mFace(m, still) {
+  if (!(m && m.art)) return document.createTextNode((m && m.emoji) || "\uD83C\uDF81");
+  const src = still && /\.webp(\?|$)/.test(m.art) ? m.art.replace(/\.webp(\?|$)/, "-s.png$1") : m.art;
+  return h("img", { class: "mart", src, alt: m.emoji || "", draggable: "false", loading: still ? "lazy" : null });
+}
 function giftFace(t, look, extra) {
   const cls = "em" + (extra ? " " + extra : "");
   const art = look ? look.m && look.m.art : t && t.art;
@@ -12129,12 +12142,13 @@ async function playUpgrade(g, t) {
 }
 /* ---------- крафт ---------- */
 let crType = null, crSel = [], crMine = [], crBusy = new Set();
+const CRAFT_CHANCE = { 1: 33, 2: 66, 3: 100 };
 async function openCraft(g, t) {
   crType = t; crSel = [g.id]; crMine = [g]; crBusy = new Set();
   $("crTitle").textContent = T("Крафт · ") + t.name;
-  $("crHint").textContent = T("Положите 3 NFT этого подарка: они сгорят, а взамен выпадет один с крафтовой моделью. Эти модели не выпадают при улучшении.");
+  $("crHint").textContent = T("Положите от 1 до 3 NFT этого подарка. Чем больше положите, тем выше шанс получить крафтовую модель — эти модели не выпадают при улучшении. Положенные NFT сгорают в любом случае.");
   $("crErr").textContent = "";
-  $("crSlots").classList.remove("merge");
+  $("crSlots").classList.remove("merge", "burn");
   $("crOut").replaceChildren(...craftModelsOf(t.id).map((m) => h("div", { class: "cr-m" }, h("span", { class: "art" }, mFace(m)), h("b", {}, m.name), h("span", { class: "rar r-" + (m.rarity || "common") }, rarityLabel(m.rarity)))));
   paintCraft();
   $("crPick").replaceChildren(h("div", { class: "small muted" }, T("Загружаем…")));
@@ -12165,27 +12179,42 @@ function paintCraft() {
     if (on) el.classList.add("picked");
     return el;
   }));
-  $("crErr").textContent = free.length < 3 ? T("Нужно 3 свободных NFT «") + t.name + T("», у вас ") + free.length + "." : "";
-  $("crGo").disabled = crSel.length !== 3;
-  $("crGo").textContent = crSel.length === 3 ? T("Скрафтить") : T("Выбрано ") + crSel.length + T(" из 3");
+  $("crErr").textContent = !free.length ? T("Нет свободных NFT «") + t.name + T("»: все на маркете или аукционе.") : "";
+  // шанс: 1 NFT — 33 %, 2 — 66 %, 3 — 100 %; остальное — сгорание
+  const ch = CRAFT_CHANCE[crSel.length] || 0;
+  $("crChance").hidden = !crSel.length;
+  $("crChance").replaceChildren(
+    h("span", { class: "ok" }, T("Успех ") + ch + " %"),
+    h("span", { class: "bar" }, h("i", { style: "width:" + ch + "%" })),
+    h("span", { class: "no" }, T("Сгорание ") + (100 - ch) + " %"));
+  $("crGo").disabled = !crSel.length;
+  $("crGo").textContent = crSel.length ? T("Скрафтить · ") + ch + " %" : T("Выберите NFT");
 }
 $("crGo").addEventListener("click", async () => {
-  if (crSel.length !== 3) return;
+  if (!crSel.length) return;
   const used = crSel.slice();
   $("crGo").disabled = true;
-  const { data, error } = await sb.rpc("craft_gifts", { p_gifts: used });
+  const { data, error } = await sb.rpc("craft_gift_try", { p_gifts: used });
   if (error) {
     const m = error.message || "";
     $("crErr").textContent = /on auction/.test(m) ? T("Один из подарков на аукционе") : /on market/.test(m) ? T("Один из подарков выставлен на маркете") : /same type/.test(m) ? T("Нужны NFT одного вида") : T("Не удалось скрафтить");
     $("crGo").disabled = false;
     return;
   }
-  $("crSlots").classList.add("merge");
-  await wait(matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 750);
-  $("dlgCraft").close();
+  const res = data && typeof data === "object" ? data : { ok: !!data, gift: data };
+  $("crSlots").classList.add(res.ok ? "merge" : "burn");
+  await wait(matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : res.ok ? 750 : 1100);
   for (const id of used) state.giftInfo.delete(id);
-  toast(T("Крафт готов"));
-  if (data) await openGiftView(Number(data), true);
+  if (!res.ok) {
+    // не повезло: положенные NFT сгорели, окно остаётся — можно попробовать с другими
+    toast(T("Не повезло: ") + (used.length === 1 ? T("NFT сгорел") : T("NFT сгорели")));
+    crMine = crMine.filter((g) => !used.includes(g.id)); crSel = [];
+    $("crSlots").classList.remove("burn"); paintCraft(); $("crGo").disabled = !crSel.length;
+  } else {
+    $("dlgCraft").close();
+    toast(T("Крафт удался"));
+    if (res.gift) await openGiftView(Number(res.gift), true);
+  }
   if (viewed && viewed.id === state.me.id && $("dlgUser").open) loadUserGifts(viewed.id);
   if ($("dlgProfile").open) loadMyGifts();
 });
