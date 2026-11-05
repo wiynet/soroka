@@ -1307,6 +1307,7 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 /* картинки-подарки рисуются с внутренними полями, поэтому делаем их крупнее эмодзи для той же «массы» */
 .gift.tile img.em { width: 1.4em; height: 1.4em; margin: -.1em 0; }
 .gv img.em { width: 1.28em; height: 1.28em; }
+#giftTypes img.em { width: 1.75em; height: 1.75em; margin: -.25em 0 -.1em; }
 .gift-card img.em { width: 1.3em; height: 1.3em; }
 .gw-card img.em, .orb img.em { width: 1.3em; height: 1.3em; }
 .gift.tile img.em, .gv img.em, .gift-card img.em, .gw-card img.em, .orb img.em { filter: drop-shadow(0 5px 7px rgb(0 0 0 / .3)); }
@@ -11806,6 +11807,7 @@ async function openGiftView(id, fresh) {
     ...(look ? [h("span", { class: "num" }, T("Коллекционный №") + g.nft_number)] : []));
   if (look) paintNft(top, look);
   if (fresh) flash(top, 900);
+  giftSound(t.id);
   const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
   const who = (p) => p ? p.display_name + " · @" + p.username : T("скрыт");
   $("gvFacts").replaceChildren(
@@ -12140,6 +12142,7 @@ async function openGift(p) {
       canUpgrade(t) && h("span", { class: "sub" }, T("можно улучшить")));
     b.style.animationDelay = i * 30 + "ms";
     b.addEventListener("click", () => {
+      if (giftPick !== t) { giftSound(t.id); const im = b.querySelector("img.em"); if (im && t.id.startsWith("m_")) im.replaceWith(giftFace(t, null)); }   // анимация подарка с начала
       giftPick = t;
       for (const x of $("giftTypes").children) x.setAttribute("aria-checked", String(x === b));
       $("giftSend").disabled = false;
@@ -14910,6 +14913,22 @@ function playSound(kind) {
     sndTone(t + 0.075, 1320, 0.24, 0.11, "sine");
   }
   if (kind === "notify" && navigator.vibrate) try { navigator.vibrate(18); } catch (e) {}
+}
+// звук подарка: Mestario Phones играют короткий бит, пока на картинке дрожат наушники (с 1,5 до 3,9 с)
+function giftSound(type) {
+  if (type !== "m_phones" || settings.sounds === false) return;
+  sndUnlock();
+  if (!sndCtx || sndCtx.state !== "running") return;
+  const t0 = sndCtx.currentTime + 1.5, b = 0.3;   // 100 ударов в минуту, восьмые
+  const mel = [440, 523, 659, 523, 587, 698, 880, 698];
+  for (let i = 0; i < 8; i++) {
+    const t = t0 + i * b;
+    if (i % 2 === 0) sndTone(t, 150, 0.26, 0.42, "sine", 42);      // бочка
+    else sndWhoosh(t, 0.05, 0.05);                                  // хэт
+    sndTone(t, mel[i] / 4, b * 0.95, 0.12, "sawtooth");             // бас
+    sndTone(t + 0.02, mel[i], b * 0.8, 0.07, "triangle");          // мелодия
+  }
+  if (navigator.vibrate) try { navigator.vibrate([0, 1500, 60, 240, 60, 240, 60, 240, 60]); } catch (e) {}
 }
 
 /* ---------- плавное открытие чата и возврат смахиванием вправо (чат, страницы настроек, окна на весь экран) ---------- */
