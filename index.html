@@ -3129,7 +3129,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d08be41fc7"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=c1a3f2c771"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4026,7 +4026,6 @@ void main() {
         <div class="feat"><span class="pico violet" data-i="crown" aria-hidden="true"></span><b>Значок премиума</b><span>Кристальная корона рядом с именем в чатах, поиске и профиле.</span></div>
         <div class="feat"><span class="pico gold" data-i="crown" aria-hidden="true"></span><b>Корона в подарок</b><span>Один раз при первом премиуме. Её можно улучшить до коллекционной.</span></div>
         <div class="feat"><span class="pico pink" data-i="palette" aria-hidden="true"></span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
-        <div class="feat"><span class="pico gold" data-i="giftf" aria-hidden="true"></span><b>Скидка 20 % на подарки</b><span>Любой подарок из магазина обходится дешевле.</span></div>
         <div class="feat"><span class="pico teal" data-i="gem" aria-hidden="true"></span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
         <div class="feat"><span class="pico orange" data-i="coinf" aria-hidden="true"></span><b>50 Mest каждый месяц</b><span>Раз в 30 дней забирайте бонус прямо на счёт.</span></div>
         <div class="feat"><span class="pico red" data-i="dice" aria-hidden="true"></span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
@@ -4261,7 +4260,6 @@ void main() {
     <ul class="perks">
       <li>Фиолетовая галочка премиума рядом с именем</li>
       <li>Свой цвет имени в чатах и профиле (у администраторов он есть и без премиума)</li>
-      <li>Скидка 20 % на все подарки</li>
       <li>Описание профиля до 500 символов вместо 200</li>
       <li>Два особых фона: «Космос» и «Неон»</li>
       <li>NFT-подарок можно надеть на профиль: его фон и значок увидят все</li>
@@ -12119,7 +12117,7 @@ $("gvSell").addEventListener("click", async () => {
 
 // покупка подарка за Mest
 let giftPick = null, giftTo = null;
-function giftPrice(t) { return isPremium(state.profile) ? Math.ceil(t.price * 0.8) : t.price; }
+function giftPrice(t) { return t.price; }   // скидки премиума на подарки нет (с 2026-11-05)
 async function openGift(p) {
   giftPick = null;
   giftTo = p;
@@ -12131,7 +12129,7 @@ async function openGift(p) {
   $("dlgGift").showModal();
   const [types, w, stats] = await Promise.all([giftTypes(), sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle(), giftStats()]);
   state.balance = w.data ? Number(w.data.balance) : 0;
-  $("giftBal").replaceChildren(coinMark(), T("У вас ") + coins(state.balance) + (isPremium(state.profile) ? T(" · скидка премиума 20 %") : ""));
+  $("giftBal").replaceChildren(coinMark(), T("У вас ") + coins(state.balance));
   $("giftTypes").replaceChildren(...types.filter((t) => !t.hidden).map((t, i) => {
     const price = giftPrice(t);
     const left = t.supply ? Math.max(0, t.supply - Number((stats.get(t.id) || {}).sold || 0)) : null;
@@ -12744,9 +12742,9 @@ const PREMIUM_TON = {
   nano: () => 150 * TON_NANO, units: () => 150, mestPrice: () => 150,
   createUsdt: () => sb.rpc("usdt_order", { p_kind: "premium", p_mest: null }),
   payMest: () => sb.rpc("buy_premium"),
-  title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, скидка на подарки и другое"),
+  title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, баннер профиля и другое"),
   kick: () => T("Больше возможностей"),
-  feats: () => [T("Значок премиума у имени"), T("Корона в подарок при первом премиуме"), T("Свой цвет имени"), T("Скидка 20 % на подарки"),
+  feats: () => [T("Значок премиума у имени"), T("Корона в подарок при первом премиуме"), T("Свой цвет имени"),
     T("50 Mest и подарок каждый месяц"), T("Баннер профиля: фото, GIF или видео"), T("Показ экрана в HD и особые фоны")],
   hint: () => T("Премиум включится сам, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть."),
   create: () => sb.rpc("ton_order_premium"),
