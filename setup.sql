@@ -2369,3 +2369,11 @@ commit;
 -- USDT-заказ узнаётся по точной сумме: цена до целых центов вверх + 1–99 уникальных центов.
 -- Применено через SQL Editor; полный текст — в истории сессии (pay_info, usdt_order, usdt_pending, usdt_settle,
 -- usdt_set_rate, private.usdt_config, private.usdt_rate_poll; ton_settle начисляет по курсу самого заказа).
+
+-- 2026-11-05: коллекция Mestario — 8 видов подарков, тираж 100 у каждого, без улучшений (upgrade_price null),
+-- первыми в магазине (sort -30…-23). Цены: Cap 2000, Hoodie 1000, Duffle 1000, Sneakers 500, Drone 1000,
+-- Hypercar 2000, Mask 100, Phones 500. Картинки — анимированные SVG (SMIL) в /gifts/m/<id>.svg,
+-- генератор tools/mgifts.py. Клиент: giftSound("m_phones") играет короткий бит при открытии подарка/выборе в магазине.
+-- insert into public.gift_types (id, emoji, name, price, sort, supply, upgrade_price, hidden, art) values
+--  ('m_cap','🧢','Mestario Cap',2000,-30,100,null,false,'https://mestario.lol/gifts/m/m_cap.svg'), … (m_hoodie, m_duffle,
+--  m_sneakers, m_drone, m_hypercar, m_mask, m_phones — по тому же образцу).
