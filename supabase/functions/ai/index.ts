@@ -320,9 +320,59 @@ async function pickImageModels(k: string) {
   return imageModels!;
 }
 let geminiImgBlockedUntil = 0;   // бесплатный ключ: квота на картинки нулевая — не тратим время пользователя на повторные отказы
+// промпт для Flux — по-английски (так он рисует точнее); переводим один раз на всю цепочку рисовалок
+async function toEnglish(prompt: string) {
+  const tr: any = await ask("Переведи на английский как короткий промпт для генерации изображения (до 60 слов). Выведи только сам промпт, без кавычек и пояснений:\n" + prompt);
+  return tr && tr.ok ? String(tr.text).replace(/^["'«]|["'»]$/g, "").slice(0, 600) : prompt;
+}
+// Cloudflare Workers AI, FLUX.2 [klein] 4B: бесплатно ~95 картинок 1024×1024 в сутки (10 000 «нейронов», сброс в 00:00 UTC).
+// Токен и номер аккаунта — только в секретах функции (CF_AI_TOKEN, CF_ACCOUNT_ID), в коде и в базе их нет.
+let cfBlockedUntil = 0;
+async function cloudflareImage(en: string) {
+  const token = Deno.env.get("CF_AI_TOKEN") || "", acc = Deno.env.get("CF_ACCOUNT_ID") || "";
+  if (!token || !acc) return { ok: false, status: 0, model: "cloudflare", err: "not configured" };
+  if (Date.now() < cfBlockedUntil) return { ok: false, status: 429, model: "cloudflare", err: "daily limit" };
+  const form = new FormData();
+  form.append("prompt", en.slice(0, 2000));
+  form.append("width", "1024");
+  form.append("height", "1024");
+  try {
+    const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${acc}/ai/run/@cf/black-forest-labs/flux-2-klein-4b`,
+      { method: "POST", headers: { Authorization: "Bearer " + token }, body: form }, 60000);
+    const ct = (r.headers.get("content-type") || "").split(";")[0];
+    if (r.ok && ct.startsWith("image/")) {
+      const bytes = new Uint8Array(await r.arrayBuffer());
+      return bytes.length > 1000 ? { ok: true, model: "flux-2-klein", mime: ct, bytes, text: "" } : { ok: false, status: 502, model: "cloudflare", err: "tiny image" };
+    }
+    const j: any = await r.json().catch(() => ({}));
+    const b = j?.result?.image || j?.image;
+    if (r.ok && b) {
+      const bytes = Uint8Array.from(atob(String(b)), (ch) => ch.charCodeAt(0));
+      const mime = bytes[0] === 0x89 ? "image/png" : bytes[0] === 0xff ? "image/jpeg" : "image/webp";
+      return { ok: true, model: "flux-2-klein", mime, bytes, text: "" };
+    }
+    const err = JSON.stringify(j?.errors || j).slice(0, 300);
+    // дневной бесплатный лимит кончился — не дёргаем Cloudflare до полуночи по UTC
+    if (r.status === 429 || /neuron|allocation|quota|limit/i.test(err)) {
+      const d = new Date(); d.setUTCHours(24, 0, 0, 0); cfBlockedUntil = d.getTime();
+    } else if (r.status === 401 || r.status === 403) cfBlockedUntil = Date.now() + 10 * 60_000;
+    return { ok: false, status: r.status, model: "cloudflare", err };
+  } catch (e) {
+    return { ok: false, status: 504, model: "cloudflare", err: String(e).slice(0, 200) };
+  }
+}
 async function makeImage(prompt: string, english = false) {
   const k = await key();
   let last: any = { ok: false, err: "no model" };
+  // сначала бесплатный FLUX.2 klein на Cloudflare; промпт переводим один раз — пригодится и запасной рисовалке
+  let en = english ? prompt : "";
+  if (Deno.env.get("CF_AI_TOKEN") && Deno.env.get("CF_ACCOUNT_ID") && Date.now() >= cfBlockedUntil) {
+    en = en || await toEnglish(prompt);
+    const cf = await cloudflareImage(en);
+    if (cf.ok) return cf;
+    console.error("cloudflare image", cf.status, cf.err);
+    last = cf;
+  }
   for (const model of Date.now() < geminiImgBlockedUntil ? [] : (await pickImageModels(k)).slice(0, 2)) {
     const r = await fetch(`${GL}/models/${model}:generateContent`, {
       method: "POST",
@@ -345,13 +395,12 @@ async function makeImage(prompt: string, english = false) {
     last = { ok: false, status: 200, model, err: "no image " + text.slice(0, 200) };
   }
   // у бесплатного ключа Gemini картинок нет — рисуем через бесплатный Pollinations (без ключа)
-  const p = await pollinations(prompt, english);
+  const p = en ? await pollinations(en, true) : await pollinations(prompt, english);
   return p.ok ? p : last.status === 429 && p.status !== 429 ? p : last;
 }
 async function pollinations(prompt: string, english = false) {
   try {
-    const tr = english ? { ok: true, text: prompt } : await ask("Переведи на английский как короткий промпт для генерации изображения (до 60 слов). Выведи только сам промпт, без кавычек и пояснений:\n" + prompt);
-    const en = tr && tr.ok ? tr.text.replace(/^["'«]|["'»]$/g, "").slice(0, 600) : prompt;
+    const en = english ? prompt : await toEnglish(prompt);
     const seed = Math.floor(Math.random() * 1e9);
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(en)}?width=1024&height=1024&nologo=true&seed=${seed}`;
     const ctl = new AbortController();
