@@ -98,6 +98,57 @@ async function tierModels(k: string, tier: string) {
   return out;
 }
 type Turn = { role: "user" | "model"; text: string };
+// «гонка» моделей: не ждём зависшую модель до таймаута — если первая не начала отвечать за delay мс,
+// параллельно запускаем следующую (до 3 одновременно). Кто первым выдал текст — тот и отвечает, остальные отменяются.
+// Отказ (лимит, перегрузка) сразу запускает следующую модель.
+type Try = { ok: boolean; status: number; text?: string; err?: string; [k: string]: unknown };
+function race(models: string[], delay: number,
+  run: (m: string, sig: AbortSignal, mine: () => boolean) => Promise<Try>,
+  onFail: (m: string, r: Try) => void = () => {}): Promise<{ res: Try; model: string }> {
+  return new Promise((resolve) => {
+    let winner = -1, next = 0, running = 0, done = false, timer = 0, last: Try = { ok: false, status: 503, err: "no model" };
+    const ctls: AbortController[] = [];
+    const stopOthers = (i: number) => ctls.forEach((c, j) => { if (j !== i && c) c.abort(); });
+    const ended = new Set<number>();
+    const finish = (res: Try, model: string, i: number) => {
+      done = true; clearTimeout(timer); stopOthers(i);
+      resolve({ res, model });
+    };
+    const launch = () => {
+      clearTimeout(timer);
+      if (done || winner >= 0) return;
+      if (next >= models.length) { if (!running) finish(last, models[models.length - 1] || "", -1); return; }
+      const i = next++, m = models[i], c = new AbortController();
+      ctls[i] = c; running++;
+      if (running < 3 && next < models.length) timer = setTimeout(launch, delay);
+      const mine = () => {
+        if (winner < 0 && !done) {
+          winner = i; clearTimeout(timer);
+          // кого обогнали, пока они молчали, — на 10 минут пропускаем (как зависшую)
+          for (let j = 0; j < i; j++) if (ctls[j] && !ended.has(j)) onFail(models[j], { ok: false, status: 504, err: "slow" });
+          stopOthers(i);
+        }
+        return winner === i;
+      };
+      run(m, c.signal, mine).catch((e) => ({ ok: false, status: 500, err: String(e).slice(0, 120) } as Try)).then((res) => {
+        running--; ended.add(i);
+        if (done) return;
+        if (winner === i || (res.ok && winner < 0)) return finish(res, m, i);
+        if (winner >= 0) return;   // ответил кто-то другой
+        last = res; onFail(m, res);
+        launch();
+      });
+    };
+    launch();
+  });
+}
+function blockFor(m: string, r: Try) {
+  const s = r.status;
+  if (s === 429) blocked.set(m, Date.now() + 30 * 60_000);
+  else if (s === 404) blocked.set(m, Date.now() + 6 * 3600_000);
+  else if (s === 403 || s === 504) blocked.set(m, Date.now() + 10 * 60_000);
+  else if (s >= 500) blocked.set(m, Date.now() + 3 * 60_000);
+}
 // любой запрос наружу — с ограничением по времени: зависший ответ не должен держать ИИ минутами
 async function tfetch(url: string, init: RequestInit, ms: number) {
   const c = new AbortController();
@@ -118,13 +169,14 @@ function genCfg(model: string, extra: Record<string, unknown> = {}) {
 }
 const thinkRejected = (status: number, err: string) => status === 400 && /think/i.test(err);
 // потоковый ответ: текст приходит кусками, onText получает всё накопленное
-async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void, sys = SYSTEM) {
+async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void, sys = SYSTEM, ext?: AbortSignal) {
   const body = (gc: any) => JSON.stringify({
     systemInstruction: { parts: [{ text: sys }] },
     contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
     generationConfig: gc,
   });
   const c = new AbortController();
+  if (ext) { if (ext.aborted) c.abort(); else ext.addEventListener("abort", () => c.abort()); }
   let tm = setTimeout(() => c.abort(), 12000);   // первые слова — не дольше 12 с, иначе к следующей модели
   let full = "";
   try {
@@ -199,7 +251,16 @@ const blocked = new Map<string, number>();
 async function ask(text: string | Turn[], onText?: (t: string) => void, sys = SYSTEM, maxTok = 4096, opts: { json?: boolean; think?: boolean } = {}) {
   const k = await key();
   let last: any = { ok: false, status: 503, err: "no key" };
-  if (k) {
+  if (k && onText) {
+    // чат: гонка моделей — отвечает первая, начавшая писать
+    const pm = await pickModels(k);
+    let list = pm.filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 6);
+    if (!list.length) list = pm.slice(0, 4);
+    const turns: Turn[] = typeof text === "string" ? [{ role: "user", text }] : text;
+    const { res, model } = await race(list, 2500, (m, sig, mine) => streamModel(k, m, turns, (full) => { if (mine()) onText(full); }, sys, sig), blockFor);
+    if (res.ok) return { ...res, model, vertex: false };
+    last = { ...res, model, vertex: false };
+  } else if (k) {
     const list = (await pickModels(k)).filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 8);
     const started = Date.now();
     for (const vertex of useVertex ? [true] : [false, true]) {
@@ -749,7 +810,7 @@ function effortCfg(model: string, effort: string, extra: Record<string, unknown>
   }
   return extra;
 }
-async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void) {
+async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void, ext?: AbortSignal) {
   // у Gemma нет системной инструкции — кладём её в начало первого сообщения
   const gemma = model.startsWith("gemma");
   const cs = gemma && contents.length ? [{ ...contents[0], parts: [{ text: AI_SYS + "\n\n" }, ...contents[0].parts] }, ...contents.slice(1)] : contents;
@@ -757,6 +818,7 @@ async function streamContents(k: string, model: string, contents: Content[], eff
     headers: { "content-type": "application/json", "x-goog-api-key": k },
     body: JSON.stringify(gemma ? { contents: cs, generationConfig: gc } : { systemInstruction: { parts: [{ text: AI_SYS }] }, contents: cs, generationConfig: gc }) });
   const c = new AbortController();
+  if (ext) { if (ext.aborted) c.abort(); else ext.addEventListener("abort", () => c.abort()); }
   const first = [12000, 20000, 40000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];   // до первых слов: думать дольше — ждём дольше
   let tm = setTimeout(() => c.abort(), first);
   let got = "";
@@ -797,30 +859,33 @@ async function streamContents(k: string, model: string, contents: Content[], eff
 }
 async function aiChat(req: Request, input: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const { data: au } = await sb.auth.getUser(jwt);
+  const effort = input.effort === "max" ? "high" : EFFORTS.includes(input.effort) ? input.effort : "medium";
+  const tier = input.model === "photos" || TIERS.includes(input.model) ? String(input.model) : "m25";
+  // всё, что не зависит друг от друга, — параллельно: каждая очередь к базе — это задержка перед ответом
+  const [{ data: au }, k] = await Promise.all([sb.auth.getUser(jwt), key()]);
   const uid = au?.user?.id;
   if (!uid) return reply({ error: "auth" }, 401);
-  const [{ data: p }, { data: chat }] = await Promise.all([
+  if (!k) return reply({ error: "not configured" }, 503);
+  const listP = tierModels(k, tier === "photos" ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
+  const [{ data: p }, { data: chat }, bal] = await Promise.all([
     sb.from("profiles").select("banned_at,deleted_at,is_admin").eq("id", uid).maybeSingle(),
-    sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle()]);
+    sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle(),
+    sb.rpc("ai_balance", { p_user: uid })]);
   if (!p || p.banned_at || p.deleted_at) return reply({ error: "not allowed" }, 403);
   if (!chat || chat.user_id !== uid) return reply({ error: "not found" }, 404);
   const text = String(input.text ?? "").trim().slice(0, 8000);
   const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
     .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
   if (!text && !imgs.length) return reply({ error: "empty" }, 400);
-  const effort = input.effort === "max" ? "high" : EFFORTS.includes(input.effort) ? input.effort : "medium";
-  const tier = input.model === "photos" || TIERS.includes(input.model) ? String(input.model) : "m25";
   const unlimited = !!p.is_admin;
-  const balance = unlimited ? 0 : Number((await sb.rpc("ai_balance", { p_user: uid })).data) || 0;
+  const balance = unlimited ? 0 : Number(bal.data) || 0;
   if (!unlimited && balance < 1) return reply({ error: "credits" }, 402);
-  const k = await key();
-  if (!k) return reply({ error: "not configured" }, 503);
 
-  const { data: um, error: uerr } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "user", body: text, images: imgs }).select("id").single();
-  if (uerr || !um) return reply({ error: "db" }, 500);
   const title = chat.title === "Новый чат" ? (text ? text.replace(/\s+/g, " ").slice(0, 48) : "Картинка") : chat.title;
-  await sb.from("ai_chats").update({ updated_at: new Date().toISOString(), title }).eq("id", chat.id);
+  const [{ data: um, error: uerr }] = await Promise.all([
+    sb.from("ai_msgs").insert({ chat_id: chat.id, role: "user", body: text, images: imgs }).select("id").single(),
+    sb.from("ai_chats").update({ updated_at: new Date().toISOString(), title }).eq("id", chat.id)]);
+  if (uerr || !um) return reply({ error: "db" }, 500);
 
   const enc = new TextEncoder();
   const stream = new ReadableStream({
@@ -869,18 +934,15 @@ async function aiChat(req: Request, input: any) {
             if (sent.trim().length < 2) { held += piece; return; }
             out({ d: held + piece }); held = "";
           };
-          const list = (await tierModels(k, tier === "photos" ? "m25" : tier)).filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
-          for (const { model: m, tier: tt } of list) {
-            if (Date.now() - t0 > (effort === "ultra" ? 125000 : 100000)) break;
-            used = tt;
-            res = await streamContents(k, m, contents, effort, onPiece);
-            if (res.ok) break;
-            if (sent) break;   // часть ответа уже ушла — не начинаем заново
-            if (res.status === 429) blocked.set(m, Date.now() + 30 * 60_000);
-            else if (res.status === 404) blocked.set(m, Date.now() + 6 * 3600_000);
-            else if ([403, 504].includes(res.status)) blocked.set(m, Date.now() + 10 * 60_000);
-            else if (res.status === 503 || res.status >= 500) blocked.set(m, Date.now() + 3 * 60_000);   // «перегружена» — ненадолго
-          }
+          const all = await listP;
+          let list = all.filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
+          if (!list.length) list = all.slice(0, 4);   // все на паузе — всё равно пробуем, а не сдаёмся
+          // гонка: если модель молчит дольше, чем обычно думает на этом уровне, параллельно пробуем следующую
+          const delay = [2500, 4000, 9000, 15000, 25000][Math.max(0, EFFORTS.indexOf(effort))];
+          const won = await race(list.map((x) => x.model), delay,
+            (m, sig, mine) => streamContents(k, m, contents, effort, (piece) => { if (mine()) onPiece(piece); }, sig), blockFor);
+          res = won.res;
+          used = (list.find((x) => x.model === won.model) || { tier }).tier;
           if ((!res || !res.ok) && !sent && !imgs.length) {
             used = "m10";
             // запасной ИИ без картинок
@@ -909,12 +971,14 @@ async function aiChat(req: Request, input: any) {
         }
         const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
         let charged: number | null = null, credits: number | null = null;
+        const [cq, { data: mm }] = await Promise.all([
+          unlimited ? Promise.resolve(null) : sb.rpc("ai_charge", { p_user: uid, p_cost: secs }),
+          sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs, model: TIER_NAME[used] || null }).select("id,role,body,images,secs,model,created_at").single(),
+          sb.from("ai_chats").update({ updated_at: new Date().toISOString() }).eq("id", chat.id)]);
         if (!unlimited) {
-          const c = (await sb.rpc("ai_charge", { p_user: uid, p_cost: secs })).data || { charged: secs, left: balance - secs };
+          const c = (cq as any)?.data || { charged: secs, left: balance - secs };
           charged = c.charged; credits = c.left;
         }
-        const { data: mm } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs, model: TIER_NAME[used] || null }).select("id,role,body,images,secs,model,created_at").single();
-        await sb.from("ai_chats").update({ updated_at: new Date().toISOString() }).eq("id", chat.id);
         out({ done: true, msg: mm, user_id: um.id, charged, credits, title });
         ctl.close();
       } catch (e) {
@@ -973,6 +1037,14 @@ Deno.serve(async (req) => {
       if (!pc || req.headers.get("x-hook-secret") !== pc.hook_secret) return reply({ error: "forbidden" }, 403);
       return reply({ result: await botReply(Number(input.message_id)) });
     }
+    // прогрев (каждые несколько минут из базы): функция не «засыпает», список моделей и пропуск зависших уже в памяти
+    if (input.warm) {
+      const { data: pc } = await sb.rpc("push_server_config");
+      if (!pc || req.headers.get("x-hook-secret") !== pc.hook_secret) return reply({ error: "forbidden" }, 403);
+      const k = await key();
+      if (k) await Promise.all([listAll(k), pickModels(k), botId()]);
+      return reply({ warm: true, blocked: blocked.size });
+    }
     // самопроверка из базы: с секретом push-функции, без пользователя и без списания кредитов
     if (input.selftest) {
       const { data: pc } = await sb.rpc("push_server_config");
@@ -1000,18 +1072,17 @@ Deno.serve(async (req) => {
       if (input.tiers) {
         const k = await key(); const res: any[] = [];
         for (const t of TIERS) for (const eff of ["low", "high"]) {
+          // как в настоящем чате: гонка моделей; first — когда пришёл первый кусок ответа
           const list = (await tierModels(k, t)).filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
-          const t0 = Date.now(); let r: any = null, used = ""; const tried: string[] = [];
-          for (const x of list) {
-            used = x.model; const ts = Date.now();
-            r = await streamContents(k, x.model, [{ role: "user", parts: [{ text: "Сколько будет 17*23? Ответь только числом." }] }], eff, () => {});
-            tried.push(`${x.model}:${r.status}:${Date.now() - ts}ms`);
-            if (r.ok) break;
-            if (r.status === 429) blocked.set(x.model, Date.now() + 30 * 60_000);
-            else if (r.status === 404) blocked.set(x.model, Date.now() + 6 * 3600_000);
-            else if (r.status >= 500) blocked.set(x.model, Date.now() + 3 * 60_000);
-          }
-          res.push({ tier: t, eff, model: used, ok: !!r?.ok, ms: Date.now() - t0, text: String(r?.text || "").slice(0, 40), tried });
+          const delay = [2500, 4000, 9000, 15000, 25000][Math.max(0, EFFORTS.indexOf(eff))];
+          const t0 = Date.now(); let first = 0; const tried: string[] = [];
+          const won = await race(list.map((x) => x.model), delay, async (m, sig, mine) => {
+            const ts = Date.now();
+            const r = await streamContents(k, m, [{ role: "user", parts: [{ text: "Сколько будет 17*23? Ответь только числом." }] }], eff, () => { if (mine() && !first) first = Date.now() - t0; }, sig);
+            tried.push(`${m}:${r.status}:${Date.now() - ts}ms`);
+            return r;
+          }, blockFor);
+          res.push({ tier: t, eff, model: won.model, ok: !!won.res.ok, first, ms: Date.now() - t0, text: String(won.res.text || "").slice(0, 40), tried });
         }
         return reply(res);
       }
