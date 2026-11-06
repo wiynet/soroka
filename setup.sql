@@ -1953,7 +1953,7 @@ create table if not exists private.ton_config (
   min_mest integer not null default 10,
   max_mest integer not null default 100000
 );
-insert into private.ton_config (address) values ('UQCMCGTc0oE-MbGb65Snb0qDGx01DK3MKxWjoAKfg_W7_hgL')
+insert into private.ton_config (address) values ('UQAOd58BWfTt7cBc4_cM_u3RAOXf5KfkjoTYCdk51LoajnDD')
 on conflict (id) do update set address = excluded.address;
 create table if not exists public.ton_orders (
   id bigint generated always as identity primary key,

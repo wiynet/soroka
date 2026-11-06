@@ -878,7 +878,8 @@ async function streamContents(k: string, model: string, contents: Content[], eff
     body: JSON.stringify(gemma ? { contents: cs, generationConfig: gc } : { systemInstruction: { parts: [{ text: AI_SYS }] }, contents: cs, generationConfig: gc }) });
   const c = new AbortController();
   if (ext) { if (ext.aborted) c.abort(); else ext.addEventListener("abort", () => c.abort()); }
-  const first = [12000, 20000, 40000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];   // до первых слов: думать дольше — ждём дольше
+  const first0 = [12000, 20000, 40000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];   // до первых слов: думать дольше — ждём дольше
+  const first = gemma ? Math.max(first0, 45000) : first0;   // Gemma всегда сначала думает про себя — даём ей время
   let tm = setTimeout(() => c.abort(), first);
   let got = "";
   try {
@@ -926,7 +927,7 @@ async function aiChat(req: Request, input: any) {
   const uid = au?.user?.id;
   if (!uid) return reply({ error: "auth" }, 401);
   if (!k) return reply({ error: "not configured" }, 503);
-  const listP = tierModels(k, photoTier(tier) ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
+  let listP = tierModels(k, photoTier(tier) ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
   const [{ data: p }, { data: chat }, bal] = await Promise.all([
     sb.from("profiles").select("banned_at,deleted_at,is_admin,premium_until").eq("id", uid).maybeSingle(),
     sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle(),
@@ -936,6 +937,8 @@ async function aiChat(req: Request, input: any) {
   // Photos 2 — только с премиумом (проверяем здесь, а не в приложении); без него рисует Photos 1
   const prem = isPrem(p);
   if (tier === "photos2" && !prem) tier = "photos";
+  // Mestario AI 3.0 — тоже только с премиумом; без него отвечает 2.5
+  if (tier === "m30" && !prem) { tier = "m25"; listP = tierModels(k, "m25").catch(() => [] as { model: string; tier: string }[]); }
   const text = String(input.text ?? "").trim().slice(0, 8000);
   const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
     .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
@@ -998,14 +1001,18 @@ async function aiChat(req: Request, input: any) {
             out({ d: held + piece }); held = "";
           };
           const all = await listP;
-          let list = all.filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
-          if (!list.length) list = all.slice(0, 4);   // все на паузе — всё равно пробуем, а не сдаёмся
-          // гонка: если модель молчит дольше, чем обычно думает на этом уровне, параллельно пробуем следующую
+          const free = (xs: { model: string; tier: string }[]) => xs.filter((x) => (blocked.get(x.model) || 0) < Date.now());
+          // сначала — только модели выбранного уровня (иначе отвечала «чужая» модель); остальные — лишь если свои все молчат
+          const ownAll = all.filter((x) => x.tier === tier), rest = all.filter((x) => x.tier !== tier);
+          const own = free(ownAll).length ? free(ownAll) : ownAll;
           const delay = [2500, 4000, 9000, 15000, 25000][Math.max(0, EFFORTS.indexOf(effort))];
-          const won = await race(list.map((x) => x.model), delay,
+          const gemmaTier = tier === "m15" || tier === "m10";
+          const runOn = (xs: { model: string; tier: string }[], d: number) => race(xs.slice(0, 6).map((x) => x.model), d,
             (m, sig, mine) => streamContents(k, m, contents, effort, (piece) => { if (mine()) onPiece(piece); }, sig), blockFor);
+          let won = own.length ? await runOn(own, gemmaTier ? Math.max(delay, 20000) : delay) : { res: { ok: false, status: 503 } as Try, model: "" };
+          if (!won.res.ok && !sent) { const r2 = free(rest); if (r2.length) won = await runOn(r2, delay); }
           res = won.res;
-          used = (list.find((x) => x.model === won.model) || { tier }).tier;
+          used = (all.find((x) => x.model === won.model) || { tier }).tier;
           if ((!res || !res.ok) && !sent && !imgs.length) {
             used = "m10";
             // запасной ИИ без картинок
@@ -1035,13 +1042,16 @@ async function aiChat(req: Request, input: any) {
           if (answer) out({ d: answer });
         }
         const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
+        // дольше думает — дороже: Лёгкое и Среднее ×1, Высокое ×1.5, Очень высокое ×2, Ultra ×3 (картинки — по секундам)
+        const mul = imagePrompt ? 1 : [1, 1, 1.5, 2, 3][Math.max(0, EFFORTS.indexOf(effort))];
+        const cost = Math.max(1, Math.ceil(secs * mul));
         let charged: number | null = null, credits: number | null = null;
         const [cq, { data: mm }] = await Promise.all([
-          unlimited ? Promise.resolve(null) : sb.rpc("ai_charge", { p_user: uid, p_cost: secs }),
+          unlimited ? Promise.resolve(null) : sb.rpc("ai_charge", { p_user: uid, p_cost: cost }),
           sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs, model: TIER_NAME[used] || null }).select("id,role,body,images,secs,model,created_at").single(),
           sb.from("ai_chats").update({ updated_at: new Date().toISOString() }).eq("id", chat.id)]);
         if (!unlimited) {
-          const c = (cq as any)?.data || { charged: secs, left: balance - secs };
+          const c = (cq as any)?.data || { charged: cost, left: balance - cost };
           charged = c.charged; credits = c.left;
         }
         out({ done: true, msg: mm, user_id: um.id, charged, credits, title });

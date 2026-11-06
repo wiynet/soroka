@@ -1899,7 +1899,7 @@ button.aip-btn:active { transform: scale(.9); }
 .aip-mdl:hover { background: var(--panel-2); color: var(--ink); }
 .aip-mdl svg { width: 12px; height: 12px; flex: none; }
 .aip-warn { max-height: 0; overflow: hidden; opacity: 0; margin-top: 0; text-align: center; font-size: 11.5px; font-weight: 600; color: #a98bff; transition: max-height .25s, opacity .25s, margin .25s; }
-.aip[data-l="3"] .aip-warn, .aip[data-l="4"] .aip-warn { max-height: 22px; opacity: 1; margin-top: 4px; }
+.aip[data-l="2"] .aip-warn, .aip[data-l="3"] .aip-warn, .aip[data-l="4"] .aip-warn { max-height: 22px; opacity: 1; margin-top: 4px; }
 .aip-note { margin-top: 8px; text-align: center; font-size: 12px; color: var(--muted); line-height: 1.4; }
 .aip-sl { --p: 0; position: relative; height: 30px; margin-top: 12px; border-radius: 999px; background: var(--panel-2); touch-action: none; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
 .aip-sl:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
@@ -2350,6 +2350,8 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
 #viewer[open] { display: grid; place-items: center; }
 #viewer::backdrop { background: rgb(0 0 0 / .88); }
 #viewer img { display: block; max-width: calc(100% - 16px); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); border-radius: 8px; cursor: zoom-out; touch-action: none; }
+.viewer-dl { right: 66px; }
+.viewer-dl svg { width: 20px; height: 20px; }
 .viewer-x { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 14px; z-index: 2; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .55); color: #fff; font-size: 20px; line-height: 1; display: grid; place-items: center; backdrop-filter: blur(8px); }
 
 @media (max-width: 760px) {
@@ -3235,7 +3237,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=95235ca613"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e72b715598"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4130,7 +4132,8 @@ void main() {
       <div class="set-label">Что даёт премиум</div>
       <div class="feats">
         <div class="feat"><span class="pico violet" data-i="crown" aria-hidden="true"></span><b>Значок премиума</b><span>Кристальная корона рядом с именем в чатах, поиске и профиле.</span></div>
-        <div class="feat"><span class="pico gold" data-i="crown" aria-hidden="true"></span><b>Корона в подарок</b><span>Один раз при первом премиуме. Её можно улучшить до коллекционной.</span></div>
+        <div class="feat"><span class="pico gold" data-i="ai" aria-hidden="true"></span><b>Mestario AI 3.0 и Photos 2</b><span>Самая умная модель ИИ и рисовалка с лучшим качеством.</span></div>
+        <div class="feat"><span class="pico blue" data-i="file" aria-hidden="true"></span><b>Файлы до 100 МБ</b><span>Отправляйте фото, видео и файлы до 100 МБ вместо 20.</span></div>
         <div class="feat"><span class="pico pink" data-i="palette" aria-hidden="true"></span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
         <div class="feat"><span class="pico teal" data-i="gem" aria-hidden="true"></span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
         <div class="feat"><span class="pico orange" data-i="coinf" aria-hidden="true"></span><b>50 Mest каждый месяц</b><span>Раз в 30 дней забирайте бонус прямо на счёт.</span></div>
@@ -5158,6 +5161,7 @@ void main() {
     <button class="btn ghost" type="button" id="maFwd">Переслать</button>
     <button class="btn ghost" type="button" id="maPin">Закрепить</button>
     <button class="btn ghost" type="button" id="maEdit">Изменить</button>
+    <button class="btn ghost" type="button" id="maSave">Скачать</button>
     <button class="btn ghost" type="button" id="maCopy">Скопировать текст</button>
     <button class="btn ghost" type="button" id="maTr">Перевести</button>
     <button class="btn ghost" type="button" id="maReport">Пожаловаться</button>
@@ -5734,6 +5738,7 @@ void main() {
 
 <dialog id="viewer">
   <button class="viewer-x" type="button" id="viewerClose" aria-label="Закрыть фото" title="Закрыть">✕</button>
+  <button class="viewer-x viewer-dl" type="button" id="viewerSave" aria-label="Скачать фото" title="Скачать" hidden></button>
   <img id="viewerImg" alt="">
 </dialog>
 <div id="swipeHint" aria-hidden="true"></div>
@@ -5761,7 +5766,9 @@ const SUPABASE_URL = "https://zgjptlyhflfwbnmzpdsa.supabase.co";
 // Публичный ключ: его можно держать в коде сайта, доступ к данным ограничивают правила в базе.
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnanB0bHloZmxmd2JubXpwZHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NjM3NjcsImV4cCI6MjEwNzAzOTc2N30.HfSRmQ6Cxcs7i8lrPXWixxB08z8cs_Z2mwOD7G0EeiM";
 const APP_NAME = T("Mestario");
-const MAX_FILE = 20 * 1024 * 1024;
+const MAX_FILE = 20 * 1024 * 1024, MAX_FILE_PREM = 100 * 1024 * 1024;
+// размер вложения: обычным — до 20 МБ, с премиумом — до 100 МБ (сервер проверяет то же самое)
+const maxFile = () => (isPremium(state.profile) || state.isAdmin ? MAX_FILE_PREM : MAX_FILE);
 const PAGE = 50;
 const USERNAME_RE = /^[a-z][a-z0-9_]{3,31}$/;
 // внутри Android-приложения страница открыта как https://localhost — ссылки и письма должны вести на настоящий сайт
@@ -5870,7 +5877,7 @@ const ICONS = {
   bubble: '<path d="M4 11.500C4 7.900 7.600 5 12 5s8 2.900 8 6.500S16.400 18 12 18c-.900 0-1.800-.100-2.600-.400L5.500 19.500l1-3.300C5 15 4 13.300 4 11.500z" fill="currentColor"/>',
   globe: '<g fill="none" stroke="currentColor" stroke-width="1.800"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.500 2.300 3.500 5 3.500 8s-1 5.700-3.500 8c-2.500-2.300-3.500-5-3.500-8s1-5.700 3.500-8z"/></g>',
   starf: '<path d="M12 3.500l2.600 5.400 5.900.800-4.300 4.100 1.100 5.800L12 16.800 6.700 19.600l1.100-5.800L3.500 9.700l5.900-.800z" fill="currentColor"/>',
-  coinf: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14.500 9.500a3 3 0 100 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  coinf: '<image href="mest.png" x="1" y="1" width="22" height="22"/>',   // логотип Mest вместо кружка с «С»
   giftf: '<path d="M4 9h16v3H4zM5.500 13h5.500v7H5.500zM13 13h5.500v7H13zM12 9c-3.500 0-5-1.200-5-2.800C7 5 8 4 9.200 4 10.800 4 12 5.800 12 9zm0 0c3.500 0 5-1.200 5-2.800C17 5 16 4 14.800 4 13.200 4 12 5.800 12 9z" fill="currentColor"/>',
   share: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8.500 7.500L12 4l3.500 3.500"/><path d="M7 11H6v9h12v-9h-1"/></g>',
   home: '<path d="M4 11.500L12 5l8 6.500V20h-5.500v-5h-5v5H4z" fill="currentColor"/>',
@@ -7548,9 +7555,16 @@ async function playVoice(m, at) {
 function preloadVoices() {
   for (const m of state.msgs.filter((x) => x.voice_secs != null && x.file_path).slice(-6)) voiceUrl(m).catch(() => {});
 }
+// фото из переписки на весь экран — с кнопкой «Скачать»
+let viewerMsg = null;
+function openPhoto(src, m) {
+  $("viewerImg").src = src; viewerMsg = m || null;
+  $("viewerSave").hidden = !viewerMsg;
+  $("viewer").showModal();
+}
 function photoNode(m) {
   const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
-  img.addEventListener("click", () => { $("viewerImg").src = img.src; $("viewer").showModal(); });
+  img.addEventListener("click", () => openPhoto(img.src, m));
   signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
   return img;
 }
@@ -7606,7 +7620,7 @@ function msgNode(m, group) {
       const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
       const stick = msgStick != null ? msgStick : nearBottom();
       img.addEventListener("load", () => { img.style.minHeight = "0"; img.style.minWidth = "0"; if (stick) scrollDown(); });
-      img.addEventListener("click", () => { $("viewerImg").src = img.src; $("viewer").showModal(); });
+      img.addEventListener("click", () => openPhoto(img.src, m));
       signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
       el.append(img);
     } else {
@@ -9022,12 +9036,13 @@ async function editPending(i) {
   const list = state.pendingFiles.slice(); list[i] = out;
   setPending(list);
 }
-// добавляет файлы к уже выбранным (до 10 штук, каждый до 20 МБ)
+// добавляет файлы к уже выбранным (до 10 штук, каждый до 20 МБ, с премиумом — до 100 МБ)
 function pickFiles(files) {
   const add = [...(files || [])].filter(Boolean);
   if (!add.length || state.editing) return;
-  const ok = add.filter((f) => f.size <= MAX_FILE);
-  if (ok.length < add.length) toast(T("Файлы больше 20 МБ не прикреплены."));
+  const lim = maxFile();
+  const ok = add.filter((f) => f.size <= lim);
+  if (ok.length < add.length) toast(lim > MAX_FILE ? T("Файлы больше 100 МБ не прикреплены.") : T("Файлы больше 20 МБ не прикреплены. С Premium — до 100 МБ."));
   const list = state.pendingFiles.concat(ok);
   if (list.length > MAX_FILES) toast(T("За один раз можно отправить до ") + MAX_FILES + T(" файлов."));
   setPending(list.slice(0, MAX_FILES));
@@ -9567,7 +9582,10 @@ $("composer").addEventListener("submit", async (e) => {
   const v = $("viewer"), img = $("viewerImg");
   const shut = () => { if (v.open) v.close(); img.style.transform = ""; img.style.opacity = ""; };
   $("viewerClose").addEventListener("click", shut);
-  v.addEventListener("click", (e) => { if (e.target !== $("viewerClose")) shut(); });   // нажатие на фото или мимо него
+  $("viewerSave").append(icon("dl"));
+  $("viewerSave").addEventListener("click", (e) => { e.stopPropagation(); if (viewerMsg) saveAttachment(viewerMsg); });
+  v.addEventListener("close", () => { viewerMsg = null; $("viewerSave").hidden = true; });
+  v.addEventListener("click", (e) => { if (e.target !== $("viewerClose") && !e.target.closest("#viewerSave")) shut(); });   // нажатие на фото или мимо него
   // свайп вниз или вверх тоже закрывает
   let y0 = null, dy = 0;
   v.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { y0 = e.touches[0].clientY; dy = 0; } else y0 = null; }, { passive: true });
@@ -9729,6 +9747,8 @@ function openMsgMenu(m, group) {
   $("maPin").textContent = c && c.pinned === m.id ? T("Открепить") : T("Закрепить");
   $("maEdit").hidden = m.sender_id !== state.me.id || !!m.gift_type || !!m.event_kind || m.voice_secs != null || !!m.forwarded_from;
   $("maCopy").hidden = !m.body || !!m.gift_type || !!m.event_kind;
+  $("maSave").hidden = !m.file_path || !!group;   // фото, видео, голосовое, файл — скачать может любой участник чата
+  $("maSave").textContent = (m.file_type || "").startsWith("image/") ? T("Скачать фото") : (m.file_type || "").startsWith("video/") || m.video_secs != null ? T("Скачать видео") : T("Скачать");
   $("maTr").hidden = !m.body || !!m.gift_type || !!m.event_kind || !!group || m.geo_lat != null;
   $("maTr").textContent = msgTr.get(m.id) && msgTr.get(m.id).on ? T("Скрыть перевод") : T("Перевести");
   $("maDel").hidden = !(m.sender_id === state.me.id || state.isAdmin || !!myRole(c));
@@ -9742,6 +9762,16 @@ function openMsgMenu(m, group) {
   }
 }
 $("maReply").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg) startReply(actMsg); });
+$("maSave").addEventListener("click", () => { $("dlgMsg").close(); if (actMsg && actMsg.file_path) saveAttachment(actMsg); });
+// скачать вложение: ссылка с «скачать файлом» — браузер сохраняет файл, а не открывает его
+async function saveAttachment(m) {
+  const ext = (m.file_type || "").split("/")[1] || "bin";
+  const name = m.file_name || ((m.file_type || "").startsWith("image/") ? "photo" : m.video_secs != null ? "video" : "file") + "." + ext.replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "");
+  const u = await signedUrl(m.file_path, name);
+  if (!u) { toast(T("Не удалось скачать файл")); return; }
+  const a = h("a", { href: u, download: name, rel: "noopener" });
+  document.body.append(a); a.click(); a.remove();
+}
 // перевод сообщения: ИИ переводит на язык интерфейса (если уже на нём — на другой), готовый перевод хранится
 var msgTr = new Map();   // id сообщения -> { text, on, busy }
 async function translateMsg(m) {
@@ -13021,7 +13051,7 @@ const PREMIUM_TON = {
   payMest: () => sb.rpc("buy_premium"),
   title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, баннер профиля и другое"),
   kick: () => T("Больше возможностей"),
-  feats: () => [T("Значок премиума у имени"), T("Корона в подарок при первом премиуме"), T("Свой цвет имени"),
+  feats: () => [T("Значок премиума у имени"), T("Mestario AI 3.0 и Photos 2"), T("Файлы до 100 МБ"), T("Свой цвет имени"),
     T("50 Mest и подарок каждый месяц"), T("Баннер профиля: фото, GIF или видео"), T("Показ экрана в HD и особые фоны")],
   hint: () => T("Премиум включится сам, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть."),
   create: () => sb.rpc("ton_order_premium"),
@@ -14331,10 +14361,12 @@ function credText(n) { return n + " " + plural(n, T("кредит"), T("кред
 let aiCredits = 0;
 const AI = { chats: [], id: null, msgs: [], busy: false, max: 5, effort: 0, model: "m25", att: [], rec: null, urls: new Map(), gal: null, pickOpen: false, ptr: 0 };
 // усилие: сколько модель думает перед ответом (дольше думает — больше кредитов, кредит = секунда)
-const AI_EFF = [{ k: "low", t: T("Лёгкое") }, { k: "medium", t: T("Среднее") }, { k: "high", t: T("Высокое") }, { k: "xhigh", t: T("Очень высокое") }, { k: "ultra", t: "Ultra" }];
+// mul — во сколько раз дороже секунда работы (сервер считает так же)
+const AI_EFF = [{ k: "low", t: T("Лёгкое"), mul: 1 }, { k: "medium", t: T("Среднее"), mul: 1 }, { k: "high", t: T("Высокое"), mul: 1.5 }, { k: "xhigh", t: T("Очень высокое"), mul: 2 }, { k: "ultra", t: "Ultra", mul: 3 }];
+const aiEffWarn = (i) => AI_EFF[i].mul === 1 ? T("1 кредит — секунда работы") : T("Думает дольше — кредиты ×") + String(AI_EFF[i].mul).replace(".", ",");
 // свои модели: на сервере каждая — своя модель Gemini/Gemma; если она недоступна, отвечает ближайшая ниже
 const AI_MODELS = [
-  { k: "m30", t: "Mestario AI 3.0", s: "AI 3.0", d: T("Самая умная — для сложных задач") },
+  { k: "m30", t: "Mestario AI 3.0", s: "AI 3.0", d: T("Самая умная — для сложных задач"), prem: true, alt: "m25" },
   { k: "m25", t: "Mestario AI 2.5", s: "AI 2.5", d: T("Умная и быстрая — на каждый день") },
   { k: "m20", t: "Mestario AI 2.0", s: "AI 2.0", d: T("Быстрая") },
   { k: "m15", t: "Mestario AI 1.5", s: "AI 1.5", d: T("Лёгкая") },
@@ -14342,7 +14374,7 @@ const AI_MODELS = [
 ];
 // рисовалки: Photos 2 (FLUX.2) — с премиумом, Photos 1 (FLUX.1) — для всех; сервер проверяет премиум сам
 const AI_PHOTOS = [
-  { k: "photos2", t: "Mestario Photos 2", s: "Photos 2", d: T("Лучшее качество и детали"), prem: true },
+  { k: "photos2", t: "Mestario Photos 2", s: "Photos 2", d: T("Лучшее качество и детали"), prem: true, alt: "photos" },
   { k: "photos", t: "Mestario Photos 1", s: "Photos 1", d: T("Быстро рисует по описанию") },
 ];
 const isPhotos = (k) => k === "photos" || k === "photos2";
@@ -14562,7 +14594,8 @@ $("aiCard").addEventListener("mousedown", (e) => {
 });
 // чип в поле ввода: «AI 2.5 · Лёгкое»
 function aiPaintEffort(now) {
-  if (AI.model === "photos2" && state.profile && !aiPremOK()) AI.model = "photos";   // премиум закончился — Photos 1
+  // премиум закончился — Photos 2 → Photos 1, AI 3.0 → AI 2.5
+  if (state.profile && !aiPremOK()) { const pm = aiModelOf(AI.model); if (pm.prem && pm.alt) AI.model = pm.alt; }
   const w = $("aiEffortW"), from = w.offsetWidth, m = aiModelOf(AI.model);
   $("aiEffortT").remove();
   w.append(h("span", { id: "aiEffortT" }, h("b", {}, m.s), isPhotos(AI.model) ? null : h("span", { class: "lv" }, " · " + AI_EFF[AI.effort].t)));
@@ -14613,13 +14646,14 @@ function aipEffView() {
     const d = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
     if (d) { e.preventDefault(); aipPick(sl, Math.max(0, Math.min(4, AI.effort + d))); }
   });
-  return h("div", { class: "aip-v" }, head, h("div", { class: "aip-warn" }, T("Думает дольше — тратит больше кредитов")), sl);
+  return h("div", { class: "aip-v" }, head, h("div", { class: "aip-warn", id: "aipWarn" }, aiEffWarn(AI.effort)), sl);
 }
 function aipSet(sl, i, anim) {
   sl.style.setProperty("--p", String(i / 4));
   sl.setAttribute("aria-valuenow", String(i)); sl.setAttribute("aria-valuetext", AI_EFF[i].t);
   const lvl = $("aipLvl");
   $("aiPick").dataset.l = String(i);
+  if ($("aipWarn")) $("aipWarn").textContent = aiEffWarn(i);
   if (lvl && lvl.textContent !== AI_EFF[i].t) { lvl.textContent = AI_EFF[i].t; if (anim) { lvl.classList.remove("swap"); void lvl.offsetWidth; lvl.classList.add("swap"); } }
 }
 function aipLive(sl, p) {
@@ -14633,7 +14667,7 @@ function aipModView() {
     const lock = m.prem && !aiPremOK();
     return h("button", { class: "aip-o" + (lock ? " lock" : ""), type: "button", role: "menuitemradio", "aria-checked": String(AI.model === m.k), "aria-disabled": lock ? "true" : null,
       onclick: () => {
-        if (lock) { toast(m.t + T(" доступна с Premium. Без него рисует ") + AI_PHOTOS[1].t + "."); return; }
+        if (lock) { toast(m.t + T(" доступна с Premium. Без него — ") + aiModelOf(m.alt).t + "."); return; }
         AI.model = m.k; aiSavePick(); aiPaintEffort(); aipView = "eff"; aipSwap(aipEffView, -1);
       } },
       h("span", {}, h("b", {}, m.t, m.prem ? h("i", { class: "aip-prem" }, "Premium") : null), h("small", {}, m.d)), aipSvg(AIP_CHECK));
