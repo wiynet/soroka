@@ -51,6 +51,49 @@ async function pickModels(k: string) {
   models = FALLBACK;
   return models;
 }
+// все модели, доступные ключу (для уровней Mestario AI)
+let allModels: string[] | null = null, allAt = 0;
+async function listAll(k: string) {
+  if (allModels && Date.now() - allAt < 30 * 60_000) return allModels;
+  try {
+    const r = await tfetch(GL + "/models?pageSize=300", { headers: { "x-goog-api-key": k } }, 4000);
+    if (r.ok) {
+      const j = await r.json();
+      allModels = (j.models || []).filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .map((m: any) => String(m.name).replace(/^models\//, ""));
+      allAt = Date.now();
+      return allModels!;
+    }
+  } catch (_) { /* ниже запасной список */ }
+  return allModels || ["gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemma-3-27b-it", "gemma-3-4b-it"];
+}
+// Mestario AI 3.0 — самая умная (Gemini Pro), 2.5 — Gemini Flash, 2.0 — Flash-Lite, 1.5 — большая Gemma, 1.0 — лёгкая Gemma.
+// Если модель уровня недоступна (нет в ключе, лимит), берём следующую ниже — никогда не выше.
+const TIERS: string[] = ["m30", "m25", "m20", "m15", "m10"];
+const TIER_NAME: Record<string, string> = { m30: "Mestario AI 3.0", m25: "Mestario AI 2.5", m20: "Mestario AI 2.0", m15: "Mestario AI 1.5", m10: "Mestario AI 1.0", photos: "Mestario Photos" };
+function tierGroups(all: string[]) {
+  const ver = (n: string) => Number((/(?:gemini|gemma)-(\d+(?:\.\d+)?)/.exec(n) || [])[1] || 0);
+  const pick = (re: RegExp, latest?: string) => {
+    const xs = all.filter((n) => re.test(n)).sort((a, b) => ver(b) - ver(a) || (a.includes("preview") ? 1 : 0) - (b.includes("preview") ? 1 : 0));
+    if (latest && all.includes(latest)) xs.push(latest);
+    return xs.filter((n) => ver(n) >= 2.5 || n.startsWith("gemma") || n.endsWith("-latest"));
+  };
+  return {
+    m30: pick(/^gemini-[\d.]+-pro(-preview)?$/, "gemini-pro-latest"),
+    m25: pick(/^gemini-[\d.]+-flash(-preview)?$/, "gemini-flash-latest"),
+    m20: pick(/^gemini-[\d.]+-flash-lite(-preview)?$/, "gemini-flash-lite-latest"),
+    m15: ["gemma-4-31b-it", "gemma-3-27b-it", "gemma-3-12b-it"].filter((n) => all.includes(n)),
+    m10: ["gemma-4-26b-a4b-it", "gemma-3n-e4b-it", "gemma-3-4b-it"].filter((n) => all.includes(n)),
+  } as Record<string, string[]>;
+}
+async function tierModels(k: string, tier: string) {
+  const g = tierGroups(await listAll(k));
+  const start = Math.max(0, TIERS.indexOf(tier));
+  const out: { model: string; tier: string }[] = [];
+  // свой уровень и ниже; у 1.5 и 1.0 запас — Flash-Lite (2.0), чтобы ответ был всегда
+  for (const t of [...TIERS.slice(start), ...(start >= 3 ? ["m20"] : [])]) for (const m of g[t] || []) if (!out.some((x) => x.model === m)) out.push({ model: m, tier: t });
+  return out;
+}
 type Turn = { role: "user" | "model"; text: string };
 // любой запрос наружу — с ограничением по времени: зависший ответ не должен держать ИИ минутами
 async function tfetch(url: string, init: RequestInit, ms: number) {
@@ -205,10 +248,11 @@ async function pickImageModels(k: string) {
     imageModels = (j.models || [])
       .filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
       .map((m: any) => String(m.name).replace(/^models\//, ""))
-      .filter((n: string) => /^gemini-[\d.]+-flash.*image/.test(n))
-      .sort((a: string, b: string) => (ver(b) - ver(a)) || (a.includes("preview") ? 1 : 0) - (b.includes("preview") ? 1 : 0));
+      .filter((n: string) => /^gemini-[\d.]+-(flash|pro).*image/.test(n))
+      // сначала Flash (быстрее), потом Pro; внутри — от новой версии к старой
+      .sort((a: string, b: string) => (a.includes("-pro") ? 1 : 0) - (b.includes("-pro") ? 1 : 0) || (ver(b) - ver(a)) || (a.includes("preview") ? 1 : 0) - (b.includes("preview") ? 1 : 0));
   } catch (_) { imageModels = []; }
-  if (!imageModels!.length) imageModels = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+  if (!imageModels!.length) imageModels = ["gemini-3.1-flash-image-preview", "gemini-2.5-flash-image"];
   return imageModels!;
 }
 let geminiImgBlockedUntil = 0;   // бесплатный ключ: квота на картинки нулевая — не тратим время пользователя на повторные отказы
@@ -687,23 +731,34 @@ const AI_SYS = `Ты — ИИ-помощник мессенджера Mestario. 
 Не выдумывай фактов; если не уверен — скажи. Не помогай с опасными, незаконными или вредными просьбами.`;
 type Part = { text?: string; inlineData?: { mimeType: string; data: string } };
 type Content = { role: "user" | "model"; parts: Part[] };
+// усилие: Лёгкое / Среднее / Высокое / Очень высокое / Ultra
+const EFFORTS = ["low", "medium", "high", "xhigh", "ultra"];
 function effortCfg(model: string, effort: string, extra: Record<string, unknown>) {
-  if (effort === "low" || noThink.has(model)) return genCfg(model, extra);
-  // думаем по минимуму: «обычно» — коротко, «максимум» — умеренно (долгое раздумье только тормозит ответ)
-  if (/gemini-2\.5/.test(model)) return { ...extra, thinkingConfig: { thinkingBudget: effort === "max" ? 2048 : 256 } };
-  if (/gemini-[3-9]/.test(model)) return { ...extra, thinkingConfig: { thinkingLevel: effort === "max" ? "medium" : "low" } };
+  if (model.startsWith("gemma") || noThink.has(model)) return extra;
+  const i = Math.max(0, EFFORTS.indexOf(effort));
+  if (/gemini-2\.5/.test(model)) {
+    const b = [0, 512, 2048, 8192, 24576][i];
+    return { ...extra, thinkingConfig: { thinkingBudget: /pro/.test(model) ? Math.max(128, b) : b } };
+  }
+  if (/gemini-[3-9]|-latest$/.test(model)) {
+    const lv = /pro/.test(model) ? ["low", "low", "high", "high", "high"][i] : ["minimal", "low", "medium", "high", "high"][i];
+    return { ...extra, thinkingConfig: { thinkingLevel: lv } };
+  }
   return extra;
 }
 async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void) {
+  // у Gemma нет системной инструкции — кладём её в начало первого сообщения
+  const gemma = model.startsWith("gemma");
+  const cs = gemma && contents.length ? [{ ...contents[0], parts: [{ text: AI_SYS + "\n\n" }, ...contents[0].parts] }, ...contents.slice(1)] : contents;
   const send = (gc: any, signal: AbortSignal) => fetch(`${GL}/models/${model}:streamGenerateContent?alt=sse`, { method: "POST", signal,
     headers: { "content-type": "application/json", "x-goog-api-key": k },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYS }] }, contents, generationConfig: gc }) });
+    body: JSON.stringify(gemma ? { contents: cs, generationConfig: gc } : { systemInstruction: { parts: [{ text: AI_SYS }] }, contents: cs, generationConfig: gc }) });
   const c = new AbortController();
-  const first = effort === "max" ? 40000 : effort === "medium" ? 20000 : 12000;   // до первых слов: думать дольше — ждём дольше
+  const first = [12000, 20000, 40000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];   // до первых слов: думать дольше — ждём дольше
   let tm = setTimeout(() => c.abort(), first);
   let got = "";
   try {
-    const base = { maxOutputTokens: 8192, temperature: 0.7 };
+    const base = { maxOutputTokens: effort === "ultra" || effort === "xhigh" ? 16384 : 8192, temperature: 0.7 };
     let r = await send(effortCfg(model, effort, base), c.signal);
     if (!r.ok) {
       const err = await r.text().catch(() => "");
@@ -751,7 +806,8 @@ async function aiChat(req: Request, input: any) {
   const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
     .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
   if (!text && !imgs.length) return reply({ error: "empty" }, 400);
-  const effort = ["low", "medium", "max"].includes(input.effort) ? input.effort : "medium";
+  const effort = input.effort === "max" ? "high" : EFFORTS.includes(input.effort) ? input.effort : "medium";
+  const tier = input.model === "photos" || TIERS.includes(input.model) ? String(input.model) : "m25";
   const unlimited = !!p.is_admin;
   const balance = unlimited ? 0 : Number((await sb.rpc("ai_balance", { p_user: uid })).data) || 0;
   if (!unlimited && balance < 1) return reply({ error: "credits" }, 402);
@@ -797,8 +853,9 @@ async function aiChat(req: Request, input: any) {
         }
         while (contents.length && contents[0].role === "model") contents.shift();
 
-        let answer = "", imagePrompt = "", english = false, hidden = false;
-        if (wantsImage(text) && !imgs.length) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
+        let answer = "", imagePrompt = "", english = false, hidden = false, used = tier;
+        if (tier === "photos" && text) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
+        else if (wantsImage(text) && !imgs.length) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
         else {
           let res: any = null, sent = "", held = "";
           // ответ идёт кусками; строку-команду «нарисовать» не показываем (первые символы придерживаем, пока не ясно)
@@ -809,9 +866,10 @@ async function aiChat(req: Request, input: any) {
             if (sent.trim().length < 2) { held += piece; return; }
             out({ d: held + piece }); held = "";
           };
-          const list = (await pickModels(k)).filter((m) => (blocked.get(m) || 0) < Date.now()).slice(0, 6);
-          for (const m of list) {
-            if (Date.now() - t0 > 100000) break;
+          const list = (await tierModels(k, tier === "photos" ? "m25" : tier)).filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
+          for (const { model: m, tier: tt } of list) {
+            if (Date.now() - t0 > (effort === "ultra" ? 125000 : 100000)) break;
+            used = tt;
             res = await streamContents(k, m, contents, effort, onPiece);
             if (res.ok) break;
             if (sent) break;   // часть ответа уже ушла — не начинаем заново
@@ -819,6 +877,7 @@ async function aiChat(req: Request, input: any) {
             else if ([403, 404, 504].includes(res.status)) blocked.set(m, Date.now() + 10 * 60_000);
           }
           if ((!res || !res.ok) && !sent && !imgs.length) {
+            used = "m10";
             // запасной ИИ без картинок
             const fb = await pollinationsText(contents.map((c) => ({ role: c.role, text: c.parts.map((x) => x.text || "").join("\n") })) as Turn[], AI_SYS);
             if (fb.ok) { res = fb; onPiece(fb.text); }
@@ -831,6 +890,7 @@ async function aiChat(req: Request, input: any) {
         }
         const images: string[] = [];
         if (imagePrompt) {
+          used = "photos";
           out({ drawing: true });
           const im = await makeImage(imagePrompt, english);
           if (!im.ok) return await fail(im.status === 429 ? "busy" : "image");
@@ -848,7 +908,7 @@ async function aiChat(req: Request, input: any) {
           const c = (await sb.rpc("ai_charge", { p_user: uid, p_cost: secs })).data || { charged: secs, left: balance - secs };
           charged = c.charged; credits = c.left;
         }
-        const { data: mm } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs }).select("id,role,body,images,secs,created_at").single();
+        const { data: mm } = await sb.from("ai_msgs").insert({ chat_id: chat.id, role: "model", body: answer.slice(0, 40000), images, secs, model: TIER_NAME[used] || null }).select("id,role,body,images,secs,model,created_at").single();
         await sb.from("ai_chats").update({ updated_at: new Date().toISOString() }).eq("id", chat.id);
         out({ done: true, msg: mm, user_id: um.id, charged, credits, title });
         ctl.close();
@@ -930,6 +990,17 @@ Deno.serve(async (req) => {
           out.push({ m, think, status: r.status, ms: Date.now() - t, err: r.ok ? "" : JSON.stringify(j).slice(0, 160) });
         }
         return reply(out);
+      }
+      // проверка уровней Mestario AI: какая модель отвечает на каждом и сколько это занимает (без пользователя и кредитов)
+      if (input.tiers) {
+        const k = await key(); const res: any[] = [];
+        for (const t of TIERS) for (const eff of ["low", "high"]) {
+          const list = (await tierModels(k, t)).slice(0, 3);
+          const t0 = Date.now(); let r: any = null, used = "";
+          for (const x of list) { used = x.model; r = await streamContents(k, x.model, [{ role: "user", parts: [{ text: "Сколько будет 17*23? Ответь только числом." }] }], eff, () => {}); if (r.ok) break; }
+          res.push({ tier: t, eff, model: used, ok: !!r?.ok, status: r?.status, ms: Date.now() - t0, text: String(r?.text || "").slice(0, 40), err: r?.ok ? "" : String(r?.err || "").slice(0, 160) });
+        }
+        return reply(res);
       }
       if (input.image) { const im = await makeImage(String(input.image)); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");
