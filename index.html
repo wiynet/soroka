@@ -11863,10 +11863,10 @@ async function openGiftView(id, fresh) {
   const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
   const top = $("gvTop");
-  // обычный (не улучшенный) подарок помечаем «Неуникальный»: улучшений у вида ещё нет или владелец не улучшил
+  // не улучшенный подарок с тиражом помечаем «Неуникальный»: улучшений у вида ещё нет или владелец не улучшил
   top.replaceChildren(giftLive(t, look), h("h2", {}, t.name),
     ...(look ? [h("span", { class: "num" }, T("Коллекционный №") + g.nft_number)]
-      : [h("span", { class: "uniq-no", title: canUpgrade(t) ? T("Можно улучшить до уникального NFT") : T("Улучшений для этого подарка пока нет") }, T("Неуникальный"))]));
+      : t.supply == null ? [] : [h("span", { class: "uniq-no", title: canUpgrade(t) ? T("Можно улучшить до уникального NFT") : T("Улучшений для этого подарка пока нет") }, T("Неуникальный"))]));
   if (look) paintNft(top, look);
   if (fresh) flash(top, 900);
   giftSound(t.id);
