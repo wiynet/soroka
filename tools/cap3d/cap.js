@@ -339,11 +339,11 @@ const MODELS = {
   },
   // 8. сетчатая задняя часть «дышит» волнами на ветерке
   mesh() {
-    const { scene, cam } = baseScene({ camAz: 1.25, camEl: .3 });
+    const { scene, cam } = baseScene({ camAz: .95, camEl: .3 });
     const meshMat = new THREE.MeshPhysicalMaterial({ color: 0x1b1d22, roughness: .7, alphaMap: meshAlpha(), alphaTest: .5, side: THREE.DoubleSide, sheen: .4 });
     const cap = buildCap({ backFabric: meshMat }); scene.add(cap);
     const back = cap.userData.back, pos = back.geometry.attributes.position, base = pos.array.slice();
-    cap.rotation.y = -.2;
+    cap.rotation.y = .1;
     return { scene, cam, dur: 3, update(t) {
       for (let i = 0; i < pos.count; i++) {
         const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], len = Math.hypot(x, y / SY, z / SZ) || 1;
@@ -351,7 +351,7 @@ const MODELS = {
         pos.setXYZ(i, x * w, y * w, z * w);
       }
       pos.needsUpdate = true; back.geometry.computeVertexNormals();
-      cap.rotation.z = .02 * Math.sin(t / 3 * TAU); cap.rotation.y = -.2 + .05 * Math.sin(t / 3 * TAU);
+      cap.rotation.z = .02 * Math.sin(t / 3 * TAU); cap.rotation.y = .1 + .05 * Math.sin(t / 3 * TAU);
     } };
   },
   // 9. скейт: длинный прямой козырёк, невысокий прыжок с наклоном и мягкое приземление
@@ -439,7 +439,7 @@ const MODELS = {
     const r = rng(14), sparks = [];
     for (let i = 0; i < 40; i++) { const s = sprite(glowTex("rgba(210,235,255,1)"), 0xdff0ff, .05, 0); cap.add(s); sparks.push({ s, p: plates[i % plates.length], d: new THREE.Vector3(r() - .5, r() * .6, r() - .5).normalize(), ph: r() }); }
     return { scene, cam, dur: 4, update(t) {
-      cap.rotation.y = -.15 + .55 * Math.sin(t / 4 * TAU);
+      cap.rotation.y = -.15 + .3 * Math.sin(t / 4 * TAU);
       const glint = Math.pow(Math.abs(Math.cos(t / 4 * TAU)), 6); ti.envMapIntensity = 1 + 2.5 * glint;
       sparks.forEach((s) => { const k = ((t / 4) * 2 + s.ph) % 1, on = k < .25; s.s.material.opacity = on ? (1 - k / .25) * (.4 + glint) : 0; s.s.position.copy(s.p).addScaledVector(s.d, k * .55); s.s.scale.setScalar(.06 * (1 - k)); });
     } };
@@ -477,7 +477,7 @@ const MODELS = {
     const refl = new THREE.MeshPhysicalMaterial({ color: 0x8e98aa, metalness: .85, roughness: .28, clearcoat: 1, clearcoatRoughness: .1, bumpMap: twill(), bumpScale: .5, emissive: 0xcfe2ff, emissiveIntensity: 0 });
     const cap = buildCap({ fabric: refl, visorMat: refl }); scene.add(cap);
     return { scene, cam, dur: 4, update(t) {
-      cap.rotation.y = -.15 + .7 * Math.sin(t / 4 * TAU);
+      cap.rotation.y = -.15 + .32 * Math.sin(t / 4 * TAU);
       const f = Math.max(pulse(t, 1, .1), pulse(t, 3, .1)); refl.emissiveIntensity = .55 * f; refl.envMapIntensity = 1 + 1.3 * f; scene.environmentIntensity = 1.2 + .6 * f;
     } };
   },
