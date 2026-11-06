@@ -15402,7 +15402,8 @@ function swipeBack(target, o) {
   target.addEventListener("touchend", end);
   target.addEventListener("touchcancel", end);
 }
-const NO_SWIPE = "input, textarea, [contenteditable], .voice, .geo-map, video, .code-pre, .react-row, .album, [data-noswipe], .swiping";
+// ползунки и панель выбора модели ИИ: движение вправо — это выбор уровня, а не «назад»
+const NO_SWIPE = "input, textarea, [contenteditable], .voice, .geo-map, video, .code-pre, .react-row, .album, [data-noswipe], .swiping, [role=slider], .aip, .aip-chip";
 swipeBack(document.querySelector("#app > .pane"), {
   can: (e) => phoneLayout() && motionOK() && !selMode && $("app").classList.contains("chat-open") && !e.target.closest(NO_SWIPE),
   start: peekStart, move: peekAt, commit: chatBack, cancel: chatStay,
