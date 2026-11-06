@@ -1287,6 +1287,9 @@ dialog.story-view > * { grid-area: 1 / 1; }
 .gv-top.nftg { padding: 22px 14px 18px; border-radius: 20px; }
 .gv-top h2 { margin: 0; }
 .gv-top .num { font-size: 14px; font-weight: 500; opacity: .9; }
+.gv-top .uniq-no { font-size: 12.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px; letter-spacing: .02em;
+  color: color-mix(in srgb, currentColor 72%, transparent); background: color-mix(in srgb, currentColor 9%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
 .who-link { text-align: left; font-weight: 600; overflow-wrap: anywhere; }
 .gv dd .pct { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--mine); color: var(--accent); font-size: 12px; font-weight: 600; }
 .gift.out { opacity: .55; }
@@ -3158,7 +3161,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=bbc7fe088a"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=644dde220f"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -11860,8 +11863,10 @@ async function openGiftView(id, fresh) {
   const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
   const top = $("gvTop");
+  // обычный (не улучшенный) подарок помечаем «Неуникальный»: улучшений у вида ещё нет или владелец не улучшил
   top.replaceChildren(giftLive(t, look), h("h2", {}, t.name),
-    ...(look ? [h("span", { class: "num" }, T("Коллекционный №") + g.nft_number)] : []));
+    ...(look ? [h("span", { class: "num" }, T("Коллекционный №") + g.nft_number)]
+      : [h("span", { class: "uniq-no", title: canUpgrade(t) ? T("Можно улучшить до уникального NFT") : T("Улучшений для этого подарка пока нет") }, T("Неуникальный"))]));
   if (look) paintNft(top, look);
   if (fresh) flash(top, 900);
   giftSound(t.id);
