@@ -15352,6 +15352,7 @@ const mix = (k) => ({ pane: 100 * k, side: PANE_OPEN.side * (1 - k), dim: 1 - k 
 // открытие: чат въезжает справа, список немного уходит влево под затемнение
 function chatSlideIn() {
   if (!phoneLayout() || !motionOK() || $("app").classList.contains("enter")) return;
+  if (typeof instantNav !== "undefined" && instantNav) { paneStop(); return; }   // браузер уже показал свою анимацию
   paneStop();
   paneAt(1);   // до первого кадра чат стоит за правым краем, пока рисуется переписка
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -15420,7 +15421,8 @@ function swipeBack(target, o) {
     lock = -1;
   };
   target.addEventListener("touchend", end);
-  target.addEventListener("touchcancel", end);
+  // касание отменили (например, Safari сам перехватил жест «назад» от края) — наш жест тоже отменяется, а не завершается
+  target.addEventListener("touchcancel", () => { if (lock === 1) o.cancel(dx); lock = -1; });
 }
 // ползунки и панель выбора модели ИИ: движение вправо — это выбор уровня, а не «назад»
 const NO_SWIPE = "input, textarea, [contenteditable], .voice, .geo-map, video, .code-pre, .react-row, .album, [data-noswipe], .swiping, [role=slider], .aip, .aip-chip";
@@ -19071,8 +19073,9 @@ function routeSync(replace) {
 }
 const ROUTED = ["dlgGiftView", "dlgUser", "dlgChan", "dlgProfile", "dlgMarket", "dlgAdmin", "dlgSupport"];
 function closeRouted(keep) {
-  for (const id of ROUTED) if (id !== keep && $(id).open) $(id).close();
-  if (keep !== "dlgSettings" && $("dlgSettings").open) $("dlgSettings").close();
+  const shut = (d) => instantNav && window.__dlgCloseNow && d instanceof HTMLDialogElement ? window.__dlgCloseNow(d) : d.close();
+  for (const id of ROUTED) if (id !== keep && $(id).open) shut($(id));
+  if (keep !== "dlgSettings" && $("dlgSettings").open) shut($("dlgSettings"));
 }
 // открыть экран по адресу: кнопки браузера «назад/вперёд» и ссылки вида mestario.lol/settings
 async function applyRoute(path) {
@@ -19081,7 +19084,7 @@ async function applyRoute(path) {
   try {
     const seg = decodeURIComponent(path.replace(/^\/+|\/+$/g, ""));
     let m;
-    if (!seg) { closeRouted(); if (state.activeId) { if (phoneLayout()) chatBack(0); else closeChat(); } }
+    if (!seg) { closeRouted(); if (state.activeId) { if (instantNav) { paneStop(); closeChat(true); } else if (phoneLayout()) chatBack(0); else closeChat(); } }
     else if ((m = /^c-([0-9a-f-]{36})$/.exec(seg))) { closeRouted(); if (state.activeId !== m[1]) await openChatFromLink(m[1]); }
     else if ((m = /^settings(?:-([a-z]+))?$/.exec(seg))) {
       closeRouted("dlgSettings");
@@ -19103,12 +19106,26 @@ async function applyRoute(path) {
     routeSync(true);
   }
 }
+// Safari на айфоне: смахивание от края экрана — это «назад» самого браузера, он уже показал свою анимацию
+// со снимком прошлого экрана. Если поверх запустить ещё и нашу, два экрана едут друг по другу.
+// Поэтому после такого жеста переходим мгновенно и закрываем окна, которых нет в истории (ИИ и т. п.).
+var edgeTouchAt = 0, instantNav = false;   // var: читаются и до этой строки (въезд чата при старте)
+const IOS_SAFARI = document.documentElement.classList.contains("ios") && !navigator.standalone && !matchMedia("(display-mode: standalone)").matches;
+if (IOS_SAFARI) addEventListener("touchstart", (e) => {
+  const x = e.touches[0] ? e.touches[0].clientX : 99;
+  edgeTouchAt = x < 30 || x > innerWidth - 30 ? Date.now() : 0;
+}, { passive: true, capture: true });
 window.addEventListener("popstate", () => {
   if (!ROUTER_ON) return;
   if (routeSelfBack) { routeSelfBack = false; return; }
   const p = location.pathname;
   if (routeStack.length > 1 && routeStack[routeStack.length - 2] === p) routeStack.pop(); else routeStack.push(p);
-  applyRoute(p);
+  const native = IOS_SAFARI && edgeTouchAt && Date.now() - edgeTouchAt < 3000;
+  edgeTouchAt = 0;
+  if (!native) { applyRoute(p); return; }
+  instantNav = true;
+  for (const d of document.querySelectorAll("dialog.full[open]")) if (!ROUTED.includes(d.id) && d.id !== "dlgSettings") window.__dlgCloseNow(d);
+  applyRoute(p).finally(() => { instantNav = false; });
 });
 // любое окно-экран открылось или закрылось — обновляем адрес
 if (ROUTER_ON) {
