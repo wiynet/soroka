@@ -14347,7 +14347,15 @@ function paintAiCredits(n) {
   $("aiBuyBtn").hidden = unl;
   if ($("sv_ai")) $("sv_ai").textContent = unl ? "∞" : nf.format(aiCredits);
 }
+// открыли окно ИИ — заранее «будим» функцию на сервере, пока человек печатает (не чаще раза в 3 минуты)
+let aiWokeAt = 0;
+function aiWake() {
+  if (Date.now() - aiWokeAt < 180000) return;
+  aiWokeAt = Date.now();
+  fetch(SUPABASE_URL + "/functions/v1/ai", { method: "OPTIONS" }).catch(() => {});
+}
 async function openAiPage() {
+  aiWake();
   if (!$("dlgAi").open) $("dlgAi").showModal();
   $("aiApp").classList.remove("side-open");
   aiPaintEffort(true);
