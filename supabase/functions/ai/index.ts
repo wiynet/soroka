@@ -70,7 +70,7 @@ async function listAll(k: string) {
 // Mestario AI 3.0 — самая умная (Gemini Pro), 2.5 — Gemini Flash, 2.0 — Flash-Lite, 1.5 — большая Gemma, 1.0 — лёгкая Gemma.
 // Если модель уровня недоступна (нет в ключе, лимит), берём следующую ниже — никогда не выше.
 const TIERS: string[] = ["m30", "m25", "m20", "m15", "m10"];
-const TIER_NAME: Record<string, string> = { m30: "Mestario AI 3.0", m25: "Mestario AI 2.5", m20: "Mestario AI 2.0", m15: "Mestario AI 1.5", m10: "Mestario AI 1.0", photos: "Mestario Photos" };
+const TIER_NAME: Record<string, string> = { m30: "Mestario AI 3.0", m25: "Mestario AI 2.5", m20: "Mestario AI 2.0", m15: "Mestario AI 1.5", m10: "Mestario AI 1.0", photos: "Mestario Photos 1", photos2: "Mestario Photos 2" };
 function tierGroups(all: string[]) {
   const ver = (n: string) => Number((/(?:gemini|gemma)-(\d+(?:\.\d+)?)/.exec(n) || [])[1] || 0);
   const pick = (re: RegExp, latest?: string) => {
@@ -98,6 +98,7 @@ async function tierModels(k: string, tier: string) {
   return out;
 }
 type Turn = { role: "user" | "model"; text: string };
+const isPrem = (p: any) => !!(p && (p.is_admin || (p.premium_until && new Date(p.premium_until).getTime() > Date.now())));
 // «гонка» моделей: не ждём зависшую модель до таймаута — если первая не начала отвечать за delay мс,
 // параллельно запускаем следующую (до 3 одновременно). Кто первым выдал текст — тот и отвечает, остальные отменяются.
 // Отказ (лимит, перегрузка) сразу запускает следующую модель.
@@ -328,50 +329,59 @@ async function toEnglish(prompt: string) {
 // Cloudflare Workers AI, FLUX.2 [klein] 4B: бесплатно ~95 картинок 1024×1024 в сутки (10 000 «нейронов», сброс в 00:00 UTC).
 // Токен и номер аккаунта — только в секретах функции (CF_AI_TOKEN, CF_ACCOUNT_ID), в коде и в базе их нет.
 let cfBlockedUntil = 0;
-async function cloudflareImage(en: string) {
+// klein — FLUX.2 [klein] 4B (Mestario Photos 2, ~104 «нейрона» за картинку); schnell — FLUX.1 [schnell] (Photos 1, ~58)
+async function cloudflareImage(en: string, which: "klein" | "schnell" = "klein") {
   const token = Deno.env.get("CF_AI_TOKEN") || "", acc = Deno.env.get("CF_ACCOUNT_ID") || "";
-  if (!token || !acc) return { ok: false, status: 0, model: "cloudflare", err: "not configured" };
-  if (Date.now() < cfBlockedUntil) return { ok: false, status: 429, model: "cloudflare", err: "daily limit" };
-  const form = new FormData();
-  form.append("prompt", en.slice(0, 2000));
-  form.append("width", "1024");
-  form.append("height", "1024");
+  const model = which === "klein" ? "flux-2-klein" : "flux-1-schnell";
+  if (!token || !acc) return { ok: false, status: 0, model, err: "not configured" };
+  if (Date.now() < cfBlockedUntil) return { ok: false, status: 429, model, err: "daily limit" };
+  let init: RequestInit;
+  if (which === "klein") {
+    const form = new FormData();
+    form.append("prompt", en.slice(0, 2000));
+    form.append("width", "1024");
+    form.append("height", "1024");
+    init = { method: "POST", headers: { Authorization: "Bearer " + token }, body: form };
+  } else init = { method: "POST", headers: { Authorization: "Bearer " + token, "content-type": "application/json" }, body: JSON.stringify({ prompt: en.slice(0, 2000), steps: 4 }) };
   try {
-    const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${acc}/ai/run/@cf/black-forest-labs/flux-2-klein-4b`,
-      { method: "POST", headers: { Authorization: "Bearer " + token }, body: form }, 60000);
+    const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${acc}/ai/run/@cf/black-forest-labs/${which === "klein" ? "flux-2-klein-4b" : "flux-1-schnell"}`, init, 60000);
     const ct = (r.headers.get("content-type") || "").split(";")[0];
     if (r.ok && ct.startsWith("image/")) {
       const bytes = new Uint8Array(await r.arrayBuffer());
-      return bytes.length > 1000 ? { ok: true, model: "flux-2-klein", mime: ct, bytes, text: "" } : { ok: false, status: 502, model: "cloudflare", err: "tiny image" };
+      return bytes.length > 1000 ? { ok: true, model, mime: ct, bytes, text: "" } : { ok: false, status: 502, model, err: "tiny image" };
     }
     const j: any = await r.json().catch(() => ({}));
     const b = j?.result?.image || j?.image;
     if (r.ok && b) {
       const bytes = Uint8Array.from(atob(String(b)), (ch) => ch.charCodeAt(0));
       const mime = bytes[0] === 0x89 ? "image/png" : bytes[0] === 0xff ? "image/jpeg" : "image/webp";
-      return { ok: true, model: "flux-2-klein", mime, bytes, text: "" };
+      return { ok: true, model, mime, bytes, text: "" };
     }
     const err = JSON.stringify(j?.errors || j).slice(0, 300);
     // дневной бесплатный лимит кончился — не дёргаем Cloudflare до полуночи по UTC
     if (r.status === 429 || /neuron|allocation|quota|limit/i.test(err)) {
       const d = new Date(); d.setUTCHours(24, 0, 0, 0); cfBlockedUntil = d.getTime();
     } else if (r.status === 401 || r.status === 403) cfBlockedUntil = Date.now() + 10 * 60_000;
-    return { ok: false, status: r.status, model: "cloudflare", err };
+    return { ok: false, status: r.status, model, err };
   } catch (e) {
-    return { ok: false, status: 504, model: "cloudflare", err: String(e).slice(0, 200) };
+    return { ok: false, status: 504, model, err: String(e).slice(0, 200) };
   }
 }
-async function makeImage(prompt: string, english = false) {
+// v2 — Mestario Photos 2 (премиум): FLUX.2 klein, при сбое — FLUX.1; без премиума — сразу FLUX.1 (Photos 1)
+async function makeImage(prompt: string, english = false, v2 = false) {
   const k = await key();
   let last: any = { ok: false, err: "no model" };
-  // сначала бесплатный FLUX.2 klein на Cloudflare; промпт переводим один раз — пригодится и запасной рисовалке
+  // промпт переводим один раз — пригодится и запасной рисовалке
   let en = english ? prompt : "";
-  if (Deno.env.get("CF_AI_TOKEN") && Deno.env.get("CF_ACCOUNT_ID") && Date.now() >= cfBlockedUntil) {
-    en = en || await toEnglish(prompt);
-    const cf = await cloudflareImage(en);
-    if (cf.ok) return cf;
-    console.error("cloudflare image", cf.status, cf.err);
-    last = cf;
+  if (Deno.env.get("CF_AI_TOKEN") && Deno.env.get("CF_ACCOUNT_ID")) {
+    for (const which of (v2 ? ["klein", "schnell"] : ["schnell"]) as ("klein" | "schnell")[]) {
+      if (Date.now() < cfBlockedUntil) break;
+      en = en || await toEnglish(prompt);
+      const cf = await cloudflareImage(en, which);
+      if (cf.ok) return cf;
+      console.error("cloudflare image", which, cf.status, cf.err);
+      last = cf;
+    }
   }
   for (const model of Date.now() < geminiImgBlockedUntil ? [] : (await pickImageModels(k)).slice(0, 2)) {
     const r = await fetch(`${GL}/models/${model}:generateContent`, {
@@ -541,7 +551,7 @@ async function botReply(messageId: number) {
   const say = (body: string) => sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: body.slice(0, 4000) });
 
   const [{ data: u }, bal, { data: hist }] = await Promise.all([
-    sb.from("profiles").select("is_admin,banned_at,deleted_at").eq("id", m.sender_id).maybeSingle(),
+    sb.from("profiles").select("is_admin,banned_at,deleted_at,premium_until").eq("id", m.sender_id).maybeSingle(),
     sb.rpc("ai_balance", { p_user: m.sender_id }),
     sb.from("messages").select("id,sender_id,body,voice_secs,video_secs").eq("chat_id", m.chat_id).is("deleted_at", null)
       .lte("id", m.id).order("id", { ascending: false }).limit(14),
@@ -614,7 +624,7 @@ async function botReply(messageId: number) {
     if (mk) { imagePrompt = mk[1].trim(); english = true; }
   }
   if (imagePrompt) {
-    const im = await makeImage(imagePrompt, english);
+    const im = await makeImage(imagePrompt, english, isPrem(u));
     const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
     if (!im.ok) {
       console.error("image failed", im.model, im.status, im.err);
@@ -909,19 +919,23 @@ async function streamContents(k: string, model: string, contents: Content[], eff
 async function aiChat(req: Request, input: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const effort = input.effort === "max" ? "high" : EFFORTS.includes(input.effort) ? input.effort : "medium";
-  const tier = input.model === "photos" || TIERS.includes(input.model) ? String(input.model) : "m25";
+  let tier = input.model === "photos" || input.model === "photos2" || TIERS.includes(input.model) ? String(input.model) : "m25";
+  const photoTier = (t: string) => t === "photos" || t === "photos2";
   // всё, что не зависит друг от друга, — параллельно: каждая очередь к базе — это задержка перед ответом
   const [{ data: au }, k] = await Promise.all([sb.auth.getUser(jwt), key()]);
   const uid = au?.user?.id;
   if (!uid) return reply({ error: "auth" }, 401);
   if (!k) return reply({ error: "not configured" }, 503);
-  const listP = tierModels(k, tier === "photos" ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
+  const listP = tierModels(k, photoTier(tier) ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
   const [{ data: p }, { data: chat }, bal] = await Promise.all([
-    sb.from("profiles").select("banned_at,deleted_at,is_admin").eq("id", uid).maybeSingle(),
+    sb.from("profiles").select("banned_at,deleted_at,is_admin,premium_until").eq("id", uid).maybeSingle(),
     sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle(),
     sb.rpc("ai_balance", { p_user: uid })]);
   if (!p || p.banned_at || p.deleted_at) return reply({ error: "not allowed" }, 403);
   if (!chat || chat.user_id !== uid) return reply({ error: "not found" }, 404);
+  // Photos 2 — только с премиумом (проверяем здесь, а не в приложении); без него рисует Photos 1
+  const prem = isPrem(p);
+  if (tier === "photos2" && !prem) tier = "photos";
   const text = String(input.text ?? "").trim().slice(0, 8000);
   const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
     .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
@@ -971,7 +985,7 @@ async function aiChat(req: Request, input: any) {
         while (contents.length && contents[0].role === "model") contents.shift();
 
         let answer = "", imagePrompt = "", english = false, hidden = false, used = tier;
-        if (tier === "photos" && text) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
+        if (photoTier(tier) && text) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
         else if (wantsImage(text) && !imgs.length) imagePrompt = text.replace(/^\s*\/(img|image)\s*/i, "");
         else {
           let res: any = null, sent = "", held = "";
@@ -1006,9 +1020,11 @@ async function aiChat(req: Request, input: any) {
         }
         const images: string[] = [];
         if (imagePrompt) {
-          used = "photos";
+          // выбрали Photos 1 — рисует FLUX.1; иначе (Photos 2 или картинка из обычного чата) — FLUX.2 для премиума
+          const v2 = prem && tier !== "photos";
+          used = v2 ? "photos2" : "photos";
           out({ drawing: true });
-          const im = await makeImage(imagePrompt, english);
+          const im = await makeImage(imagePrompt, english, v2);
           if (!im.ok) return await fail(im.status === 429 ? "busy" : "image");
           const ext = String(im.mime).includes("jpeg") ? "jpg" : String(im.mime).includes("webp") ? "webp" : "png";
           const path = `${uid}/gen-${crypto.randomUUID()}.${ext}`;
@@ -1135,7 +1151,7 @@ Deno.serve(async (req) => {
         }
         return reply(res);
       }
-      if (input.image) { const im = await makeImage(String(input.image)); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
+      if (input.image) { const im = await makeImage(String(input.image), false, !!input.v2); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");
       return reply({ ok: r.ok, model: r.model, vertex: r.vertex, status: r.status, text: r.text, err: r.err, models: models?.slice(0, 5) });
     }

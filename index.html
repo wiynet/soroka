@@ -1922,6 +1922,9 @@ button.aip-btn:active { transform: scale(.9); }
 .aip-o[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .aip-o b { display: block; font-size: 13.5px; font-weight: 650; }
 .aip-o small { display: block; margin-top: 1px; font-size: 11.5px; color: var(--muted); }
+.aip-prem { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .02em; vertical-align: 1px; color: #fff; background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+.aip-o.lock { opacity: .62; }
+.aip-o.lock svg { visibility: hidden; }
 .aip-o svg { width: 18px; height: 18px; color: var(--accent); opacity: 0; transform: scale(.6); transition: opacity .2s, transform .25s cubic-bezier(.2, .9, .25, 1.4); }
 .aip-o[aria-checked="true"] svg { opacity: 1; transform: none; }
 .aip-sep { height: 1px; margin: 5px 6px; background: var(--line); }
@@ -3232,7 +3235,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=1bc1a24226"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=95235ca613"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -14337,8 +14340,14 @@ const AI_MODELS = [
   { k: "m15", t: "Mestario AI 1.5", s: "AI 1.5", d: T("Лёгкая") },
   { k: "m10", t: "Mestario AI 1.0", s: "AI 1.0", d: T("Самая простая") },
 ];
-const AI_PHOTOS = { k: "photos", t: "Mestario Photos", s: "Photos", d: T("Рисует картинки по описанию") };
-const aiModelOf = (k) => AI_MODELS.find((m) => m.k === k) || (k === "photos" ? AI_PHOTOS : AI_MODELS[1]);
+// рисовалки: Photos 2 (FLUX.2) — с премиумом, Photos 1 (FLUX.1) — для всех; сервер проверяет премиум сам
+const AI_PHOTOS = [
+  { k: "photos2", t: "Mestario Photos 2", s: "Photos 2", d: T("Лучшее качество и детали"), prem: true },
+  { k: "photos", t: "Mestario Photos 1", s: "Photos 1", d: T("Быстро рисует по описанию") },
+];
+const isPhotos = (k) => k === "photos" || k === "photos2";
+const aiPremOK = () => isPremium(state.profile) || !!state.isAdmin;
+const aiModelOf = (k) => AI_MODELS.find((m) => m.k === k) || AI_PHOTOS.find((m) => m.k === k) || AI_MODELS[1];
 const AI_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function paintAiCredits(n) {
   aiCredits = Math.max(0, Number(n) || 0);
@@ -14553,10 +14562,11 @@ $("aiCard").addEventListener("mousedown", (e) => {
 });
 // чип в поле ввода: «AI 2.5 · Лёгкое»
 function aiPaintEffort(now) {
+  if (AI.model === "photos2" && state.profile && !aiPremOK()) AI.model = "photos";   // премиум закончился — Photos 1
   const w = $("aiEffortW"), from = w.offsetWidth, m = aiModelOf(AI.model);
   $("aiEffortT").remove();
-  w.append(h("span", { id: "aiEffortT" }, h("b", {}, m.s), AI.model === "photos" ? null : h("span", { class: "lv" }, " · " + AI_EFF[AI.effort].t)));
-  $("aiEffort").title = m.t + (AI.model === "photos" ? "" : " · " + AI_EFF[AI.effort].t);
+  w.append(h("span", { id: "aiEffortT" }, h("b", {}, m.s), isPhotos(AI.model) ? null : h("span", { class: "lv" }, " · " + AI_EFF[AI.effort].t)));
+  $("aiEffort").title = m.t + (isPhotos(AI.model) ? "" : " · " + AI_EFF[AI.effort].t);
   if (now || !from) { w.style.width = ""; return; }
   w.style.width = "auto"; const to = w.offsetWidth;
   w.style.width = from + "px"; void w.offsetWidth; w.style.width = to + "px";
@@ -14583,13 +14593,13 @@ function aipSwap(build, dir) {
   setTimeout(() => { body.style.height = ""; }, 280);
 }
 function aipEffView() {
-  const m = aiModelOf(AI.model), photos = AI.model === "photos";
+  const m = aiModelOf(AI.model), photos = isPhotos(AI.model);
   $("aiPick").dataset.l = photos ? "" : String(AI.effort);
   const lvl = h("b", { class: "aip-lvl", id: "aipLvl" }, photos ? m.t : AI_EFF[AI.effort].t);
   const mdl = h("button", { class: "aip-mdl", type: "button", onclick: () => { aipView = "mod"; aipSwap(aipModView, 1); } }, photos ? T("Сменить модель") : m.t, aipSvg(AIP_NEXT));
   const rst = h("button", { class: "aip-btn", type: "button", title: T("Сбросить"), "aria-label": T("Сбросить"), onclick: () => { AI.model = "m25"; AI.effort = 0; aiSavePick(); aiPaintEffort(); aipSwap(aipEffView, -1); } }, aipSvg(AIP_RESET));
   const head = h("div", { class: "aip-head" }, h("span", { class: "aip-btn ic", "aria-hidden": "true" }, aipSvg(photos ? AIP_PIC : AIP_SPARK)), h("div", { class: "aip-mid" }, lvl, mdl), rst);
-  if (photos) return h("div", { class: "aip-v" }, head, h("div", { class: "aip-note" }, T("Опишите картинку словами — Mestario Photos нарисует её. Кредит — секунда работы.")));
+  if (photos) return h("div", { class: "aip-v" }, head, h("div", { class: "aip-note" }, T("Опишите картинку словами — ") + m.t + T(" нарисует её. Кредит — секунда работы.")));
   const sl = h("div", { class: "aip-sl", id: "aipSl", role: "slider", tabindex: "0", "aria-label": T("Усилие"), "aria-valuemin": "0", "aria-valuemax": "4" },
     h("span", { class: "aip-fill" }), h("span", { class: "aip-dots", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i")), h("span", { class: "aip-th" }));
   aipSet(sl, AI.effort, false);
@@ -14619,12 +14629,18 @@ function aipLive(sl, p) {
 }
 function aipPick(sl, i) { AI.effort = i; aipSet(sl, i, true); aiSavePick(); aiPaintEffort(); }
 function aipModView() {
-  const opt = (m) => h("button", { class: "aip-o", type: "button", role: "menuitemradio", "aria-checked": String(AI.model === m.k),
-    onclick: () => { AI.model = m.k; aiSavePick(); aiPaintEffort(); aipView = "eff"; aipSwap(aipEffView, -1); } },
-    h("span", {}, h("b", {}, m.t), h("small", {}, m.d)), aipSvg(AIP_CHECK));
+  const opt = (m) => {
+    const lock = m.prem && !aiPremOK();
+    return h("button", { class: "aip-o" + (lock ? " lock" : ""), type: "button", role: "menuitemradio", "aria-checked": String(AI.model === m.k), "aria-disabled": lock ? "true" : null,
+      onclick: () => {
+        if (lock) { toast(m.t + T(" доступна с Premium. Без него рисует ") + AI_PHOTOS[1].t + "."); return; }
+        AI.model = m.k; aiSavePick(); aiPaintEffort(); aipView = "eff"; aipSwap(aipEffView, -1);
+      } },
+      h("span", {}, h("b", {}, m.t, m.prem ? h("i", { class: "aip-prem" }, "Premium") : null), h("small", {}, m.d)), aipSvg(AIP_CHECK));
+  };
   return h("div", { class: "aip-v" },
     h("div", { class: "aip-mh" }, h("button", { class: "aip-btn", type: "button", "aria-label": T("Назад"), onclick: () => { aipView = "eff"; aipSwap(aipEffView, -1); } }, aipSvg(AIP_BACK)), h("span", {}, T("Выбрать модель"))),
-    h("div", { class: "aip-list", role: "menu" }, ...AI_MODELS.map(opt), h("div", { class: "aip-sep" }), opt(AI_PHOTOS)));
+    h("div", { class: "aip-list", role: "menu" }, ...AI_MODELS.map(opt), h("div", { class: "aip-sep" }), ...AI_PHOTOS.map(opt)));
 }
 function aipOpen() {
   const el = $("aiPick");
@@ -14656,7 +14672,7 @@ try {
   const v = localStorage.getItem("mestario.aiEffort3") ?? localStorage.getItem("mestario.aiEffort2");
   if (v != null && /^[0-4]$/.test(v)) AI.effort = Number(v);
   const mk = localStorage.getItem("mestario.aiModel");
-  if (mk && (mk === "photos" || AI_MODELS.some((m) => m.k === mk))) AI.model = mk;
+  if (mk && (isPhotos(mk) || AI_MODELS.some((m) => m.k === mk))) AI.model = mk;
 } catch (e) {}
 // вложения: до 6 картинок
 $("aiAdd").addEventListener("mousedown", (e) => e.preventDefault());
