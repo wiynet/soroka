@@ -227,7 +227,7 @@ const MODELS = {
     const cap = buildCap({ visorMat: vmat }); scene.add(cap);
     const pl = new THREE.PointLight(0xffffff, 0, .9, 1.4); scene.add(pl);
     return { scene, cam, dur: 6, update(t) {
-      cap.rotation.y = -.15 + .55 * Math.sin(t / 6 * TAU);
+      cap.rotation.y = -.15 + .3 * Math.sin(t / 6 * TAU);
       cap.updateMatrixWorld(true); const k = (t % 2) / 2, P = cap.userData.visorP, p = P(-1 + 2 * k, .6, .14).applyMatrix4(cap.matrixWorld);
       pl.position.copy(p); pl.intensity = 3.2 * Math.sin(Math.PI * k);
     } };
@@ -339,11 +339,11 @@ const MODELS = {
   },
   // 8. сетчатая задняя часть «дышит» волнами на ветерке
   mesh() {
-    const { scene, cam } = baseScene({ camAz: 1.6, camEl: .3 });
+    const { scene, cam } = baseScene({ camAz: 1.25, camEl: .3 });
     const meshMat = new THREE.MeshPhysicalMaterial({ color: 0x1b1d22, roughness: .7, alphaMap: meshAlpha(), alphaTest: .5, side: THREE.DoubleSide, sheen: .4 });
     const cap = buildCap({ backFabric: meshMat }); scene.add(cap);
     const back = cap.userData.back, pos = back.geometry.attributes.position, base = pos.array.slice();
-    cap.rotation.y = -.55;
+    cap.rotation.y = -.2;
     return { scene, cam, dur: 3, update(t) {
       for (let i = 0; i < pos.count; i++) {
         const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], len = Math.hypot(x, y / SY, z / SZ) || 1;
@@ -351,7 +351,7 @@ const MODELS = {
         pos.setXYZ(i, x * w, y * w, z * w);
       }
       pos.needsUpdate = true; back.geometry.computeVertexNormals();
-      cap.rotation.z = .025 * Math.sin(t / 3 * TAU); cap.rotation.y = -.55 + .06 * Math.sin(t / 3 * TAU);
+      cap.rotation.z = .02 * Math.sin(t / 3 * TAU); cap.rotation.y = -.2 + .05 * Math.sin(t / 3 * TAU);
     } };
   },
   // 9. скейт: длинный прямой козырёк, невысокий прыжок с наклоном и мягкое приземление
@@ -529,7 +529,7 @@ const MODELS = {
       g.fillStyle = "rgba(255,255,255,.12)"; for (let y = 0; y < h; y += 6) g.fillRect(0, y, w, 2);
     }, null, true);
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.42, .28, 96, 1, true), new THREE.MeshBasicMaterial({ map: textTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: .95 }));
-    ring.position.set(0, 1.12, .2); scene.add(ring);
+    ring.position.set(0, 1.42, .2); scene.add(ring);
     const beam = sprite(glowTex("rgba(220,235,255,1)"), 0xffffff, 3.2, .25); beam.position.set(0, .7, -.4); scene.add(beam);
     const halo = new THREE.Mesh(crownGeo(0, TAU), new THREE.MeshBasicMaterial({ color: 0xe6eeff, transparent: true, opacity: .12, side: THREE.BackSide, depthWrite: false })); halo.scale.setScalar(1.08); cap.add(halo);
     return { scene, cam, dur: 6, update(t) {
