@@ -15382,12 +15382,23 @@ function chatStay(dx) {
   paneRun(mix(k), PANE_OPEN, 240, "cubic-bezier(.2,.9,.3,1)", paneStop);
 }
 // общий жест: палец ведёт вправо — экран едет за ним; отпустили дальше трети или резко — уходим назад
+// палец на ленте, которая листается вбок (папки, истории, вкладки, картинки, код, таблицы), — это прокрутка, а не «назад»
+function inHScroll(el, root) {
+  for (let n = el instanceof Element ? el : null; n && n !== root && n !== document.body; n = n.parentElement) {
+    if (n.scrollWidth > n.clientWidth + 2) { const ox = getComputedStyle(n).overflowX; if (ox === "auto" || ox === "scroll") return true; }
+  }
+  return false;
+}
 function swipeBack(target, o) {
   let x0 = 0, y0 = 0, lx = 0, lt = 0, v = 0, dx = 0, lock = -1;
   target.addEventListener("touchstart", (e) => {
     lock = -1;
     if (e.touches.length !== 1 || !o.can(e)) return;
     const p = e.touches[0];
+    if (o.edge && p.clientX > o.edge) return;                       // это окно закрывается только с края экрана
+    if (inHScroll(e.target, target)) return;
+    const sel = window.getSelection && window.getSelection();
+    if (sel && !sel.isCollapsed && String(sel).trim()) return;        // выделяют текст — не мешаем
     x0 = lx = p.clientX; y0 = p.clientY; lt = performance.now(); v = 0; dx = 0; lock = 0;
   }, { passive: true });
   target.addEventListener("touchmove", (e) => {
@@ -15404,7 +15415,8 @@ function swipeBack(target, o) {
     o.move(dx);
   }, { passive: false });
   const end = () => {
-    if (lock === 1) { const w = target.clientWidth || innerWidth; if (dx > w * 0.33 || v > 0.45) o.commit(dx); else o.cancel(dx); }
+    // уходим назад, только если палец действительно провели: больше трети экрана или резкий взмах не короче 80 px
+    if (lock === 1) { const w = target.clientWidth || innerWidth; if (dx > w * 0.33 || (v > 0.5 && dx > 80)) o.commit(dx); else o.cancel(dx); }
     lock = -1;
   };
   target.addEventListener("touchend", end);
@@ -15438,6 +15450,8 @@ swipeBack($("dlgSettings"), {
 // окна на весь экран (профиль, обсуждение поста): смахивание вправо закрывает
 for (const d of document.querySelectorAll("dialog.full:not(.story-view)")) {
   swipeBack(d, {
+    // окно ИИ — только от левого края: внутри много ползунков, кода и выделения текста, случайно закрывать его нельзя
+    edge: d.id === "dlgAi" ? 36 : 0,
     can: (e) => motionOK() && !e.target.closest(NO_SWIPE),
     start: () => { d.style.transition = "none"; },
     move: (dx) => { d.style.transform = "translateX(" + dx + "px)"; },
