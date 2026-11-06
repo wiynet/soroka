@@ -78,9 +78,12 @@ function tierGroups(all: string[]) {
     if (latest && all.includes(latest)) xs.push(latest);
     return xs.filter((n) => ver(n) >= 2.5 || n.startsWith("gemma") || n.endsWith("-latest"));
   };
+  // 3.0 — Pro (если у ключа есть квота), затем три самые новые Flash; 2.5 — Flash постарше
+  const flash = pick(/^gemini-[\d.]+-flash(-preview)?$/, "gemini-flash-latest");
+  const fresh = flash.filter((n) => !n.endsWith("-latest")).slice(0, 3);
   return {
-    m30: pick(/^gemini-[\d.]+-pro(-preview)?$/, "gemini-pro-latest"),
-    m25: pick(/^gemini-[\d.]+-flash(-preview)?$/, "gemini-flash-latest"),
+    m30: [...pick(/^gemini-[\d.]+-pro(-preview)?$/, "gemini-pro-latest"), ...fresh],
+    m25: flash.filter((n) => !fresh.includes(n)),
     m20: pick(/^gemini-[\d.]+-flash-lite(-preview)?$/, "gemini-flash-lite-latest"),
     m15: ["gemma-4-31b-it", "gemma-3-27b-it", "gemma-3-12b-it"].filter((n) => all.includes(n)),
     m10: ["gemma-4-26b-a4b-it", "gemma-3n-e4b-it", "gemma-3-4b-it"].filter((n) => all.includes(n)),
@@ -874,7 +877,9 @@ async function aiChat(req: Request, input: any) {
             if (res.ok) break;
             if (sent) break;   // часть ответа уже ушла — не начинаем заново
             if (res.status === 429) blocked.set(m, Date.now() + 30 * 60_000);
-            else if ([403, 404, 504].includes(res.status)) blocked.set(m, Date.now() + 10 * 60_000);
+            else if (res.status === 404) blocked.set(m, Date.now() + 6 * 3600_000);
+            else if ([403, 504].includes(res.status)) blocked.set(m, Date.now() + 10 * 60_000);
+            else if (res.status === 503 || res.status >= 500) blocked.set(m, Date.now() + 3 * 60_000);   // «перегружена» — ненадолго
           }
           if ((!res || !res.ok) && !sent && !imgs.length) {
             used = "m10";
@@ -995,10 +1000,18 @@ Deno.serve(async (req) => {
       if (input.tiers) {
         const k = await key(); const res: any[] = [];
         for (const t of TIERS) for (const eff of ["low", "high"]) {
-          const list = (await tierModels(k, t)).slice(0, 3);
-          const t0 = Date.now(); let r: any = null, used = "";
-          for (const x of list) { used = x.model; r = await streamContents(k, x.model, [{ role: "user", parts: [{ text: "Сколько будет 17*23? Ответь только числом." }] }], eff, () => {}); if (r.ok) break; }
-          res.push({ tier: t, eff, model: used, ok: !!r?.ok, status: r?.status, ms: Date.now() - t0, text: String(r?.text || "").slice(0, 40), err: r?.ok ? "" : String(r?.err || "").slice(0, 160) });
+          const list = (await tierModels(k, t)).filter((x) => (blocked.get(x.model) || 0) < Date.now()).slice(0, 6);
+          const t0 = Date.now(); let r: any = null, used = ""; const tried: string[] = [];
+          for (const x of list) {
+            used = x.model; const ts = Date.now();
+            r = await streamContents(k, x.model, [{ role: "user", parts: [{ text: "Сколько будет 17*23? Ответь только числом." }] }], eff, () => {});
+            tried.push(`${x.model}:${r.status}:${Date.now() - ts}ms`);
+            if (r.ok) break;
+            if (r.status === 429) blocked.set(x.model, Date.now() + 30 * 60_000);
+            else if (r.status === 404) blocked.set(x.model, Date.now() + 6 * 3600_000);
+            else if (r.status >= 500) blocked.set(x.model, Date.now() + 3 * 60_000);
+          }
+          res.push({ tier: t, eff, model: used, ok: !!r?.ok, ms: Date.now() - t0, text: String(r?.text || "").slice(0, 40), tried });
         }
         return reply(res);
       }
