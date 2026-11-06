@@ -220,14 +220,14 @@ const surfacePts = (n, seed, elMin = .15, elMax = 1.2, azMax = 2.4) => { const r
 /* ---------- 20 моделей ---------- */
 const MODELS = {
   dbg() { const D = window.DBG || {}; const { scene, cam } = baseScene({ camAz: D.az ?? 1.05, camEl: D.el ?? .32, camD: D.d ?? 7.6 }); const cap = buildCap(); scene.add(cap); return { scene, cam, dur: 1, update() {} }; },
-  // 1. медленный поворот на 360° и глянцевый блик по козырьку
+  // 1. плавное покачивание и глянцевый блик по козырьку
   classic() {
     const { scene, cam } = baseScene({ camD: 7.6 });
     const vmat = fabric(0x15161a, { extra: { clearcoat: .35, clearcoatRoughness: .35 } });
     const cap = buildCap({ visorMat: vmat }); scene.add(cap);
     const pl = new THREE.PointLight(0xffffff, 0, .9, 1.4); scene.add(pl);
     return { scene, cam, dur: 6, update(t) {
-      cap.rotation.y = -t / 6 * TAU;
+      cap.rotation.y = -.15 + .55 * Math.sin(t / 6 * TAU);
       cap.updateMatrixWorld(true); const k = (t % 2) / 2, P = cap.userData.visorP, p = P(-1 + 2 * k, .6, .14).applyMatrix4(cap.matrixWorld);
       pl.position.copy(p); pl.intensity = 3.2 * Math.sin(Math.PI * k);
     } };
@@ -240,11 +240,11 @@ const MODELS = {
     const nm = new THREE.MeshBasicMaterial({ color: 0x8fc4ff }); cap.add(new THREE.Mesh(tubeAlong(pts, .016, 160), nm));
     const glow = new THREE.MeshBasicMaterial({ color: 0x3d7bff, transparent: true, opacity: .4, depthWrite: false });
     cap.add(new THREE.Mesh(tubeAlong(pts, .05, 160), glow));
-    const lg = new THREE.Mesh(new THREE.TubeGeometry(cap.userData.logo.userData.curve, 200, .12, 12, false), glow.clone()); cap.add(lg);
+    const lg = new THREE.Mesh(new THREE.TubeGeometry(cap.userData.logo.userData.curve, 200, .07, 12, false), glow.clone()); cap.add(lg);
     cap.rotation.y = -.15;
     return { scene, cam, dur: 1.6, update(t) {
       const b = .25 + .75 * Math.max(pulse(t, .2, .07), .8 * pulse(t, .55, .07));
-      lm.emissiveIntensity = .4 + 2.6 * b; nm.color.setHSL(.6, 1, .55 + .3 * b); glow.opacity = .1 + .45 * b; lg.material.opacity = .06 + .32 * b;
+      lm.emissiveIntensity = .5 + 1.4 * b; nm.color.setHSL(.6, 1, .55 + .25 * b); glow.opacity = .1 + .35 * b; lg.material.opacity = .04 + .12 * b;
       cap.position.y = .02 * Math.sin(t / 1.6 * TAU);
     } };
   },
@@ -257,7 +257,7 @@ const MODELS = {
     const r = rng(7), ph = pts.map(() => r());
     return { scene, cam, dur: 4, update(t) {
       const tilt = Math.sin(t / 4 * TAU); cap.rotation.set(.12 * tilt, -.2 + .35 * tilt, .05 * tilt);
-      sps.forEach((s, i) => { const k = Math.max(0, Math.sin((t / 4 + ph[i]) * TAU * 2)) * clamp01(Math.abs(tilt) * 1.4); s.material.opacity = k; s.scale.setScalar(.04 + .1 * k); });
+      sps.forEach((s, i) => { const k = Math.max(0, Math.sin((t / 4 + ph[i]) * TAU * 2)) * clamp01(Math.abs(tilt) * 1.4); s.material.opacity = k; s.scale.setScalar(.03 + .06 * k); });
     } };
   },
   // 4. киберпанк: ремешки и пряжки, по ним бегут искры тока, логотип мигает
@@ -285,7 +285,7 @@ const MODELS = {
     cap.rotation.y = -.25;
     return { scene, cam, dur: 2.4, update(t) {
       const blink = (t > 1.5 && t < 1.58) || (t > 1.68 && t < 1.76);
-      lm.emissiveIntensity = blink ? 3.5 : .55;
+      lm.emissiveIntensity = blink ? 1.9 : .55;
       bolts.forEach((b, i) => {
         const on = ((t * 5 + b.ph * 7) % 1) < .35; b.line.visible = on;
         if (!on) return;
@@ -306,7 +306,7 @@ const MODELS = {
     cap.rotation.y = -.15;
     return { scene, cam, dur: 4, update(t) {
       const f = pulse(t, 2.4, .12); dark.material.opacity = .45 + .4 * pulse(t, 2.2, .7);
-      lm.emissiveIntensity = .2 + 5 * f; flare.material.opacity = .9 * f; flare.scale.setScalar(.6 + .8 * f);
+      lm.emissiveIntensity = .2 + 2.2 * f; flare.material.opacity = .3 * f; flare.scale.setScalar(.4 + .3 * f);
     } };
   },
   // 6. золото: вокруг кружатся золотые пылинки, логотип переливается из синего в золото
@@ -315,26 +315,26 @@ const MODELS = {
     const lm = logoMat({ metalness: .2 }); const cap = buildCap({ logoMat: lm }); scene.add(cap);
     const blue = new THREE.Color(0x3f86ff), gold = new THREE.Color(0xf4c542);
     const tex = glowTex("rgba(255,215,110,1)"), r = rng(8), dust = [];
-    for (let i = 0; i < 46; i++) { const s = sprite(tex, 0xffe08a, .05 + r() * .06, 1); scene.add(s); dust.push({ s, a: r() * TAU, rad: 1.5 + r() * .6, y: .1 + r() * 1.1, sp: .6 + r() * .6, ph: r() }); }
+    for (let i = 0; i < 46; i++) { const s = sprite(tex, 0xffe08a, .03 + r() * .04, 1); scene.add(s); dust.push({ s, a: r() * TAU, rad: 1.5 + r() * .6, y: .1 + r() * 1.1, sp: .6 + r() * .6, ph: r() }); }
     cap.rotation.y = -.15;
     return { scene, cam, dur: 5, update(t) {
       const k = (Math.sin(t / 5 * TAU - Math.PI / 2) + 1) / 2;
       lm.color.copy(blue).lerp(gold, k); lm.metalness = .2 + .8 * k; lm.roughness = .32 - .14 * k; lm.emissive.set(0x0b2a80).lerp(new THREE.Color(0x4a3300), k);
-      dust.forEach((d) => { const a = d.a + t / 5 * TAU * d.sp; d.s.position.set(Math.sin(a) * d.rad, d.y + .12 * Math.sin(a * 2), Math.cos(a) * d.rad * .8 + .3); d.s.material.opacity = .4 + .6 * Math.abs(Math.sin((t + d.ph * 5) * 3)); });
+      dust.forEach((d) => { const a = d.a + t / 5 * TAU * d.sp; d.s.position.set(Math.sin(a) * d.rad, d.y + .12 * Math.sin(a * 2), Math.cos(a) * d.rad * .8 + .3); const front = clamp01((d.s.position.z - .6) / .8) * clamp01(1 - Math.abs(d.s.position.x) / 1.1); d.s.material.opacity = (.3 + .4 * Math.abs(Math.sin((t + d.ph * 5) * 3))) * (1 - .85 * front); });
     } };
   },
-  // 7. голографический логотип: цвета радуги (синий держится дольше), рассыпается на пиксели
+  // 7. голографический логотип: цвета радуги (синий держится дольше), рядом искрят пиксели
   holo() {
     const { scene, cam } = baseScene();
     const lm = logoMat({ iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessRange: [200, 700], roughness: .15, metalness: .3 });
     const cap = buildCap({ logoMat: lm }); scene.add(cap);
     const curve = cap.userData.logo.userData.curve, r = rng(17), px = [], cols = [0x5ff2ff, 0xb98cff, 0x4f8dff, 0x7dffcb, 0xff9ef0];
-    for (let i = 0; i < 70; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.035, .035, .035), new THREE.MeshBasicMaterial({ color: cols[i % 5], transparent: true })); cap.add(m); px.push({ m, u: r(), d: new THREE.Vector3(r() - .5, r() * .8 - .2, r() * .9).normalize(), ph: r() }); }
+    for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.025, .025, .025), new THREE.MeshBasicMaterial({ color: cols[i % 5], transparent: true })); cap.add(m); px.push({ m, u: r(), d: new THREE.Vector3(r() - .5, r() * .8 - .2, r() * .9).normalize(), ph: r() }); }
     cap.rotation.y = -.15;
     return { scene, cam, dur: 4, update(t) {
       const h = ((t / 4) + .6 * Math.sin(t / 4 * TAU) * .25) % 1; lm.color.setHSL((.62 + Math.sin(t / 4 * TAU) * .5 + 1) % 1, .85, .58); lm.iridescenceThicknessRange = [200 + 300 * h, 700 + 300 * h];
       px.forEach((p) => { const k = ((t / 4) * 2 + p.ph) % 1, e = k < .6 ? 0 : (k - .6) / .4, base = curve.getPointAt(p.u);
-        p.m.position.copy(base).addScaledVector(p.d, e * .9); p.m.material.opacity = k < .6 ? 0 : 1 - e; p.m.rotation.set(e * 4, e * 3, 0); });
+        p.m.position.copy(base).addScaledVector(p.d, .04 + e * .16); p.m.material.opacity = k < .6 ? 0 : .8 * (1 - e); p.m.rotation.set(e * 2, e * 1.5, 0); });
     } };
   },
   // 8. сетчатая задняя часть «дышит» волнами на ветерке
@@ -347,22 +347,22 @@ const MODELS = {
     return { scene, cam, dur: 3, update(t) {
       for (let i = 0; i < pos.count; i++) {
         const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], len = Math.hypot(x, y / SY, z / SZ) || 1;
-        const w = 1 + .035 * Math.sin(t / 3 * TAU * 2 - y * 6 - x * 3) * Math.min(1, y * 3);
+        const w = 1 + .012 * Math.sin(t / 3 * TAU * 2 - y * 6 - x * 3) * Math.min(1, y * 3);
         pos.setXYZ(i, x * w, y * w, z * w);
       }
       pos.needsUpdate = true; back.geometry.computeVertexNormals();
       cap.rotation.z = .025 * Math.sin(t / 3 * TAU); cap.rotation.y = -.55 + .06 * Math.sin(t / 3 * TAU);
     } };
   },
-  // 9. скейт: длинный прямой козырёк, прыжок с кикфлипом и приземление
+  // 9. скейт: длинный прямой козырёк, невысокий прыжок с наклоном и мягкое приземление
   rider() {
     const { scene, cam, shadow } = baseScene({ camD: 8.4, lookY: .62 });
     const cap = buildCap({ visor: { L: 1.3, droop: .02, side: .015 } }); const piv = new THREE.Group(); piv.add(cap); cap.position.set(0, -.4, -.3); piv.position.set(0, .4, .3); scene.add(piv);
     return { scene, cam, dur: 3, update(t) {
       const k = t / 3; let y = 0, flip = 0, sq = 1;
-      if (k > .2 && k < .62) { const u = (k - .2) / .42; y = .75 * Math.sin(Math.PI * u); flip = ease(u) * TAU; }
-      if (k >= .62 && k < .72) sq = 1 - .1 * Math.sin(Math.PI * (k - .62) / .1);
-      if (k > .12 && k <= .2) sq = 1 - .07 * Math.sin(Math.PI * (k - .12) / .08);
+      if (k > .2 && k < .62) { const u = (k - .2) / .42; y = .32 * Math.sin(Math.PI * u); flip = .22 * Math.sin(TAU * ease(u)); }
+      if (k >= .62 && k < .72) sq = 1 - .04 * Math.sin(Math.PI * (k - .62) / .1);
+      if (k > .12 && k <= .2) sq = 1 - .03 * Math.sin(Math.PI * (k - .12) / .08);
       piv.position.y = .4 + y; piv.rotation.set(0, -.2, 0); cap.rotation.set(flip * .0, 0, 0); piv.rotateX(0); piv.rotation.z = 0;
       piv.quaternion.setFromEuler(new THREE.Euler(0, -.2, 0)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), flip));
       piv.scale.set(1 + (1 - sq) * .6, sq, 1 + (1 - sq) * .6);
@@ -384,23 +384,23 @@ const MODELS = {
   // 11. кислотная вышивка: M «кипит» неоновой жидкостью изнутри наружу
   acid() {
     const { scene, cam } = baseScene({ rimColor: 0x29f0ff });
-    const lm = logoMat({ color: 0x19e6ff, emissive: 0x00c8ff, emissiveIntensity: 1.6, roughness: .15, clearcoat: 1 });
+    const lm = logoMat({ color: 0x19e6ff, emissive: 0x00b4ff, emissiveIntensity: .5, roughness: .15, clearcoat: 1 });
     const cap = buildCap({ logo: false }); scene.add(cap);
     const curve = logoMesh(lm).userData.curve, geo = new THREE.TubeGeometry(curve, 220, .07, 20, false), pos = geo.attributes.position, base = pos.array.slice(), nrm = geo.attributes.normal.array.slice();
     const mesh = new THREE.Mesh(geo, lm); cap.add(mesh);
     for (const p of [curve.getPointAt(0), curve.getPointAt(1)]) { const s = new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 12), lm); s.position.copy(p); cap.add(s); }
-    const glow = new THREE.Mesh(new THREE.TubeGeometry(curve, 200, .14, 12, false), new THREE.MeshBasicMaterial({ color: 0x19e6ff, transparent: true, opacity: .28, depthWrite: false })); cap.add(glow);
+    const glow = new THREE.Mesh(new THREE.TubeGeometry(curve, 200, .095, 12, false), new THREE.MeshBasicMaterial({ color: 0x19e6ff, transparent: true, opacity: .16, depthWrite: false })); cap.add(glow);
     const r = rng(2), bub = []; for (let i = 0; i < 30; i++) { const s = sprite(glowTex("rgba(200,255,255,1)"), 0xb8ffff, .05, 0); cap.add(s); bub.push({ s, u: r(), ph: r() }); }
     cap.rotation.y = -.15;
     return { scene, cam, dur: 2.4, update(t) {
       for (let i = 0; i < pos.count; i++) {
         const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
-        const d = .018 * (Math.sin(x * 40 + t * 9) + Math.sin(y * 37 - t * 7) + Math.sin(z * 31 + t * 11)) / 3 + .01;
+        const d = .006 * (Math.sin(x * 40 + t * 9) + Math.sin(y * 37 - t * 7) + Math.sin(z * 31 + t * 11)) / 3 + .01;
         pos.setXYZ(i, x + nrm[i * 3] * d, y + nrm[i * 3 + 1] * d, z + nrm[i * 3 + 2] * d);
       }
       pos.needsUpdate = true; geo.computeVertexNormals();
-      lm.emissiveIntensity = 1.4 + .6 * Math.sin(t / 2.4 * TAU * 2); glow.material.opacity = .18 + .14 * Math.sin(t / 2.4 * TAU * 2);
-      bub.forEach((b) => { const k = (t / 2.4 * 2 + b.ph) % 1, p = curve.getPointAt(b.u); b.s.position.copy(p).add(p.clone().normalize().multiplyScalar(.05 + k * .25)); b.s.material.opacity = Math.sin(Math.PI * k); b.s.scale.setScalar(.03 + .05 * k); });
+      lm.emissiveIntensity = .5 + .18 * Math.sin(t / 2.4 * TAU * 2); glow.material.opacity = .12 + .05 * Math.sin(t / 2.4 * TAU * 2);
+      bub.forEach((b) => { const k = (t / 2.4 * 2 + b.ph) % 1, p = curve.getPointAt(b.u); b.s.position.copy(p).add(p.clone().normalize().multiplyScalar(.05 + k * .25)); b.s.material.opacity = .7 * Math.sin(Math.PI * k); b.s.scale.setScalar(.025 + .03 * k); });
     } };
   },
   // 12. минимализм: крошечный логотип, спокойное парение в невесомости с синим ореолом
@@ -441,7 +441,7 @@ const MODELS = {
     return { scene, cam, dur: 4, update(t) {
       cap.rotation.y = -.15 + .55 * Math.sin(t / 4 * TAU);
       const glint = Math.pow(Math.abs(Math.cos(t / 4 * TAU)), 6); ti.envMapIntensity = 1 + 2.5 * glint;
-      sparks.forEach((s) => { const k = ((t / 4) * 2 + s.ph) % 1, on = k < .25; s.s.material.opacity = on ? (1 - k / .25) * (.4 + glint) : 0; s.s.position.copy(s.p).addScaledVector(s.d, k * 1.4); s.s.scale.setScalar(.06 * (1 - k)); });
+      sparks.forEach((s) => { const k = ((t / 4) * 2 + s.ph) % 1, on = k < .25; s.s.material.opacity = on ? (1 - k / .25) * (.4 + glint) : 0; s.s.position.copy(s.p).addScaledVector(s.d, k * .55); s.s.scale.setScalar(.06 * (1 - k)); });
     } };
   },
   // 15. глитч: изображение распадается на полосы и собирается (обработка кадра в 2D)
@@ -459,7 +459,7 @@ const MODELS = {
     for (let i = 0; i < 34; i++) {
       const land = i < 12, P = cap.userData.visorP;
       const target = land ? P(-.8 + r() * 1.6, .2 + r() * .7, .02) : null;
-      const s = sprite(tex, 0xffffff, .07 + r() * .06, .95); scene.add(s);
+      const s = sprite(tex, 0xffffff, .05 + r() * .045, .85); scene.add(s);
       fl.push({ s, land, target, x: land ? target.x : (r() - .5) * 3.4, z: land ? target.z : (r() - .5) * 2 + .4, ph: r(), sz: s.scale.x, dur: 2 + r() * 1.5 });
     }
     return { scene, cam, dur: 6, update(t) {
@@ -478,7 +478,7 @@ const MODELS = {
     const cap = buildCap({ fabric: refl, visorMat: refl }); scene.add(cap);
     return { scene, cam, dur: 4, update(t) {
       cap.rotation.y = -.15 + .7 * Math.sin(t / 4 * TAU);
-      const f = Math.max(pulse(t, 1, .1), pulse(t, 3, .1)); refl.emissiveIntensity = 1.4 * f; refl.envMapIntensity = 1 + 3 * f; scene.environmentIntensity = 1.2 + 1.5 * f;
+      const f = Math.max(pulse(t, 1, .1), pulse(t, 3, .1)); refl.emissiveIntensity = .55 * f; refl.envMapIntensity = 1 + 1.3 * f; scene.environmentIntensity = 1.2 + .6 * f;
     } };
   },
   // 18. над кепкой появляется и исчезает цифровая корона, логотип сидит величественно
@@ -512,11 +512,11 @@ const MODELS = {
     const caus = canvasTex(256, 256, (g, w, h) => { const r = rng(4); g.lineWidth = 1.2; for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(140,210,255,${.15 + r() * .35})`; g.beginPath(); const x = r() * w, y = r() * h; g.moveTo(x, y); for (let j = 0; j < 4; j++) g.quadraticCurveTo(x + (r() - .5) * 60, y + (r() - .5) * 60, x + (r() - .5) * 50, y + (r() - .5) * 50); g.stroke(); } }, [3, 2]);
     navy.emissiveMap = caus; navy.emissive = new THREE.Color(0x2a6fd0); navy.emissiveIntensity = .16;
     const tex = bubbleTex(), r = rng(19), bub = [];
-    for (let i = 0; i < 36; i++) { const s = sprite(tex, 0xffffff, .06 + r() * .1, 1); scene.add(s); bub.push({ s, x: (r() - .5) * 3.4, z: (r() - .5) * 2 + .5, ph: r(), sp: .7 + r() * .6 }); }
+    for (let i = 0; i < 36; i++) { const s = sprite(tex, 0xffffff, .04 + r() * .06, 1); scene.add(s); bub.push({ s, x: (r() - .5) * 3.4, z: (r() - .5) * 2 + .5, ph: r(), sp: .7 + r() * .6 }); }
     return { scene, cam, dur: 5, update(t) {
       const k = t / 5; cap.position.x = .05 * Math.sin(k * TAU); cap.rotation.set(.03 * Math.sin(k * TAU * 2), -.15 + .06 * Math.sin(k * TAU), .025 * Math.sin(k * TAU));
       caus.offset.set(k, k * .5);
-      bub.forEach((b) => { const u = (k * b.sp + b.ph) % 1; b.s.position.set(b.x + .12 * Math.sin(u * 12 + b.ph * 6), -.4 + u * 2.9, b.z); b.s.material.opacity = Math.sin(Math.PI * u); });
+      bub.forEach((b) => { const u = (k * b.sp + b.ph) % 1; b.s.position.set(b.x + .12 * Math.sin(u * 12 + b.ph * 6), -.4 + u * 2.9, b.z); b.s.material.opacity = .75 * Math.sin(Math.PI * u); });
     } };
   },
   // 20. FOUNDER 2026: голографическая надпись вокруг кепки и платиновое свечение
@@ -533,7 +533,7 @@ const MODELS = {
     const beam = sprite(glowTex("rgba(220,235,255,1)"), 0xffffff, 3.2, .25); beam.position.set(0, .7, -.4); scene.add(beam);
     const halo = new THREE.Mesh(crownGeo(0, TAU), new THREE.MeshBasicMaterial({ color: 0xe6eeff, transparent: true, opacity: .12, side: THREE.BackSide, depthWrite: false })); halo.scale.setScalar(1.08); cap.add(halo);
     return { scene, cam, dur: 6, update(t) {
-      ring.rotation.y = -t / 6 * TAU; ring.material.opacity = .78 + .2 * Math.sin(t * 13) * Math.sin(t * 3.1);
+      ring.rotation.y = -t / 6 * TAU; ring.material.opacity = .86 + .06 * Math.sin(t / 6 * TAU * 2);
       halo.material.opacity = .08 + .08 * (Math.sin(t / 6 * TAU * 3) + 1) / 2; beam.material.opacity = .2 + .1 * Math.sin(t / 6 * TAU * 2);
     } };
   },
@@ -552,16 +552,16 @@ window.frame = (t) => {
 };
 // постоянный кибер-глич: полосы смещаются, RGB расходится, потом картинка собирается обратно
 function glitch2d(k) {
-  const bursts = [[.18, .06], [.42, .03], [.6, .08], [.86, .04]], on = bursts.some(([c, w]) => Math.abs(k - c) < w);
+  const bursts = [[.2, .035], [.62, .045]], on = bursts.some(([c, w]) => Math.abs(k - c) < w);
   if (!on) { octx.drawImage(canvas, 0, 0, SIZE, SIZE); return; }
   const r = rng(Math.floor(k * 300) + 7), S = SIZE * SS;
   let y = 0;
-  while (y < SIZE) { const h = 4 + Math.floor(r() * 26), dx = (r() - .5) * 34 * (r() > .35 ? 1 : 0); octx.drawImage(canvas, 0, y * SS, S, h * SS, dx, y, SIZE, h); y += h; }
-  octx.globalCompositeOperation = "source-atop"; octx.globalAlpha = .28;
+  while (y < SIZE) { const h = 4 + Math.floor(r() * 26), dx = (r() - .5) * 9 * (r() > .5 ? 1 : 0); octx.drawImage(canvas, 0, y * SS, S, h * SS, dx, y, SIZE, h); y += h; }
+  octx.globalCompositeOperation = "source-atop"; octx.globalAlpha = .12;
   const tint = (col, dx) => { const c2 = document.createElement("canvas"); c2.width = c2.height = SIZE; const g2 = c2.getContext("2d"); g2.drawImage(canvas, 0, 0, SIZE, SIZE); g2.globalCompositeOperation = "source-in"; g2.fillStyle = col; g2.fillRect(0, 0, SIZE, SIZE); octx.drawImage(c2, dx, 0); };
-  tint("#ff2a6d", -4); tint("#00f0ff", 4);
+  tint("#ff2a6d", -2); tint("#00f0ff", 2);
   octx.globalCompositeOperation = "source-over"; octx.globalAlpha = 1;
-  for (let i = 0; i < 4; i++) { octx.fillStyle = ["#5ff", "#f5f", "#fff", "#4f8dff"][i]; octx.globalAlpha = .7; octx.fillRect(r() * 60, 40 + r() * 160, 60 + r() * 120, 1 + r() * 3); }
+  for (let i = 0; i < 2; i++) { octx.fillStyle = ["#5ff", "#f5f", "#fff", "#4f8dff"][i]; octx.globalAlpha = .4; octx.fillRect(r() * 60, 40 + r() * 160, 40 + r() * 80, 1 + r() * 1.5); }
   octx.globalAlpha = 1;
 }
 window.ready = true;

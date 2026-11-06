@@ -93,7 +93,7 @@ def masked(im, m):
 def cap():
     im = load("m_cap")
     img, k = image(im, 6, 8, 108)
-    rock = atf("rotate", ["-8 60 98", "8 60 98", "-8 60 98"], 2.6)
+    rock = atf("rotate", ["-5 60 98", "5 60 98", "-5 60 98"], 2.6)
     body = shadow(60, 106, 40, 7, inner=an("rx", [34, 42, 34], 2.6))
     return svg(body + f"<g>{rock}{img}</g>", SHD)
 
@@ -114,9 +114,9 @@ def hoodie():
     kt = [0, .16, .3, .44, .58, .72, 1]
     lp = f"{X + 82 * k:.2f} {Y + 80 * k:.2f}"
     rp = f"{X + 278 * k:.2f} {Y + 80 * k:.2f}"
-    la = atf("rotate", [f"{a} {lp}" for a in [0, 0, 11, 3, 11, 0, 0]], D, kt)
-    ra = atf("rotate", [f"{a} {rp}" for a in [0, 0, -3, -11, -3, 0, 0]], D, kt)
-    bob = atf("translate", ["0 0", "0 0", "0 -1.5", "0 0", "0 -1.5", "0 0", "0 0"], D, kt)
+    la = atf("rotate", [f"{a} {lp}" for a in [0, 0, 4, 1, 4, 0, 0]], D, kt)
+    ra = atf("rotate", [f"{a} {rp}" for a in [0, 0, -1, -4, -1, 0, 0]], D, kt)
+    bob = atf("translate", ["0 0", "0 0", "0 -1", "0 0", "0 -1", "0 0", "0 0"], D, kt)
     body = shadow(60, 108, 34, 5)
     body += f'<g mask="url(#fade)"><g>{bob}<g>{la}{l}</g><g>{ra}{r}</g>{t}</g></g>'
     fade = ('<linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset=".72" stop-color="#fff"/><stop offset=".95" stop-color="#fff" stop-opacity="0"/></linearGradient>'
@@ -161,12 +161,12 @@ def duffle():
     body += "</g></g></g></g>"
     rnd = random.Random(11)
     bills = ""
-    for i in range(12):
-        s = .23 + i * .032
+    for i in range(8):
+        s = .23 + i * .045
         e = s + .34 + rnd.uniform(-.02, .06)
         side = -1 if i % 2 else 1
         x0 = cx + rnd.uniform(-18, 18)
-        path = f"M{x0:.1f} {cy:.1f}Q{x0 + side * rnd.uniform(4, 22):.1f} {rnd.uniform(-10, 8):.1f} {60 + side * rnd.uniform(8, 52):.1f} 134"
+        path = f"M{x0:.1f} {cy:.1f}Q{x0 + side * rnd.uniform(6, 20):.1f} {rnd.uniform(-14, 2):.1f} {60 + side * rnd.uniform(62, 78):.1f} {rnd.uniform(18, 46):.1f}"   # вверх и в стороны — мимо логотипа
         mot = f'<animateMotion dur="{D}s" repeatCount="indefinite" path="{path}" keyPoints="0;0;1;1" keyTimes="0;{s:.3f};{e:.3f};1" calcMode="linear"/>'
         opa = f'<animate attributeName="opacity" dur="{D}s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;{s:.3f};{s + .015:.3f};{e - .02:.3f};{e:.3f}" calcMode="discrete"/>'
         rot = spin(round(rnd.uniform(.8, 1.5), 2), rev=i % 3 == 0)
@@ -181,10 +181,10 @@ def sneakers():
     img, k = image(im, 4, 6, 112)
     D = 2.2
     kt = [0, .2, .45, .62, .7, .78, 1]
-    hop = atf("translate", ["0 0", "0 0", "0 -15", "0 0", "0 0", "0 0", "0 0"], D, kt)
-    tilt = atf("rotate", ["0 60 92", "3 60 92", "-9 60 92", "0 60 92", "0 60 92", "0 60 92", "0 60 92"], D, kt, add=True)
-    sq = atf("scale", ["1 1", "1.03 .95", "1 1", "1 1", "1.04 .93", "1 1", "1 1"], D, kt, add=True)
-    sh = an("rx", [46, 48, 32, 46, 50, 46, 46], D, kt)
+    hop = atf("translate", ["0 0", "0 0", "0 -8", "0 0", "0 0", "0 0", "0 0"], D, kt)
+    tilt = atf("rotate", ["0 60 92", "3 60 92", "-5 60 92", "0 60 92", "0 60 92", "0 60 92", "0 60 92"], D, kt, add=True)
+    sq = atf("scale", ["1 1", "1.02 .97", "1 1", "1 1", "1.02 .96", "1 1", "1 1"], D, kt, add=True)
+    sh = an("rx", [46, 47, 38, 46, 48, 46, 46], D, kt)
     body = shadow(60, 100, 46, 5, inner=sh)
     body += f'<g>{hop}<g>{tilt}<g transform="translate(60 92)"><g>{sq}<g transform="translate(-60 -92)">{img}</g></g></g></g></g>'
     return svg(body, SHD)
@@ -215,8 +215,8 @@ def drone():
     img, k = image(im, X, Y, Wd, 340)
     P = lambda x, y: (X + x * k, Y + y * k)
     D = 6
-    fly = atf("translate", ["-4 3", "0 -5", "4 3", "0 -1", "-4 3"], D)
-    tilt = atf("rotate", ["3 60 60", "0 60 60", "-3 60 60", "0 60 60", "3 60 60"], D, add=True)
+    fly = atf("translate", ["-2.5 2", "0 -3", "2.5 2", "0 -.5", "-2.5 2"], D)
+    tilt = atf("rotate", ["2 60 60", "0 60 60", "-2 60 60", "0 60 60", "2 60 60"], D, add=True)
     body = shadow(60, 112, 34, 4, op=.26, inner=an("rx", [34, 26, 34, 30, 34], D))
     defs = SHD + ('<radialGradient id="disc"><stop offset="0" stop-color="#9aa6ba" stop-opacity=".05"/><stop offset=".55" stop-color="#9aa6ba" stop-opacity=".2"/>'
                   '<stop offset=".92" stop-color="#c9d3e4" stop-opacity=".28"/><stop offset="1" stop-color="#c9d3e4" stop-opacity="0"/></radialGradient>'
@@ -304,13 +304,13 @@ def phones():
     img, k = image(im, X, Y, Wd, 340)
     D = 4.4
     kt = [0, .06, .24, .3, .34, .9, .97, 1]
-    drop = atf("translate", ["0 -26", "0 -26", "0 2", "0 0", "0 0", "0 0", "0 -26", "0 -26"], D, kt)
-    clamp = atf("scale", ["1.1 1", "1.1 1", "1.1 1", ".94 1", "1 1", "1 1", "1.1 1", "1.1 1"], D, kt, add=True)
+    drop = atf("translate", ["0 -10", "0 -10", "0 1", "0 0", "0 0", "0 0", "0 -10", "0 -10"], D, kt)
+    clamp = atf("scale", ["1.04 1", "1.04 1", "1.04 1", ".98 1", "1 1", "1 1", "1.04 1", "1.04 1"], D, kt, add=True)
     rnd = random.Random(3)
     jv, jk, t = [], [], 0.0
     while t <= 1.0001:
         on = .36 <= t <= .88
-        jv.append(f"{rnd.uniform(-1, 1) * 1.1:.2f} {rnd.uniform(-1, 1) * .7:.2f}" if on else "0 0")
+        jv.append(f"{rnd.uniform(-1, 1) * .5:.2f} {rnd.uniform(-1, 1) * .3:.2f}" if on else "0 0")
         jk.append(min(t, 1))
         t += .01
     jk[-1] = 1
