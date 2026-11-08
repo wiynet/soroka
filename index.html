@@ -14894,10 +14894,11 @@ async function aiDelChat(c, btn) {
   const { error } = await sb.from("ai_chats").delete().eq("id", c.id);
   if (error) { toast(T("Не удалось удалить чат")); return; }
   const paths = (rows || []).flatMap((r) => r.images || []);
-  if (paths.length) sb.storage.from("ai").remove(paths).catch(() => {});
   AI.chats = AI.chats.filter((x) => x.id !== c.id);
-  toast(T("Чат удалён"));
   if (AI.id === c.id) aiNewDraft(); else aiPaintList();
+  // файлы картинок стираем до конца (с повтором), чтобы от удалённого чата ничего не оставалось
+  for (let i = 0; i < 2 && paths.length; i++) { try { const r = await sb.storage.from("ai").remove(paths); if (!r.error) break; } catch (_) { /* повтор */ } }
+  toast(T("Чат удалён"));
 }
 // переименовать: нажать на название
 $("aiTitle").addEventListener("click", () => {
