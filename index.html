@@ -4141,7 +4141,6 @@ void main() {
         <div class="feat"><span class="pico pink" data-i="palette" aria-hidden="true"></span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
         <div class="feat"><span class="pico teal" data-i="gem" aria-hidden="true"></span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
         <div class="feat"><span class="pico orange" data-i="coinf" aria-hidden="true"></span><b>50 Mest каждый месяц</b><span>Раз в 30 дней забирайте бонус прямо на счёт.</span></div>
-        <div class="feat"><span class="pico red" data-i="dice" aria-hidden="true"></span><b>Подарок каждый месяц</b><span>Раз в 30 дней — случайный подарок из тиража, который можно улучшить.</span></div>
         <div class="feat"><span class="pico grey" data-i="eye" aria-hidden="true"></span><b>Скрытое время в сети</b><span>Другие видят «был(а) недавно» вместо точного времени.</span></div>
         <div class="feat"><span class="pico blue" data-i="users" aria-hidden="true"></span><b>До 4 аккаунтов</b><span>Держите на устройстве четыре аккаунта вместо двух.</span></div>
         <div class="feat"><span class="pico pink" data-i="film" aria-hidden="true"></span><b>Баннер профиля</b><span>Своё фото, GIF или видео до 30 секунд на всю шапку профиля.</span></div>
@@ -12492,7 +12491,6 @@ $("giftSend").addEventListener("click", async () => {
 });
 async function showUser(p) {
   viewed = p;
-  blockArmed = false;
   paintUser(p);
   showUserTab("stories");
   loadUserGifts(p.id);
