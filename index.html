@@ -2048,6 +2048,10 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .u-thumbs button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--panel-2); cursor: pointer; }
 .u-thumbs img, .u-thumbs video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .danger-row b { color: var(--danger); }
+#uActCard { background: none; overflow: visible; display: flex; flex-direction: column; gap: 8px; }
+#uActCard .prow { background: var(--panel-2); border: 0; border-radius: 16px; padding: 12px; }
+#uActCard .prow[hidden] { display: none; }
+#uActCard #uClearRow { margin-top: 10px; }
 /* пузырьки сообщений Mestario */
 #msgs .msg[data-bb] { background: var(--bb) !important; color: var(--bb-ink) !important; border-color: transparent !important; }
 #msgs .msg[data-bb] a, #msgs .msg[data-bb] .author, #msgs .msg[data-bb] .fwd { color: inherit !important; }
@@ -3237,7 +3241,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=050be3dea1"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e9dc292c2b"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5667,6 +5671,18 @@ void main() {
     <div class="actions">
       <button class="btn ghost" type="button" data-close>Отмена</button>
       <button class="btn danger" type="button" id="cdGo">Удалить</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- подтверждение блокировки -->
+<dialog id="dlgBlock">
+  <div class="dlg">
+    <h2 id="bkTitle">Заблокировать</h2>
+    <div class="muted" id="bkText"></div>
+    <div class="actions">
+      <button class="btn ghost" type="button" data-close>Отмена</button>
+      <button class="btn danger" type="button" id="bkGo">Заблокировать</button>
     </div>
   </div>
 </dialog>
@@ -12594,16 +12610,25 @@ async function setBlocked(user, on) {
   if ($("dlgSettings").open) paintBlockList();
   return true;
 }
-let blockArmed = false;
 $("uBlockRow").addEventListener("click", async () => {
-  if (!viewed) return;
-  const on = !state.blocked.has(viewed.id);
-  if (on && !blockArmed) { blockArmed = true; $("uBlockText").textContent = T("Точно заблокировать?"); return; }
-  blockArmed = false;
-  $("uBlockRow").disabled = true;
-  await setBlocked(viewed, on);
-  $("uBlockRow").disabled = false;
-});
+      if (!viewed) return;
+      if (state.blocked.has(viewed.id)) {
+        $("uBlockRow").disabled = true;
+        await setBlocked(viewed, false);
+        $("uBlockRow").disabled = false;
+        return;
+      }
+      $("bkTitle").textContent = T("Заблокировать") + " " + (viewed.username ? "@" + viewed.username : (viewed.display_name || "")) + "?";
+      $("bkText").textContent = T("Этот человек не сможет вам писать. Разблокировать можно в любой момент.");
+      $("dlgBlock").showModal();
+    });
+    $("bkGo").addEventListener("click", async () => {
+      if (!viewed) { $("dlgBlock").close(); return; }
+      $("bkGo").disabled = true;
+      await setBlocked(viewed, true);
+      $("bkGo").disabled = false;
+      $("dlgBlock").close();
+    });
 $("blockOff").addEventListener("click", () => { const c = state.chats.get(state.activeId), o = c && other(c); if (o) setBlocked(o, false); });
 // список заблокированных в настройках конфиденциальности
 async function paintBlockList() {
