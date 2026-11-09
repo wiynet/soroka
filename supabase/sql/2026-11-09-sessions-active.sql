@@ -1,4 +1,4 @@
--- Устройства: в списке только живые сеансы — есть действующий ключ входа и устройство заходило за последние 30 дней.
+-- Устройства: в списке только живые сеансы — есть действующий ключ входа и устройство заходило за последние 7 дней.
 -- Выход теперь по-настоящему закрывает сеанс на сервере (end_my_session), даже если ключ доступа успел истечь.
 create or replace function public.my_sessions()
  returns table(id uuid, created_at timestamptz, active_at timestamptz, user_agent text, ip text, current boolean, can_kick boolean)
@@ -17,7 +17,7 @@ as $function$
          s.id <> me.sid and exists (select 1 from cur) and (s.created_at > (select created_at from cur) or s.act < now() - interval '30 days')
     from ss s, me
    where s.id = me.sid
-      or (s.act > now() - interval '30 days'
+      or (s.act > now() - interval '7 days'
           and exists (select 1 from auth.refresh_tokens r where r.session_id = s.id and not r.revoked))
    order by (s.id = me.sid) desc, 3 desc
    limit 50;
