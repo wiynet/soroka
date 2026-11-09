@@ -239,7 +239,7 @@ button.wordmark.spin { opacity: .55; }
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .sbar::after { filter: blur(6px); opacity: .7; }
 .search .sbar .input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: none; font-size: 15px; }
-.search .sbar .input:focus, .search .sbar .input:focus-visible { outline: none; }
+.search .sbar .input:focus, .search .sbar .input:focus-visible { outline: none; box-shadow: none !important; background: none !important; }
 .sbar:focus-within { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 50px 0 rgb(255 255 255 / .02); }
 .search .sbar .input::placeholder { color: color-mix(in srgb, var(--ink) 40%, transparent); }
 .search .sbar .input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
@@ -526,6 +526,7 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .avatar { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: 16px; }
 .avatar.sm { width: 36px; height: 36px; font-size: 13px; }
 .avatar.lg { width: 76px; height: 76px; font-size: 26px; }
+.avatar.ghost { background: linear-gradient(160deg, #9aa1b0, #646b7a) !important; color: rgb(255 255 255 / .92); }
 .avatar { position: relative; overflow: hidden; }
 .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .tick { display: inline-block; width: 1em; height: 1em; margin-left: 4px; vertical-align: -0.14em; color: var(--verify); flex: none; }
@@ -3260,7 +3261,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e9dc292c2b"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e616eb4917"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -6116,9 +6117,19 @@ function kindIcon(name) { const k = icon(name); k.classList.add("kind"); return 
 // ИИ-помощник @ai работает круглосуточно, поэтому всегда «в сети»
 // заблокировали друг друга (в любую сторону): аватарка и время в сети скрыты, статус — «неизвестно»
 function hiddenFor(id) { return !!id && (state.blocked.has(id) || state.blockedMe.has(id)); }
+// удалённый аккаунт: имя «Удалённый аккаунт», аватарка-призрак, статус «неизвестно», юзернейм не показываем
+const delIds = new Set();
+function isDeleted(p) {
+  if (!p) return false;
+  const d = !!(p.deleted_at || (p.banned_at && (p.display_name === "Удалённый аккаунт" || /^deleted_[0-9a-f]{16}$/.test(p.username || ""))));
+  if (d && p.id) delIds.add(p.id);
+  return d;
+}
+const GHOST_SVG = '<svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><path d="M12 2.5c-4.1 0-7.2 3.2-7.2 7.3v10.9c0 .7.8 1 1.3.6l1.6-1.3 1.7 1.4c.4.3.9.3 1.3 0L12 20l1.3 1.4c.4.3.9.3 1.3 0l1.7-1.4 1.6 1.3c.5.4 1.3.1 1.3-.6V9.8c0-4.1-3.1-7.3-7.2-7.3zM9.3 11.4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5.4 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>';
 function isOnline(p) { return !!(p && !p.banned_at && !hiddenFor(p.id) && (p.username === "ai" || (p.last_seen_at && Date.now() - new Date(p.last_seen_at).getTime() < 150000))); }
 function fmtSeen(p) {
   if (!p) return "";
+  if (isDeleted(p)) return T("неизвестно");
   if (p.banned_at) return T("аккаунт заблокирован");
   if (p.is_bot) return T("бот");
   if (hiddenFor(p.id)) return T("неизвестно");
@@ -6143,6 +6154,11 @@ function avatarUrl(path) {
   return SUPABASE_URL + "/storage/v1/object/public/avatars/" + path.split("/").map(encodeURIComponent).join("/");
 }
 function avatar(name, seed, small, path) {
+  if (delIds.has(seed) || name === "Удалённый аккаунт" || name === T("Удалённый аккаунт")) {
+    const g = h("span", { class: "avatar ghost" + (small === "lg" ? " lg" : small ? " sm" : ""), "aria-hidden": "true" });
+    g.innerHTML = GHOST_SVG;
+    return g;
+  }
   if (path && hiddenFor(seed)) path = null;
   let n = 0;
   for (const ch of String(seed || name)) n = (n * 31 + ch.codePointAt(0)) % 360;
@@ -8707,7 +8723,7 @@ const BUBBLES = [
   { id: "forest", name: "Лес", bg: "linear-gradient(135deg, #a8e063, #3fa56a 55%, #134e3a)" },
 ];
 var contacts = new Map(), contactsVer = 0;
-function nameOf(p) { const k = p && contacts.get(p.id); return (k && k.name) || (p ? p.display_name : ""); }
+function nameOf(p) { if (isDeleted(p)) return T("Удалённый аккаунт"); const k = p && contacts.get(p.id); return (k && k.name) || (p ? p.display_name : ""); }
 function avOf(p) { const k = p && contacts.get(p.id); return (k && k.avatar_path) || (p ? p.avatar_path : null); }
 function bubbleFor(m, c) {
   if (!m || !state.me) return null;
@@ -11282,9 +11298,9 @@ function paintUser(p) {
   hero.classList.toggle("has-banner", !!bn);
   $("uNoBio").hidden = !!p.bio || nfts(p).length > 0 || !!p.banned_at;
   $("uGift").hidden = !!p.banned_at;
-  $("uSeen").textContent = p.banned_at ? "" : fmtSeen(p);
+  $("uSeen").textContent = isDeleted(p) ? fmtSeen(p) : p.banned_at ? "" : fmtSeen(p);
   $("uSeen").classList.toggle("on", isOnline(p));
-  $("uBanned").hidden = !p.banned_at;
+  $("uBanned").hidden = !p.banned_at || isDeleted(p);
   $("uBanned").textContent = p.banned_at ? T("Аккаунт заблокирован") + (state.isAdmin && p.ban_reason ? ": " + p.ban_reason : "") : "";
   $("uAdminOpen").hidden = !state.isAdmin;
   $("auWho").textContent = p.display_name + " · @" + p.username + (p.banned_at ? T(" · заблокирован") : "");
@@ -11302,6 +11318,7 @@ function paintUser(p) {
   $("uNft").replaceChildren(...nftChips(p, true));
   $("uAlso").hidden = !nfts(p).length;
   $("uUser").textContent = "@" + p.username;
+  { const ur = $("uUser").closest(".prow, .pcard > *"); if (ur) ur.hidden = isDeleted(p); }
   // NFT-номер — первой строкой карточки, над юзернеймом
   const pn = nums(p);
   $("uNum").hidden = !pn.length;
