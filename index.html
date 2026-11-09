@@ -1214,6 +1214,35 @@ dialog.full .dlg.upage { height: 100%; max-height: none; gap: 14px; }
 .story-grid .st .v svg { width: 15px; height: 15px; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
 .story-grid .st.fresh::after { content: ""; position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px rgb(0 0 0 / .35); }
 .story-grid .none { grid-column: 1 / -1; padding: 26px 20px 34px; text-align: center; color: var(--muted); font-size: 14px; display: grid; gap: 12px; justify-items: center; }
+/* свои выпадающие списки (вместо системных <select>) и выбор даты и времени */
+.csel-native { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; border: 0 !important; opacity: 0 !important; pointer-events: none !important; overflow: hidden; }
+.csel-btn { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.csel-btn.input { justify-content: space-between; }
+.csel-btn:not(.input) { border: 0; background: none; padding: 0; color: inherit; max-width: 150px; }
+.csel-btn:disabled { opacity: .5; cursor: default; }
+.csel-btn[hidden] { display: none; }
+.csel-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csel-chev { flex: none; width: 8px; height: 8px; margin: -4px 3px 0 0; border-right: 1.6px solid var(--muted); border-bottom: 1.6px solid var(--muted); transform: rotate(45deg); transition: transform .18s; }
+.csel-btn[aria-expanded="true"] .csel-chev { transform: translateY(4px) rotate(225deg); }
+.mk-f .csel-chev { display: none; }
+.csel-btn .cdt-ico { flex: none; display: grid; color: var(--muted); }
+.csel-btn .cdt-ico svg { width: 18px; height: 18px; }
+.csel-btn.empty .csel-v { color: var(--muted); }
+.csel-pop { position: fixed; inset: auto; z-index: 2147483000; margin: 0; padding: 4px; min-width: 180px; max-width: min(360px, calc(100vw - 16px)); max-height: min(360px, 62vh); overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 14px 36px rgb(0 0 0 / .24), 0 2px 6px rgb(0 0 0 / .12); }
+.csel-pop.cdt { padding: 10px; max-height: none; overflow: visible; width: 300px; }
+.csel-grp { padding: 9px 12px 5px 36px; font-weight: 700; font-size: 13.5px; }
+.csel-opt { position: relative; display: block; width: 100%; padding: 9px 14px 9px 36px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 14.5px; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csel-opt:hover, .csel-opt.act { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.csel-opt[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 8%, transparent); font-weight: 600; }
+.csel-opt[aria-selected="true"]::before { content: ""; position: absolute; left: 14px; top: 50%; width: 10px; height: 5px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-70%) rotate(-45deg); }
+.csel-opt:disabled { opacity: .4; cursor: default; }
+.cdt .cal { border: 0; padding: 2px; background: none; max-width: none; }
+.cdt-time { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; font-weight: 600; }
+.cdt-time input { width: 58px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--ink); font: inherit; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.cdt-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+@media (prefers-reduced-motion: no-preference) { .csel-pop { animation: csel-in .14s cubic-bezier(.23, 1, .32, 1) both; } }
+@keyframes csel-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 /* календарь: выбор даты, до которой показывать историю (для админов) */
 .cal { align-self: center; width: 100%; max-width: 300px; margin: 0 auto; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); user-select: none; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
@@ -2999,7 +3028,6 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .pbg-sw.own { background: var(--panel-2); font-size: 18px; }
 
 /* ---------- производительность: «вечные» эффекты работают только когда нужны; на слабых устройствах — облегчённый режим ---------- */
-.sbar:not(:focus-within)::before, .sbar:not(:focus-within)::after { animation-play-state: paused !important; }
 :root[data-lite] .tabbar, :root[data-lite] .star, :root[data-lite] .worn, :root[data-lite] .nft::after, :root[data-lite] .gem,
 :root[data-lite] .coin.big, :root[data-lite] .orb, :root[data-lite] .sparks i, :root[data-lite] .sbar::before, :root[data-lite] .sbar::after, :root[data-lite] .gift.tile .em, :root[data-lite] .gv .em { animation: none !important; }
 :root[data-lite][data-wall="crystal"] .pane::before { animation: none !important; }
@@ -3269,7 +3297,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=da094ddd2b"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=b8cf2d8b5d"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5515,7 +5543,7 @@ void main() {
     <div class="rp-what" id="schedText"></div>
     <label class="field" id="schedBodyF" hidden><span>Текст</span><textarea class="input" id="schedBody" rows="3" maxlength="4000"></textarea></label>
     <div class="quick-times" id="schedQuick"></div>
-    <label class="field"><span>Дата и время</span><input class="input" id="schedAt" type="datetime-local"></label>
+    <label class="field"><span>Дата и время</span><input class="input" id="schedAt" type="datetime-local" required></label>
     <div class="error" id="schedErr"></div>
     <div class="actions">
       <button class="btn ghost" type="button" data-close>Отмена</button>
@@ -19052,6 +19080,168 @@ $("pollForm").addEventListener("submit", (e) => {
     $("dlgPoll").close();
   });
 });
+
+/* ---------- свои выпадающие списки и выбор даты вместо системных ---------- */
+// Каждый <select> получает кнопку и список как на скриншоте (галочка у выбранного, заголовки групп),
+// поля даты и времени — кнопку с календарём как у историй. Сам <select>/<input> остаётся и хранит значение.
+let popNow = null, popAnchor = null;
+function popClose() { if (popNow) { const f = popNow; popNow = null; popAnchor = null; f(); } }
+function popOpen(anchor, content, opts) {
+  popClose();
+  opts = opts || {};
+  const pop = h("div", { class: "csel-pop" + (opts.cls ? " " + opts.cls : ""), role: opts.role || "dialog" }, content);
+  const usePopover = typeof pop.showPopover === "function";
+  if (usePopover) { pop.setAttribute("popover", "manual"); document.body.append(pop); try { pop.showPopover(); } catch (e) {} }
+  else (anchor.closest("dialog[open]") || document.body).append(pop);
+  const place = () => {
+    const r = anchor.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
+    if (!opts.cls) pop.style.minWidth = Math.max(180, Math.round(r.width)) + "px";
+    const ph = pop.offsetHeight, pw = pop.offsetWidth;
+    const left = Math.min(Math.max(8, r.left), vw - pw - 8);
+    let top = r.bottom + 6;
+    if (top + ph > vh - 8) top = r.top - ph - 6 >= 8 ? r.top - ph - 6 : Math.max(8, vh - ph - 8);
+    pop.style.left = left + "px"; pop.style.top = top + "px";
+  };
+  place();
+  const onDoc = (e) => { if (!pop.contains(e.target) && !anchor.contains(e.target)) popClose(); };
+  const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); popClose(); anchor.focus(); } else if (opts.onKey) opts.onKey(e); };
+  const onScroll = (e) => { if (!pop.contains(e.target)) popClose(); };
+  const t = setTimeout(() => document.addEventListener("pointerdown", onDoc, true), 0);
+  document.addEventListener("keydown", onKey, true);
+  window.addEventListener("resize", popClose);
+  document.addEventListener("scroll", onScroll, true);
+  anchor.setAttribute("aria-expanded", "true");
+  popAnchor = anchor;
+  popNow = () => {
+    clearTimeout(t);
+    document.removeEventListener("pointerdown", onDoc, true); document.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("resize", popClose); document.removeEventListener("scroll", onScroll, true);
+    anchor.setAttribute("aria-expanded", "false");
+    try { if (usePopover) pop.hidePopover(); } catch (e) {}
+    pop.remove();
+  };
+  return pop;
+}
+function fireChange(el) { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }
+function openSelect(sel, btn) {
+  if (sel.disabled) return;
+  const items = [];
+  const optBtn = (o) => {
+    const b = h("button", { type: "button", class: "csel-opt", role: "option", "aria-selected": String(o.selected), disabled: o.disabled || null, title: o.textContent },
+      o.textContent);
+    b.addEventListener("click", () => {
+      const was = sel.value;
+      sel.selectedIndex = o.index;
+      popClose(); btn.focus();
+      if (sel.value !== was) fireChange(sel);
+    });
+    items.push(b);
+    return b;
+  };
+  const kids = [];
+  for (const ch of sel.children) {
+    if (ch.tagName === "OPTGROUP") { kids.push(h("div", { class: "csel-grp", role: "presentation" }, ch.label)); for (const o of ch.children) if (!o.hidden) kids.push(optBtn(o)); }
+    else if (ch.tagName === "OPTION" && !ch.hidden) kids.push(optBtn(ch));
+  }
+  let act = Math.max(0, items.findIndex((b) => b.getAttribute("aria-selected") === "true"));
+  const mark = () => { items.forEach((b, i) => b.classList.toggle("act", i === act)); if (items[act]) items[act].scrollIntoView({ block: "nearest" }); };
+  const pop = popOpen(btn, kids, { role: "listbox", onKey: (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      for (let k = 0; k < items.length; k++) { act = (act + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; if (!items[act].disabled) break; }
+      mark();
+    } else if (e.key === "Enter" || e.key === " ") { if (items[act]) { e.preventDefault(); items[act].click(); } }
+  } });
+  const cur = items[act];
+  if (cur) { cur.classList.add("act"); pop.scrollTop = Math.max(0, cur.offsetTop - pop.clientHeight / 2 + cur.offsetHeight / 2); }
+}
+function keepInSync(el, props, paint) {
+  const proto = Object.getPrototypeOf(el);
+  for (const k of props) {
+    const d = Object.getOwnPropertyDescriptor(proto, k) || Object.getOwnPropertyDescriptor(HTMLElement.prototype, k);
+    if (!d || !d.set) continue;
+    Object.defineProperty(el, k, { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, v); paint(); } });
+  }
+}
+function enhanceSelect(sel) {
+  if (sel._cs || sel.multiple || sel.size > 1 || sel.closest(".no-csel")) return;
+  const btn = h("button", { type: "button", class: "csel-btn " + (sel.className || ""), "aria-haspopup": "listbox", "aria-expanded": "false" },
+    h("span", { class: "csel-v" }), h("span", { class: "csel-chev", "aria-hidden": "true" }));
+  sel._cs = btn;
+  const lab = sel.getAttribute("aria-label") || sel.title;
+  if (lab) btn.setAttribute("aria-label", lab);
+  sel.classList.add("csel-native"); sel.tabIndex = -1; sel.setAttribute("aria-hidden", "true");
+  sel.after(btn);
+  const paint = () => {
+    const o = sel.options[sel.selectedIndex];
+    btn.firstChild.textContent = o ? o.textContent : "";
+    btn.disabled = sel.disabled; btn.hidden = sel.hidden;
+    if (sel.style.display === "none") btn.style.display = "none"; else btn.style.removeProperty("display");
+  };
+  keepInSync(sel, ["value", "selectedIndex", "disabled", "hidden"], paint);
+  new MutationObserver(paint).observe(sel, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["disabled", "hidden", "selected", "style", "label"] });
+  sel.addEventListener("change", paint);
+  btn.addEventListener("click", () => (popNow && btn.getAttribute("aria-expanded") === "true") ? popClose() : openSelect(sel, btn));
+  btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); openSelect(sel, btn); } });
+  // нажатие на подпись рядом (например «Цена» в маркете) тоже открывает список
+  const label = btn.closest("label");
+  if (label) label.addEventListener("click", (e) => { if (!btn.contains(e.target) && !e.target.closest(".csel-pop") && e.target.closest("label") === label && !e.target.closest("input, textarea, button, a")) { e.preventDefault(); btn.click(); } });
+  paint();
+}
+function enhanceDateTime(inp) {
+  if (inp._cdt) return;
+  const btn = h("button", { type: "button", class: "csel-btn input cdt-btn", "aria-haspopup": "dialog", "aria-expanded": "false" },
+    h("span", { class: "csel-v" }), h("span", { class: "cdt-ico", "aria-hidden": "true" }, icon("clock")));
+  inp._cdt = btn;
+  inp.classList.add("csel-native"); inp.tabIndex = -1; inp.setAttribute("aria-hidden", "true");
+  inp.after(btn);
+  const parse = (v) => { const d = v ? new Date(v) : null; return d && !isNaN(d) ? d : null; };
+  const paint = () => {
+    const d = parse(inp.value);
+    btn.firstChild.textContent = d ? dyFmt.format(d).replace(/\s*г\.$/, "") + ", " + tFmt.format(d) : T("Не выбрано");
+    btn.classList.toggle("empty", !d);
+    btn.disabled = inp.disabled; btn.hidden = inp.hidden;
+  };
+  keepInSync(inp, ["value", "disabled", "hidden"], paint);
+  inp.addEventListener("change", paint);
+  btn.addEventListener("click", () => {
+    if (popNow && btn.getAttribute("aria-expanded") === "true") { popClose(); return; }
+    const now = new Date(), cur = parse(inp.value);
+    const min = parse(inp.min) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const max = parse(inp.max) || new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+    const base = cur || new Date(Math.max(Date.now() + 3600e3, min.getTime()));
+    let day = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    const cal = h("div", { class: "cal" });
+    const hh = h("input", { type: "number", min: "0", max: "23", inputmode: "numeric", "aria-label": T("Часы"), value: String(base.getHours()).padStart(2, "0") });
+    const mm = h("input", { type: "number", min: "0", max: "59", inputmode: "numeric", "aria-label": T("Минуты"), value: String(base.getMinutes()).padStart(2, "0") });
+    const pad = (x) => () => { const n = Math.min(Number(x.max), Math.max(0, Math.round(Number(x.value) || 0))); x.value = String(n).padStart(2, "0"); };
+    hh.addEventListener("change", pad(hh)); mm.addEventListener("change", pad(mm));
+    const done = h("button", { class: "btn", type: "button", onclick: () => {
+      pad(hh)(); pad(mm)();
+      let d = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Number(hh.value), Number(mm.value));
+      if (d < min) d = new Date(min);
+      if (d > max) d = new Date(max);
+      inp.value = localInput(d);
+      popClose(); btn.focus(); fireChange(inp);
+    } }, T("Готово"));
+    const clear = inp.required ? null : h("button", { class: "btn ghost", type: "button", onclick: () => { inp.value = ""; popClose(); btn.focus(); fireChange(inp); } }, T("Очистить"));
+    makeCalendar(cal, { min, max, value: day, onSelect: (d) => { day = d; } });   // сначала календарь — чтобы окно встало по его размеру
+    popOpen(btn, [cal, h("div", { class: "cdt-time" }, hh, h("span", {}, ":"), mm), h("div", { class: "cdt-acts" }, clear, done)], { cls: "cdt" });
+  });
+  paint();
+}
+function enhanceControls(root) {
+  if (!root || !root.querySelectorAll) return;
+  if (root.tagName === "SELECT") enhanceSelect(root);
+  else if (root.tagName === "INPUT" && root.type === "datetime-local") enhanceDateTime(root);
+  for (const el of root.querySelectorAll("select")) enhanceSelect(el);
+  for (const el of root.querySelectorAll('input[type="datetime-local"]')) enhanceDateTime(el);
+}
+enhanceControls(document.body);
+new MutationObserver((list) => { for (const r of list) for (const n of r.addedNodes) if (n.nodeType === 1 && !n.classList.contains("csel-pop")) enhanceControls(n); })
+  .observe(document.body, { childList: true, subtree: true });
+// окно закрылось — открытый список тоже закрываем
+document.addEventListener("close", (e) => { if (popAnchor && e.target && e.target.contains && e.target.contains(popAnchor)) popClose(); }, true);
 
 /* ---------- отложенные сообщения и напоминания ---------- */
 let schedRows = [];
