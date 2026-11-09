@@ -6817,7 +6817,7 @@ function subscribeInbox() {
     }
     if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") {
       // личный канал не пускает (например, сервер не принял вход) два раза подряд — запасной путь, прежний способ
-      if (st === "CHANNEL_ERROR" && !rtLegacy && ++rtDenied >= 2) { rtLegacy = true; try { sb.rpc("log_client", { p_kind: "rt_legacy", p_info: {} }).then(() => {}, () => {}); } catch (e) {} }
+      if (st === "CHANNEL_ERROR" && !rtLegacy && ++rtDenied >= 2) { rtLegacy = true; diag("rt_legacy", {}); }
       rtOk = false; rtWasDown = true;
       clearTimeout(rtTimer);
       rtTimer = setTimeout(() => { if (state.started && !rtOk) subscribeInbox(); }, Math.min(30000, 1500 * 2 ** rtRetry++));
@@ -8693,13 +8693,13 @@ function diag(kind, info) {
   try { sb.rpc("log_client", { p_kind: kind, p_info: { ...info, mem: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null, app: window.Capacitor ? "app" : /Electron/i.test(navigator.userAgent) ? "pc" : "web" }, p_ua: navigator.userAgent }).then(() => {}); } catch (e) {}
 }
 let diagErrs = 0;
-function diagErr(msg, src) {
-  const e = { msg: String(msg || "").slice(0, 300), src: String(src || "").slice(0, 200), t: Date.now() };
+function diagErr(msg, src, stack) {
+  const e = { msg: String(msg || "").slice(0, 300), src: String(src || "").slice(0, 200), t: Date.now(), stack: String(stack || "").slice(0, 900) };
   try { localStorage.setItem("mestario.lastErr", JSON.stringify(e)); } catch (x) {}
   if (++diagErrs <= 5) diag("error", e);
 }
-window.addEventListener("error", (e) => diagErr(e.message, (e.filename || "") + ":" + (e.lineno || "")));
-window.addEventListener("unhandledrejection", (e) => diagErr(e.reason && (e.reason.message || e.reason), "promise"));
+window.addEventListener("error", (e) => diagErr(e.message, (e.filename || "") + ":" + (e.lineno || ""), e.error && e.error.stack));
+window.addEventListener("unhandledrejection", (e) => diagErr(e.reason && (e.reason.message || e.reason), "promise", e.reason && e.reason.stack));
 // страница открылась заново 3 раза за 5 минут — записываем, чтобы понять причину
 setTimeout(() => { if (DIAG.boots >= 3) diag("reload_loop", { boots: DIAG.boots, nav: DIAG.nav, last: DIAG.last }); }, 3000);
 // GIF и видео-превью за краем экрана не крутим: на телефоне каждое такое видео занимает память и декодер
