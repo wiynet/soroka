@@ -7045,7 +7045,8 @@ function chatRowCached(c) {
 function pinMark() { const k = icon("pin"); k.classList.add("pinm"); k.setAttribute("aria-label", T("Закреплён")); return k; }
 // чат, удалённый «у себя», не виден в списке, пока в нём не появится новое сообщение
 // старый чат с ботом @ai не показываем: ИИ теперь живёт в настройках
-function chatHidden(c) { return isAiChat(c) || (!!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt))); }
+// личный чат без единого сообщения в списке не показываем (пока он не открыт прямо сейчас)
+function chatHidden(c) { return isAiChat(c) || (!!c.hiddenAt && !(new Date(c.last_at) > new Date(c.hiddenAt))) || (!c.is_group && !c.last_text && !!other(c) && c.id !== state.activeId); }
 
 /* ---------- меню чата в списке: правая кнопка мыши или долгое нажатие ---------- */
 let ctxEl = null, archView = false, heldRows = false;
