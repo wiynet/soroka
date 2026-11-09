@@ -984,6 +984,8 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .sched-chip { display: flex; align-items: center; gap: 8px; margin: 0 10px 6px; padding: 6px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); font-size: 13.5px; width: max-content; max-width: calc(100% - 20px); cursor: pointer; color: var(--ink); }
 .sched-item { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
 .sched-item .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.nw-item { display: grid; gap: 4px; }
+.nw-acts { display: flex; gap: 16px; padding: 0 12px 4px; font-size: 13.5px; }
 .sched-item .sched-acts { display: inline-flex; gap: 14px; }
 .sched-item .when { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .quick-times { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -3266,7 +3268,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=af36116b25"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=121031351d"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4534,12 +4536,15 @@ void main() {
       <div class="hint">Окно «Что нового» увидит каждый один раз при входе. Каждая строка текста — отдельный пункт, эмодзи в начале строки станет значком.</div>
       <label class="field"><span>Заголовок</span><input class="input" id="nwTitle" maxlength="80" value="Что нового в Mestario"></label>
       <label class="field"><span>Что добавили</span><textarea class="input" id="nwBody" rows="7" maxlength="4000" placeholder="🎙 Голосовые чаты в группах&#10;🎨 Темы чатов со своим фото"></textarea></label>
+      <label class="field"><span>Показывать до (необязательно)</span><input class="input" id="nwExp" type="datetime-local">
+        <div class="hint">После этой даты окно больше никому не покажется. Пусто — без срока.</div></label>
       <div class="set-label" style="margin:0">Фото (до 8)</div>
       <div class="nw-imgs" id="nwImgs"></div>
       <input type="file" id="nwFile" accept="image/*" multiple hidden>
       <div class="actions">
         <button class="btn ghost" type="button" id="nwAdd">＋ Фото</button>
         <button class="btn ghost" type="button" id="nwPreview">Предпросмотр</button>
+        <button class="btn ghost" type="button" id="nwCancelEdit" hidden>Отменить правку</button>
         <button class="btn" type="button" id="nwPublish">Опубликовать для всех</button>
       </div>
       <div class="set-label" style="margin:0">Прошлые обновления</div>
@@ -8709,13 +8714,43 @@ function paintNwImgs() {
   $("nwImgs").replaceChildren(...nwImages.map((pth, i) => h("div", { class: "nw-th" }, h("img", { src: nwLocal[pth] || avatarUrl(pth), alt: "" }),
     h("button", { type: "button", title: T("Убрать"), "aria-label": T("Убрать фото"), onclick: () => { nwImages.splice(i, 1); paintNwImgs(); } }, "✕"))));
 }
+let nwEditId = null;
+function nwSetEdit(n) {
+  nwEditId = n ? n.id : null;
+  $("nwTitle").value = n ? n.title : T("Что нового в Mestario");
+  $("nwBody").value = n ? n.body || "" : "";
+  $("nwExp").value = n && n.expires_at ? localInput(new Date(n.expires_at)) : "";
+  nwImages = n && Array.isArray(n.images) ? n.images.slice() : []; nwLocal = {};
+  $("nwPublish").textContent = n ? T("Сохранить изменения") : T("Опубликовать для всех");
+  $("nwCancelEdit").hidden = !n;
+  paintNwImgs();
+  if (n) { $("nwTitle").scrollIntoView({ block: "center", behavior: motionOK() ? "smooth" : "auto" }); $("nwBody").focus({ preventScroll: true }); }
+}
+function nwExpText(n) {
+  if (!n.expires_at) return "";
+  const d = new Date(n.expires_at);
+  return d <= new Date() ? T(" · срок истёк") : T(" · до ") + dFmt.format(d) + ", " + tFmt.format(d);
+}
 async function loadNewsAdmin() {
   paintNwImgs();
-  const { data } = await sb.from("whats_new").select("id,title,body,images,created_at").order("id", { ascending: false }).limit(20);
-  $("nwList").replaceChildren(...((data || []).length ? data.map((n) => h("button", { class: "st-post", type: "button", onclick: () => { paintNews(n); newsNow = null; $("dlgNews").showModal(); } },
-    h("span", { class: "st-ptxt" }, n.title), h("small", { class: "muted" }, dyFmt.format(new Date(n.created_at)) + " · " + String(n.body || "").split(/\n+/).filter(Boolean).length + T(" пунктов") + (n.images && n.images.length ? " · 📷 " + n.images.length : ""))))
-    : [h("div", { class: "small muted" }, T("Обновлений пока не было."))]));
+  const { data } = await sb.from("whats_new").select("id,title,body,images,created_at,expires_at").order("id", { ascending: false }).limit(20);
+  $("nwList").replaceChildren(...((data || []).length ? data.map((n) => {
+    let armed = false;
+    const del = h("button", { class: "link", type: "button", style: "color:var(--danger)", onclick: async () => {
+      if (!armed) { armed = true; del.textContent = T("Точно удалить?"); setTimeout(() => { armed = false; del.textContent = T("Удалить"); }, 4000); return; }
+      del.disabled = true;
+      const { error } = await sb.rpc("whats_new_delete", { p_id: n.id });
+      if (error) { del.disabled = false; toast(T("Не удалось удалить")); return; }
+      if (nwEditId === n.id) nwSetEdit(null);
+      toast(T("Обновление удалено")); loadNewsAdmin();
+    } }, T("Удалить"));
+    return h("div", { class: "nw-item" },
+      h("button", { class: "st-post", type: "button", onclick: () => { paintNews(n); newsNow = null; $("dlgNews").showModal(); } },
+        h("span", { class: "st-ptxt" }, n.title), h("small", { class: "muted" }, dyFmt.format(new Date(n.created_at)) + " · " + String(n.body || "").split(/\n+/).filter(Boolean).length + T(" пунктов") + (n.images && n.images.length ? " · 📷 " + n.images.length : "") + nwExpText(n))),
+      h("div", { class: "nw-acts" }, h("button", { class: "link", type: "button", onclick: () => nwSetEdit(n) }, T("Изменить")), del));
+  }) : [h("div", { class: "small muted" }, T("Обновлений пока не было."))]));
 }
+$("nwCancelEdit").addEventListener("click", () => nwSetEdit(null));
 $("nwAdd").addEventListener("click", () => $("nwFile").click());
 $("nwFile").addEventListener("change", async (e) => {
   const files = [...e.target.files]; e.target.value = "";
@@ -8738,13 +8773,25 @@ let nwArmed = false;
 $("nwPublish").addEventListener("click", async () => {
   const title = $("nwTitle").value.trim(), body = $("nwBody").value.trim();
   if (!title || (!body && !nwImages.length)) { toast(T("Напишите, что добавили, или добавьте фото")); return; }
-  if (!nwArmed) { nwArmed = true; $("nwPublish").textContent = T("Точно? Увидят все"); setTimeout(() => { nwArmed = false; $("nwPublish").textContent = T("Опубликовать для всех"); }, 4000); return; }
+  const expV = $("nwExp").value, exp = expV ? new Date(expV) : null;
+  if (exp && (isNaN(exp) || exp <= new Date())) { toast(T("Дата окончания должна быть в будущем")); return; }
+  if (nwEditId) {
+    $("nwPublish").disabled = true;
+    const { error } = await sb.rpc("whats_new_update", { p_id: nwEditId, p_title: title, p_body: body, p_images: nwImages, p_expires: exp ? exp.toISOString() : null });
+    $("nwPublish").disabled = false;
+    if (error) { toast(/not found/.test(error.message || "") ? T("Это обновление уже удалено") : T("Не удалось сохранить")); return; }
+    nwSetEdit(null);
+    toast(T("Изменения сохранены"));
+    loadNewsAdmin();
+    return;
+  }
+  if (!nwArmed) { nwArmed = true; $("nwPublish").textContent = T("Точно? Увидят все"); setTimeout(() => { nwArmed = false; if (!nwEditId) $("nwPublish").textContent = T("Опубликовать для всех"); }, 4000); return; }
   nwArmed = false; $("nwPublish").textContent = T("Опубликовать для всех");
   $("nwPublish").disabled = true;
-  const { error } = await sb.rpc("whats_new_publish", { p_title: title, p_body: body, p_images: nwImages });
+  const { error } = await sb.rpc("whats_new_publish", { p_title: title, p_body: body, p_images: nwImages, p_expires: exp ? exp.toISOString() : null });
   $("nwPublish").disabled = false;
   if (error) { toast(T("Не удалось опубликовать")); return; }
-  $("nwBody").value = ""; nwImages = []; nwLocal = {};
+  $("nwBody").value = ""; $("nwExp").value = ""; nwImages = []; nwLocal = {};
   toast(T("Опубликовано — каждый увидит окно при входе"));
   loadNewsAdmin();
 });

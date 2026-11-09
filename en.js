@@ -1,5 +1,14 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Показывать до (необязательно)":"Show until (optional)",
+"После этой даты окно больше никому не покажется. Пусто — без срока.":"After this date nobody will see the window. Empty means no end date.",
+"Отменить правку":"Cancel editing",
+"Сохранить изменения":"Save changes",
+" · срок истёк":" · expired",
+"Обновление удалено":"Update deleted",
+"Дата окончания должна быть в будущем":"The end date must be in the future",
+"Это обновление уже удалено":"This update was already deleted",
+"Изменения сохранены":"Changes saved",
 "Изменить напоминание":"Edit reminder",
 "Изменить отложенное":"Edit scheduled message",
 "Сохранено · ":"Saved · ",
