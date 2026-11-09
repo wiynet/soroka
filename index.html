@@ -2956,8 +2956,23 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 /* видеозвонок: камера собеседника на весь экран, своя — маленьким окошком в углу */
 .call-self { position: absolute; z-index: 3; right: 14px; top: calc(max(14px, env(safe-area-inset-top)) + 56px); width: 108px; height: 150px; object-fit: cover; border-radius: 16px; background: #000; transform: scaleX(-1); box-shadow: 0 8px 24px rgb(0 0 0 / .45); border: 1.5px solid rgb(255 255 255 / .25); }
 .call-self.back { transform: none; }
+.call-self { touch-action: none; cursor: grab; transition: box-shadow .2s; }
+.call-self.drag { cursor: grabbing; box-shadow: 0 14px 34px rgb(0 0 0 / .6); transition: none; }
+.call-self.snap { transition: left .28s cubic-bezier(.2, .9, .3, 1.1), top .28s cubic-bezier(.2, .9, .3, 1.1); }
+@media (min-width: 720px), (pointer: fine) { .call-self { width: 200px; height: 112px; } }
 .call-self[hidden] { display: none; }
 .call-ui.cam-remote .call-video { top: 0; height: 100%; object-fit: cover; }
+/* на компьютере и широком экране не растягиваем: видео целиком, по центру, со скруглением */
+@media (min-width: 720px), (pointer: fine) {
+  .call-ui.cam-remote .call-video { top: calc(max(14px, env(safe-area-inset-top)) + 64px); bottom: 150px; height: auto; left: 50%; right: auto; width: min(calc(100% - 48px), calc((100vh - 230px) * 16 / 9)); translate: -50% 0;
+    object-fit: contain; background: rgb(0 0 0 / .35); border-radius: 18px; box-shadow: 0 18px 50px rgb(0 0 0 / .45); }
+  .call-ui.cam-remote::after { display: none; }
+  /* имя и время — над видео, а не поверх лица */
+  .call-ui.cam-remote .call-enc { visibility: hidden; }
+  #callUi.cam-remote .call-who { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; translate: -50% 0; margin: 0; display: flex; flex-direction: row; align-items: baseline; gap: 10px; }
+  .call-ui.cam-remote .call-name { font-size: 16px; margin: 0; }
+  .call-ui.cam-remote .call-status { font-size: 13px; opacity: .8; }
+}
 .call-ui.cam-remote::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(rgb(0 0 0 / .45), transparent 22%, transparent 70%, rgb(0 0 0 / .6)); }
 .call-ui.cam-remote .call-top, .call-ui.cam-remote .call-who, .call-ui.cam-remote .call-btns, .call-ui.cam-remote .call-mine { position: relative; z-index: 2; }
 .call-ui.cam-remote .call-av { display: none; }
@@ -17366,7 +17381,7 @@ function callFinish(note) {
   if (c.screen) c.screen.getTracks().forEach((t) => t.stop());
   if (c.mic) c.mic.getTracks().forEach((t) => t.stop());
   if (c.cam) c.cam.getTracks().forEach((t) => t.stop());
-  $("callSelf").srcObject = null;
+  $("callSelf").srcObject = null; $("callSelf").removeAttribute("style"); $("callSelf").classList.remove("snap", "drag");   // следующий звонок — окошко снова в углу
   try { if (c.pc) c.pc.close(); } catch (e) {}
   if (c.ch) sb.removeChannel(c.ch);
   $("callAudio").srcObject = null; $("callVideo").srcObject = null;
@@ -17432,7 +17447,10 @@ function callQPick(onPick) {
   box.hidden = false;
 }
 /* ---------- камера в звонке ---------- */
-const CALL_CAM = (facing) => ({ facingMode: facing, width: { ideal: 960, max: 1280 }, height: { ideal: 540, max: 720 }, frameRate: { ideal: 24, max: 30 } });
+// качество видео: с премиумом (и у админов) автоматически HD 720p · 30 к/с, у остальных 540p · 24 к/с
+const CALL_CAM = (facing) => callHQ()
+  ? { facingMode: facing, width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } }
+  : { facingMode: facing, width: { ideal: 960, max: 1280 }, height: { ideal: 540, max: 720 }, frameRate: { ideal: 24, max: 30 } };
 async function callCamTrackOut() {
   // камера уходит собеседнику, только если сейчас не показываем экран (экран важнее, после него камера вернётся)
   if (!call || !call.vt || call.screen) return;
@@ -17440,7 +17458,9 @@ async function callCamTrackOut() {
   try { await call.vt.sender.replaceTrack(tr); } catch (e) {}
   if (tr) {
     try { tr.contentHint = "motion"; } catch (e) {}
-    try { const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}]; p.encodings[0].maxBitrate = callHQ() ? 1500000 : 900000; p.encodings[0].maxFramerate = 24; p.encodings[0].scaleResolutionDownBy = 1; await call.vt.sender.setParameters(p); } catch (e) {}
+    // при слабой сети браузер сперва снижает частоту кадров, а не чёткость лица
+    try { const p0 = call.vt.sender.getParameters(); p0.degradationPreference = "maintain-resolution"; await call.vt.sender.setParameters(p0); } catch (e) {}
+    try { const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}]; p.encodings[0].maxBitrate = callHQ() ? 2800000 : 1000000; p.encodings[0].maxFramerate = callHQ() ? 30 : 24; p.encodings[0].networkPriority = p.encodings[0].priority = "high"; p.encodings[0].scaleResolutionDownBy = 1; await call.vt.sender.setParameters(p); } catch (e) {}
   }
 }
 async function callCamOn(facing) {
@@ -17537,6 +17557,39 @@ $("btnCall").addEventListener("click", () => startCall(state.chats.get(state.act
 $("btnVideo").append(icon("videocam"));
 $("btnVideo").addEventListener("click", () => startCall(state.chats.get(state.activeId), true));
 $("callCam").addEventListener("click", callToggleCam);
+// своё видео можно перетащить в любое место; отпустили — окошко прилипает к ближайшему углу
+(function () {
+  const el = $("callSelf");
+  let sx = 0, sy = 0, ox = 0, oy = 0, moved = false, on = false;
+  el.addEventListener("pointerdown", (e) => {
+    const r = el.getBoundingClientRect(), pr = $("callUi").getBoundingClientRect();
+    on = true; moved = false; sx = e.clientX; sy = e.clientY; ox = r.left - pr.left; oy = r.top - pr.top;
+    el.classList.remove("snap"); el.classList.add("drag");
+    el.style.right = "auto"; el.style.left = ox + "px"; el.style.top = oy + "px";
+    try { el.setPointerCapture(e.pointerId); } catch (x) {}
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!on) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+    const pr = $("callUi").getBoundingClientRect();
+    el.style.left = Math.max(6, Math.min(pr.width - el.offsetWidth - 6, ox + dx)) + "px";
+    el.style.top = Math.max(6, Math.min(pr.height - el.offsetHeight - 6, oy + dy)) + "px";
+  });
+  const end = () => {
+    if (!on) return;
+    on = false; el.classList.remove("drag");
+    if (!moved) return;
+    const pr = $("callUi").getBoundingClientRect(), r = el.getBoundingClientRect();
+    const m = 14, safeTop = 70, safeBot = 160;
+    const left = (r.left + r.width / 2 - pr.left) < pr.width / 2 ? m : pr.width - r.width - m;
+    const top = (r.top + r.height / 2 - pr.top) < pr.height / 2 ? safeTop : pr.height - r.height - safeBot;
+    el.classList.add("snap");
+    el.style.left = left + "px"; el.style.top = Math.max(m, top) + "px";
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+})();
 $("callFlip").append(icon("flip"));
 $("callFlip").addEventListener("click", callFlipCam);
 $("callAccept").append(icon("phone"));
