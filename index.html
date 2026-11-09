@@ -130,7 +130,7 @@ button { cursor: pointer; }
 .icon-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--muted); }
 .icon-btn:hover { background: var(--panel-2); color: var(--ink); }
 .icon-btn svg { width: 22px; height: 22px; }
-.field { display: grid; gap: 6px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
 .field > span { font-size: 13px; color: var(--muted); }
 .input { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
@@ -700,7 +700,7 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .mu-row .mu-pick { flex: none; padding: 6px 10px; font-size: 13px; }
 .mu-note { padding: 10px; font-size: 13px; color: var(--muted); text-align: center; }
 .mu-edit img.mu-ic { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; }
-.mu-edit { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
+.mu-edit { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
 .mu-edit .mu-ic { font-size: 18px; color: var(--accent); }
 .mu-edit .mu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auth-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 12.5px; }
