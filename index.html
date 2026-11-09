@@ -3367,7 +3367,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4ff3eea095"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e3a4c42203"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -6644,12 +6644,25 @@ $("signupForm").addEventListener("submit", (e) => {
       email, password,
       options: { data: { username, display_name: name }, emailRedirectTo: HERE },
     });
-    if (error) { state.codeGate = false; err.textContent = authError(error); return; }
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
+    const again = (error && /already registered|already exists/i.test(String(error.message || ""))) || (!error && data.user && data.user.identities && data.user.identities.length === 0);
+    if (again) {
+      // почта уже начинала регистрацию (код тогда не ввели). Пароль тот же — продолжаем: новый код на почту
+      let r;
+      try { r = await sb.auth.signInWithPassword({ email, password }); } catch (e2) { r = { error: e2 }; }
+      const m = r.error ? String(r.error.message || "") : "";
+      if (!r.error || /code_required/i.test(m)) {
+        if (!r.error) await sb.auth.signOut({ scope: "local" }).catch(() => {});
+        try { sessionStorage.setItem("mestario.pending", JSON.stringify({ username, name })); sessionStorage.setItem("mestario.newacc", "1"); } catch (e2) {}
+        const o = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        openCode("signup2", email, T("Регистрация на эту почту уже начиналась. Мы отправили новый код на "));
+        if (o.error) $("codeErr").textContent = authError(o.error);
+        return;
+      }
       state.codeGate = false;
-      err.textContent = T("Эта почта уже зарегистрирована. Войдите или восстановите пароль.");
+      err.textContent = /Email not confirmed/i.test(m) ? authError(r.error) : T("Эта почта уже зарегистрирована. Войдите или восстановите пароль.");
       return;
     }
+    if (error) { state.codeGate = false; err.textContent = authError(error); return; }
     try { sessionStorage.setItem("mestario.newacc", "1"); } catch (e2) {}
     if (!data.session) { openCode("signup", email); return; }
     // в Supabase выключено «подтверждение почты» и вход уже выдан — всё равно подтверждаем почту кодом
@@ -6691,6 +6704,7 @@ $("usernameForm").addEventListener("submit", (e) => {
     const res = await createProfile(username, name);
     if (res === "taken") err.textContent = T("Юзернейм @") + username + T(" уже занят.");
     else if (res === "ip") err.textContent = T("С этого адреса уже создано слишком много аккаунтов. Новый создать нельзя.");
+    else if (res === "code") await needCodeAgain();
     else if (res !== "ok") err.textContent = T("Не получилось сохранить профиль. Попробуйте ещё раз.");
     else startApp();
   });
@@ -6795,15 +6809,22 @@ async function createProfile(username, name) {
     const r = await sb.from("profiles").select("*").eq("id", state.me.id).maybeSingle();
     if (r.data) { state.profile = r.data; return "ok"; }
   }
-  if (error) return error.code === "23505" ? "taken" : /too many accounts/.test(error.message || "") ? "ip" : "error";
+  if (error) return error.code === "23505" ? "taken" : /too many accounts/.test(error.message || "") ? "ip" : /email code required/.test(error.message || "") ? "code" : "error";
   state.profile = data;
   setTimeout(claimReferral, 1500);
   return "ok";
+}
+// аккаунт создаётся только после кода из письма: вошли одним паролем — выходим и шлём код
+async function needCodeAgain() {
+  const em = state.me && state.me.email;
+  await sb.auth.signOut({ scope: "local" }).catch(() => {});
+  if (em) await sendLoginCode(em); else showAuth("login");
 }
 async function enter() {
   const { data, error } = await sb.from("profiles").select("*,collectible_usernames(username),collectible_numbers(number)").eq("id", state.me.id).maybeSingle();
   if (error) { showAuth("login"); $("loginErr").textContent = T("Не удалось загрузить профиль. Обновите страницу."); return; }
   if (data) {
+    try { sessionStorage.removeItem("mestario.pending"); } catch (e) {}
     state.profile = data;
     if (data.banned_at) { showBanned(); return; }
     if (!(await pinGate())) return;   // на этом устройстве ПИН ещё не введён
@@ -6816,10 +6837,13 @@ async function enter() {
     return;
   }
   const meta = state.me.user_metadata || {};
-  const name = String(meta.display_name || meta.full_name || meta.name || "").trim().slice(0, 64);
-  const username = String(meta.username || "").toLowerCase();
+  let pend = null;
+  try { pend = JSON.parse(sessionStorage.getItem("mestario.pending") || "null"); sessionStorage.removeItem("mestario.pending"); } catch (e) {}
+  const name = String((pend && pend.name) || meta.display_name || meta.full_name || meta.name || "").trim().slice(0, 64);
+  const username = String((pend && pend.username) || meta.username || "").toLowerCase();
   const made = name && USERNAME_RE.test(username) ? await createProfile(username, name) : "";
   if (made === "ok") { startApp(); return; }
+  if (made === "code") { await needCodeAgain(); return; }
   $("unName").value = name;
   $("unUser").value = "";
   // вошли через Google: юзернейм предлагаем из почты (его можно поменять), свободен ли — подскажет проверка ниже

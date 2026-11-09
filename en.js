@@ -1,5 +1,6 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Регистрация на эту почту уже начиналась. Мы отправили новый код на ":"Registration with this email was already started. We sent a new code to ",
 "Нажмите «Удалить» ещё раз, чтобы подтвердить":"Tap «Delete» again to confirm",
 "Действий нет":"No actions",
 "Профиль владельца":"Owner's profile",
