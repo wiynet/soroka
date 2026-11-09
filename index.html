@@ -1133,7 +1133,11 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .worn { display: inline-block; margin-left: 4px; font-size: .95em; line-height: 1; vertical-align: -1px; }
 .worn-btn { border: 0; padding: 0 2px; background: none; font: inherit; font-size: .95em; cursor: pointer; border-radius: 8px; }
 .worn-btn:hover { background: rgb(255 255 255 / .18); }
-.u-hero { position: relative; display: grid; justify-items: center; gap: 8px; align-self: stretch; }
+.u-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; align-self: stretch; min-width: 0; }
+/* длинные строки (номера, название песни, имя) не раздвигают шапку профиля вбок */
+.u-hero > :not(.u-banner) { max-width: 100%; min-width: 0; }
+.u-hero .u-num { white-space: normal; overflow-wrap: anywhere; text-align: center; line-height: 1.35; }
+.u-hero #uName { overflow-wrap: anywhere; text-align: center; }
 .u-hero > :not(.orbit):not(.pat) { position: relative; }
 /* закреплённые подарки «парят» вокруг аватарки */
 .orbit { position: absolute; left: 0; right: 0; top: 0; height: 150px; pointer-events: none; }
@@ -11322,7 +11326,7 @@ function paintUser(p) {
   // NFT-номер — первой строкой карточки, над юзернеймом
   const pn = nums(p);
   $("uNum").hidden = !pn.length;
-  $("uNum").textContent = pn.join(" · ");
+  $("uNum").textContent = pn.map((x) => String(x).replace(/ /g, "\u00a0")).join(" · ");   // номер целиком на одной строке
   // галочка перед именем — значит, верификация от Mestario (скрытую галочку видит только сам владелец)
   $("uVerNote").hidden = !(p.verified || p.is_admin) || (p.hide_tick && p.id !== state.me.id) || !!p.banned_at;
   $("uBio").textContent = p.bio || "";
