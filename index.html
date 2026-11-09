@@ -6246,7 +6246,8 @@ function randomId() {
   (window.crypto || window.msCrypto).getRandomValues(b);
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
-const SITE = IN_APP ? PUBLIC_SITE : /^https?:/.test(location.protocol) ? location.origin + location.pathname : "https://mestario.lol/";
+// адрес сайта для ссылок: всегда корень (страница могла открыться по адресу вида /market или /c-…)
+const SITE = IN_APP ? PUBLIC_SITE : /^https?:/.test(location.protocol) ? location.origin + location.pathname.replace(/[^/]*$/, "") : "https://mestario.lol/";
 async function copyText(text, ok) {
   try { await navigator.clipboard.writeText(text); toast(ok || T("Скопировано")); }
   catch (e) { toast(T("Не удалось скопировать. Ссылка: ") + text); }

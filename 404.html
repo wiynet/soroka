@@ -3,5 +3,6 @@
 <title>Mestario</title>
 <script>
 // короткие ссылки без решётки: mestario.top/Star-1 → mestario.top/#Star-1
-location.replace("/#" + location.pathname.replace(/^\/+|\/+$/g, "") + location.hash.replace(/^#/, ""));
+var p = location.pathname.replace(/^\/+|\/+$/g, "");
+location.replace("/#" + (p || location.hash.replace(/^#/, "")));
 </script>
