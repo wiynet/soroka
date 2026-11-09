@@ -5808,7 +5808,22 @@ const OAUTH_ERR = (() => {
     return e;
   } catch (x) { return ""; }
 })();
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* После долгого простоя телефон и браузер рвут старые соединения, и первый запрос падает с «network error»,
+   хотя интернет есть. Такой запрос повторяем: чтение — до двух раз, запись — один раз и только если отказ пришёл
+   сразу (значит, запрос до сервера не дошёл и дубля не будет). */
+const sbFetch = async (url, opts) => {
+  const method = String((opts && opts.method) || "GET").toUpperCase(), safe = method === "GET" || method === "HEAD";
+  for (let i = 0; ; i++) {
+    const t0 = Date.now();
+    try { return await fetch(url, opts); }
+    catch (e) {
+      if ((opts && opts.signal && opts.signal.aborted) || (e && e.name === "AbortError")) throw e;
+      if (i >= (safe ? 2 : 1) || (!safe && Date.now() - t0 > 1500) || (typeof navigator !== "undefined" && navigator.onLine === false)) throw e;
+      await new Promise((r) => setTimeout(r, 400 + i * 800));
+    }
+  }
+};
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: sbFetch } });
 
 const state = {
   me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), giveaways: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
@@ -6728,8 +6743,35 @@ async function catchUpActive() {
     else if (!!cur.deleted_at !== !!m.deleted_at || (cur.edited_at || null) !== (m.edited_at || null) || (cur.body || "") !== (m.body || "")) onChanged(m);
   }
 }
-window.addEventListener("online", () => { if (state.started) { if (!rtOk) subscribeInbox(); catchUp(); } });
-window.addEventListener("pageshow", (e) => { if (e.persisted && state.started) { subscribeInbox(); catchUp(); } });
+/* Проснулись после простоя: обновляем вход (токен мог истечь, пока таймеры спали), и если сокет живых
+   обновлений мёртв или нас долго не было — поднимаем канал заново и догружаем пропущенное. */
+let awayAt = 0, wakeBusy = false;
+document.addEventListener("visibilitychange", () => { if (document.hidden) awayAt = Date.now(); });
+function rtAlive() { try { return !!(sb.realtime && sb.realtime.isConnected()) && rtOk; } catch (e) { return rtOk; } }
+async function wakeUp(force, noCatch) {
+  if (!state.started || wakeBusy) return;
+  wakeBusy = true;
+  try {
+    const { data } = await sb.auth.getSession();
+    let ses = data && data.session;
+    if (ses && ses.expires_at && ses.expires_at * 1000 - Date.now() < 120000) {
+      const r = await sb.auth.refreshSession().catch(() => null);
+      if (r && r.data && r.data.session) ses = r.data.session;
+    }
+    if (ses && sb.realtime && sb.realtime.setAuth) { try { sb.realtime.setAuth(ses.access_token); } catch (e) {} }
+    if (force || !rtAlive()) {
+      try { if (sb.realtime && !sb.realtime.isConnected()) sb.realtime.connect(); } catch (e) {}
+      rtWasDown = true;
+      subscribeInbox();
+    }
+  } catch (e) {} finally { wakeBusy = false; }
+  if (!noCatch) catchUp();
+}
+window.addEventListener("online", () => wakeUp(true));
+window.addEventListener("pageshow", (e) => { if (e.persisted) wakeUp(true); });
+window.addEventListener("focus", () => { if (Date.now() - awayAt > 30000 && awayAt) wakeUp(false); });
+// сторож: пока экран открыт, раз в 20 секунд проверяем, что сокет жив; если тихо умер — переподключаемся
+setInterval(() => { if (state.started && !document.hidden && !wakeBusy && !rtAlive() && rtOk) wakeUp(true); }, 20000);
 // раз в минуту: отмечаемся «в сети», проверяем бан и обновляем чужие статусы
 async function tick() {
   if (!state.started || document.hidden) return;
@@ -9008,8 +9050,9 @@ document.addEventListener("visibilitychange", async () => {
   if (state.activeId) state.unread.delete(state.activeId);
   markReadSoon();
   for (const k of [...msgCache.keys()]) if (k !== state.activeId) msgCache.delete(k);
-  // телефон спал: соединение могло тихо умереть — переподключаемся, если оно не живо
-  if (!rtOk) subscribeInbox();
+  // телефон спал: соединение могло тихо умереть — после долгой отлучки поднимаем его заново, иначе — если оно не живо
+  const away = awayAt ? Date.now() - awayAt : 0;
+  await wakeUp(away > 60000, true);
   await loadChats();
   prefetchChats();
   catchUpActive();
