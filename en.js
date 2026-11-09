@@ -1,5 +1,16 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Пригласить":"Invite",
+"Пригласить в звонок":"Invite to call",
+"Переходим в общий звонок…":"Switching to a group call…",
+"приглашает вас в звонок":"invites you to a call",
+"приглашает в звонок в «":"invites you to a call in «",
+"Приглашение отправлено":"Invitation sent",
+"Этих людей позвать нельзя":"These people can't be invited",
+"Не удалось пригласить":"Couldn't send the invitation",
+"За раз можно позвать до 10 человек":"You can invite up to 10 people at once",
+"Найдите человека по имени или @юзернейму.":"Find someone by name or @username.",
+"звонок":"call",
 "Видеозвонок":"Video call",
 "Камера":"Camera",
 "Другая камера":"Other camera",

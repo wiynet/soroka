@@ -3012,6 +3012,19 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .vc-p.talk .avatar { box-shadow: 0 0 0 3px #4cd184, 0 0 18px rgb(76 209 132 / .6); }
 .vc-p .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-p small { opacity: .65; }
+/* видео в групповом звонке: плитка с камерой вместо аватарки */
+.vc-people.has-video { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 420px)); justify-content: center; align-content: center; }
+.vc-p .vc-vid { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; background: #000; box-shadow: 0 0 0 3px transparent; transition: box-shadow .15s; }
+.vc-p .vc-vid.me { transform: scaleX(-1); }
+.vc-p.talk .vc-vid { box-shadow: 0 0 0 3px #4cd184; }
+.inv-list { display: grid; gap: 2px; max-height: 50vh; overflow-y: auto; }
+.inv-list .row.picked { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.inv-list .empty-note { padding: 14px; }
+.vc-ring .dlg { align-items: center; text-align: center; gap: 10px; padding: 26px 22px 20px; }
+.vc-ring .vr-av .avatar { width: 84px !important; height: 84px !important; font-size: 30px !important; animation: call-pulse 1.6s infinite; }
+.vc-ring b { font-size: 19px; }
+.vc-ring .vr-acts { display: flex; gap: 40px; justify-content: center; margin-top: 10px; }
+.vc-ring .call-b { width: 60px; height: 60px; }
 .vc-note { text-align: center; font-size: 13px; opacity: .75; min-height: 18px; }
 .vc-bar { background: #2fb36b; }
 #adTabs { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
@@ -3348,7 +3361,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=071ce7d5b4"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5402f92015"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5011,6 +5024,7 @@ void main() {
     <div class="call-act" id="callCamWrap"><button class="call-b" id="callCam" type="button"></button><span>Камера</span></div>
     <div class="call-act" id="callFlipWrap" hidden><button class="call-b" id="callFlip" type="button" title="Другая камера" aria-label="Другая камера"></button><span>Повернуть</span></div>
     <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
+    <div class="call-act" id="callInvWrap" hidden><button class="call-b" id="callInv" type="button" title="Пригласить в звонок" aria-label="Пригласить в звонок"></button><span>Пригласить</span></div>
     <div class="call-act"><button class="call-b red" id="callHang" type="button" title="Завершить" aria-label="Завершить"></button><span>Завершить</span></div>
     <div class="call-act in"><button class="call-b red" id="callDecline" type="button" title="Отклонить" aria-label="Отклонить"></button><span>Отклонить</span></div>
     <div class="call-act in"><button class="call-b green" id="callAccept" type="button" title="Принять" aria-label="Принять"></button><span>Принять</span></div>
@@ -5047,9 +5061,32 @@ void main() {
   <div class="vc-note" id="vcNote"></div>
   <div class="call-btns">
     <div class="call-act"><button class="call-b" id="vcMute" type="button"></button><span id="vcMuteLbl">Микрофон</span></div>
+    <div class="call-act"><button class="call-b" id="vcCam" type="button"></button><span>Камера</span></div>
+    <div class="call-act"><button class="call-b" id="vcInv" type="button" title="Пригласить в звонок" aria-label="Пригласить в звонок"></button><span>Пригласить</span></div>
     <div class="call-act"><button class="call-b red" id="vcLeave" type="button" title="Выйти" aria-label="Выйти из голосового чата"></button><span>Выйти</span></div>
   </div>
 </div>
+<!-- пригласить в звонок -->
+<dialog id="dlgCallInv">
+  <div class="dlg">
+    <h2>Пригласить в звонок</h2>
+    <input class="input" id="invQ" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
+    <div class="inv-list" id="invList"></div>
+    <div class="actions"><button class="btn ghost" type="button" data-close>Отмена</button><button class="btn" type="button" id="invGo" disabled>Пригласить</button></div>
+  </div>
+</dialog>
+<!-- входящее приглашение в звонок -->
+<dialog id="dlgVcRing" class="vc-ring">
+  <div class="dlg">
+    <div class="vr-av" id="vrAv"></div>
+    <b id="vrWho"></b>
+    <span class="muted" id="vrText"></span>
+    <div class="vr-acts">
+      <div class="call-act"><button class="call-b red" type="button" id="vrNo" aria-label="Отклонить"></button><span>Отклонить</span></div>
+      <div class="call-act"><button class="call-b green" type="button" id="vrYes" aria-label="Присоединиться"></button><span>Присоединиться</span></div>
+    </div>
+  </div>
+</dialog>
 <button class="call-bar vc-bar" id="vcBar" type="button" hidden><span class="dot"></span><span id="vcBarText"></span><b>Открыть</b></button>
 <!-- конструктор бота -->
 <dialog id="dlgBotEdit" class="bot-edit-dlg">
@@ -6841,6 +6878,7 @@ const RT_ROUTE = {
   support_tickets: (p) => onTicket(p),
   calls: (p) => onCallRow(p.new),
   voice_chats: (p) => { if (p.new && p.new.chat_id === state.activeId) vcRefresh(); },
+  vc_invite: (p) => onVcInvite(p.new),
 };
 let rtLegacy = false, rtDenied = 0;
 // запасной канал (прежний способ, postgres_changes) — только если личный канал не работает
@@ -17192,6 +17230,7 @@ function callPaint() {
   }
   if (!call.screen || call.status !== "active") $("callQPick").hidden = true;
   $("callShareWrap").hidden = !callShareOk || call.status !== "active";
+  $("callInvWrap").hidden = call.status !== "active" || !!call.ended;
   $("callShare").classList.toggle("on", !!call.screen);
   $("callShare").title = call.screen ? T("Остановить показ экрана") : T("Показать экран");
   $("callPeerMuted").hidden = !call.peerMuted;
@@ -17306,6 +17345,7 @@ async function onCallSig(m) {
       else (call.iceQ = call.iceQ || []).push(m.c);
     } else if (m.t === "screen") { call.remoteScreen = !!m.on; if (call.remoteScreen) call.min = false; callPaint(); }
     else if (m.t === "mute") { call.peerMuted = !!m.on; callPaint(); }
+    else if (m.t === "move" && m.chat) { const chat = m.chat, camOn = !!call.cam; callDrop(T("Переходим в общий звонок…")); await vcJoin(chat, null, true); if (camOn && vc && !vc.cam) vcToggleCam(); }
     else if (m.t === "cam") { call.remoteCam = !!m.on; if (call.remoteCam) { call.min = false; $("callVideo").play().catch(() => {}); } callPaint(); }
     else if (m.t === "bye") { callFinish(T("Звонок завершён")); }
   } catch (e) { console.warn("call signal", e); }
@@ -17496,7 +17536,8 @@ function callFlipCam() { if (call && call.cam) callCamOn(call.camFacing === "env
 async function callToggleShare() {
   if (!call || call.status !== "active" || !call.vt) return;
   if (call.screen) { callStopShare(); return; }
-  callQPick(callStartShare);
+  // показ начинается сразу: с премиумом — HD, у остальных — обычное; поменять можно кнопкой «Сменить» во время показа
+  callStartShare(callHQ() ? "hd" : "std");
 }
 async function callStartShare(key) {
   if (!call || call.status !== "active" || call.screen) return;
@@ -17633,14 +17674,15 @@ async function vcRefresh() {
   if (c.is_channel && !myRole(c)) $("btnVc").hidden = true;
 }
 function vcSend(msg) { if (vc && vc.ch) vc.ch.send({ type: "broadcast", event: "sig", payload: { ...msg, from: VC_DEV } }).catch(() => {}); }
-function vcTrack() { if (vc && vc.ch) vc.ch.track({ uid: state.me.id, muted: !vc.mic || vc.muted }).catch(() => {}); }
-async function vcJoin(chatId) {
+function vcTrack() { if (vc && vc.ch) vc.ch.track({ uid: state.me.id, muted: !vc.mic || vc.muted, cam: !!vc.cam }).catch(() => {}); }
+async function vcJoin(chatId, inv, live) {
   const c = state.chats.get(chatId);
-  if (!c) return;
+  if (!c && !inv) return;
   if (vc) { if (vc.chat === chatId) { vc.min = false; vcPaint(); return; } toast(T("Сначала выйдите из другого голосового чата")); return; }
   if (typeof call !== "undefined" && call) { toast(T("Сначала завершите звонок")); return; }
   if (!window.RTCPeerConnection) { toast(T("Этот браузер не поддерживает голосовые чаты")); return; }
-  vc = { chat: chatId, peers: new Map(), joining: true, muted: false };
+  vc = { chat: chatId, peers: new Map(), joining: true, muted: false, people: new Map(), vids: new Map(),
+    title: c ? chatTitle(c) : inv && (inv.title || (inv.from && inv.from.display_name)) || T("Звонок") };
   vcPaint();
   const { data, error } = await sb.rpc("vc_join", { p_chat: chatId, p_dev: VC_DEV });
   if (error || !data) {
@@ -17654,7 +17696,8 @@ async function vcJoin(chatId) {
     vc.mic = await callMic(false);
     if (!vc) { return; }
     // заходим с выключенным микрофоном, как в Telegram: включают его сами
-    if (vc.mic) { vc.muted = true; vc.mic.getAudioTracks().forEach((t) => (t.enabled = false)); }
+    // а если пришли из личного звонка или по приглашению — сразу говорим
+    if (vc.mic && !live) { vc.muted = true; vc.mic.getAudioTracks().forEach((t) => (t.enabled = false)); }
   }
   const ch = sb.channel("vc-" + vc.id, { config: { broadcast: { self: false }, presence: { key: VC_DEV } } });
   vc.ch = ch;
@@ -17673,21 +17716,40 @@ function vcSync() {
   // новые участники: соединение начинает тот, чей номер устройства меньше
   for (const [dev, meta] of here) {
     const p = vc.peers.get(dev);
-    if (p) { p.uid = meta.uid; p.muted = !!meta.muted; continue; }
-    vc.peers.set(dev, { uid: meta.uid, muted: !!meta.muted, iceQ: [] });
+    if (p) { p.uid = meta.uid; p.muted = !!meta.muted; p.cam = !!meta.cam; continue; }
+    vc.peers.set(dev, { uid: meta.uid, muted: !!meta.muted, cam: !!meta.cam, iceQ: [] });
     if (VC_DEV < dev) vcOffer(dev);
   }
-  for (const [dev, p] of vc.peers) if (!here.has(dev)) { vcDrop(p); vc.peers.delete(dev); }
+  for (const [dev, p] of vc.peers) if (!here.has(dev)) { vcDrop(p); vc.peers.delete(dev); vc.vids.delete(dev); }
+  vcNeedPeople();
   vcPaint();
 }
-function vcPc(dev) {
+// имена и аватарки тех, кого нет в этом чате (позвали по приглашению)
+let vcPeopleT = 0;
+function vcNeedPeople() {
+  if (!vc || !vc.id) return;
+  const miss = [...vc.peers.values()].some((p) => p.uid && !vcPerson(p.uid));
+  if (!miss || vcPeopleT) return;
+  vcPeopleT = setTimeout(async () => {
+    vcPeopleT = 0;
+    if (!vc) return;
+    const { data } = await sb.rpc("vc_people", { p_vc: vc.id });
+    if (!vc || !Array.isArray(data)) return;
+    for (const pr of data) vc.people.set(pr.id, pr);
+    vcPaint();
+  }, 300);
+}
+function vcPc(dev, offerer) {
   const p = vc.peers.get(dev);
   const pc = new RTCPeerConnection({ iceServers: vc.ice });
-  p.pc = pc;
+  p.pc = pc; p.vt = null; p.vstream = null;
   const mt = vc.mic && vc.mic.getAudioTracks()[0];
   if (mt) pc.addTrack(mt, vc.mic); else pc.addTransceiver("audio", { direction: "recvonly" });
+  // видео: место под камеру есть всегда, сама камера включается кнопкой без пересоединения
+  if (offerer) { p.vt = pc.addTransceiver("video", { direction: "sendrecv" }); if (vc.cam) p.vt.sender.replaceTrack(vc.cam.getVideoTracks()[0]).catch(() => {}); }
   pc.onicecandidate = (e) => { if (e.candidate) vcSend({ t: "ice", to: dev, c: e.candidate.toJSON() }); };
   pc.ontrack = (e) => {
+    if (e.track.kind === "video") { p.vstream = new MediaStream([e.track]); vcPaint(); return; }
     const stream = e.streams[0] || new MediaStream([e.track]);
     if (!p.audio) { p.audio = h("audio", { autoplay: true }); p.audio.hidden = true; document.body.append(p.audio); }
     p.audio.srcObject = stream; p.audio.play().catch(() => {});
@@ -17703,7 +17765,7 @@ function vcPc(dev) {
 }
 async function vcOffer(dev) {
   if (!vc || !vc.peers.has(dev)) return;
-  const pc = vcPc(dev);
+  const pc = vcPc(dev, true);
   try { await pc.setLocalDescription(await pc.createOffer()); vcSend({ t: "offer", to: dev, sdp: pc.localDescription.toJSON() }); } catch (e) {}
 }
 async function vcSig(m) {
@@ -17713,8 +17775,10 @@ async function vcSig(m) {
   try {
     if (m.t === "offer") {
       if (p.pc) { vcDrop(p); }
-      const pc = vcPc(m.from);
+      const pc = vcPc(m.from, false);
       await pc.setRemoteDescription(m.sdp);
+      const vt = pc.getTransceivers().find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "video");
+      if (vt) { p.vt = vt; vt.direction = "sendrecv"; if (vc.cam) await vt.sender.replaceTrack(vc.cam.getVideoTracks()[0]).catch(() => {}); }
       await pc.setLocalDescription(await pc.createAnswer());
       vcSend({ t: "answer", to: m.from, sdp: pc.localDescription.toJSON() });
       for (const c of p.iceQ.splice(0)) try { await pc.addIceCandidate(c); } catch (e) {}
@@ -17728,6 +17792,7 @@ async function vcSig(m) {
 }
 function vcDrop(p) {
   try { if (p.pc) p.pc.close(); } catch (e) {}
+  p.vstream = null; p.vt = null;
   if (p.audio) { p.audio.srcObject = null; p.audio.remove(); p.audio = null; }
   p.an = null;
 }
@@ -17753,22 +17818,29 @@ function vcMeter() {
 }
 function vcPerson(uid) {
   const c = vc && state.chats.get(vc.chat);
-  return (c && c.members.find((x) => x.id === uid)) || (uid === state.me.id ? state.profile : null);
+  return (c && c.members.find((x) => x.id === uid)) || (uid === state.me.id ? state.profile : null) || (vc && vc.people.get(uid)) || null;
+}
+// видео участника: один и тот же элемент между перерисовками, чтобы картинка не мигала
+function vcVideo(key, stream, me) {
+  let v = vc.vids.get(key);
+  if (!v) { v = h("video", { class: "vc-vid" + (me ? " me" : ""), playsinline: true, autoplay: true, muted: true }); vc.vids.set(key, v); }
+  if (v.srcObject !== stream) { v.srcObject = stream; v.play().catch(() => {}); }
+  return v;
 }
 function vcPaint() {
   const ui = $("vcUi"), bar = $("vcBar");
   if (!vc) { ui.hidden = true; bar.hidden = true; return; }
   const c = state.chats.get(vc.chat);
-  $("vcTitle").textContent = c ? chatTitle(c) : T("Голосовой чат");
-  const people = [{ uid: state.me.id, me: true, talk: vc.talk, muted: !vc.mic || vc.muted }];
-  const seen = new Set([state.me.id + VC_DEV]);
-  for (const [dev, p] of vc.peers) if (p.uid) people.push({ uid: p.uid, talk: p.talk, muted: p.muted, state: p.pc ? p.pc.connectionState : "new" });
+  $("vcTitle").textContent = c ? chatTitle(c) : vc.title || T("Звонок");
+  const people = [{ key: "me", uid: state.me.id, me: true, talk: vc.talk, muted: !vc.mic || vc.muted, stream: vc.cam }];
+  for (const [dev, p] of vc.peers) if (p.uid) people.push({ key: dev, uid: p.uid, talk: p.talk, muted: p.muted, state: p.pc ? p.pc.connectionState : "new", stream: p.cam && p.vstream ? p.vstream : null });
+  $("vcPeople").classList.toggle("has-video", people.some((x) => x.stream));
   const n = new Set(people.map((x) => x.uid)).size;
   $("vcSub").textContent = vc.joining ? T("Подключаемся…") : T("Голосовой чат · ") + n + " " + plural(n, T("участник"), T("участника"), T("участников"));
   $("vcPeople").replaceChildren(...people.map((x) => {
     const pr = vcPerson(x.uid);
     return h("div", { class: "vc-p" + (x.talk ? " talk" : "") },
-      avatar(pr ? pr.display_name : "?", x.uid, "lg", pr && pr.avatar_path),
+      x.stream ? vcVideo(x.key, x.stream, x.me && vc.camFacing !== "environment") : avatar(pr ? pr.display_name : "?", x.uid, "lg", pr && pr.avatar_path),
       h("span", { class: "nm" }, x.me ? T("Вы") : pr ? pr.display_name : T("Участник")),
       h("small", {}, x.state && x.state !== "connected" && !x.me ? T("соединяемся…") : x.muted ? T("микрофон выключен") : x.talk ? T("говорит") : T("слушает")));
   }));
@@ -17777,9 +17849,12 @@ function vcPaint() {
   $("vcMute").classList.toggle("on", !!vc.mic && !vc.muted);
   $("vcMute").disabled = !vc.speak;
   $("vcMuteLbl").textContent = !vc.mic ? T("Без микрофона") : vc.muted ? T("Включить") : T("Выключить");
+  $("vcCam").replaceChildren(icon(vc.cam ? "videocam" : "videooff"));
+  $("vcCam").classList.toggle("on", !!vc.cam);
+  $("vcCam").disabled = !vc.speak;
   ui.hidden = !!vc.min;
   bar.hidden = !vc.min;
-  $("vcBarText").textContent = (c ? chatTitle(c) : "") + " · " + T("голосовой чат") + (vc.talk ? " · " + T("вы говорите") : "");
+  $("vcBarText").textContent = (c ? chatTitle(c) : vc.title || "") + " · " + T("звонок") + (vc.talk ? " · " + T("вы говорите") : "");
 }
 async function vcLeave() {
   if (!vc) return;
@@ -17787,11 +17862,139 @@ async function vcLeave() {
   clearInterval(v.ping); clearInterval(v.meter);
   for (const p of v.peers.values()) vcDrop(p);
   if (v.mic) v.mic.getTracks().forEach((t) => t.stop());
+  if (v.cam) v.cam.getTracks().forEach((t) => t.stop());
   if (v.ch) { try { await v.ch.untrack(); } catch (e) {} sb.removeChannel(v.ch); }
   if (v.ac) v.ac.close().catch(() => {});
   if (v.id) sb.rpc("vc_leave", { p_vc: v.id, p_dev: VC_DEV }).then(() => vcRefresh());
   vcPaint();
 }
+async function vcToggleCam() {
+  if (!vc || !vc.speak) return;
+  if (vc.cam) {
+    vc.cam.getTracks().forEach((t) => t.stop()); vc.cam = null;
+    for (const p of vc.peers.values()) if (p.vt) p.vt.sender.replaceTrack(null).catch(() => {});
+  } else {
+    let s;
+    try { s = await navigator.mediaDevices.getUserMedia({ video: CALL_CAM("user") }); }
+    catch (e) { toast(e && e.name === "NotAllowedError" ? T("Нет доступа к камере — разрешите её в настройках") : T("Камера не найдена")); return; }
+    if (!vc) { s.getTracks().forEach((t) => t.stop()); return; }
+    vc.cam = s; vc.camFacing = "user";
+    const tr = s.getVideoTracks()[0];
+    for (const [dev, p] of vc.peers) {
+      if (p.vt) p.vt.sender.replaceTrack(tr).catch(() => {});
+      else if (p.pc) { vcDrop(p); p.pc = null; if (VC_DEV < dev) vcOffer(dev); else vcSend({ t: "renew", to: dev }); }   // старое соединение без места под видео
+    }
+  }
+  vcTrack(); vcPaint();
+}
+$("vcCam").addEventListener("click", vcToggleCam);
+
+/* ---------- пригласить в звонок ---------- */
+let invPick = new Set(), invOnGo = null, invExclude = new Set(), invSeq = 0;
+async function paintCallInvite() {
+  const q = $("invQ").value.trim(), seq = ++invSeq, box = $("invList");
+  let people;
+  if (q.length >= 2) people = await searchPeople(q);
+  else {
+    const seen = new Map();
+    const vchat = vc && state.chats.get(vc.chat);
+    if (vchat && vchat.is_group) for (const m of vchat.members || []) seen.set(m.id, m);
+    for (const c of [...state.chats.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1))) if (!c.is_group) { const o = other(c); if (o && !o.is_bot) seen.set(o.id, o); }
+    people = [...seen.values()];
+  }
+  if (seq !== invSeq) return;
+  people = people.filter((u) => u && u.id && u.id !== state.me.id && !invExclude.has(u.id) && !u.is_bot && !isDeleted(u) && !u.banned_at);
+  box.replaceChildren(...(people.length ? people.slice(0, 60).map((u) => {
+    const r = personRow(u, () => { if (invPick.has(u.id)) invPick.delete(u.id); else if (invPick.size < 10) invPick.add(u.id); else toast(T("За раз можно позвать до 10 человек")); paintCallInvite(); }, invPick.has(u.id));
+    return r;
+  }) : [h("div", { class: "empty-note" }, q.length >= 2 ? T("Никого не нашли.") : T("Найдите человека по имени или @юзернейму."))]));
+  $("invGo").disabled = !invPick.size;
+  $("invGo").textContent = invPick.size ? T("Пригласить") + " (" + invPick.size + ")" : T("Пригласить");
+}
+function openCallInvite(exclude, onGo) {
+  invPick = new Set(); invExclude = new Set(exclude || []); invOnGo = onGo;
+  $("invQ").value = "";
+  paintCallInvite();
+  $("dlgCallInv").showModal();
+}
+$("invQ").addEventListener("input", debounce(paintCallInvite, 300));
+$("invGo").addEventListener("click", async () => {
+  const ids = [...invPick];
+  if (!ids.length || !invOnGo) return;
+  $("invGo").disabled = true;
+  $("dlgCallInv").close();
+  try { await invOnGo(ids); } finally { $("invGo").disabled = false; }
+});
+async function vcSendInvites(ids) {
+  if (!vc || !vc.id) return;
+  const { data, error } = await sb.rpc("vc_invite", { p_vc: vc.id, p_users: ids });
+  if (error) { toast(T("Не удалось пригласить")); return; }
+  toast(Number(data) ? T("Приглашение отправлено") + (Number(data) > 1 ? " (" + data + ")" : "") : T("Этих людей позвать нельзя"));
+}
+$("vcInv").append(icon("users"));
+$("vcInv").addEventListener("click", () => {
+  if (!vc || !vc.id) return;
+  openCallInvite([...vc.peers.values()].map((p) => p.uid).filter(Boolean), vcSendInvites);
+});
+// личный звонок → общий: оба переходим в звонок этого чата, туда же зовём выбранных
+async function callToGroup(ids) {
+  if (!call || call.status !== "active") return;
+  const chat = call.chat, camOn = !!call.cam;
+  callSend({ t: "move", chat });
+  await new Promise((r) => setTimeout(r, 300));   // даём сигналу уйти, потом закрываем канал
+  if (!call) return;
+  callDrop(T("Переходим в общий звонок…"));
+  await vcJoin(chat, null, true);
+  if (!vc || !vc.id) return;
+  await vcSendInvites(ids);
+  if (camOn && !vc.cam) vcToggleCam();
+}
+// закрыть личный звонок без «звонок завершён» у собеседника: он переходит туда же
+function callDrop(note) {
+  if (!call) return;
+  const c = call;
+  if (c.id) sb.rpc("call_end", { p_call: c.id }).then(() => {});
+  callStopTones();
+  clearTimeout(c.ringT); clearTimeout(c.connT); clearTimeout(c.dropT); clearInterval(c.tick); clearInterval(c.ping); clearInterval(c.readyT);
+  for (const st of [c.screen, c.mic, c.cam]) if (st) st.getTracks().forEach((t) => t.stop());
+  try { if (c.pc) c.pc.close(); } catch (e) {}
+  if (c.ch) sb.removeChannel(c.ch);
+  $("callAudio").srcObject = null; $("callVideo").srcObject = null;
+  $("callSelf").srcObject = null; $("callSelf").removeAttribute("style"); $("callSelf").classList.remove("snap", "drag");
+  $("callUi").classList.remove("ended");
+  call = null; callPaint();
+  if (note) toast(note);
+}
+$("callInv").append(icon("users"));
+$("callInv").addEventListener("click", () => { if (call && call.status === "active") openCallInvite([call.peer && call.peer.id], callToGroup); });
+
+/* ---------- входящее приглашение в звонок ---------- */
+let vcRingNow = null, vcRingT = 0, vcRingTone = 0;
+function onVcInvite(inv) {
+  if (!inv || !inv.vc || !inv.chat || !state.started) return;
+  if (vc && vc.id === inv.vc) return;
+  vcRingNow = inv;
+  const f = inv.from || {};
+  $("vrAv").replaceChildren(avatar(f.display_name || "?", f.id || "x", "lg", f.avatar_path));
+  $("vrWho").textContent = f.display_name || T("Собеседник");
+  $("vrText").textContent = inv.title ? T("приглашает в звонок в «") + inv.title + "»" : T("приглашает вас в звонок");
+  if (!$("dlgVcRing").open) $("dlgVcRing").showModal();
+  clearInterval(vcRingTone);
+  const ring = () => { callTone([880, 1320], 0.18, 0.06); setTimeout(() => callTone([988, 1480], 0.22, 0.06), 230); if (navigator.vibrate) try { navigator.vibrate([300, 200, 300]); } catch (e) {} };
+  ring(); vcRingTone = setInterval(ring, 2200);
+  clearTimeout(vcRingT); vcRingT = setTimeout(() => { if ($("dlgVcRing").open) $("dlgVcRing").close(); }, 45000);
+}
+$("dlgVcRing").addEventListener("close", () => { clearInterval(vcRingTone); clearTimeout(vcRingT); if (navigator.vibrate) try { navigator.vibrate(0); } catch (e) {} });
+$("vrNo").append(icon("phone"));
+$("vrNo").addEventListener("click", () => { vcRingNow = null; $("dlgVcRing").close(); });
+$("vrYes").append(icon("phone"));
+$("vrYes").addEventListener("click", async () => {
+  const inv = vcRingNow; vcRingNow = null; $("dlgVcRing").close();
+  if (!inv) return;
+  if (typeof call !== "undefined" && call) { if (call.status === "active") callDrop(); else { toast(T("Сначала завершите звонок")); return; } }
+  if (vc && vc.id !== inv.vc) await vcLeave();
+  vcJoin(inv.chat, inv, true);
+});
 $("btnVc").append(icon("mic"));
 $("btnVc").addEventListener("click", () => { const c = state.chats.get(state.activeId); if (c) vcJoin(c.id); });
 $("vcBannerJoin").addEventListener("click", () => { if (state.activeId) vcJoin(state.activeId); });
