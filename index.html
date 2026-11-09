@@ -8064,19 +8064,33 @@ function renderMsgs(newId) {
   paintTyping();
   paintVoice();
   preloadVoices();
+  watchMore();
 }
+/* ранние сообщения подгружаются сами: когда до верха переписки остаётся меньше ~900 px */
+let moreIO = null;
+function watchMore() {
+  if (!("IntersectionObserver" in window)) return;
+  if (!moreIO) moreIO = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) autoEarlier(); }, { root: $("msgs"), rootMargin: "900px 0px 0px 0px" });
+  moreIO.disconnect();
+  if (state.hasMore && moreBtn && moreBtn.isConnected) moreIO.observe(moreBtn);
+}
+function autoEarlier() { if (state.hasMore && !state.loadingMore && state.msgs.length && state.msgsReady === state.activeId) loadEarlier(); }
 async function loadEarlier() {
   if (state.loadingMore || !state.msgs.length) return;
   state.loadingMore = true;
+  if (moreBtn) { moreBtn.disabled = true; moreBtn.textContent = T("Загружаем…"); }
   const id = state.activeId, box = $("msgs"), before = box.scrollHeight;
   const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null).gt("id", (state.chats.get(id) || {}).cleared || 0).lt("id", state.msgs[0].id).order("id", { ascending: false }).limit(PAGE);
   state.loadingMore = false;
+  if (moreBtn) { moreBtn.disabled = false; moreBtn.textContent = T("Показать более ранние"); }
   if (error || state.activeId !== id) return;
   state.msgs = data.reverse().concat(state.msgs);
   state.hasMore = data.length === PAGE;
   renderMsgs();
   box.scrollTop = box.scrollHeight - before;
   ensureReplies();
+  // всё ещё у самого верха (быстро листают) — догружаем следующую порцию
+  requestAnimationFrame(() => { if (state.activeId === id && box.scrollTop < 900) autoEarlier(); });
 }
 function addMsg(m) {
   if (state.msgs.some((x) => x.id === m.id)) return;
