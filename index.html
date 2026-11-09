@@ -19616,7 +19616,8 @@ async function handleLink(hashArg) {
   if ((m = /^#g?approve-([0-9a-f-]{36})$/.exec(hash))) showApprove(m[1]);
   else if ((m = /^#c-([0-9a-f-]{36})$/.exec(hash))) openChatFromLink(m[1]);
   else if ((m = /^#gift-(\d{1,12})$/.exec(hash))) openGiftView(Number(m[1]));
-  else if ((m = /^#([a-z]{2,20})-(\d{1,7})$/i.exec(hash))) openGiftView({ type: m[1].toLowerCase(), number: Number(m[2]) });
+  // NFT по ссылке «тип-номер»: у подарков коллекции Mestario в типе есть подчёркивание (M_cap-53)
+  else if ((m = /^#([a-z][a-z0-9_]{1,30})-(\d{1,7})$/i.exec(hash))) openGiftView({ type: m[1].toLowerCase(), number: Number(m[2]) });
   else if ((m = /^#join-([0-9a-f]{16,64})$/.exec(hash))) {
     const { data } = await sb.rpc("invite_info", { p_code: m[1] });
     const ch = Array.isArray(data) ? data[0] : null;
