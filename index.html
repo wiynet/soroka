@@ -6848,15 +6848,20 @@ window.addEventListener("focus", () => { if (Date.now() - awayAt > 30000 && away
 // сторож: пока экран открыт, раз в 20 секунд проверяем, что сокет жив; если тихо умер — переподключаемся
 setInterval(() => { if (state.started && !document.hidden && !wakeBusy && !rtAlive() && rtOk) wakeUp(true); }, 20000);
 // раз в минуту: отмечаемся «в сети», проверяем бан и обновляем чужие статусы
+/* Раз в минуту. Пока живые обновления работают (rtOk), всё новое и так приходит само, поэтому тяжёлые
+   перезагрузки (список чатов, переписка) — только раз в 5 минут для подстраховки, проверки входа и сайта — раз в 2. */
+let tickN = 0;
 async function tick() {
   if (!state.started || document.hidden) return;
+  tickN++;
+  const full = !rtOk || tickN % 5 === 0, half = !rtOk || tickN % 2 === 0;
+  sb.rpc("touch_presence").then(() => {});
+  if (state.activeId) { ensureGiveaways(true); ensurePolls(true); if (schedRows.length) loadScheduled(); }
+  claimDaily();
+  if (!half) return;
   loadStoryUsers();
   checkSessionAlive();
   checkSite();
-  if (state.activeId) { ensureGiveaways(true); ensurePolls(true); loadScheduled(); }
-  claimDaily();
-  prefetchChats();
-  sb.rpc("touch_presence").then(() => {});
   const { data } = await sb.from("profiles").select("banned_at,ban_reason").eq("id", state.me.id).maybeSingle();
   if (!state.started) return;
   if (data && data.banned_at) {
@@ -6865,6 +6870,8 @@ async function tick() {
     showBanned();
     return;
   }
+  if (!full) return;
+  prefetchChats();
   await loadChats();
   catchUpActive();
 }
