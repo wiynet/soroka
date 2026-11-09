@@ -2405,6 +2405,23 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
 .chip { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--mine); font-size: 13px; }
 .check { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--line); }
 .row.picked .check { border-color: var(--accent); background: var(--accent); }
+/* уведомление внутри приложения: новое сообщение из другого чата аккуратно выезжает сверху */
+#inNote { position: fixed; z-index: 2147482000; inset: auto; margin: 0; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; width: min(420px, calc(100% - 20px)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 11px; padding: 10px 14px 10px 10px; border: 1px solid var(--line); border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+  color: var(--ink); box-shadow: 0 12px 34px rgb(0 0 0 / .22), 0 2px 8px rgb(0 0 0 / .1); cursor: pointer; text-align: left; touch-action: pan-x; }
+#inNote[hidden] { display: none; }
+#inNote .avatar { flex: none; }
+#inNote .nt { flex: 1; min-width: 0; display: grid; gap: 1px; }
+#inNote .nt b { font-size: 14.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#inNote .nt span { font-size: 13.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+#inNote .nx { flex: none; align-self: flex-start; font-size: 11.5px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  #inNote { animation: in-note-in .42s cubic-bezier(.2, 1.2, .3, 1) both; }
+  #inNote.out { animation: in-note-out .26s ease-in both; }
+}
+@keyframes in-note-in { from { opacity: 0; transform: translate(-50%, -120%) scale(.96); } }
+@keyframes in-note-out { to { opacity: 0; transform: translate(-50%, -120%) scale(.96); } }
 #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--bg); z-index: 50; }
 /* просмотр фото на весь экран: закрывается крестиком, нажатием на фото или мимо него, свайпом вниз и клавишей Esc */
 #viewer { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow: hidden; }
@@ -3297,7 +3314,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=b8cf2d8b5d"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=b6e96eae04"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5822,6 +5839,7 @@ void main() {
 </dialog>
 <div id="swipeHint" aria-hidden="true"></div>
 <div id="toast" role="status" hidden></div>
+<div id="inNote" role="status" aria-live="polite" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
@@ -8626,17 +8644,24 @@ function joinTyping(id) {
   state.typingCh = sb.channel("live:" + id, { config: { private: true, broadcast: { self: false } } })
     .on("broadcast", { event: "msg" }, (msg) => onLiveMsg(id, msg && msg.payload))
     .on("broadcast", { event: "drop" }, (msg) => onLiveDrop(id, msg && msg.payload))
-    .on("broadcast", { event: "typing" }, (msg) => {
-      const pl = msg && msg.payload;
-      if (!pl || pl.u === state.me.id || state.activeId !== id) return;
-      state.typing = { chat: id, u: pl.u, n: String(pl.n || T("Собеседник")).slice(0, 40), until: Date.now() + 4000 };
-      clearTimeout(state.typingTimer);
-      state.typingTimer = setTimeout(clearTyping, 4000);
-      renderHead();
-    }).subscribe();
+    .on("broadcast", { event: "typing" }, (msg) => onTypingMsg(id, msg && msg.payload)).subscribe();
+  // «печатает…» дублируем в прежний открытый канал: так его видят и те, у кого ещё старая версия приложения
+  state.typingOld = sb.channel("typing:" + id, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "typing" }, (msg) => onTypingMsg(id, msg && msg.payload)).subscribe();
+}
+function onTypingMsg(id, pl) {
+  if (!pl || pl.u === state.me.id || state.activeId !== id) return;
+  const c = state.chats.get(id);
+  if (c && c.members && !c.members.some((p) => p.id === pl.u)) return;   // только участник этого чата
+  const fresh = !state.typing || state.typing.u !== pl.u || state.typing.until < Date.now();
+  state.typing = { chat: id, u: pl.u, n: String(pl.n || T("Собеседник")).slice(0, 40), until: Date.now() + 4000 };
+  clearTimeout(state.typingTimer);
+  state.typingTimer = setTimeout(clearTyping, 4000);
+  if (fresh) renderHead();
 }
 function leaveTyping() {
   if (state.typingCh) { sb.removeChannel(state.typingCh); state.typingCh = null; }
+  if (state.typingOld) { sb.removeChannel(state.typingOld); state.typingOld = null; }
   state.typingChId = null;
   clearTimeout(state.typingTimer); state.typing = null;
 }
@@ -8644,7 +8669,9 @@ let typedAt = 0;
 function sayTyping() {
   if (!state.typingCh || !state.typingCh.send || Date.now() - typedAt < 2500 || !$("text").value.trim() || state.editing) return;
   typedAt = Date.now();
-  liveSend("typing", { u: state.me.id, n: state.profile.display_name });
+  const pl = { u: state.me.id, n: state.profile.display_name };
+  liveSend("typing", pl);
+  try { if (state.typingOld && state.typingOld.state === "joined") state.typingOld.send({ type: "broadcast", event: "typing", payload: pl }); } catch (e) {}
 }
 /* ---------- закреплённое сообщение ---------- */
 function canPin(c) { return !!c && (!c.is_group || !!myRole(c)); }
@@ -9307,11 +9334,50 @@ async function appNotifyInit() {
     try { await Notification.requestPermission(); } catch (e) {}
   }
 }
+// своё уведомление сверху экрана: приложение открыто, а сообщение пришло в другой чат
+let inNoteTimer = 0, inNoteOff = 0;
+function inAppNote(m, c, title, body) {
+  const el = $("inNote");
+  clearTimeout(inNoteTimer); clearTimeout(inNoteOff);
+  el.classList.remove("out");
+  const o = c.is_group ? null : other(c);
+  el.replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : avOf(o || state.profile)),
+    h("span", { class: "nt" }, h("b", {}, title), h("span", {}, body)), h("span", { class: "nx" }, T("сейчас")));
+  el.hidden = false;
+  // поверх открытых окон (настройки, профиль): в «верхний слой», если браузер умеет
+  if (typeof el.showPopover === "function") { if (!el.hasAttribute("popover")) el.setAttribute("popover", "manual"); try { if (el.matches(":popover-open")) el.hidePopover(); el.showPopover(); } catch (e) {} }
+  el.style.animation = "none"; void el.offsetWidth; el.style.removeProperty("animation");   // новое сообщение — анимация заново
+  el.onclick = () => { hideNote(true); setSearchMode(false); openChat(c.id); };
+  inNoteTimer = setTimeout(() => hideNote(), 4500);
+}
+function hideNote(now) {
+  const el = $("inNote");
+  clearTimeout(inNoteTimer);
+  if (el.hidden) return;
+  const off = () => { el.hidden = true; el.classList.remove("out"); try { if (el.matches(":popover-open")) el.hidePopover(); } catch (e) {} };
+  if (now || !motionOK()) { off(); return; }
+  el.classList.add("out");
+  inNoteOff = setTimeout(off, 260);
+}
+// смахнуть вверх — убрать
+(function () {
+  let y0 = null;
+  $("inNote").addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; }, { passive: true });
+  $("inNote").addEventListener("touchmove", (e) => { if (y0 != null && y0 - e.touches[0].clientY > 18) { y0 = null; hideNote(); } }, { passive: true });
+})();
 function appNotify(m) {
-  if (!(IN_APP || IN_ELECTRON) || !m || m.sender_id === state.me.id || settings.notify === false) return;
+  if (!m || m.sender_id === state.me.id || settings.notify === false) return;
   const c = state.chats.get(m.chat_id);
-  if (!c || c.muted) return;
-  const looking = !document.hidden && document.hasFocus() && state.activeId === m.chat_id;
+  if (!c || c.muted || isAiChat(c)) return;
+  if (!document.hidden && state.activeId === m.chat_id) return;   // чат открыт перед глазами — уведомление не нужно
+  // приложение (или вкладка) открыто, а сообщение из другого чата — своё аккуратное уведомление сверху
+  if (!document.hidden && (document.hasFocus() || IN_APP)) {
+    const who = c.is_group && !c.is_channel ? memberName(c, m.sender_id) : "";
+    inAppNote(m, c, chatTitle(c), (who ? who + ": " : "") + (previewText(mediaLabel(m)) || T("Новое сообщение")));
+    return;
+  }
+  if (!(IN_APP || IN_ELECTRON)) return;   // в браузере, когда вкладка свёрнута, уведомление пришлёт push
+  const looking = false;
   if (looking) return;
   const who = c.is_group && !c.is_channel ? memberName(c, m.sender_id) : "";
   const title = chatTitle(c), body = (who ? who + ": " : "") + (previewText(mediaLabel(m)) || T("Новое сообщение"));
@@ -18369,7 +18435,8 @@ async function paintDevices() {
   $("sv_security").textContent = data.length > 1 ? String(data.length) : "";
   box.replaceChildren(...data.map((d) => {
     const n = deviceName(d.user_agent);
-    const when = d.current ? T("это устройство") : T("было в сети ") + dFmt.format(new Date(d.active_at)) + ", " + tFmt.format(new Date(d.active_at));
+    const ago = Date.now() - new Date(d.active_at).getTime();
+    const when = d.current ? T("это устройство") : ago < 65 * 60e3 ? T("активно сейчас") : T("было в сети ") + dFmt.format(new Date(d.active_at)) + ", " + tFmt.format(new Date(d.active_at));
     return h("div", { class: "dev" + (d.current ? " cur" : "") },
       h("span", { class: "di", "aria-hidden": "true" }, icon(n.ico)),
       h("span", { class: "dt" }, h("b", {}, n.title), h("small", {}, when), h("small", {}, T("вход ") + dFmt.format(new Date(d.created_at)) + (d.ip ? " · " + d.ip : ""))),
@@ -19595,7 +19662,10 @@ async function logout() {
   state.adding = false; $("authBack").hidden = true;
   try { localStorage.removeItem(chatsKey()); } catch (e) {}   // снимок списка чатов не оставляем на устройстве
   idbClear();   // и сохранённую переписку тоже
-  sb.auth.signOut({ scope: "local" });   // выходим только на этом устройстве
+  // сеанс закрываем на сервере по-настоящему: иначе в «Устройствах» висит вышедшее устройство.
+  // Ключ доступа мог истечь, пока приложение спало, — сначала обновляем его.
+  try { await sb.auth.getSession(); await sb.rpc("end_my_session"); } catch (e) {}
+  sb.auth.signOut({ scope: "local" }).catch(() => {});   // выходим только на этом устройстве
 }
 $("btnMute").addEventListener("click", async () => {
   const c = state.chats.get(state.activeId);
