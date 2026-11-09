@@ -6687,6 +6687,11 @@ $("supQuick").addEventListener("click", (e) => {
 $("banLogout").addEventListener("click", () => logout());
 async function createProfile(username, name) {
   const { data, error } = await sb.from("profiles").insert({ id: state.me.id, username, display_name: name }).select().single();
+  if (error && error.code === "23505" && /profiles_pkey/.test(error.message || "")) {
+    // профиль уже создан (двойное нажатие или повтор после медленной сети) — это не «юзернейм занят»
+    const r = await sb.from("profiles").select("*").eq("id", state.me.id).maybeSingle();
+    if (r.data) { state.profile = r.data; return "ok"; }
+  }
   if (error) return error.code === "23505" ? "taken" : /too many accounts/.test(error.message || "") ? "ip" : "error";
   state.profile = data;
   setTimeout(claimReferral, 1500);
@@ -6730,6 +6735,7 @@ async function enter() {
 
 /* ---------- запуск и остановка ---------- */
 async function startApp() {
+  if (state.started) return;   // вход мог прийти дважды (два события входа подряд) — второй раз приложение не запускаем
   state.started = true;
   state.adding = false; $("authBack").hidden = true;
   $("auth").hidden = true;
@@ -6808,7 +6814,7 @@ function subscribeInbox() {
   const go = (ses) => {
     if (state.channel !== ch) return;
     if (ses && sb.realtime && sb.realtime.setAuth) { try { sb.realtime.setAuth(ses.access_token); } catch (e) {} }   // закрытому каналу нужен вход
-    ch.subscribe((st) => {
+    ch.subscribe((st, err) => {
     if (state.channel !== ch || !state.started) return;   // старый канал, который мы сами закрыли
     if (st === "SUBSCRIBED") {
       rtOk = true; rtRetry = 0; rtDenied = 0; clearTimeout(rtTimer);
@@ -6817,7 +6823,8 @@ function subscribeInbox() {
     }
     if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") {
       // личный канал не пускает (например, сервер не принял вход) два раза подряд — запасной путь, прежний способ
-      if (st === "CHANNEL_ERROR" && !rtLegacy && ++rtDenied >= 2) { rtLegacy = true; diag("rt_legacy", {}); }
+      // запасной путь — только если сервер именно не пускает в канал (обрыв связи тоже даёт CHANNEL_ERROR, это не повод)
+      if (st === "CHANNEL_ERROR" && !rtLegacy && err && /unauthori|permission/i.test(String(err.message || err)) && ++rtDenied >= 2) { rtLegacy = true; diag("rt_legacy", { why: String(err.message || err).slice(0, 200) }); }
       rtOk = false; rtWasDown = true;
       clearTimeout(rtTimer);
       rtTimer = setTimeout(() => { if (state.started && !rtOk) subscribeInbox(); }, Math.min(30000, 1500 * 2 ** rtRetry++));
