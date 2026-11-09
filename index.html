@@ -2041,8 +2041,9 @@ button.prow.chan-row { border-top: 0; cursor: pointer; }
 .ptx #uNum { border: 0; background: none; padding: 0; text-align: left; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .ver-note .ptx div { font-size: 14px; line-height: 1.35; }
 /* профиль в стиле «Данные контакта»: номер под именем, круглые быстрые действия, разделы */
-.u-num { border: 0; background: none; padding: 0 6px; margin-top: -4px; font: inherit; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .02em; cursor: pointer; border-radius: 8px; }
-.u-num:hover { background: var(--panel-2); }
+.u-num { padding: 0 6px; margin-top: -4px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.u-num button { border: 0; background: none; padding: 1px 4px; margin: 0 -2px; font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; border-radius: 8px; }
+.u-num button:hover { background: var(--panel-2); color: var(--ink); }
 .u-hero.has-banner .u-num, .u-hero.nftg .u-num, .u-hero.pbg .u-num { color: rgb(255 255 255 / .85); }
 .u-qa { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
 .u-qa[hidden], .qa[hidden] { display: none; }
@@ -5284,7 +5285,7 @@ void main() {
       </div>
       <span id="uAvatar"></span>
       <h2 id="uName"></h2>
-      <button class="u-num" type="button" id="uNum" title="NFT-номер: владелец и кошелёк" hidden></button>
+      <div class="u-num" id="uNum" hidden></div>
       <div class="seen-row">
         <button class="lvl" type="button" id="uLvl" hidden></button>
         <div class="small muted" id="uSeen"></div>
@@ -11442,7 +11443,9 @@ function paintUser(p) {
   // NFT-номер — первой строкой карточки, над юзернеймом
   const pn = nums(p);
   $("uNum").hidden = !pn.length;
-  $("uNum").textContent = pn.map((x) => String(x).replace(/ /g, "\u00a0")).join(" · ");   // номер целиком на одной строке
+  // каждый NFT-номер — своя кнопка, как NFT-юзернеймы: нажатие открывает именно этот номер (владелец и кошелёк)
+  $("uNum").replaceChildren(...pn.flatMap((x, i) => [i ? h("span", { class: "sep", "aria-hidden": "true" }, " · ") : null,
+    h("button", { type: "button", title: T("NFT-номер: владелец и кошелёк"), onclick: () => { if (viewed) openNftInfo("num", x, viewed); } }, String(x).replace(/ /g, "\u00a0"))]).filter(Boolean));
   // галочка перед именем — значит, верификация от Mestario (скрытую галочку видит только сам владелец)
   $("uVerNote").hidden = !(p.verified || p.is_admin) || (p.hide_tick && p.id !== state.me.id) || !!p.banned_at;
   $("uBio").textContent = p.bio || "";
@@ -12876,7 +12879,6 @@ async function paintBlockList() {
 }
 $("uCopyLink").append(icon("link"));
 $("uCopyLink").addEventListener("click", () => { if (viewed) copyText(SITE + "#@" + viewed.username, T("Ссылка на профиль скопирована")); });
-$("uNum").addEventListener("click", () => { if (viewed) openNftInfo("num", $("uNum").textContent.split(" · ")[0], viewed); });
 $("uUser").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("uUser").textContent); toast(T("Юзернейм скопирован")); } catch (e) {}
 });
