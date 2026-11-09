@@ -1,5 +1,10 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Нажмите «Удалить» ещё раз, чтобы подтвердить":"Tap «Delete» again to confirm",
+"Действий нет":"No actions",
+"Профиль владельца":"Owner's profile",
+"Забрать у владельца":"Take from owner",
+"Нажмите «Забрать у владельца» ещё раз, чтобы подтвердить":"Tap «Take from owner» again to confirm",
 "Пригласить":"Invite",
 "Пригласить в звонок":"Invite to call",
 "Переходим в общий звонок…":"Switching to a group call…",

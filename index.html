@@ -1134,6 +1134,7 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .gift.nftg .sub { color: rgb(255 255 255 / .86); }
 .gift.nftg .pat { font-size: 11px; gap: 8px 2px; }
 .worn { display: inline-block; margin-left: 4px; font-size: .95em; line-height: 1; vertical-align: -1px; }
+.worn img.mart { width: 1.15em; height: 1.15em; vertical-align: -.2em; }
 .worn-btn { border: 0; padding: 0 2px; background: none; font: inherit; font-size: .95em; cursor: pointer; border-radius: 8px; }
 .worn-btn:hover { background: rgb(255 255 255 / .18); }
 .u-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; align-self: stretch; min-width: 0; }
@@ -1688,6 +1689,10 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .lot-buy .btn[hidden] { display: none; }
 /* окно NFT-юзернейма или номера */
 .nft-sheet { gap: 14px; }
+.dlg.gv, .nft-sheet { position: relative; }
+.dlg-dots { position: absolute; top: 12px; right: 12px; z-index: 4; width: 34px; height: 34px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .38); color: #fff; font-size: 22px; font-weight: 700; line-height: 1; padding: 0 0 4px; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dlg-dots:hover, .dlg-dots[aria-expanded="true"] { background: rgb(0 0 0 / .6); }
+.dlg-dots[hidden] { display: none; }
 .nft-hero { display: grid; justify-items: center; gap: 8px; padding: 26px 14px 20px; border-radius: 20px; text-align: center; color: #fff; background: radial-gradient(circle at 50% 30%, #4f7dff, #1d2f8f 85%); position: relative; overflow: hidden; }
 .nft-hero .gemb { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 18px; background: rgb(255 255 255 / .18); }
 .nft-hero .gemb .ico { width: 30px; height: 30px; }
@@ -3361,7 +3366,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5402f92015"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4ff3eea095"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4829,6 +4834,7 @@ void main() {
 <!-- NFT-юзернейм или номер: чей он и на каком кошельке владелец -->
 <dialog id="dlgNft">
   <div class="dlg nft-sheet" tabindex="-1" autofocus>
+    <button class="dlg-dots" type="button" id="nftDots" title="Действия" aria-label="Действия" aria-haspopup="menu">⋯</button>
     <div class="nft-hero" id="nftHero"></div>
     <dl class="gv-facts" id="nftFacts"></dl>
     <div class="hint" id="nftHint"></div>
@@ -5212,6 +5218,7 @@ void main() {
 <!-- подарок: подробности и продажа -->
 <dialog id="dlgGiftView">
   <div class="dlg gv">
+    <button class="dlg-dots" type="button" id="gvDots" hidden title="Действия" aria-label="Действия с подарком" aria-haspopup="menu">⋯</button>
     <div class="gv-top" id="gvTop"></div>
     <div class="gv-stage" id="gvStage" hidden></div>
     <dl class="gv-facts" id="gvFacts"></dl>
@@ -10535,10 +10542,11 @@ $("wlTronForm").addEventListener("submit", async (e) => {
 });
 
 // ===== окно NFT-юзернейма или номера: владелец, его кошельки, продаётся ли =====
-let nftCopyText = "", nftLotId = null;
+let nftCopyText = "", nftLotId = null, nftCtx = null;
 async function openNftInfo(kind, value, owner) {
   const isNum = kind === "num", label = isNum ? value : "@" + value;
   nftCopyText = label; nftLotId = null;
+  nftCtx = { kind, value, owner, mine: !!(owner && state.me && owner.id === state.me.id), lot: null, ready: false };
   const gm = icon("gem");
   $("nftHero").replaceChildren(h("span", { class: "gemb" }, gm), h("b", {}, label), h("span", {}, isNum ? T("Коллекционный номер") : T("Коллекционный юзернейм")));
   $("nftCopy").textContent = isNum ? T("Скопировать номер") : T("Скопировать юзернейм");
@@ -10550,8 +10558,9 @@ async function openNftInfo(kind, value, owner) {
   if (!$("dlgNft").open) $("dlgNft").showModal();
   const [w, lt] = await Promise.all([
     owner ? sb.from("user_wallets").select("ton,tron").eq("user_id", owner.id).maybeSingle() : Promise.resolve({ data: null }),
-    sb.from("nft_listings").select("id,price,ton_nano").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle()]);
+    sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle()]);
   if (nftCopyText !== label) return;
+  if (nftCtx && nftCtx.value === value) { nftCtx.lot = lt.data && lt.data.id ? lt.data : null; nftCtx.ready = true; }
   const ws = w.data || {};
   const addr = (a) => h("span", {}, h("code", { title: a }, shortAddr(a)), h("button", { class: "wl-copy", type: "button", onclick: () => copyText(a, T("Адрес скопирован")) }, T("Копировать")));
   const rows = [...fact(T("Владелец"), ownerLine)];
@@ -10564,6 +10573,58 @@ async function openNftInfo(kind, value, owner) {
   const mine = owner && owner.id === state.me.id;
   $("nftHint").textContent = ws.ton || ws.tron ? "" : mine ? T("Привяжите кошелёк в настройках → «Криптокошельки», и он будет показан здесь.") : T("Владелец ещё не привязал криптокошелёк к аккаунту.");
 }
+// «⋯» в окне NFT-юзернейма или номера
+function nftActions() {
+  const c = nftCtx, acts = [];
+  if (!c) return acts;
+  const isNum = c.kind === "num";
+  const add = (label, fn, cls) => acts.push([label, fn, cls]);
+  add(isNum ? T("Скопировать номер") : T("Скопировать юзернейм"), () => $("nftCopy").click());
+  if (!isNum) add(T("Скопировать ссылку"), () => copyText(SITE + "#@" + c.value, T("Ссылка скопирована")));
+  const toMarket = async (tab, lotId) => {
+    $("dlgNft").close();
+    if (!$("dlgMarket").open) { $("dlgMarket").showModal(); loadMarketBalance(); }
+    showMarketTab(tab);
+    if (lotId) { await loadLots(); openLot(lotId); }
+  };
+  if (c.lot) {
+    add(c.mine ? T("Мой лот на маркете") : T("Купить за ") + lotPrice(c.lot), () => toMarket("buy", c.lot.id));
+    if (c.mine) add(T("Снять с продажи"), async () => {
+      const { error } = await sb.rpc("cancel_listing", { p_listing: c.lot.id });
+      if (error) { toast(marketError(error)); return; }
+      toast(T("Лот снят с продажи, предложения возвращены"));
+      if ($("dlgMarket").open) loadLots();
+      if ($("dlgNft").open) openNftInfo(c.kind, c.value, c.owner);
+    });
+  } else if (c.mine && c.ready) add(T("Продать на маркете"), () => toMarket("sell"));
+  if (c.owner && !c.mine) add(T("Профиль владельца"), async () => {
+    const { data } = await sb.from("profiles").select(PF).eq("id", c.owner.id).maybeSingle();
+    if (!data || !data.id) { toast(T("Не удалось открыть профиль")); return; }
+    $("dlgNft").close();
+    showUser(data);
+  });
+  if (state.isAdmin && c.owner) add(T("Забрать у владельца"), async () => {
+    if (!confirmTwice("nft-revoke-" + c.value)) { toast(T("Нажмите «Забрать у владельца» ещё раз, чтобы подтвердить")); return; }
+    const res = isNum ? await sb.rpc("admin_revoke_number", { p_number: c.value }) : await sb.rpc("admin_revoke_username", { p_name: c.value });
+    if (res.error) { toast(isNum ? T("Не удалось забрать номер") : T("Не удалось забрать юзернейм")); return; }
+    toast((isNum ? c.value : "@" + c.value) + T(" забран"));
+    $("dlgNft").close();
+    loadChats();
+  }, "danger");
+  return acts;
+}
+// второе нажатие в течение 5 секунд подтверждает опасное действие
+let confirmKey = "", confirmT = 0;
+function confirmTwice(key) {
+  if (confirmKey === key) { confirmKey = ""; clearTimeout(confirmT); return true; }
+  confirmKey = key; clearTimeout(confirmT); confirmT = setTimeout(() => { confirmKey = ""; }, 5000);
+  return false;
+}
+$("nftDots").addEventListener("click", (e) => {
+  const b = e.currentTarget;
+  if (b.getAttribute("aria-expanded") === "true") { popClose(); return; }
+  actOpen(b, nftActions());
+});
 $("nftCopy").addEventListener("click", () => copyText(nftCopyText, $("nftCopy").textContent.includes(T("номер")) ? T("Номер скопирован") : T("Юзернейм скопирован")));
 $("nftLot").addEventListener("click", async () => {
   const id = nftLotId;
@@ -11663,7 +11724,7 @@ function paintUser(p) {
   const wornEl = $("uName").querySelector(".worn");
   if (wornEl) {
     const btn = h("button", { class: "worn worn-btn", type: "button", title: wornEl.title, "aria-label": T("Открыть подарок: ") + wornEl.title,
-      onclick: () => openGiftView({ type: p.worn_type, number: p.worn_number }) }, wornEl.textContent);
+      onclick: () => openGiftView({ type: p.worn_type, number: p.worn_number }) }, ...wornEl.childNodes);   // у моделей-картинок текста нет: переносим саму картинку
     wornEl.replaceWith(btn);
   }
   // надетый NFT-подарок красит шапку профиля своим фоном и узором
@@ -12482,35 +12543,61 @@ function giftFace(t, look, extra) {
 }
 // квадратная плитка подарка: крупная модель, у NFT лента с номером в углу, у обычного значок отправителя
 // меню «⋯» у NFT: те же действия, что в окне подарка, плюс «Снять с продажи» сразу из списка
+// список действий над открытым (или тихо загруженным) подарком: те же кнопки, что в его окне
+function gvActions(inView) {
+  const ctx = gvCtx, acts = [];
+  if (!ctx) return acts;
+  const add = (label, fn, cls) => acts.push([label, fn, cls]);
+  const showView = () => { if (!$("dlgGiftView").open) { $("dlgGiftView").showModal(); routeSync(true); } };
+  // действие из окна подарка: открываем окно и нажимаем ту же кнопку (подтверждения и формы — там же)
+  const viaView = (bid) => () => {
+    showView();
+    $(bid).click();
+    const show = (el) => setTimeout(() => el.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
+    if (bid === "gvAuc" && !$("gvAucForm").hidden) show($("gvAucForm"));
+    if (bid === "gvDel" && delGiftArmed) { show($("gvDel")); toast(T("Нажмите «Удалить» ещё раз, чтобы подтвердить")); }
+  };
+  if (!inView) add(T("Открыть"), showView);
+  if (ctx.mine && ctx.onSale) add(T("Снять с продажи"), async () => {
+    const { error } = await sb.rpc("cancel_listing", { p_listing: ctx.onSale.id });
+    if (error) { toast(marketError(error)); return; }
+    toast(T("Лот снят с продажи, предложения возвращены"));
+    giftChanged(ctx.id);
+    if ($("dlgMarket").open) loadLots();
+    if ($("dlgGiftView").open && gvGift && gvGift.id === ctx.id) openGiftView(ctx.id);
+  });
+  for (const bid of ["gvUp", "gvSell", "gvMarket", "gvAuc", "gvWear", "gvGive", "gvCraft", "gvPin", "gvHide", "gvLink", "gvDel"]) {
+    const b = $(bid);
+    if (b.hidden || !b.textContent.trim()) continue;
+    if (bid === "gvLink" || (inView && bid === "gvWear")) { add(b.textContent, () => b.click()); continue; }   // без лишнего окна
+    add(b.textContent, viaView(bid), bid === "gvDel" ? "danger" : "");
+  }
+  return acts;
+}
+function actItems(acts) {
+  return acts.map(([label, fn, cls]) => h("button", { type: "button", role: "menuitem", class: "csel-opt" + (cls ? " " + cls : ""), onclick: () => { popClose(); fn(); } }, label));
+}
+function actOpen(anchor, acts) {
+  const pop = popOpen(anchor, actItems(acts.length ? acts : [[T("Действий нет"), () => {}]]), { cls: "act-menu", role: "menu" });
+  liftPop(pop);
+  return pop;
+}
+// меню выросло — если упёрлось в низ экрана, поднимаем его
+function liftPop(pop) {
+  if (!pop) return;
+  const r = pop.getBoundingClientRect(), vh = window.visualViewport ? visualViewport.height : innerHeight;
+  if (r.bottom > vh - 8) pop.style.top = Math.max(8, vh - r.height - 8) + "px";
+}
+// меню «⋯» у NFT на плитке: те же действия, что в окне подарка, плюс «Снять с продажи» сразу из списка
 async function giftMenu(id, anchor) {
   const wait = h("div", { class: "act-wait" }, T("Загружаем…"));
   popOpen(anchor, [wait], { cls: "act-menu", role: "menu" });
   if ($("dlgGiftView").open) $("dlgGiftView").close();
   await openGiftView(id, false, true);
   if (!gvGift || gvGift.id !== id || !gvCtx || anchor.getAttribute("aria-expanded") !== "true") return;
-  const ctx = gvCtx, items = [];
-  const item = (label, fn, cls) => items.push(h("button", { type: "button", role: "menuitem", class: "csel-opt" + (cls ? " " + cls : ""), onclick: () => { popClose(); fn(); } }, label));
-  // действие из окна подарка: открываем окно и нажимаем ту же кнопку (подтверждения и формы — там же)
-  const viaView = (btnId) => () => { if (!$("dlgGiftView").open) $("dlgGiftView").showModal(); routeSync(true); $(btnId).click(); };
-  item(T("Открыть"), () => { $("dlgGiftView").showModal(); routeSync(true); });
-  if (ctx.mine && ctx.onSale) item(T("Снять с продажи"), async () => {
-    const { error } = await sb.rpc("cancel_listing", { p_listing: ctx.onSale.id });
-    if (error) { toast(marketError(error)); return; }
-    toast(T("Лот снят с продажи, предложения возвращены"));
-    if (typeof loadMyGifts === "function") loadMyGifts();
-    if (viewed && viewed.id === state.me.id) loadUserGifts(state.me.id);
-    if ($("dlgMarket").open) loadLots();
-  });
-  for (const bid of ["gvMarket", "gvAuc", "gvWear", "gvGive", "gvCraft", "gvPin", "gvHide", "gvLink", "gvDel"]) {
-    const b = $(bid);
-    if (b.hidden || !b.textContent.trim()) continue;
-    if (bid === "gvLink") { item(b.textContent, () => b.click()); continue; }   // копирование ссылки — без окна
-    item(b.textContent, viaView(bid), bid === "gvDel" ? "danger" : "");
-  }
   const pop = wait.closest(".csel-pop");
-  wait.replaceWith(...items);
-  // меню выросло — если упёрлось в низ экрана, поднимаем его
-  if (pop) { const r = pop.getBoundingClientRect(), vh = window.visualViewport ? visualViewport.height : innerHeight; if (r.bottom > vh - 8) pop.style.top = Math.max(8, vh - r.height - 8) + "px"; }
+  wait.replaceWith(...actItems(gvActions(false)));
+  liftPop(pop);
 }
 function giftTile(g, t, tag, attrs, ...subs) {
   const look = giftLook(g, t);
@@ -12574,6 +12661,7 @@ let gvGift = null, sellArmed = false, gvAuction = null, delGiftArmed = false;
 let gvCtx = null;   // что известно об открытом подарке: продаётся ли, на аукционе ли, мой ли
 async function openGiftView(id, fresh, quiet) {
   gvGift = null; sellArmed = false; gvCtx = null;
+  $("gvDots").hidden = true;
   $("gvTop").className = "gv-top";
   $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, T("Подарок")));
   $("gvFacts").replaceChildren(); $("gvHint").textContent = T("Загружаем…"); $("gvStage").hidden = true;
@@ -12598,6 +12686,7 @@ async function openGiftView(id, fresh, quiet) {
   const look = giftLook(g, t), st = stats.get(g.type_id) || { sold: 0, nfts: 0 };
   const mine = g.to_id === state.me.id && !g.sold_at;
   gvCtx = { id: g.id, onSale, auc, mine, look: !!look };
+  $("gvDots").hidden = !!g.sold_at;
   const mineToSell = mine && !look && g.price_paid > 0;
   const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
@@ -12693,6 +12782,11 @@ $("gvWear").addEventListener("click", async () => {
   $("gvWear").className = off ? "btn" : "btn ghost";
   $("gvWear").textContent = off ? T("Надеть на профиль") : T("Снять с профиля");
   if (viewed && viewed.id === state.me.id) { viewed = state.profile; if ($("dlgUser").open) paintUser(state.profile); }
+});
+$("gvDots").addEventListener("click", (e) => {
+  const b = e.currentTarget;
+  if (b.getAttribute("aria-expanded") === "true") { popClose(); return; }
+  if (gvGift) actOpen(b, gvActions(true));
 });
 function giftChanged(id) {
   state.giftInfo.delete(id);
@@ -19612,8 +19706,10 @@ function popOpen(anchor, content, opts) {
   opts = opts || {};
   const pop = h("div", { class: "csel-pop" + (opts.cls ? " " + opts.cls : ""), role: opts.role || "dialog" }, content);
   const usePopover = typeof pop.showPopover === "function";
-  if (usePopover) { pop.setAttribute("popover", "manual"); document.body.append(pop); try { pop.showPopover(); } catch (e) {} }
-  else (anchor.closest("dialog[open]") || document.body).append(pop);
+  // пока открыто модальное окно, всё вне его не нажимается (inert) — поэтому меню кладём внутрь этого окна
+  const host = anchor.closest("dialog[open]") || document.body;
+  if (usePopover) { pop.setAttribute("popover", "manual"); host.append(pop); try { pop.showPopover(); } catch (e) {} }
+  else host.append(pop);
   const place = () => {
     const r = anchor.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
     if (!opts.cls) pop.style.minWidth = Math.max(180, Math.round(r.width)) + "px";
