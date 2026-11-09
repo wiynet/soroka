@@ -1,5 +1,11 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Действия":"Actions",
+"Действия с подарком":"Gift actions",
+"Уведомления для Mestario выключены в телефоне. Нажмите на переключатель — телефон спросит разрешение. Если не спросит, включите их в настройках телефона: Приложения → Mestario → Уведомления.":"Notifications for Mestario are off on this phone. Tap the switch and the phone will ask. If it doesn't, turn them on in phone settings: Apps → Mestario → Notifications.",
+"Уведомления для Mestario выключены в Windows. Включите их в параметрах Windows: Система → Уведомления.":"Notifications for Mestario are off in Windows. Turn them on in Windows Settings: System → Notifications.",
+"Уведомления приходят, пока Mestario открыта или свёрнута. Отдельный чат можно заглушить колокольчиком в его шапке.":"Notifications arrive while Mestario is open or minimized. Mute a single chat with the bell in its header.",
+"Микрофон запрещён — включить можно в настройках телефона: Приложения → Mestario → Разрешения":"Microphone is blocked — turn it on in phone settings: Apps → Mestario → Permissions",
 "активно сейчас":"active now",
 "Новое сообщение":"New message",
 "Не выбрано":"Not set",

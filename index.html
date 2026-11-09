@@ -2160,6 +2160,12 @@ button.prow b { font-weight: 600; }
 .gift.hid > .em, .gift.hid > .pat { opacity: .45; filter: grayscale(.5); }
 .gift.tile .hidb { position: absolute; left: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .55); color: #fff; }
 .gift.tile .hidb svg { width: 15px; height: 15px; }
+/* три точки на NFT: меню действий (продать, снять с продажи, надеть, передать…) */
+.gift.tile .gdots { position: absolute; right: 6px; bottom: 6px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .42); color: #fff; font-size: 17px; font-weight: 700; line-height: 1; letter-spacing: -1px; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.gift.tile .gdots:hover { background: rgb(0 0 0 / .6); }
+.csel-pop.act-menu .csel-opt { padding-left: 14px; }
+.csel-pop.act-menu .csel-opt.danger { color: var(--danger); }
+.csel-pop.act-menu .act-wait { padding: 12px 14px; color: var(--muted); font-size: 14px; }
 /* выбор нескольких подарков */
 .mg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mg-head .link { text-transform: none; letter-spacing: 0; font-size: 13px; }
@@ -3314,7 +3320,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=b6e96eae04"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d95f982426"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -8791,8 +8797,18 @@ $("micAllow").addEventListener("click", async () => {
     $("dlgMic").close(); micDone();
     toast(T("Готово: микрофон разрешён"));
   } catch (e) {
+    // в приложении первый запрос иногда отклоняется, пока телефон ещё показывает своё окно разрешения: пробуем ещё раз
+    if (IN_APP && e && e.name === "NotAllowedError") {
+      try {
+        await new Promise((r) => setTimeout(r, 700));
+        const st2 = await navigator.mediaDevices.getUserMedia({ audio: true });
+        st2.getTracks().forEach((t) => t.stop());
+        $("dlgMic").close(); micDone(); toast(T("Готово: микрофон разрешён"));
+        return;
+      } catch (e2) {}
+    }
     const denied = e && e.name === "NotAllowedError";
-    if (denied) { micDone(); $("dlgMic").close(); toast(T("Микрофон запрещён — включить можно в настройках сайта в браузере")); }
+    if (denied) { micDone(); $("dlgMic").close(); toast(IN_APP ? T("Микрофон запрещён — включить можно в настройках телефона: Приложения → Mestario → Разрешения") : T("Микрофон запрещён — включить можно в настройках сайта в браузере")); }
     else { $("dlgMic").close(); micDone(); toast(T("Микрофон не найден на этом устройстве")); }
   } finally { $("micAllow").disabled = false; }
 });
@@ -12392,12 +12408,51 @@ function giftFace(t, look, extra) {
   return h("span", { class: cls }, look ? look.m.emoji : (t && t.emoji) || "\uD83C\uDF81");
 }
 // квадратная плитка подарка: крупная модель, у NFT лента с номером в углу, у обычного значок отправителя
+// меню «⋯» у NFT: те же действия, что в окне подарка, плюс «Снять с продажи» сразу из списка
+async function giftMenu(id, anchor) {
+  const wait = h("div", { class: "act-wait" }, T("Загружаем…"));
+  popOpen(anchor, [wait], { cls: "act-menu", role: "menu" });
+  if ($("dlgGiftView").open) $("dlgGiftView").close();
+  await openGiftView(id, false, true);
+  if (!gvGift || gvGift.id !== id || !gvCtx || anchor.getAttribute("aria-expanded") !== "true") return;
+  const ctx = gvCtx, items = [];
+  const item = (label, fn, cls) => items.push(h("button", { type: "button", role: "menuitem", class: "csel-opt" + (cls ? " " + cls : ""), onclick: () => { popClose(); fn(); } }, label));
+  // действие из окна подарка: открываем окно и нажимаем ту же кнопку (подтверждения и формы — там же)
+  const viaView = (btnId) => () => { if (!$("dlgGiftView").open) $("dlgGiftView").showModal(); routeSync(true); $(btnId).click(); };
+  item(T("Открыть"), () => { $("dlgGiftView").showModal(); routeSync(true); });
+  if (ctx.mine && ctx.onSale) item(T("Снять с продажи"), async () => {
+    const { error } = await sb.rpc("cancel_listing", { p_listing: ctx.onSale.id });
+    if (error) { toast(marketError(error)); return; }
+    toast(T("Лот снят с продажи, предложения возвращены"));
+    if (typeof loadMyGifts === "function") loadMyGifts();
+    if (viewed && viewed.id === state.me.id) loadUserGifts(state.me.id);
+    if ($("dlgMarket").open) loadLots();
+  });
+  for (const bid of ["gvMarket", "gvAuc", "gvWear", "gvGive", "gvCraft", "gvPin", "gvHide", "gvLink", "gvDel"]) {
+    const b = $(bid);
+    if (b.hidden || !b.textContent.trim()) continue;
+    if (bid === "gvLink") { item(b.textContent, () => b.click()); continue; }   // копирование ссылки — без окна
+    item(b.textContent, viaView(bid), bid === "gvDel" ? "danger" : "");
+  }
+  const pop = wait.closest(".csel-pop");
+  wait.replaceWith(...items);
+  // меню выросло — если упёрлось в низ экрана, поднимаем его
+  if (pop) { const r = pop.getBoundingClientRect(), vh = window.visualViewport ? visualViewport.height : innerHeight; if (r.bottom > vh - 8) pop.style.top = Math.max(8, vh - r.height - 8) + "px"; }
+}
 function giftTile(g, t, tag, attrs, ...subs) {
   const look = giftLook(g, t);
-  const el = h(tag, { class: "gift tile", ...attrs },
+  const { noMenu, ...tileAttrs } = attrs || {};
+  const el = h(tag, { class: "gift tile", ...tileAttrs },
     giftFace(t, look),
     h("span", { class: "nm" }, look ? t.name + " №" + g.nft_number : t.name), ...subs);
   if (look) { paintNft(el, look); el.append(h("span", { class: "rib", "aria-hidden": "true" }, "№" + g.nft_number)); }
+  if (look && attrs && attrs.onclick && g.id && !noMenu) {
+    const dots = h("span", { class: "gdots", role: "button", tabindex: "0", title: T("Действия"), "aria-label": T("Действия с подарком"), "aria-haspopup": "menu" }, "⋯");
+    const go = (e) => { e.preventDefault(); e.stopPropagation(); giftMenu(g.id, dots); };
+    dots.addEventListener("click", go);
+    dots.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") go(e); });
+    el.append(dots);
+  }
   if (g.pinned_at) el.append(h("span", { class: "pinb", title: T("Закреплён в профиле") }, icon("pin")));
   if (g.hidden) { el.classList.add("hid"); el.append(h("span", { class: "hidb", title: T("Скрыт: виден только вам") }, icon("eyeoff"))); }
   if (!look && g.from && g.from.id) {
@@ -12443,15 +12498,16 @@ function whoLink(u) {
 function giftSlug(g) { return g.nft_number != null ? g.type_id[0].toUpperCase() + g.type_id.slice(1) + "-" + g.nft_number : "gift-" + g.id; }
 // подробности подарка; получатель может обменять его на Mest за вычетом комиссии 10 %
 let gvGift = null, sellArmed = false, gvAuction = null, delGiftArmed = false;
-async function openGiftView(id, fresh) {
-  gvGift = null; sellArmed = false;
+let gvCtx = null;   // что известно об открытом подарке: продаётся ли, на аукционе ли, мой ли
+async function openGiftView(id, fresh, quiet) {
+  gvGift = null; sellArmed = false; gvCtx = null;
   $("gvTop").className = "gv-top";
   $("gvTop").replaceChildren(h("span", { class: "em" }, "🎁"), h("h2", {}, T("Подарок")));
   $("gvFacts").replaceChildren(); $("gvHint").textContent = T("Загружаем…"); $("gvStage").hidden = true;
   for (const x of ["gvSell", "gvUp", "gvCraft", "gvWear", "gvGive", "gvAuc", "gvBid", "gvAucForm", "gvHide", "gvDel", "gvLink", "gvPin", "gvMarket"]) $(x).hidden = true;
   delGiftArmed = false; $("gvDel").textContent = T("Удалить");
   gvAuction = null;
-  if (!$("dlgGiftView").open) $("dlgGiftView").showModal();
+  if (!quiet && !$("dlgGiftView").open) $("dlgGiftView").showModal();
   const [types, res, stats] = await Promise.all([giftTypes(),
     // через функцию: по ссылке открывается и скрытый подарок (чужому без владельца), а NFT ещё и по «тип-номер»
     sb.rpc("gift_card", typeof id === "object" ? { p_type: id.type, p_number: id.number } : { p_id: id }),
@@ -12459,7 +12515,7 @@ async function openGiftView(id, fresh) {
   const g = res.data;
   if (!g) { $("gvHint").textContent = T("Не удалось загрузить подарок."); return; }
   gvGift = g;
-  routeSync(true);
+  if (!quiet) routeSync(true);
   const ar = g.nft_number != null ? await sb.from("gift_auctions").select("id,seller_id,start_price,top_bid,top_bidder,bids_count,ends_at,bidder:profiles!gift_auctions_top_bidder_fkey(id,username,display_name)").eq("gift_id", g.id).eq("status", "open").maybeSingle() : { data: null };
   const auc = gvAuction = ar.data && ar.data.id ? ar.data : null;
   // выставлен ли подарок на маркете
@@ -12468,6 +12524,7 @@ async function openGiftView(id, fresh) {
   const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
   const look = giftLook(g, t), st = stats.get(g.type_id) || { sold: 0, nfts: 0 };
   const mine = g.to_id === state.me.id && !g.sold_at;
+  gvCtx = { id: g.id, onSale, auc, mine, look: !!look };
   const mineToSell = mine && !look && g.price_paid > 0;
   const mineToUp = mine && !look && canUpgrade(t);
   const back = Math.floor(g.price_paid * 0.9);
@@ -12781,14 +12838,14 @@ function paintCraft() {
   $("crSlots").replaceChildren(...[0, 1, 2].map((i) => {
     const g = byId.get(crSel[i]);
     if (!g) return h("div", { class: "cr-slot" }, h("span", {}, String(i + 1)));
-    const el = giftTile(g, t, "button", { type: "button", title: T("Убрать из крафта"), onclick: () => { crSel = crSel.filter((x) => x !== g.id); paintCraft(); } });
+    const el = giftTile(g, t, "button", { type: "button", noMenu: true, title: T("Убрать из крафта"), onclick: () => { crSel = crSel.filter((x) => x !== g.id); paintCraft(); } });
     el.classList.add("cr-in");
     return el;
   }));
   const free = crMine.filter((g) => !crBusy.has(g.id));
   $("crPick").replaceChildren(...crMine.map((g) => {
     const on = crSel.includes(g.id), busy = crBusy.has(g.id);
-    const el = giftTile(g, t, "button", { type: "button", "aria-pressed": String(on), disabled: busy, title: busy ? T("На маркете или аукционе") : "",
+    const el = giftTile(g, t, "button", { type: "button", noMenu: true, "aria-pressed": String(on), disabled: busy, title: busy ? T("На маркете или аукционе") : "",
       onclick: () => { if (on) crSel = crSel.filter((x) => x !== g.id); else if (crSel.length < 3) crSel.push(g.id); paintCraft(); } });
     if (on) el.classList.add("picked");
     return el;
@@ -18251,8 +18308,27 @@ async function savePush(sub, enabled) {
     p_endpoint: j.endpoint, p_p256dh: enabled ? j.keys.p256dh : "", p_auth: enabled ? j.keys.auth : "", p_enabled: enabled });
   return !error;
 }
+// в приложениях (Android, iPhone, Windows) уведомления свои, без веб-push: состояние берём у самого приложения
+function appNotifMode() { return IN_APP && CapLN() ? "cap" : IN_ELECTRON ? "pc" : null; }
+async function appNotifGranted(ask) {
+  const mode = appNotifMode();
+  if (mode === "cap") {
+    const LN = CapLN();
+    try { let st = await LN.checkPermissions(); if (st.display !== "granted" && ask) st = await LN.requestPermissions(); return st.display === "granted"; } catch (e) { return false; }
+  }
+  if (mode === "pc") { if (Notification.permission === "default" && ask) { try { await Notification.requestPermission(); } catch (e) {} } return Notification.permission === "granted"; }
+  return false;
+}
 async function paintNotify() {
   const box = $("setNotify"), hint = $("notifyHint");
+  if (appNotifMode()) {
+    const ok = await appNotifGranted(false);
+    box.disabled = false;
+    box.checked = ok && settings.notify !== false;
+    hint.textContent = !ok ? (IN_APP ? T("Уведомления для Mestario выключены в телефоне. Нажмите на переключатель — телефон спросит разрешение. Если не спросит, включите их в настройках телефона: Приложения → Mestario → Уведомления.") : T("Уведомления для Mestario выключены в Windows. Включите их в параметрах Windows: Система → Уведомления."))
+      : box.checked ? T("Уведомления приходят, пока Mestario открыта или свёрнута. Отдельный чат можно заглушить колокольчиком в его шапке.") : T("Сейчас уведомления на этом устройстве выключены.");
+    return;
+  }
   if (!pushSupported) {
     box.checked = false; box.disabled = true;
     hint.textContent = location.protocol !== "https:" ? T("Уведомления работают только на https://mestario.lol.") : T("Этот браузер не поддерживает уведомления. На iPhone они работают, если добавить Mestario на экран «Домой».");
@@ -18281,6 +18357,15 @@ async function disablePush() {
 }
 $("setNotify").addEventListener("change", async (e) => {
   e.target.disabled = true;
+  if (appNotifMode()) {
+    const want = e.target.checked;
+    const ok = want ? await appNotifGranted(true) : true;
+    settings.notify = want && ok; saveSettings();
+    toast(want ? (ok ? T("Уведомления включены") : T("Уведомления не включены: нет разрешения")) : T("Уведомления на этом устройстве выключены"));
+    e.target.disabled = false;
+    paintNotify();
+    return;
+  }
   try {
     if (e.target.checked) toast((await enablePush()) ? T("Уведомления включены") : T("Уведомления не включены: нет разрешения"));
     else { settings.notify = false; saveSettings(); await disablePush(); toast(T("Уведомления на этом устройстве выключены")); }
@@ -18317,6 +18402,7 @@ $("homeLater").addEventListener("click", async () => {
 $("homeNever").addEventListener("click", () => { settings.homeNever = true; saveSettings(); $("dlgHome").close(); });
 // при входе привязываем подписку этого устройства к тому, кто вошёл
 async function resumePush() {
+  if (appNotifMode()) return;   // в приложении — свои уведомления (см. appNotifyInit)
   if (!pushSupported || settings.notify === false) return;
   if (Notification.permission === "granted") {
     // разрешение уже есть (например, дано приложению на Android): подписываемся без вопросов
