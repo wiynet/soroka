@@ -2964,8 +2964,10 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .call-ui.cam-remote .call-video { top: 0; height: 100%; object-fit: cover; }
 /* на компьютере и широком экране не растягиваем: видео целиком, по центру, со скруглением */
 @media (min-width: 720px), (pointer: fine) {
-  .call-ui.cam-remote .call-video { top: calc(max(14px, env(safe-area-inset-top)) + 64px); bottom: 150px; height: auto; left: 50%; right: auto; width: min(calc(100% - 48px), calc((100vh - 230px) * 16 / 9)); translate: -50% 0;
-    object-fit: contain; background: rgb(0 0 0 / .35); border-radius: 18px; box-shadow: 0 18px 50px rgb(0 0 0 / .45); }
+  /* карточка повторяет форму самого видео (--va = ширина/высота кадра), поэтому чёрных полос по краям нет */
+  .call-ui.cam-remote .call-video { top: calc(max(14px, env(safe-area-inset-top)) + 64px); bottom: auto; left: 50%; right: auto; translate: -50% 0;
+    width: min(calc(100% - 48px), calc((100vh - 230px) * var(--va, 1.7778))); height: auto; aspect-ratio: var(--va, 1.7778);
+    object-fit: cover; background: transparent; border-radius: 18px; box-shadow: 0 18px 50px rgb(0 0 0 / .45); }
   .call-ui.cam-remote::after { display: none; }
   /* имя и время — над видео, а не поверх лица */
   .call-ui.cam-remote .call-enc { visibility: hidden; }
@@ -17557,6 +17559,11 @@ $("btnCall").addEventListener("click", () => startCall(state.chats.get(state.act
 $("btnVideo").append(icon("videocam"));
 $("btnVideo").addEventListener("click", () => startCall(state.chats.get(state.activeId), true));
 $("callCam").addEventListener("click", callToggleCam);
+// форма кадра собеседника (телефон стоя — узкое видео, компьютер — широкое): карточка подстраивается под неё
+for (const ev of ["loadedmetadata", "resize"]) $("callVideo").addEventListener(ev, () => {
+  const v = $("callVideo");
+  if (v.videoWidth && v.videoHeight) $("callUi").style.setProperty("--va", (v.videoWidth / v.videoHeight).toFixed(4));
+});
 // своё видео можно перетащить в любое место; отпустили — окошко прилипает к ближайшему углу
 (function () {
   const el = $("callSelf");
