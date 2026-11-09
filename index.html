@@ -8792,7 +8792,7 @@ $("micAllow").addEventListener("click", async () => {
   if ($("dlgMic").dataset.denied) { $("dlgMic").close(); micDone(); return; }
   $("micAllow").disabled = true;
   try {
-    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const st = await micStream({ audio: true });
     st.getTracks().forEach((t) => t.stop());   // сразу выключаем: нужен был только ответ браузера
     $("dlgMic").close(); micDone();
     toast(T("Готово: микрофон разрешён"));
@@ -8801,7 +8801,7 @@ $("micAllow").addEventListener("click", async () => {
     if (IN_APP && e && e.name === "NotAllowedError") {
       try {
         await new Promise((r) => setTimeout(r, 700));
-        const st2 = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const st2 = await micStream({ audio: true });
         st2.getTracks().forEach((t) => t.stop());
         $("dlgMic").close(); micDone(); toast(T("Готово: микрофон разрешён"));
         return;
@@ -9584,7 +9584,7 @@ async function toWav(blob) {
 async function startRecording() {
   if (recorder || !state.activeId) return;
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
+  try { stream = await micStream({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
   catch (e) { toast(T("Нет доступа к микрофону. Разрешите его в настройках браузера.")); return; }
   const mime = recMime(), chatId = state.activeId;
   try { recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
@@ -9636,7 +9636,7 @@ async function startVnote() {
   if (vn || recorder || !state.activeId) return;
   const chatId = state.activeId;
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ video: camWant("user"), audio: { echoCancellation: true, noiseSuppression: true } }); }
+  try { stream = await micStream({ video: camWant("user"), audio: { echoCancellation: true, noiseSuppression: true } }); }
   catch (e) { toast(T("Нет доступа к камере или микрофону. Разрешите их в настройках браузера.")); return; }
   const live = $("vnLive"), mime = vnMime();
   const cv = document.createElement("canvas"); cv.width = cv.height = 480;
@@ -15268,7 +15268,7 @@ async function aiStartRec() {
   if (!AI_SR || AI.rec) return;
   aiExpand(false);
   let stream = null;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { toast(T("Нет доступа к микрофону. Разрешите его в настройках браузера.")); return; }
+  try { stream = await micStream({ audio: true }); } catch (e) { toast(T("Нет доступа к микрофону. Разрешите его в настройках браузера.")); return; }
   const rec = AI.rec = { stream, ctx: null, raf: 0, sr: null };
   aiPi.classList.add("rec"); aiAct();
   try {
@@ -15774,10 +15774,28 @@ $("abForm").addEventListener("submit", async (e) => {
 /* ---------- iPhone: голосовые слышно и в беззвучном режиме ---------- */
 // «playback» — как у плеера: беззвучный переключатель не глушит; «ambient» — для звуков интерфейса (их глушит)
 function audioMode(t) { try { if (navigator.audioSession && navigator.audioSession.type !== t) navigator.audioSession.type = t; } catch (e) {} }
+/* iPhone (Safari, экран «Домой», приложение): пока звук в режиме «ambient» или «playback» (их ставит музыка профиля,
+   голосовые и звуки Mestario), система не даёт записывать — микрофон «запрещён», даже если доступ разрешён.
+   Перед записью переводим звук в режим «запись и воспроизведение» и при отказе пробуем ещё раз. */
+var micBusy = 0;   // var: mediaPlaying() может спросить раньше этой строки
+async function micStream(c) {
+  audioMode("play-and-record");
+  micBusy++;
+  try {
+    try { return await navigator.mediaDevices.getUserMedia(c); }
+    catch (e) {
+      if (!e || !/NotAllowedError|InvalidStateError|NotReadableError|AbortError/.test(e.name || "")) throw e;
+      await new Promise((r) => setTimeout(r, 350));
+      audioMode("play-and-record");
+      return await navigator.mediaDevices.getUserMedia(c);
+    }
+  } finally { micBusy--; }
+}
 function mediaPlaying() {
   return (typeof voiceEl !== "undefined" && !voiceEl.paused) || (typeof vnPlaying !== "undefined" && vnPlaying && !vnPlaying.paused)
     || (typeof call !== "undefined" && !!call) || (typeof vc !== "undefined" && !!vc)
-    || (typeof profAudio !== "undefined" && !profAudio.paused);
+    || (typeof profAudio !== "undefined" && !profAudio.paused)
+    || micBusy > 0 || (typeof recorder !== "undefined" && !!recorder) || (typeof vn !== "undefined" && !!vn) || (typeof AI !== "undefined" && !!AI.rec);
 }
 let audioBackT = 0;
 function audioBackSoon() { clearTimeout(audioBackT); audioBackT = setTimeout(() => { if (!mediaPlaying()) audioMode("ambient"); }, 800); }
@@ -17154,7 +17172,7 @@ function callJoin() {
 async function callMic(loud) {
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no media");
-    return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    return await micStream({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   } catch (e) {
     const denied = e && e.name === "NotAllowedError";
     toast(loud ? (denied ? T("Нет доступа к микрофону — разрешите его в настройках браузера") : T("Микрофон не найден"))
