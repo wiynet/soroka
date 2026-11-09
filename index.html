@@ -3367,7 +3367,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e3a4c42203"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=95fa75ff56"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -6563,7 +6563,7 @@ function openCode(mode, email, lead, from) {
   codeCtx = { mode, email, from: from || (reg ? "signup" : "login") };
   $("codeTitle").textContent = reg ? T("Подтвердите почту") : T("Код для входа");
   $("codeText").replaceChildren(lead || (reg ? T("Мы отправили код на ") : T("Для этого аккаунта включён вход с кодом. Мы отправили код на ")),
-    h("b", {}, email), ". " + T("Письмо приходит за минуту — если его нет, загляните в «Спам»."),
+    h("b", {}, email), ". " + T("Письмо приходит за минуту — если его нет, загляните в «Спам». Введите код в течение 2 минут."),
     mode === "signup" ? "" : h("span", { class: "code-alt" }, T("В письме нет цифр, только кнопка «Sign in»? Откройте письмо на этом же устройстве и нажмите её — вход выполнится.")));
   $("codeGo").textContent = reg ? T("Создать аккаунт") : T("Войти");
   $("codeIn").value = "";
@@ -6601,7 +6601,11 @@ $("codeForm").addEventListener("submit", (e) => {
     if (error) {
       if (codeCtx.mode !== "signup") state.codeGate = true;
       const m = String(error.message || "");
-      $("codeErr").textContent = /expired|invalid|not found/i.test(m) ? T("Неверный или устаревший код. Проверьте письмо или отправьте код ещё раз.") : authError(error);
+      const reg = codeCtx.mode === "signup" || codeCtx.mode === "signup2";
+      // незаконченная регистрация удаляется через 2 минуты без действий — тогда код уже не подойдёт
+      $("codeErr").textContent = /expired|invalid|not found/i.test(m)
+        ? (reg ? T("Неверный или устаревший код. Регистрация без кода удаляется через 2 минуты — если прошло больше, зарегистрируйтесь заново.") : T("Неверный или устаревший код. Проверьте письмо или отправьте код ещё раз."))
+        : authError(error);
       return;
     }
     clearInterval(codeTimer);
