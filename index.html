@@ -7751,7 +7751,7 @@ const isPhoto = (m) => !!m.file_path && (m.file_type || "").startsWith("image/")
 function msgNode(m, group) {
   const c = state.chats.get(m.chat_id);
   const mine = m.sender_id === state.me.id;
-  const temp = isTemp(m);
+  const temp = isTemp(m) && !m.ghost;   // «призрак» чужого сообщения выглядит как обычное
   const el = h("div", { class: "msg" + (mine ? " mine" : "") + (temp ? (m.failed ? " failed" : " pending") : ""), "data-id": m.id });
   if (c && c.is_group && !c.is_channel && !mine) {
     const who = c.members.find((p) => p.id === m.sender_id);
@@ -8142,6 +8142,7 @@ async function loadEarlier() {
 }
 function addMsg(m) {
   if (state.msgs.some((x) => x.id === m.id)) return;
+  const wasGhost = takeGhost(m);
   if (m.sender_id === state.me.id && !isTemp(m)) {
     const twin = outbox.find((t) => t.pending && !t.done && t.chat_id === m.chat_id && (t._row.body || "") === (m.body || "") && !!t._file === !!m.file_path && (!t._path || t._path === m.file_path));
     if (twin) { dropTemp(twin); var wasTemp = true; }
@@ -8149,8 +8150,8 @@ function addMsg(m) {
   const stick = nearBottom() || m.sender_id === state.me.id;
   state.msgs.push(m);
   state.msgs.sort((a, b) => a.id - b.id);
-  renderMsgs(wasTemp ? null : m.id);   // своё сообщение уже «прилетело» черновиком — второй раз не анимируем
-  if (stick) { scrollDown(); if (!wasTemp) pushUp(m.id); }
+  renderMsgs(wasTemp || wasGhost ? null : m.id);   // своё сообщение уже «прилетело» черновиком (чужое — по живому каналу) — второй раз не анимируем
+  if (stick) { scrollDown(); if (!wasTemp && !wasGhost) pushUp(m.id); }
   state.reactsLoaded.add(m.id);   // у нового сообщения реакций ещё нет, дальше они приходят сами
   if (m.reply_to || m.gift_id || m.forwarded_from) ensureReplies(); else ensureStats();
   if (m.giveaway_id) ensureGiveaways(true);   // новый розыгрыш или сообщение об итогах
@@ -8545,9 +8546,50 @@ function paintTyping() {
   if (stick) scrollDown();
 }
 function clearTyping() { clearTimeout(state.typingTimer); state.typing = null; if (state.activeId) renderHead(); }
+/* Живой канал открытого чата (закрытый, только для участников): «печатает…» и мгновенная доставка текста.
+   Текст сообщения летит собеседнику напрямую через уже открытое соединение и появляется сразу,
+   а настоящая запись из базы приходит следом и тихо заменяет его. Если запись так и не пришла — пузырь исчезает. */
+const GHOST_BASE = 8.1e15;   // «призраки» чужих сообщений: больше номеров черновиков (8e15)
+let ghostSeq = 0;
+const ghostHit = new Set();
+function onLiveMsg(id, pl) {
+  if (!pl || pl.u === state.me.id || state.activeId !== id || state.blocked.has(pl.u) || typeof pl.body !== "string" || !pl.body.trim()) return;
+  const c = state.chats.get(id);
+  if (!c || !(c.members || []).some((p) => p.id === pl.u)) return;   // только участник этого чата
+  if (state.msgs.some((x) => x._gid === pl.gid && x.sender_id === pl.u)) return;
+  const g = { id: GHOST_BASE + (++ghostSeq), chat_id: id, sender_id: pl.u, body: pl.body.slice(0, 4000), reply_to: pl.reply_to || null,
+    created_at: new Date().toISOString(), ghost: true, _gid: pl.gid };
+  const stick = nearBottom();
+  state.msgs.push(g);
+  clearTyping();
+  renderMsgs(g.id);
+  if (stick) { scrollDown(); pushUp(g.id); }
+  if (!document.hidden && !c.muted) playSound("msg");
+  // настоящая запись не пришла за 12 секунд — убираем
+  setTimeout(() => { const i = state.msgs.indexOf(g); if (i >= 0) { state.msgs.splice(i, 1); if (state.activeId === id) repaintKeep(); } }, 12000);
+}
+function onLiveDrop(id, pl) {
+  const i = pl ? state.msgs.findIndex((x) => x.ghost && x._gid === pl.gid && x.sender_id === pl.u) : -1;
+  if (i >= 0) { state.msgs.splice(i, 1); if (state.activeId === id) repaintKeep(); }
+}
+// настоящая запись пришла: убираем её «призрак» (тот же отправитель и тот же текст)
+function takeGhost(m) {
+  if (!m || m.sender_id === state.me.id || isTemp(m)) return false;
+  const i = state.msgs.findIndex((x) => x.ghost && x.sender_id === m.sender_id && x.chat_id === m.chat_id && (x.body || "") === (m.body || ""));
+  if (i < 0) return false;
+  state.msgs.splice(i, 1);
+  ghostHit.add(m.id);
+  return true;
+}
+function liveSend(event, payload) {
+  try { if (state.typingCh && state.typingCh.send && state.typingCh.state === "joined") state.typingCh.send({ type: "broadcast", event, payload }); } catch (e) {}
+}
 function joinTyping(id) {
   leaveTyping();
-  state.typingCh = sb.channel("typing:" + id, { config: { broadcast: { self: false } } })
+  state.typingChId = id;
+  state.typingCh = sb.channel("live:" + id, { config: { private: true, broadcast: { self: false } } })
+    .on("broadcast", { event: "msg" }, (msg) => onLiveMsg(id, msg && msg.payload))
+    .on("broadcast", { event: "drop" }, (msg) => onLiveDrop(id, msg && msg.payload))
     .on("broadcast", { event: "typing" }, (msg) => {
       const pl = msg && msg.payload;
       if (!pl || pl.u === state.me.id || state.activeId !== id) return;
@@ -8559,13 +8601,14 @@ function joinTyping(id) {
 }
 function leaveTyping() {
   if (state.typingCh) { sb.removeChannel(state.typingCh); state.typingCh = null; }
+  state.typingChId = null;
   clearTimeout(state.typingTimer); state.typing = null;
 }
 let typedAt = 0;
 function sayTyping() {
   if (!state.typingCh || !state.typingCh.send || Date.now() - typedAt < 2500 || !$("text").value.trim() || state.editing) return;
   typedAt = Date.now();
-  try { state.typingCh.send({ type: "broadcast", event: "typing", payload: { u: state.me.id, n: state.profile.display_name } }); } catch (e) {}
+  liveSend("typing", { u: state.me.id, n: state.profile.display_name });
 }
 /* ---------- закреплённое сообщение ---------- */
 function canPin(c) { return !!c && (!c.is_group || !!myRole(c)); }
@@ -9263,7 +9306,7 @@ function onIncoming(m) {
   } else { cacheIncoming(m); if (m.sender_id !== state.me.id) bumpUnread(m.chat_id); }
   // свой звук: в открытом чате — «сообщение», из другого чата — «уведомление» (похожий, но заметнее)
   const sc = state.chats.get(m.chat_id);
-  if (m.sender_id !== state.me.id && !document.hidden && sc && !sc.muted) playSound(m.chat_id === state.activeId ? "msg" : "notify");
+  if (m.sender_id !== state.me.id && !document.hidden && sc && !sc.muted && !ghostHit.has(m.id)) playSound(m.chat_id === state.activeId ? "msg" : "notify");
   renderList();
   saveChatsSoon();
 }
@@ -9756,6 +9799,11 @@ function sendFiles(chatId, files, body, extra, onQueued) {
     return t;
   });
   outbox.push(...temps);
+  // текст без файлов сразу летит собеседнику по живому каналу открытого чата
+  if (!files.length && body && state.typingChId === chatId && !(extra && Object.keys(extra).length)) {
+    const t = temps[0]; t._gid = String(t.id);
+    liveSend("msg", { u: state.me.id, gid: t._gid, body, reply_to: t.reply_to || null });
+  }
   noteFlyFrom();
   if (state.activeId === chatId) { state.msgs.push(...temps); renderMsgs(temps[temps.length - 1].id); scrollDown(); pushUp(temps[temps.length - 1].id); }
   flash($("btnSend"), 420, "fly");
@@ -9790,6 +9838,7 @@ async function deliverOne(t, someSent) {
       if (t._extra) Object.assign(row, t._extra);
     }
     const { data, error } = await sb.from("messages").insert(row).select().single();
+    if (error && t._gid) liveSend("drop", { u: state.me.id, gid: t._gid });
     if (error) {
       const dm = state.chats.get(chatId), denied = error.code === "42501" && dm && !dm.is_group;
       const em = error.message || "";
@@ -9805,6 +9854,7 @@ async function deliverOne(t, someSent) {
     if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else addMsg(data); }
     return true;
   } catch (e) {
+    if (t._gid) liveSend("drop", { u: state.me.id, gid: t._gid });
     toast(T("Сообщение не отправлено. Проверьте связь и попробуйте ещё раз."));
     return false;
   }
