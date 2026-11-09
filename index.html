@@ -984,6 +984,7 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .sched-chip { display: flex; align-items: center; gap: 8px; margin: 0 10px 6px; padding: 6px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); font-size: 13.5px; width: max-content; max-width: calc(100% - 20px); cursor: pointer; color: var(--ink); }
 .sched-item { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
 .sched-item .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sched-item .sched-acts { display: inline-flex; gap: 14px; }
 .sched-item .when { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .quick-times { display: flex; gap: 6px; flex-wrap: wrap; }
 .quick-times .chip { padding: 7px 12px; color: var(--ink); }
@@ -3265,7 +3266,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e616eb4917"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=af36116b25"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5502,6 +5503,7 @@ void main() {
   <form class="dlg" id="schedForm" novalidate>
     <h2 id="schedHead">Отправить позже</h2>
     <div class="rp-what" id="schedText"></div>
+    <label class="field" id="schedBodyF" hidden><span>Текст</span><textarea class="input" id="schedBody" rows="3" maxlength="4000"></textarea></label>
     <div class="quick-times" id="schedQuick"></div>
     <label class="field"><span>Дата и время</span><input class="input" id="schedAt" type="datetime-local"></label>
     <div class="error" id="schedErr"></div>
@@ -18875,45 +18877,59 @@ function paintSchedList() {
   $("schedList").replaceChildren(...(schedRows.length ? schedRows.map((r) => h("div", { class: "sched-item" },
     h("div", { class: "tx" }, r.body),
     h("div", { class: "when" }, h("span", { class: "when-t" }, icon("clock"), whenFmt(r.send_at)),
-      h("button", { class: "link", type: "button", style: "color:var(--danger)", onclick: async () => {
-        const { error } = await sb.rpc("cancel_scheduled", { p_id: r.id });
-        if (error) { toast(T("Не удалось отменить")); return; }
-        toast(T("Отменено")); loadScheduled();
-      } }, T("Отменить"))))) : [h("div", { class: "empty-note" }, T("Ничего не запланировано."))]));
+      h("span", { class: "sched-acts" },
+        h("button", { class: "link", type: "button", onclick: () => { $("dlgSchedList").close(); openSchedule(r); } }, T("Изменить")),
+        h("button", { class: "link", type: "button", style: "color:var(--danger)", onclick: async () => {
+          const { error } = await sb.rpc("cancel_scheduled", { p_id: r.id });
+          if (error) { toast(T("Не удалось удалить")); return; }
+          toast(T("Удалено")); loadScheduled();
+        } }, T("Удалить")))))) : [h("div", { class: "empty-note" }, T("Ничего не запланировано."))]));
 }
 $("schedChip").addEventListener("click", () => { paintSchedList(); $("dlgSchedList").showModal(); });
 function localInput(d) { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
-function openSchedule() {
-  const body = $("text").value.trim();
-  if (!body) { toast(T("Сначала напишите текст сообщения")); return; }
-  if (state.pendingFiles.length || state.editing) { toast(T("Запланировать можно только текст")); return; }
+// edit — уже запланированное сообщение: можно поменять и текст, и время
+let schedEdit = null;
+function openSchedule(edit) {
+  schedEdit = edit && edit.id ? edit : null;
+  const body = schedEdit ? schedEdit.body : $("text").value.trim();
+  if (!schedEdit) {
+    if (!body) { toast(T("Сначала напишите текст сообщения")); return; }
+    if (state.pendingFiles.length || state.editing) { toast(T("Запланировать можно только текст")); return; }
+  }
   const self = isSelfChat(state.chats.get(state.activeId));
-  $("schedHead").textContent = self ? T("Напомнить себе") : T("Отправить позже");
+  $("schedHead").textContent = schedEdit ? (self ? T("Изменить напоминание") : T("Изменить отложенное")) : self ? T("Напомнить себе") : T("Отправить позже");
   $("schedText").textContent = body.length > 200 ? body.slice(0, 200) + "…" : body;
+  $("schedText").hidden = !!schedEdit; $("schedBodyF").hidden = !schedEdit;
+  if (schedEdit) $("schedBody").value = body;
+  $("schedGo").textContent = schedEdit ? T("Сохранить") : T("Запланировать");
   $("schedErr").textContent = "";
   const now = new Date(), in1h = new Date(now.getTime() + 3600e3), tmr = new Date(now); tmr.setDate(tmr.getDate() + 1); tmr.setHours(9, 0, 0, 0);
   const evening = new Date(now); evening.setHours(20, 0, 0, 0); if (evening <= now) evening.setDate(evening.getDate() + 1);
-  $("schedAt").value = localInput(in1h);
+  $("schedAt").value = localInput(schedEdit ? new Date(schedEdit.send_at) : in1h);
   $("schedAt").min = localInput(new Date(now.getTime() + 60e3));
   $("schedQuick").replaceChildren(...[[T("Через час"), in1h], [T("Вечером в 20:00"), evening], [T("Завтра в 9:00"), tmr]].map(([t, d]) =>
     h("button", { class: "chip", type: "button", onclick: () => { $("schedAt").value = localInput(d); } }, t)));
   $("dlgSched").showModal();
 }
+$("dlgSched").addEventListener("close", () => { schedEdit = null; });
 $("schedForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  const at = new Date($("schedAt").value), body = $("text").value.trim(), chat = state.activeId;
+  const ed = schedEdit, at = new Date($("schedAt").value), body = ed ? $("schedBody").value.trim() : $("text").value.trim(), chat = state.activeId;
   if (isNaN(at)) { $("schedErr").textContent = T("Выберите дату и время"); return; }
   if (at < new Date(Date.now() + 30e3)) { $("schedErr").textContent = T("Выберите время в будущем"); return; }
+  if (!body) { $("schedErr").textContent = T("Напишите текст сообщения"); return; }
   busy(e.target, async () => {
-    const { error } = await sb.rpc("schedule_message", { p_chat: chat, p_body: body, p_at: at.toISOString() });
+    const { error } = ed ? await sb.rpc("update_scheduled", { p_id: ed.id, p_body: body, p_at: at.toISOString() })
+      : await sb.rpc("schedule_message", { p_chat: chat, p_body: body, p_at: at.toISOString() });
     if (error) {
       const m = error.message || "";
-      $("schedErr").textContent = /too many/.test(m) ? T("Запланировано уже 50 сообщений") : /bad time/.test(m) ? T("Можно запланировать от минуты до года вперёд") : /cannot post/.test(m) ? T("В этом чате вы не можете писать") : T("Не удалось запланировать");
+      $("schedErr").textContent = /too many/.test(m) ? T("Запланировано уже 50 сообщений") : /bad time/.test(m) ? T("Можно запланировать от минуты до года вперёд") : /not found/.test(m) ? T("Это сообщение уже отправлено или удалено") : /cannot post/.test(m) ? T("В этом чате вы не можете писать") : T("Не удалось запланировать");
       return;
     }
     $("dlgSched").close();
-    $("text").value = ""; $("text").dispatchEvent(new Event("input"));
-    toast((isSelfChat(state.chats.get(chat)) ? T("Напомню ") : T("Отправится ")) + whenFmt(at));
+    schedEdit = null;
+    if (!ed) { $("text").value = ""; $("text").dispatchEvent(new Event("input")); }
+    toast((ed ? T("Сохранено · ") : "") + (isSelfChat(state.chats.get(chat)) ? T("Напомню ") : T("Отправится ")) + whenFmt(at));
     loadScheduled();
   });
 });
