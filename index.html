@@ -6729,6 +6729,7 @@ async function startApp() {
   askLoginCodeOnce();
   flash($("chatList"), 900);
   subscribeInbox();
+  if (IN_APP || IN_ELECTRON) setTimeout(appNotifyInit, 3000);
   sb.rpc("touch_presence").then(() => {});
   clearInterval(state.timer);
   state.timer = setInterval(tick, 60000);
@@ -9205,6 +9206,48 @@ function onChanged(m) {
   $("msgs").scrollTop = keep;
   if (editedNow) { const n = $("msgs").querySelector('.msg[data-id="' + m.id + '"]'); if (n && motionOK()) flash(n, 900, "edited-in"); }
 }
+/* Уведомления в приложениях (Android, iPhone, Windows). Веб-push там не работает, поэтому новое сообщение,
+   пришедшее по живому каналу, показываем системным уведомлением сами — пока приложение открыто или свёрнуто. */
+const CapLN = () => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+let appNotifyReady = false;
+async function appNotifyInit() {
+  if (appNotifyReady) return;
+  appNotifyReady = true;
+  const LN = CapLN();
+  if (LN) {
+    try {
+      const st = await LN.checkPermissions();
+      if (st.display !== "granted") await LN.requestPermissions();
+      if (LN.createChannel) await LN.createChannel({ id: "msgs", name: T("Сообщения"), importance: 5, visibility: 1, vibration: true }).catch(() => {});
+      LN.addListener("localNotificationActionPerformed", (a) => {
+        const chat = a && a.notification && a.notification.extra && a.notification.extra.chat;
+        if (chat && state.started) { setSearchMode(false); openChat(chat); }
+      });
+    } catch (e) {}
+  } else if (IN_ELECTRON && window.Notification && Notification.permission === "default") {
+    try { await Notification.requestPermission(); } catch (e) {}
+  }
+}
+function appNotify(m) {
+  if (!(IN_APP || IN_ELECTRON) || !m || m.sender_id === state.me.id || settings.notify === false) return;
+  const c = state.chats.get(m.chat_id);
+  if (!c || c.muted) return;
+  const looking = !document.hidden && document.hasFocus() && state.activeId === m.chat_id;
+  if (looking) return;
+  const who = c.is_group && !c.is_channel ? memberName(c, m.sender_id) : "";
+  const title = chatTitle(c), body = (who ? who + ": " : "") + (previewText(mediaLabel(m)) || T("Новое сообщение"));
+  const LN = CapLN();
+  if (LN) {
+    LN.schedule({ notifications: [{ id: Number(m.id) % 2147483000 || Date.now() % 2147483000, title, body: body.slice(0, 300), channelId: "msgs", group: m.chat_id, extra: { chat: m.chat_id } }] }).catch(() => {});
+    return;
+  }
+  if (IN_ELECTRON && window.Notification && Notification.permission === "granted") {
+    try {
+      const n = new Notification(title, { body: body.slice(0, 300), tag: m.chat_id, icon: "icon-192.png", silent: false });
+      n.onclick = () => { try { window.focus(); } catch (e) {} setSearchMode(false); openChat(m.chat_id); n.close(); };
+    } catch (e) {}
+  }
+}
 function onIncoming(m) {
   if (!state.started) return;
   if (m.deleted_at) return;
@@ -9212,6 +9255,7 @@ function onIncoming(m) {
   if (state.typing && state.typing.chat === m.chat_id && state.typing.u === m.sender_id) clearTyping();
   if (isAiChat(state.chats.get(m.chat_id)) && m.sender_id !== state.me.id) { refreshAiCredits(); if (m.chat_id === state.activeId) loadTranscripts(m.chat_id); }
   touchChat(m);
+  appNotify(m);
   if (Array.isArray(m.mentions) && m.mentions.includes(state.me.id) && (m.chat_id !== state.activeId || document.hidden)) mentionChats.add(m.chat_id);
   if (m.chat_id === state.activeId) {
     addMsg(m);

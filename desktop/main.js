@@ -1,6 +1,6 @@
 // Mestario для Windows: отдельное окно с мессенджером.
 // Открывает сайт (так обновления приходят сразу); без интернета показывает встроенную копию интерфейса.
-const { app, BrowserWindow, shell, session, Menu, desktopCapturer } = require("electron");
+const { app, BrowserWindow, shell, session, Menu, desktopCapturer, Tray, nativeImage } = require("electron");
 const path = require("path");
 
 const SITE = "https://mestario.lol/";
@@ -10,13 +10,28 @@ const isOwn = (url) => OWN.some((o) => url === o || url.startsWith(o + "/")) || 
 app.setAppUserModelId("top.mestario.desktop");   // имя и иконка в уведомлениях Windows
 if (!app.requestSingleInstanceLock()) app.quit();   // второе окно не запускаем — показываем первое
 
-let win = null;
+let win = null, tray = null, quitting = false;
+// крестик не закрывает Mestario, а прячет в трей: так новые сообщения продолжают приходить уведомлениями
+function makeTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "icon.png")).resize({ width: 16, height: 16 }));
+    tray.setToolTip("Mestario");
+    const show = () => { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); };
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: "Открыть Mestario", click: show },
+      { type: "separator" },
+      { label: "Выйти", click: () => { quitting = true; app.quit(); } },
+    ]));
+    tray.on("click", show);
+  } catch (e) { tray = null; }
+}
 function createWindow() {
   win = new BrowserWindow({
     width: 1200, height: 800, minWidth: 380, minHeight: 560,
     backgroundColor: "#05070d", title: "Mestario", icon: path.join(__dirname, "icon.png"),
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, sandbox: true, spellcheck: true },
+    webPreferences: { contextIsolation: true, sandbox: true, spellcheck: true, backgroundThrottling: false },   // в трее связь не засыпает
   });
   Menu.setApplicationMenu(null);
   // чужие ссылки открываются в обычном браузере, свои — в окне приложения
@@ -36,6 +51,11 @@ function createWindow() {
   });
   // если страница упала — перезагружаем, а не закрываем окно
   win.webContents.on("render-process-gone", () => { setTimeout(() => { if (win && !win.isDestroyed()) win.reload(); }, 500); });
+  win.on("close", (e) => {
+    if (quitting || !tray) return;
+    e.preventDefault();
+    win.hide();
+  });
   win.loadURL(SITE);
 }
 
@@ -50,7 +70,9 @@ app.whenReady().then(() => {
       desktopCapturer.getSources({ types: ["screen"] }).then((src) => cb(src.length ? { video: src[0] } : {})).catch(() => cb({}));
     }, { useSystemPicker: true });
   }
+  makeTray();
   createWindow();
 });
+app.on("before-quit", () => { quitting = true; });
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => { if (!tray) app.quit(); });
