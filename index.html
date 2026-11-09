@@ -3268,7 +3268,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=121031351d"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=da094ddd2b"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4656,6 +4656,10 @@ void main() {
         <label class="mk-f" hidden><span>Подарок</span><select id="mkType" aria-label="Подарок"><option value="">Все</option></select></label>
         <label class="mk-f"><span>Модель</span><select id="mkModel" aria-label="Модель"><option value="">Все</option></select></label>
         <label class="mk-f"><span>Фон</span><select id="mkBack" aria-label="Фон"><option value="">Все</option></select></label>
+      </div>
+      <div class="mk-filters" id="mkCatFilters" hidden>
+        <label class="mk-f"><span>Показать</span><select id="mkCatShow" aria-label="Какие подарки показать"><option value="sale">В продаже</option><option value="all">Все</option></select></label>
+        <label class="mk-f"><span>Порядок</span><select id="mkCatSort" aria-label="Порядок подарков"><option value="lots">Больше лотов</option><option value="cheap">Дешевле</option><option value="dear">Дороже</option><option value="name">По названию</option></select></label>
       </div>
       <div class="mk-count small muted" id="mkCount"></div>
       <div class="mk-grid" id="mkGiftLots"></div>
@@ -10341,6 +10345,7 @@ function paintKinds() {
   // подарки: сначала каталог видов, фильтры — когда вид уже выбран
   const pick = mkKind === "gift" && !$("mkType").value;
   $("mkFilters").hidden = pick;
+  $("mkCatFilters").hidden = !pick;
   $("mkType").parentElement.hidden = true;
   $("mkTypeBack").hidden = mkKind !== "gift";
   $("mkModel").parentElement.hidden = $("mkBack").parentElement.hidden = mkKind !== "gift";
@@ -10400,7 +10405,14 @@ function lotPriceShort(l) { return l.price != null ? [coinMark(), nf.format(Numb
 function paintCatalog(types) {
   const by = new Map();
   for (const l of lots) if (l.gift) { const a = by.get(l.gift.type_id) || []; a.push(l); by.set(l.gift.type_id, a); }
-  const list = types.filter((t) => by.has(t.id) || canUpgrade(t)).sort((a, b) => (by.get(b.id) || []).length - (by.get(a.id) || []).length);
+  // фильтры каталога: по умолчанию только то, что есть в продаже — пустые плитки не занимают место
+  const show = $("mkCatShow").value, order = $("mkCatSort").value;
+  const minOf = (t) => { const a = by.get(t.id); return a && a.length ? Math.min(...a.map(lotMest)) : Infinity; };
+  const list = types.filter((t) => show === "all" ? (by.has(t.id) || canUpgrade(t)) : by.has(t.id)).sort((a, b) =>
+    order === "name" ? String(a.name).localeCompare(String(b.name)) :
+    order === "cheap" ? minOf(a) - minOf(b) :
+    order === "dear" ? (by.has(b.id) ? minOf(b) : -1) - (by.has(a.id) ? minOf(a) : -1) :
+    (by.get(b.id) || []).length - (by.get(a.id) || []).length);
   const total = [...by.values()].reduce((n, a) => n + a.length, 0);
   $("mkCount").textContent = total ? total + " " + plural(total, T("подарок на продаже"), T("подарка на продаже"), T("подарков на продаже")) + T(" · выберите подарок") : "";
   $("mkGiftLots").replaceChildren(...(list.length ? list.map((t, i) => {
@@ -10417,7 +10429,7 @@ function paintCatalog(types) {
       h("span", { class: "pp" }, ...(min ? [T("от "), ...lotPriceShort(min)] : [T("нет в продаже")])));
     el.style.animationDelay = Math.min(i, 12) * 30 + "ms";
     return el;
-  }) : [h("div", { class: "mk-empty" }, lotsErr ? T("Не удалось загрузить лоты.") : T("NFT-подарков на продаже пока нет. Свой можно выставить во вкладке «Продать»."))]));
+  }) : [h("div", { class: "mk-empty" }, lotsErr ? T("Не удалось загрузить лоты.") : show !== "all" && types.some(canUpgrade) ? T("Сейчас ничего нет в продаже. Чтобы увидеть все подарки, выберите «Показать: Все».") : T("NFT-подарков на продаже пока нет. Свой можно выставить во вкладке «Продать»."))]));
 }
 $("mkTypeBack").addEventListener("click", () => { $("mkType").value = ""; $("mkModel").value = ""; $("mkBack").value = ""; paintKinds(); paintBuy(); });
 // карточка NFT-подарка на витрине: фон и узор подарка, номер на уголке, цена внизу
@@ -10437,6 +10449,11 @@ function mkCard(l, types) {
 $("mkKinds").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (!b) return; mkKind = b.dataset.k; paintKinds(); paintBuy(); });
 $("mkType").addEventListener("change", () => { paintFilters(state.giftTypes || []); paintKinds(); paintBuy(); });
 for (const id of ["mkModel", "mkBack", "mkSort"]) $(id).addEventListener("change", () => paintBuy());
+// фильтры каталога запоминаются на этом устройстве
+for (const id of ["mkCatShow", "mkCatSort"]) {
+  try { const v = localStorage.getItem("soroka." + id); if (v && [...$(id).options].some((o) => o.value === v)) $(id).value = v; } catch (e) {}
+  $(id).addEventListener("change", () => { try { localStorage.setItem("soroka." + id, $(id).value); } catch (e) {} paintBuy(); });
+}
 
 // свои лоты: открытые и последние сделки
 async function loadMyLots() {

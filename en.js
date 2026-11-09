@@ -1,5 +1,12 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"В продаже":"On sale",
+"Порядок":"Order",
+"Больше лотов":"Most lots",
+"По названию":"By name",
+"Какие подарки показать":"Which gifts to show",
+"Порядок подарков":"Gift order",
+"Сейчас ничего нет в продаже. Чтобы увидеть все подарки, выберите «Показать: Все».":"Nothing is on sale right now. To see all gifts, choose “Show: All”.",
 "Показывать до (необязательно)":"Show until (optional)",
 "После этой даты окно больше никому не покажется. Пусто — без срока.":"After this date nobody will see the window. Empty means no end date.",
 "Отменить правку":"Cancel editing",
