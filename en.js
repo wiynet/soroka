@@ -1,5 +1,12 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Видеозвонок":"Video call",
+"Камера":"Camera",
+"Другая камера":"Other camera",
+"Выключить камеру":"Turn camera off",
+"Включить камеру":"Turn camera on",
+"Нет доступа к камере — разрешите её в настройках":"No camera access — allow it in settings",
+"Камера не найдена":"No camera found",
 "Действия":"Actions",
 "Действия с подарком":"Gift actions",
 "Уведомления для Mestario выключены в телефоне. Нажмите на переключатель — телефон спросит разрешение. Если не спросит, включите их в настройках телефона: Приложения → Mestario → Уведомления.":"Notifications for Mestario are off on this phone. Tap the switch and the phone will ask. If it doesn't, turn them on in phone settings: Apps → Mestario → Notifications.",

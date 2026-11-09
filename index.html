@@ -2951,7 +2951,18 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 .call-mine-t { display: flex; flex-direction: column; gap: 2px; }
 .call-mine-t small { font-size: 12px; opacity: .75; }
 .call-mine-t small .link { color: #9fe3ff; font-size: 12px; padding: 0; }
-.call-btns { display: flex; gap: 22px; justify-content: center; z-index: 1; }
+.call-btns { display: flex; gap: 22px; justify-content: center; z-index: 1; flex-wrap: wrap; }
+@media (max-width: 420px) { .call-btns { gap: 14px 16px; } }
+/* видеозвонок: камера собеседника на весь экран, своя — маленьким окошком в углу */
+.call-self { position: absolute; z-index: 3; right: 14px; top: calc(max(14px, env(safe-area-inset-top)) + 56px); width: 108px; height: 150px; object-fit: cover; border-radius: 16px; background: #000; transform: scaleX(-1); box-shadow: 0 8px 24px rgb(0 0 0 / .45); border: 1.5px solid rgb(255 255 255 / .25); }
+.call-self.back { transform: none; }
+.call-self[hidden] { display: none; }
+.call-ui.cam-remote .call-video { top: 0; height: 100%; object-fit: cover; }
+.call-ui.cam-remote::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(rgb(0 0 0 / .45), transparent 22%, transparent 70%, rgb(0 0 0 / .6)); }
+.call-ui.cam-remote .call-top, .call-ui.cam-remote .call-who, .call-ui.cam-remote .call-btns, .call-ui.cam-remote .call-mine { position: relative; z-index: 2; }
+.call-ui.cam-remote .call-av { display: none; }
+.call-ui.cam-remote .call-who { margin-top: 8px; text-shadow: 0 1px 4px rgb(0 0 0 / .6); }
+.call-ui.cam-remote .call-name { font-size: 18px; }
 .call-act { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; opacity: .95; }
 .call-act.in, .call-ui.incoming .call-act:not(.in) { display: none; }
 .call-ui.incoming .call-act.in { display: flex; }
@@ -3320,7 +3331,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d95f982426"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=071ce7d5b4"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4278,6 +4289,7 @@ void main() {
         </div>
         <button class="ai-buy-btn" id="btnAiBuy" type="button" title="Купить ИИ-кредиты за Mest" hidden>+ Кредиты</button>
         <button class="icon-btn" id="btnCall" type="button" title="Позвонить" aria-label="Позвонить" hidden></button>
+        <button class="icon-btn" id="btnVideo" type="button" title="Видеозвонок" aria-label="Видеозвонок" hidden></button>
         <button class="icon-btn" id="btnVc" type="button" title="Голосовой чат" aria-label="Голосовой чат" hidden></button>
         <button class="icon-btn" id="btnFind" type="button" title="Поиск по сообщениям" aria-label="Поиск по сообщениям"></button>
         <button class="icon-btn" id="btnBotEdit" type="button" title="Настроить бота" aria-label="Настроить бота" hidden></button>
@@ -4964,6 +4976,7 @@ void main() {
     <button class="call-ib" id="callFull" type="button" title="Экран собеседника во весь экран" aria-label="Во весь экран"></button>
   </div>
   <video id="callVideo" class="call-video" playsinline autoplay muted hidden></video>
+  <video id="callSelf" class="call-self" playsinline autoplay muted hidden></video>
   <div class="call-who">
     <div class="call-av" id="callAv"></div>
     <div class="call-name" id="callName"></div>
@@ -4978,6 +4991,8 @@ void main() {
   <div class="call-qpick" id="callQPick" hidden></div>
   <div class="call-btns">
     <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span id="callMuteLbl">Микрофон</span></div>
+    <div class="call-act" id="callCamWrap"><button class="call-b" id="callCam" type="button"></button><span>Камера</span></div>
+    <div class="call-act" id="callFlipWrap" hidden><button class="call-b" id="callFlip" type="button" title="Другая камера" aria-label="Другая камера"></button><span>Повернуть</span></div>
     <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
     <div class="call-act"><button class="call-b red" id="callHang" type="button" title="Завершить" aria-label="Завершить"></button><span>Завершить</span></div>
     <div class="call-act in"><button class="call-b red" id="callDecline" type="button" title="Отклонить" aria-label="Отклонить"></button><span>Отклонить</span></div>
@@ -5937,6 +5952,8 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const ICONS = {
+  videocam: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.4 21 7.2v9.6l-5.5-3.2"/></g>',
+  videooff: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.4 21 7.2v9.6l-5.5-3.2"/><path d="M3 3l18 18"/></g>',
   palette: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 1 0 0 20c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-4.9-4.5-8.6-10-8.6z"/></g>',
   dice: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/></g>',
   image: '<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></g>',
@@ -7515,6 +7532,7 @@ function renderHead() {
   if (isAiChat(c)) { $("convSub").textContent = T("ИИ-помощник · ") + (state.isAdmin ? "∞" : credText(aiCredits)); $("convSub").classList.add("on"); }
   $("btnAiBuy").hidden = !isAiChat(c) || !!state.isAdmin;
   $("btnCall").hidden = !canCall(c) || !window.RTCPeerConnection;
+  $("btnVideo").hidden = $("btnCall").hidden || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   if (typeof vcRefresh === "function") vcRefresh();
   { const bt = botOf(c); $("btnBotEdit").hidden = !(bt && myBots.some((b) => b.id === bt.id)); }
   const ty = state.typing && state.typing.chat === c.id && state.typing.until > Date.now() ? state.typing : null;
@@ -17135,7 +17153,15 @@ function callPaint() {
   $("callStatus").textContent = st;
   ui.classList.toggle("incoming", call.role === "in" && call.status === "ringing");
   ui.classList.toggle("sharing-remote", !!call.remoteScreen);
-  $("callVideo").hidden = !call.remoteScreen;
+  ui.classList.toggle("cam-remote", !!call.remoteCam && !call.remoteScreen && call.status === "active");
+  $("callVideo").hidden = !(call.remoteScreen || (call.remoteCam && call.status === "active"));
+  $("callSelf").hidden = !call.cam;
+  $("callSelf").classList.toggle("back", call.camFacing === "environment");
+  $("callCam").classList.toggle("on", !!call.cam);
+  $("callCam").replaceChildren(icon(call.cam ? "videocam" : "videooff"));
+  $("callCam").title = call.cam ? T("Выключить камеру") : T("Включить камеру");
+  $("callCamWrap").hidden = !window.navigator.mediaDevices || (call.role === "in" && call.status === "ringing") || !!call.ended;
+  $("callFlipWrap").hidden = !call.cam || !matchMedia("(pointer: coarse)").matches;
   $("callMine").hidden = !call.screen;
   $("callMute").classList.toggle("on", !!call.muted);
   $("callMute").replaceChildren(icon(call.muted ? "micoff" : "mic"));
@@ -17206,6 +17232,7 @@ function callPc() {
       if (call.status !== "active") {
         call.status = "active"; call.started = Date.now(); callStopTones();
         if (!call.mic || call.muted) callSend({ t: "mute", on: true });
+        if (call.cam) callSend({ t: "cam", on: true });
         call.tick = setInterval(callPaint, 1000);
         call.ping = setInterval(() => sb.rpc("call_ping", { p_call: call && call.id }).then(() => {}), 20000);
       }
@@ -17220,6 +17247,7 @@ function callPc() {
     const mt = call.mic && call.mic.getAudioTracks()[0];
     call.at = mt ? pc.addTransceiver(mt, { direction: "sendrecv", streams: [call.mic] }) : pc.addTransceiver("audio", { direction: "sendrecv" });
     call.vt = pc.addTransceiver("video", { direction: "sendrecv" });
+    if (call.cam) callCamTrackOut();
   }
   // если за 30 секунд не соединились — дальше ждать бессмысленно
   call.connT = setTimeout(() => { if (call && call.pc === pc && pc.connectionState !== "connected") hangUp(T("Не удалось соединиться")); }, 30000);
@@ -17249,7 +17277,7 @@ async function onCallSig(m) {
       call.at = tx.find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "audio");
       call.vt = tx.find((x) => x.receiver && x.receiver.track && x.receiver.track.kind === "video");
       if (call.at) { call.at.direction = "sendrecv"; const mt = call.mic && call.mic.getAudioTracks()[0]; if (mt) await call.at.sender.replaceTrack(mt); }
-      if (call.vt) call.vt.direction = "sendrecv";
+      if (call.vt) { call.vt.direction = "sendrecv"; if (call.cam) await callCamTrackOut(); }
       await pc.setLocalDescription(await pc.createAnswer());
       callSend({ t: "answer", sdp: pc.localDescription.toJSON() });
       await callFlushIce();
@@ -17261,13 +17289,14 @@ async function onCallSig(m) {
       else (call.iceQ = call.iceQ || []).push(m.c);
     } else if (m.t === "screen") { call.remoteScreen = !!m.on; if (call.remoteScreen) call.min = false; callPaint(); }
     else if (m.t === "mute") { call.peerMuted = !!m.on; callPaint(); }
+    else if (m.t === "cam") { call.remoteCam = !!m.on; if (call.remoteCam) { call.min = false; $("callVideo").play().catch(() => {}); } callPaint(); }
     else if (m.t === "bye") { callFinish(T("Звонок завершён")); }
   } catch (e) { console.warn("call signal", e); }
 }
 function callPeerFrom(c, id) {
   return (c && c.members.find((p) => p.id === id)) || null;
 }
-async function startCall(c) {
+async function startCall(c, video) {
   if (!canCall(c)) { toast(T("Этому собеседнику позвонить нельзя")); return; }
   if (call) { call.min = false; callPaint(); toast(T("Сначала завершите текущий звонок")); return; }
   if (!window.RTCPeerConnection) { toast(T("Этот браузер не поддерживает звонки")); return; }
@@ -17277,9 +17306,11 @@ async function startCall(c) {
   const mic = await callMic(false);
   if (!call) { if (mic) mic.getTracks().forEach((t) => t.stop()); return; }
   call.mic = mic; call.muted = !mic; call.note = "";
+  if (video) await callCamOn("user");   // видеозвонок: камера включается сразу, собеседник увидит её после ответа
+  if (!call) return;
   const { data, error } = await sb.rpc("call_start", { p_chat: c.id });
   if (error || !data) {
-    if (mic) mic.getTracks().forEach((t) => t.stop()); call = null; callPaint();
+    if (mic) mic.getTracks().forEach((t) => t.stop()); if (call && call.cam) call.cam.getTracks().forEach((t) => t.stop()); $("callSelf").srcObject = null; call = null; callPaint();
     const m = (error && error.message) || "";
     toast(/blocked/.test(m) ? T("Позвонить нельзя: вы или собеседник в чёрном списке") : /too many/.test(m) ? T("Слишком много звонков подряд — подождите немного") : /cannot call/.test(m) ? T("Этому собеседнику позвонить нельзя") : T("Не получилось позвонить"));
     return;
@@ -17334,10 +17365,12 @@ function callFinish(note) {
   clearTimeout(c.ringT); clearTimeout(c.connT); clearTimeout(c.dropT); clearInterval(c.tick); clearInterval(c.ping); clearInterval(c.readyT);
   if (c.screen) c.screen.getTracks().forEach((t) => t.stop());
   if (c.mic) c.mic.getTracks().forEach((t) => t.stop());
+  if (c.cam) c.cam.getTracks().forEach((t) => t.stop());
+  $("callSelf").srcObject = null;
   try { if (c.pc) c.pc.close(); } catch (e) {}
   if (c.ch) sb.removeChannel(c.ch);
   $("callAudio").srcObject = null; $("callVideo").srcObject = null;
-  c.pc = null; c.ch = null; c.ended = true; c.remoteScreen = false; c.screen = null; c.min = false;
+  c.pc = null; c.ch = null; c.ended = true; c.remoteScreen = false; c.remoteCam = false; c.cam = null; c.screen = null; c.min = false;
   c.note = note || T("Звонок завершён"); c.status = "ended";
   callPaint();
   $("callUi").classList.add("ended");
@@ -17398,6 +17431,46 @@ function callQPick(onPick) {
     h("button", { class: "link cq-x", type: "button", onclick: () => { box.hidden = true; } }, T("Отмена")));
   box.hidden = false;
 }
+/* ---------- камера в звонке ---------- */
+const CALL_CAM = (facing) => ({ facingMode: facing, width: { ideal: 960, max: 1280 }, height: { ideal: 540, max: 720 }, frameRate: { ideal: 24, max: 30 } });
+async function callCamTrackOut() {
+  // камера уходит собеседнику, только если сейчас не показываем экран (экран важнее, после него камера вернётся)
+  if (!call || !call.vt || call.screen) return;
+  const tr = call.cam ? call.cam.getVideoTracks()[0] : null;
+  try { await call.vt.sender.replaceTrack(tr); } catch (e) {}
+  if (tr) {
+    try { tr.contentHint = "motion"; } catch (e) {}
+    try { const p = call.vt.sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}]; p.encodings[0].maxBitrate = callHQ() ? 1500000 : 900000; p.encodings[0].maxFramerate = 24; p.encodings[0].scaleResolutionDownBy = 1; await call.vt.sender.setParameters(p); } catch (e) {}
+  }
+}
+async function callCamOn(facing) {
+  if (!call || call.ended) return false;
+  facing = facing || call.camFacing || "user";
+  let s;
+  try { s = await navigator.mediaDevices.getUserMedia({ video: CALL_CAM(facing) }); }
+  catch (e) {
+    try { s = await navigator.mediaDevices.getUserMedia({ video: true }); facing = "user"; }
+    catch (e2) { toast(e2 && e2.name === "NotAllowedError" ? T("Нет доступа к камере — разрешите её в настройках") : T("Камера не найдена")); return false; }
+  }
+  if (!call || call.ended) { s.getTracks().forEach((t) => t.stop()); return false; }
+  if (call.cam) call.cam.getTracks().forEach((t) => t.stop());
+  call.cam = s; call.camFacing = facing;
+  $("callSelf").srcObject = s; $("callSelf").play().catch(() => {});
+  await callCamTrackOut();
+  if (call.status === "active") callSend({ t: "cam", on: true });
+  callPaint();
+  return true;
+}
+function callCamOff() {
+  if (!call || !call.cam) return;
+  call.cam.getTracks().forEach((t) => t.stop());
+  call.cam = null; $("callSelf").srcObject = null;
+  if (call.vt && !call.screen) call.vt.sender.replaceTrack(null).catch(() => {});
+  callSend({ t: "cam", on: false });
+  callPaint();
+}
+function callToggleCam() { if (!call) return; if (call.cam) callCamOff(); else callCamOn(); }
+function callFlipCam() { if (call && call.cam) callCamOn(call.camFacing === "environment" ? "user" : "environment"); }
 async function callToggleShare() {
   if (!call || call.status !== "active" || !call.vt) return;
   if (call.screen) { callStopShare(); return; }
@@ -17422,8 +17495,9 @@ function callStopShare() {
   if (!call || !call.screen) return;
   call.screen.getTracks().forEach((t) => t.stop());
   call.screen = null; $("callMineVid").srcObject = null;
-  if (call.vt) call.vt.sender.replaceTrack(null).catch(() => {});
+  if (call.vt) { if (call.cam) callCamTrackOut(); else call.vt.sender.replaceTrack(null).catch(() => {}); }
   callSend({ t: "screen", on: false });
+  if (call.cam) callSend({ t: "cam", on: true });
   callPaint();
 }
 function onCallRow(row) {
@@ -17460,6 +17534,11 @@ window.addEventListener("pagehide", () => {
 });
 $("btnCall").append(icon("phone"));
 $("btnCall").addEventListener("click", () => startCall(state.chats.get(state.activeId)));
+$("btnVideo").append(icon("videocam"));
+$("btnVideo").addEventListener("click", () => startCall(state.chats.get(state.activeId), true));
+$("callCam").addEventListener("click", callToggleCam);
+$("callFlip").append(icon("flip"));
+$("callFlip").addEventListener("click", callFlipCam);
 $("callAccept").append(icon("phone"));
 $("callAccept").addEventListener("click", acceptCall);
 $("callDecline").append(icon("phone"));
