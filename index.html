@@ -1083,10 +1083,15 @@ a.btn.ton-btn { display: grid; place-items: center; text-decoration: none; }
 .give-sum { padding: 10px 12px; border-radius: 12px; background: var(--panel-2); font-size: 14px; }
 /* «кружок»: круглое видеосообщение, по краю — ход воспроизведения */
 .msg.vn { background: none !important; box-shadow: none !important; border: 0 !important; padding: 0; backdrop-filter: none; animation: none; }
-.vnote { --p: 0; position: relative; display: block; width: min(220px, 58vw); aspect-ratio: 1; padding: 4px; border: 0; border-radius: 50%; cursor: pointer;
-  background: conic-gradient(var(--accent) calc(var(--p) * 1%), color-mix(in srgb, var(--ink) 16%, transparent) 0); }
-.vnote video { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; background: #0b1418; }
+.vnote { --p: 0; position: relative; display: block; width: min(230px, 60vw); aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; }
+/* форма (круг, сердце, кот…): видео обрезано контуром, по тому же контуру бежит полоска воспроизведения */
+.vn-clip { position: absolute; inset: 0; display: block; background: #0b1418; }
+.vn-clip video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vn-edge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; fill: none; stroke-linejoin: round; }
+.vn-edge .bg { stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1.8; }
+.vn-edge .pg { stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: var(--p) 100; }
 .vnote .vn-dur { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 2px 9px; border-radius: 999px; background: rgb(0 0 0 / .55); color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+
 .vnote .vn-play { position: absolute; inset: 0; margin: auto; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .45); color: #fff; }
 .vnote .vn-play svg { width: 20px; height: 20px; }
 .vnote.on .vn-play { opacity: 0; }
@@ -1096,9 +1101,20 @@ a.btn.ton-btn { display: grid; place-items: center; text-decoration: none; }
 dialog.vn-rec { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; background: rgb(2 12 17 / .88); color: #fff; }
 dialog.vn-rec[open] { display: grid; place-items: center; }
 .vn-stage { display: grid; justify-items: center; gap: 14px; }
-.vn-ring { --p: 0; width: min(300px, 78vw); aspect-ratio: 1; padding: 6px; border-radius: 50%; background: conic-gradient(#ff5a5f calc(var(--p) * 1%), rgb(255 255 255 / .18) 0); }
-.vn-ring video { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; background: #000; transform: scaleX(-1); }
+.vn-ring { --p: 0; position: relative; width: min(300px, 78vw); aspect-ratio: 1; }
+.vn-ring .vn-clip { background: #000; transition: clip-path .28s var(--ease); }
+.vn-ring video { transform: scaleX(-1); }
 .vn-ring.back video { transform: none; }
+.vn-ring .vn-edge .bg { stroke: rgb(255 255 255 / .22); }
+.vn-ring .vn-edge .pg { stroke: #ff5a5f; }
+/* выбор формы */
+.vn-shapes { display: flex; gap: 2px; max-width: min(94vw, 420px); padding: 5px; border-radius: 999px; background: rgb(255 255 255 / .12); overflow-x: auto; scrollbar-width: none; outline: none; }
+.vn-shapes::-webkit-scrollbar { display: none; }
+.vn-shape { flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: none; color: #fff; display: grid; place-items: center; cursor: pointer; }
+.vn-shape svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 8; stroke-linejoin: round; overflow: visible; }
+.vn-shape:hover { background: rgb(255 255 255 / .1); }
+.vn-shape[aria-checked="true"] { background: rgb(255 255 255 / .2); }
+.vn-shape[aria-checked="true"] svg { fill: currentColor; }
 .vn-b:disabled { opacity: .4; }
 .vn-time { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .vn-time::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: #ff5a5f; vertical-align: 2px; }
@@ -3367,7 +3383,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=95fa75ff56"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=956f93a5d3"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5545,8 +5561,9 @@ void main() {
 <!-- запись «кружка»: круглое видео до минуты -->
 <dialog id="dlgVnote" class="vn-rec">
   <div class="vn-stage">
-    <div class="vn-ring" id="vnRing"><video id="vnLive" muted playsinline autoplay></video></div>
+    <div class="vn-ring" id="vnRing"><span class="vn-clip" id="vnClip"><video id="vnLive" muted playsinline autoplay></video></span></div>
     <div class="vn-time" id="vnTime">0:00</div>
+    <div class="vn-shapes" id="vnShapes" role="radiogroup" aria-label="Форма видеосообщения"></div>
     <div class="vn-hint">Видеосообщение · до минуты</div>
     <div class="vn-btns">
       <button class="vn-b" type="button" id="vnCancel" title="Отменить" aria-label="Отменить">✕</button>
@@ -9732,6 +9749,93 @@ function stopRecording(send) {
 }
 $("btnMic").addEventListener("click", startRecording);
 /* ---------- «кружки»: видеосообщения до минуты ---------- */
+/* ---------- формы видеосообщений ---------- */
+// Форма — это контур в квадрате 100×100: им обрезается видео и по нему же бежит полоска воспроизведения.
+// Контуры считаются один раз на устройстве (формулой), поэтому в коде нет длинных списков точек.
+const VN_SHAPES = ["circle", "square", "heart", "star", "hex", "flower", "cloud", "blob", "cat"];
+const VN_SHAPE_NAMES = { circle: "Круг", square: "Квадрат", heart: "Сердце", star: "Звезда", hex: "Шестиугольник", flower: "Цветок", cloud: "Облако", blob: "Капля", cat: "Кот" };
+const vnShapeMemo = new Map();
+function vnShapePts(name) {
+  if (vnShapeMemo.has(name)) return vnShapeMemo.get(name);
+  const N = 180, TAU = Math.PI * 2;
+  const inPoly = (poly) => (x, y) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  const inCircle = (cx, cy, r) => (x, y) => (x - cx) ** 2 + (y - cy) ** 2 < r * r;
+  const any = (...fs) => (x, y) => fs.some((f) => f(x, y));
+  const ngon = (n, r, rot) => Array.from({ length: n }, (_, i) => [50 + r * Math.cos(rot + i / n * TAU), 50 + r * Math.sin(rot + i / n * TAU)]);
+  // контур по лучам из центра: самая дальняя точка фигуры на каждом луче, потом лёгкое сглаживание углов
+  const rays = (inside, cx, cy, smooth) => {
+    let rs = [];
+    for (let i = 0; i < N; i++) {
+      const a = -Math.PI / 2 + i / N * TAU, dx = Math.cos(a), dy = Math.sin(a);
+      let t = 75;
+      while (t > 0 && !inside(cx + dx * t, cy + dy * t)) t -= 0.5;
+      let lo = t, hi = t + 0.5;
+      for (let k = 0; k < 8; k++) { const mid = (lo + hi) / 2; if (inside(cx + dx * mid, cy + dy * mid)) lo = mid; else hi = mid; }
+      rs.push(lo);
+    }
+    for (let s = 0; s < smooth; s++) { const c = rs.slice(); rs = c.map((r, i) => (c[(i - 1 + N) % N] + 2 * r + c[(i + 1) % N]) / 4); }
+    return rs.map((r, i) => { const a = -Math.PI / 2 + i / N * TAU; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
+  };
+  let pts;
+  if (name === "square") pts = rays((x, y) => Math.abs(x - 50) ** 4 + Math.abs(y - 50) ** 4 < 45 ** 4, 50, 50, 0);
+  else if (name === "heart") pts = Array.from({ length: N }, (_, i) => { const t = i / N * TAU; return [16 * Math.sin(t) ** 3, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]; });
+  else if (name === "star") { const o = ngon(5, 46, -Math.PI / 2), inn = ngon(5, 25, -Math.PI / 2 + Math.PI / 5); pts = rays(inPoly(o.flatMap((p, i) => [p, inn[i]])), 50, 50, 10); }
+  else if (name === "hex") pts = rays(inPoly(ngon(6, 46, -Math.PI / 2)), 50, 50, 8);
+  else if (name === "flower") pts = rays(any(inCircle(50, 50, 26), ...ngon(6, 26, -Math.PI / 2).map(([x, y]) => inCircle(x, y, 20))), 50, 50, 3);
+  else if (name === "cloud") pts = rays(any(inCircle(26, 62, 18), inCircle(42, 44, 21), inCircle(64, 42, 19), inCircle(77, 62, 18), (x, y) => x > 26 && x < 77 && y > 44 && y < 80), 51, 58, 2);
+  else if (name === "blob") pts = Array.from({ length: N }, (_, i) => { const a = -Math.PI / 2 + i / N * TAU, r = 40 + 5 * Math.sin(2 * a + 0.6) + 3.5 * Math.sin(3 * a + 2) + 1.5 * Math.sin(5 * a + 1); return [r * Math.cos(a), r * Math.sin(a)]; });
+  else if (name === "cat") pts = rays(any((x, y) => ((x - 50) / 45) ** 2 + ((y - 62) / 32) ** 2 < 1, inPoly([[8, 60], [12, 10], [46, 34]]), inPoly([[92, 60], [88, 10], [54, 34]])), 50, 58, 5);
+  else pts = Array.from({ length: N }, (_, i) => { const a = -Math.PI / 2 + i / N * TAU; return [Math.cos(a), Math.sin(a)]; });
+  // вписываем в квадрат с полями под обводку
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), k = 94 / Math.max(x1 - x0, y1 - y0);
+  pts = pts.map(([x, y]) => [+(50 + (x - (x0 + x1) / 2) * k).toFixed(2), +(50 + (y - (y0 + y1) / 2) * k).toFixed(2)]);
+  vnShapeMemo.set(name, pts);
+  return pts;
+}
+const vnShapePath = (name) => "M" + vnShapePts(name).map((p) => p[0] + " " + p[1]).join("L") + "Z";
+// обводка формы: фон и полоска хода (длина полоски — переменная --p у родителя, 0…100)
+function vnEdge(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 100 100"); s.setAttribute("class", "vn-edge"); s.setAttribute("aria-hidden", "true");
+  const d = vnShapePath(name);
+  s.innerHTML = '<path class="bg" d="' + d + '"/><path class="pg" pathLength="100" d="' + d + '"/>';
+  return s;
+}
+const vnClipCss = (name) => "polygon(" + vnShapePts(name).map((p) => p[0] + "% " + p[1] + "%").join(",") + ")";
+// форма хранится в имени файла (….s-heart.mp4): так она переживает пересылку и не требует изменений в базе
+const VN_TAG = /\.s-([a-z]{2,10})\.[A-Za-z0-9]{1,8}$/;
+function vnShapeOf(m) {
+  const t = VN_TAG.exec(m.file_path || (m._file && m._file.name) || "");
+  return t && VN_SHAPES.includes(t[1]) ? t[1] : "circle";
+}
+let vnShape = "circle";
+try { const sv = localStorage.getItem("mestario.vnshape"); if (VN_SHAPES.includes(sv)) vnShape = sv; } catch (e) {}
+function vnPickShape(name, save) {
+  vnShape = VN_SHAPES.includes(name) ? name : "circle";
+  if (save) try { localStorage.setItem("mestario.vnshape", vnShape); } catch (e) {}
+  $("vnClip").style.clipPath = vnClipCss(vnShape);
+  const old = $("vnRing").querySelector(".vn-edge");
+  if (old) old.remove();
+  $("vnRing").append(vnEdge(vnShape));
+  const box = $("vnShapes");
+  if (!box.children.length) box.append(...VN_SHAPES.map((n) => {
+    const b = h("button", { class: "vn-shape", type: "button", role: "radio", title: T(VN_SHAPE_NAMES[n]), "aria-label": T(VN_SHAPE_NAMES[n]), "data-s": n, onclick: () => vnPickShape(n, true) });
+    const sv = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    sv.setAttribute("viewBox", "0 0 100 100"); sv.setAttribute("aria-hidden", "true");
+    sv.innerHTML = '<path d="' + vnShapePath(n) + '"/>';
+    b.append(sv);
+    return b;
+  }));
+  for (const b of box.children) { const on = b.dataset.s === vnShape; b.setAttribute("aria-checked", on ? "true" : "false"); if (on && box.scrollWidth > box.clientWidth) b.scrollIntoView({ block: "nearest", inline: "center" }); }
+}
 const VNOTE_SECS = 60;
 let vn = null;   // текущая запись: { rec, stream, chunks, start, timer, send, chatId, mime }
 function vnMime() {
@@ -9774,13 +9878,14 @@ async function startVnote() {
     const secs = Math.min(VNOTE_SECS, Math.round((Date.now() - cur.start) / 1000));
     if (secs < 1 || !cur.chunks.length) { toast(T("Запись слишком короткая")); return; }
     const type = ((rec.mimeType || cur.mime || "video/webm").split(";")[0]) || "video/webm";
-    const file = new File(cur.chunks, "video-note." + (type.includes("mp4") ? "mp4" : "webm"), { type });
+    const file = new File(cur.chunks, "video-note" + (vnShape !== "circle" ? ".s-" + vnShape : "") + "." + (type.includes("mp4") ? "mp4" : "webm"), { type });
     if (file.size > MAX_FILE) { toast(T("Запись получилась слишком большой")); return; }
     sendFiles(cur.chatId, [file], "", { video_secs: Math.max(1, secs), file_name: T("Видеосообщение") });
   });
   live.srcObject = stream;
   $("vnRing").classList.remove("back");
   $("vnRing").style.setProperty("--p", "0");
+  vnPickShape(vnShape);
   $("vnTime").textContent = "0:00";
   $("vnFlip").hidden = !canMix;
   $("vnFlip").disabled = false;
@@ -9827,8 +9932,13 @@ $("dlgVnote").addEventListener("close", () => stopVnote(false));
 let vnPlaying = null;
 function vnoteNode(m, src) {
   const v = h("video", { playsinline: "", preload: "metadata" });
-  const box = h("button", { class: "vnote", type: "button", "aria-label": T("Видеосообщение") + ", " + fmtDur(m.video_secs || 0) }, v,
+  const shape = vnShapeOf(m);
+  const box = h("button", { class: "vnote", type: "button", "data-s": shape, "aria-label": T("Видеосообщение") + ", " + fmtDur(m.video_secs || 0) },
+    h("span", { class: "vn-clip", style: "clip-path:" + vnClipCss(shape) }, v), vnEdge(shape),
     h("span", { class: "vn-play" }, icon("play")), h("span", { class: "vn-dur" }, fmtDur(m.video_secs || 0)));
+  // длительность — у нижнего края самой формы (у облака и кота он выше края квадрата, у сердца внизу слишком узко)
+  const low = shape === "heart" ? 76 : Math.max(...vnShapePts(shape).filter((q) => Math.abs(q[0] - 50) < 4).map((q) => q[1]));
+  box.lastChild.style.bottom = "calc(" + (100 - low).toFixed(1) + "% + 8px)";
   const stop = () => { box.classList.remove("on"); box.style.setProperty("--p", "0"); if (vnPlaying === v) vnPlaying = null; };
   v.addEventListener("timeupdate", () => { const d = v.duration && isFinite(v.duration) ? v.duration : (m.video_secs || 1); box.style.setProperty("--p", String(Math.min(100, v.currentTime / d * 100))); });
   v.addEventListener("ended", () => { stop(); v.currentTime = 0; });
@@ -10056,7 +10166,8 @@ async function deliverOne(t, someSent) {
     if (file) {
       if (!t._path) {
         const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(file.name) || [])[1];
-        const path = chatId + "/" + randomId() + (ext ? "." + ext.toLowerCase() : "");
+        const tag = t.video_secs != null && (VN_TAG.exec(file.name) || [])[1];   // форма видеосообщения
+        const path = chatId + "/" + randomId() + (tag ? ".s-" + tag : "") + (ext ? "." + ext.toLowerCase() : "");
         const up = await sb.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream" });
         if (up.error) { toast(someSent ? T("Часть файлов не загрузилась.") : T("Не удалось загрузить файл. Сообщение не отправлено.")); return false; }
         t._path = path;   // при повторе файл второй раз не загружаем
@@ -10392,7 +10503,8 @@ async function forwardTo(c) {
       let path = null;
       if (m.file_path) {
         const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(m.file_path) || [])[1];
-        path = c.id + "/" + randomId() + (ext ? "." + ext : "");
+        const tag = m.video_secs != null && (VN_TAG.exec(m.file_path) || [])[1];   // форма видеосообщения едет вместе с файлом
+        path = c.id + "/" + randomId() + (tag ? ".s-" + tag : "") + (ext ? "." + ext : "");
         const cp = await sb.storage.from("attachments").copy(m.file_path, path);
         if (cp.error) break;
       }

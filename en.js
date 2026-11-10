@@ -1,5 +1,12 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Круг":"Circle",
+"Квадрат":"Square",
+"Шестиугольник":"Hexagon",
+"Цветок":"Flower",
+"Облако":"Cloud",
+"Капля":"Blob",
+"Форма видеосообщения":"Video message shape",
 "Письмо приходит за минуту — если его нет, загляните в «Спам». Введите код в течение 2 минут.":"The email arrives within a minute — if it isn't there, check Spam. Enter the code within 2 minutes.",
 "Неверный или устаревший код. Регистрация без кода удаляется через 2 минуты — если прошло больше, зарегистрируйтесь заново.":"Wrong or expired code. Unfinished sign-ups are deleted after 2 minutes — if it took longer, please sign up again.",
 "Регистрация на эту почту уже начиналась. Мы отправили новый код на ":"Registration with this email was already started. We sent a new code to ",
