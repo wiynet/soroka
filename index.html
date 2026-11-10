@@ -7695,25 +7695,46 @@ async function openChat(id) {
   if (!wasOpen && phoneLayout()) setTimeout(renderList, aMs(420)); else renderList();
   const pendingHere = () => outbox.filter((t) => t.chat_id === id && !t.done);   // недоставленное остаётся видно
   // переписка уже загружена заранее: показываем сразу, а свежую версию сверяем в фоне
-  const cached = msgCache.get(id);
-  if (cached) {
+  const cached0 = msgCache.get(id);
+  if (cached0) {
+    const cached = cached0;
     state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
     state.hasMore = cached.hasMore; state.msgsReady = id;
     renderMsgs(); paintPin(); scrollDown();
     ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
     if (canAutoFocus()) $("text").focus();
   } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
-  const fresh = await fetchPage(id);
+  const net = fetchPage(id);
+  // в памяти переписки нет — пока идёт запрос, показываем сохранённую на устройстве (обычно это пара миллисекунд)
+  let cached = cached0;
+  if (!cached) {
+    const saved = await Promise.race([idbLoadChat(id), net.then(() => null)]);
+    if (state.activeId !== id) return;
+    if (saved && saved.msgs.length) {
+      cached = saved; msgCache.set(id, saved);
+      state.msgs = saved.msgs.concat(pendingHere());
+      state.hasMore = saved.hasMore; state.msgsReady = id;
+      renderMsgs(); paintPin(); scrollDown();
+      ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
+      if (canAutoFocus()) $("text").focus();
+    }
+  }
+  const fresh = await net;
   if (state.activeId !== id) return;
   if (!fresh) { if (!cached) $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Не удалось загрузить сообщения."))); return; }
   msgCache.set(id, fresh);
   state.msgsReady = id;
   if (cached) {
     const sig = (list) => list.map((m) => m.id + ":" + (m.edited_at || "")).join(",");
-    if (sig(fresh.msgs) === sig(state.msgs.filter((m) => !isTemp(m)))) return;
+    // в кэше может лежать больше сообщений, чем в свежей странице: сравниваем только общий «хвост»
+    const real = state.msgs.filter((m) => !isTemp(m)), from = fresh.msgs.length ? fresh.msgs[0].id : 0;
+    const tail = real.filter((m) => m.id >= from);
+    if (sig(fresh.msgs) === sig(tail)) { msgCache.set(id, { msgs: real, hasMore: state.hasMore }); return; }
     const stick = nearBottom();
-    state.msgs = fresh.msgs.concat(pendingHere());
-    state.hasMore = fresh.hasMore;
+    const older = tail.length && fresh.msgs.length ? real.filter((m) => m.id < from) : [];   // есть стык — старое остаётся на месте
+    state.msgs = older.concat(fresh.msgs, pendingHere());
+    state.hasMore = older.length ? state.hasMore : fresh.hasMore;
+    msgCache.set(id, { msgs: older.concat(fresh.msgs), hasMore: state.hasMore });
     renderMsgs(); paintPin();
     if (stick) scrollDown();
     ensureReplies();
@@ -9561,11 +9582,15 @@ document.addEventListener("visibilitychange", async () => {
   // После сна телефона часть событий могла потеряться: догружаем.
   if (state.activeId) state.unread.delete(state.activeId);
   markReadSoon();
-  for (const k of [...msgCache.keys()]) if (k !== state.activeId) msgCache.delete(k);
-  // телефон спал: соединение могло тихо умереть — после долгой отлучки поднимаем его заново, иначе — если оно не живо
+  // Загруженные переписки остаются в памяти: чат открывается сразу, а свежесть сверяется при открытии.
+  // (Раньше они здесь выбрасывались — после каждого возврата на вкладку чаты открывались с ожиданием.)
   const away = awayAt ? Date.now() - awayAt : 0;
+  // ненадолго переключились на другое окно, связь жива — всё новое и так пришло, ничего не перезагружаем
+  if (away < 45000 && rtAlive()) { catchUpActive(); return; }
+  // телефон спал: соединение могло тихо умереть — после долгой отлучки поднимаем его заново, иначе — если оно не живо
   await wakeUp(away > 60000, true);
   await loadChats();
+  prefetchedAt.clear();   // могли пропустить сообщения — заготовки переписок сверяем заново (в фоне)
   prefetchChats();
   catchUpActive();
 });
@@ -15110,6 +15135,19 @@ async function idbLoadAll() {
     } catch (e) { res(); }
   });
 }
+// переписка одного чата с устройства (когда в памяти её нет)
+async function idbLoadChat(id) {
+  const db = await idb();
+  if (!db || !state.me) return null;
+  const key = state.me.id + ":" + id, me = state.me.id;
+  return new Promise((res) => {
+    try {
+      const rq = db.transaction("msgs").objectStore("msgs").get(key);
+      rq.onsuccess = () => { const v = rq.result; res(v && v.u === me && Array.isArray(v.msgs) ? { msgs: v.msgs.filter(notExpired), hasMore: !!v.hasMore } : null); };
+      rq.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
 async function idbClear() {
   const db = await idb();
   if (!db) return;
@@ -15124,11 +15162,11 @@ async function fetchPage(id) {
 }
 let prefetching = false;
 const prefetchedAt = new Map();
-// в памяти держим переписку не больше чем 40 чатов (остальное лежит в IndexedDB и подгружается при открытии)
+// в памяти держим переписку не больше чем 150 чатов (остальное лежит в IndexedDB и подгружается при открытии)
 function trimMsgCache() {
-  if (msgCache.size <= 40) return;
+  if (msgCache.size <= 150) return;
   const order = [...msgCache.keys()].map((id) => [id, (state.chats.get(id) || {}).last_at || ""]).sort((a, b) => (a[1] < b[1] ? -1 : 1));
-  for (const [id] of order.slice(0, msgCache.size - 40)) if (id !== state.activeId) msgCache.delete(id);
+  for (const [id] of order.slice(0, msgCache.size - 150)) if (id !== state.activeId) msgCache.delete(id);
 }
 async function prefetchChats() {
   if (prefetching || !state.started) return;
@@ -17432,15 +17470,21 @@ function callTones(kind) {
 function callStopTones() { if (call) clearInterval(call.toneT); if (navigator.vibrate) try { navigator.vibrate(0); } catch (e) {} }
 function callFmt(s) { s = Math.max(0, Math.floor(s)); const h_ = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h_ ? h_ + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
 
+/* Окно звонка перерисовывается каждую секунду (идёт таймер). Поэтому здесь ничего не пересоздаётся без причины:
+   значок, аватарка и подписи меняются, только когда изменилось их содержимое. Иначе кнопка, на которую уже
+   нажали, подменялась под пальцем (нажатие пропадало), аватарка мигала, а открытый выбор качества закрывался. */
+function setText(el, s) { if (el.textContent !== s) el.textContent = s; }
+function setIco(btn, name) { if (btn.dataset.ic !== name) { btn.dataset.ic = name; btn.replaceChildren(icon(name)); } }
 function callPaint() {
   const ui = $("callUi"), bar = $("callBar");
   if (!call) { ui.hidden = true; bar.hidden = true; document.body.classList.remove("in-call"); return; }
   const p = call.peer || {};
-  $("callAv").replaceChildren(avatar(p.display_name || "?", p.id || "x", "lg", p.avatar_path));
-  $("callName").textContent = p.display_name || T("Собеседник");
+  const avKey = [p.id, p.avatar_path, p.display_name].join("|");
+  if ($("callAv").dataset.k !== avKey) { $("callAv").dataset.k = avKey; $("callAv").replaceChildren(avatar(p.display_name || "?", p.id || "x", "lg", p.avatar_path)); }
+  setText($("callName"), p.display_name || T("Собеседник"));
   const st = call.note || (call.status === "active" ? callFmt((Date.now() - call.started) / 1000)
     : call.status === "connecting" ? T("Соединение…") : call.role === "in" ? T("Входящий звонок") : T("Вызов…"));
-  $("callStatus").textContent = st;
+  setText($("callStatus"), st);
   ui.classList.toggle("incoming", call.role === "in" && call.status === "ringing");
   ui.classList.toggle("sharing-remote", !!call.remoteScreen);
   ui.classList.toggle("cam-remote", !!call.remoteCam && !call.remoteScreen && call.status === "active");
@@ -17448,22 +17492,24 @@ function callPaint() {
   $("callSelf").hidden = !call.cam;
   $("callSelf").classList.toggle("back", call.camFacing === "environment");
   $("callCam").classList.toggle("on", !!call.cam);
-  $("callCam").replaceChildren(icon(call.cam ? "videocam" : "videooff"));
+  setIco($("callCam"), call.cam ? "videocam" : "videooff");
   $("callCam").title = call.cam ? T("Выключить камеру") : T("Включить камеру");
   $("callCamWrap").hidden = !window.navigator.mediaDevices || (call.role === "in" && call.status === "ringing") || !!call.ended;
   $("callFlipWrap").hidden = !call.cam || !matchMedia("(pointer: coarse)").matches;
   $("callMine").hidden = !call.screen;
   $("callMute").classList.toggle("on", !!call.muted);
-  $("callMute").replaceChildren(icon(call.muted ? "micoff" : "mic"));
+  setIco($("callMute"), call.muted ? "micoff" : "mic");
   $("callMute").title = !call.mic ? T("Микрофона нет — нажмите, чтобы подключить") : call.muted ? T("Включить микрофон") : T("Выключить микрофон");
-  $("callMuteLbl").textContent = !call.mic ? T("Без микрофона") : T("Микрофон");
+  setText($("callMuteLbl"), !call.mic ? T("Без микрофона") : T("Микрофон"));
   $("callQ").hidden = !call.screen;
-  if (call.screen) {
+  if (!call.screen) $("callQ").dataset.k = "";
+  else if ($("callQ").dataset.k !== String(call.shareKey)) {
+    $("callQ").dataset.k = String(call.shareKey);
     const q = SHARE_Q[call.shareKey] || SHARE_Q.std;
     $("callQ").replaceChildren(T(q.t) + " · " + q.hh + "p, " + q.fps + T(" к/с") + " · ",
       h("button", { class: "link", type: "button", onclick: () => callQPick((k) => { if (call && call.screen) shareApply(call.screen.getVideoTracks()[0], k).then(callPaint); }) }, T("Сменить")));
   }
-  if (!call.screen || call.status !== "active") $("callQPick").hidden = true;
+  if (call.status !== "active") $("callQPick").hidden = true;
   $("callShareWrap").hidden = !callShareOk || call.status !== "active";
   $("callInvWrap").hidden = call.status !== "active" || !!call.ended;
   $("callShare").classList.toggle("on", !!call.screen);
@@ -17471,7 +17517,7 @@ function callPaint() {
   $("callPeerMuted").hidden = !call.peerMuted;
   ui.hidden = !!call.min;
   bar.hidden = !call.min;
-  $("callBarText").textContent = (p.display_name || "") + " · " + st;
+  setText($("callBarText"), (p.display_name || "") + " · " + st);
   document.body.classList.toggle("in-call", true);
 }
 function callSend(msg) { if (call && call.ch) call.ch.send({ type: "broadcast", event: "sig", payload: { ...msg, from: CALL_DEV } }).catch(() => {}); }
@@ -20495,6 +20541,44 @@ if (ROUTER_ON) {
   for (const id of ROUTED) mo.observe($(id), { attributes: true, attributeFilter: ["open"] });
   mo.observe($("dlgSettings"), { attributes: true, attributeFilter: ["hidden"] });
 }
+/* ---------- новая версия сайта включается сама ----------
+   Вкладка и приложение на компьютере бывают открыты сутками, и тогда исправления до человека не доходят:
+   он продолжает видеть старые ошибки. Раз в 10 минут сверяем версию страницы; если вышла новая — перезагружаемся,
+   но только когда человек не смотрит и ничем не занят (окно скрыто или не в фокусе, минуту ничего не нажимал,
+   нет звонка, записи, открытых окон, неотправленного текста). В приложении на телефоне обновление своё. */
+let siteTag = null, siteNew = false, lastInputAt = Date.now();
+for (const ev of ["pointerdown", "keydown", "wheel", "touchstart"]) addEventListener(ev, () => { lastInputAt = Date.now(); }, { passive: true, capture: true });
+async function siteVersionCheck() {
+  if (IN_APP || location.protocol !== "https:") return;
+  try {
+    const r = await fetch(location.origin + "/index.html?vc=" + Date.now(), { method: "HEAD", cache: "no-store" });
+    if (!r.ok) return;
+    const tag = (r.headers.get("etag") || r.headers.get("last-modified") || "").replace(/^W\//, "").replace(/-gzip|"/g, "");
+    if (!tag) return;
+    if (siteTag === null) siteTag = tag; else if (tag !== siteTag) siteNew = true;
+  } catch (e) {}
+}
+function siteBusy() {
+  if (call || vc || recorder || vn) return true;
+  if (outbox.some((t) => !t.done && !t.failed)) return true;
+  if (($("text").value || "").trim()) return true;
+  if (document.querySelector("dialog[open]")) return true;
+  if (!voiceEl.paused || !profAudio.paused) return true;
+  return [...document.querySelectorAll("audio,video")].some((m) => !m.paused && !m.muted && !m.ended);
+}
+function siteApplyUpdate() {
+  if (!siteNew || !state.started || siteBusy()) return;
+  if (!(document.hidden || !document.hasFocus()) || Date.now() - lastInputAt < 60000) return;
+  try {
+    if (Date.now() - Number(sessionStorage.getItem("mestario.autoReload") || 0) < 1800000) return;   // не чаще раза в полчаса
+    sessionStorage.setItem("mestario.autoReload", String(Date.now()));
+  } catch (e) { return; }
+  cacheActive();
+  location.reload();
+}
+setTimeout(siteVersionCheck, 8000);
+setInterval(() => { siteVersionCheck().then(siteApplyUpdate); }, 600000);
+setInterval(siteApplyUpdate, 60000);
 function openChatFromLink(id) {
   if (!id || !state.started) return;
   if (state.chats.has(id)) { openChat(id); return; }
