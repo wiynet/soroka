@@ -12,7 +12,10 @@ const TONWEB_SRC = "vendor/tonweb-0.0.66.js";
 const USDT_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs";
 const TONAPI = "https://tonapi.io/v2", TONCENTER = "https://toncenter.com/api";
 const TON_FEE_RESERVE = 10000000n;          // 0,01 TON остаётся на комиссию (и развёртывание кошелька при первом переводе)
-const JETTON_GAS = 50000000n;               // 0,05 TON уходит вместе с USDT на газ, излишек возвращается
+const JETTON_GAS = 50000000n;
+// перевод тому, у кого нет кошелька: запас на комиссию временного кошелька, чтобы получатель получил ровно сумму
+const CHQ_TON_EXTRA = 15000000n;            // 0,015 TON к переводу TON
+const CHQ_USDT_GAS = 80000000n;             // 0,08 TON во временный кошелёк, чтобы он мог переслать USDT               // 0,05 TON уходит вместе с USDT на газ, излишек возвращается
 const te = new TextEncoder(), td = new TextDecoder();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const lsKey = () => "mestario.tonw.v1." + (state.me && state.me.id);
@@ -168,7 +171,7 @@ function need(target, arg) {
   const then = { v: target, arg };
   if (m === "soft") show("secure", { then });
   else if (m === "watch") show("import", { expect: srvAddr, then });
-  else show("start");
+  else show("start", { then });
 }
 function vault() { try { const v = JSON.parse(localStorage.getItem(lsKey()) || "null"); return v && v.v === 1 && v.addr ? v : null; } catch (e) { return null; } }
 function saveVault(v) { try { localStorage.setItem(lsKey(), JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -307,6 +310,7 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-btn.sm { width: auto; padding: 10px 14px; font-size: 15px; border-radius: 12px; }
 .tw-err { min-height: 1.2em; color: #ff6b62; font-size: 14px; }
 .tw-note { padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, #ffb340 13%, transparent); color: color-mix(in srgb, #ffb340 80%, var(--ink)); font-size: 14px; line-height: 1.45; }
+.tw-note.tw-info { background: rgb(79 141 255 / .12); color: inherit; }
 .tw-p { margin: 0; line-height: 1.5; color: color-mix(in srgb, var(--ink) 72%, transparent); }
 .tw-words { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; counter-reset: w; }
 .tw-words span { padding: 9px 8px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 7%, transparent); font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
@@ -333,6 +337,12 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .msg.mine .pay-card .a { color: #fff; }
 .pay-card .s { font-size: 14px; opacity: .7; }
 .pay-card .c { font-size: 14px; opacity: .85; }
+.pay-card.chq { cursor: default; }
+.pay-acts:empty { display: none; }
+.pay-acts { margin-top: 6px; }
+.pay-btn { width: 100%; border: 0; border-radius: 14px; padding: 12px; background: #3d78e6; color: #fff; font: inherit; font-size: 16px; font-weight: 650; cursor: pointer; transition: transform .14s ease, filter .15s ease; }
+.pay-btn:hover { filter: brightness(1.1); } .pay-btn:active { transform: scale(.96); }
+.pay-btn.ghost { background: rgb(255 255 255 / .12); color: inherit; }
 .pay-card .st { justify-self: start; margin-top: 4px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgb(52 199 89 / .16); color: #34c759; }
 .pay-card .st.wait { background: rgb(255 179 64 / .16); color: #ffb340; }
 .pay-card .st.bad { background: rgb(255 69 58 / .16); color: #ff6b62; }
@@ -496,12 +506,8 @@ async function open(v, arg) {
   if (!state.me) return;
   ensureDlg();
   if (!dlg.open) dlg.showModal();
-  if (!myAddr()) {
-    put(h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Готовим кошелёк…"))));
-    await auto();
-    if (!myAddr()) await loadSrv(true);
-  } else loadSrv(false);
-  if (!myAddr()) { show("start"); return; }
+  if (!myAddr()) await loadSrv(true); else loadSrv(false);
+  if (!myAddr()) { show("start", { then: v && v !== "overview" ? { v, arg } : null }); return; }
   if (v === "send" || v === "security") need(v, arg); else show(v || "overview", arg);
 }
 
@@ -631,7 +637,12 @@ async function resolveTo(s) {
     const { data: p } = await sb.from("profiles").select("id,display_name,username").ilike("username", name).maybeSingle();
     if (!p) return { err: T("Пользователь @") + name + T(" не найден") };
     const { data: a } = await sb.rpc("ton_address_of", { p_user: p.id });
-    if (!a) return { err: p.display_name + T(" ещё не заходил в Mestario после появления кошелька") };
+    if (!a) {
+      // кошелька нет — переводим «чеком» в личный чат с ним
+      const dm = [...state.chats.values()].find((c) => !c.is_group && c.members && c.members.length === 2 && c.members.some((m) => m.id === p.id));
+      if (!dm) return { err: p.display_name + T(" ещё не создал кошелёк. Откройте чат с ним и отправьте оттуда — деньги дождутся его.") };
+      return { cheque: true, name: p.display_name, user: p, chat: dm.id };
+    }
     return { addr: a, name: p.display_name, user: p };
   }
   if (!toRaw(s)) return { err: T("Неверный адрес TON") };
@@ -668,22 +679,24 @@ VIEWS.send = (arg) => {
     if (!units || units <= 0n) { err.textContent = T("Введите сумму"); return; }
     go.disabled = true;
     try {
-      const r = sendCtx && sendCtx.addr ? { addr: sendCtx.addr, name: sendCtx.name, user: sendCtx.user } : await resolveTo(to.value);
+      const r = sendCtx && (sendCtx.addr || sendCtx.cheque) ? { addr: sendCtx.addr, name: sendCtx.name, user: sendCtx.user, cheque: sendCtx.cheque, chat: sendCtx.chat } : await resolveTo(to.value);
       if (r.err) { err.textContent = r.err; return; }
-      if (sameAddr(r.addr, myAddr())) { err.textContent = T("Это ваш собственный адрес"); return; }
+      if (!r.cheque && sameAddr(r.addr, myAddr())) { err.textContent = T("Это ваш собственный адрес"); return; }
       const x = await refresh(true);
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
-      if (cur === "TON" && units > maxOf()) { err.textContent = T("Недостаточно TON (0,01 TON остаётся на комиссию)"); return; }
+      const extra = r.cheque ? (cur === "TON" ? CHQ_TON_EXTRA : CHQ_USDT_GAS) : 0n;
+      if (cur === "TON" && units + extra > maxOf()) { err.textContent = r.cheque ? T("Недостаточно TON (нужно ещё 0,015 TON на комиссию получателя и 0,01 TON на вашу)") : T("Недостаточно TON (0,01 TON остаётся на комиссию)"); return; }
       if (cur === "USDT") {
         if (units > BigInt(x.usdt || 0)) { err.textContent = T("Недостаточно USDT"); return; }
-        if (BigInt(x.ton || 0) < JETTON_GAS + 5000000n) { err.textContent = T("Для перевода USDT нужно ≥ 0,055 TON на комиссию сети"); return; }
+        if (BigInt(x.ton || 0) < JETTON_GAS + extra + 5000000n) { err.textContent = r.cheque ? T("Для перевода USDT без кошелька у получателя нужно ≥ 0,135 TON на комиссии") : T("Для перевода USDT нужно ≥ 0,055 TON на комиссию сети"); return; }
       }
-      show("confirm", { cur, units, to: r.addr, name: r.name, user: r.user, cmt: cmt.value.trim(), back: { cur, to: to.value, amt: amt.value, cmt: cmt.value } });
+      show("confirm", { cur, units, to: r.addr, name: r.name, user: r.user, cheque: !!r.cheque, chat: r.chat, cmt: cmt.value.trim(), back: { cur, to: to.value, amt: amt.value, cmt: cmt.value } });
     } finally { go.disabled = false; }
   };
   put(seg,
     h("label", { class: "tw-f" }, h("span", {}, T("Кому")), to),
     sendCtx && sendCtx.name ? h("p", { class: "tw-p", style: "margin-top:-8px" }, T("Получатель: ") + sendCtx.name) : null,
+    sendCtx && sendCtx.cheque ? h("div", { class: "tw-note tw-info" }, T("У получателя ещё нет кошелька — это не помешает. Деньги будут ждать его в чате: он нажмёт «Получить», создаст кошелёк и получит ровно эту сумму. Пока не забрал, их можно вернуть.")) : null,
     h("label", { class: "tw-f" }, h("span", {}, T("Сумма")), h("div", { class: "tw-amt" }, amt,
       h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => { amt.value = plainUnits(maxOf(), DEC[cur]); } }, T("Макс")))),
     avail, h("label", { class: "tw-f" }, h("span", {}, T("Комментарий")), cmt), err, go,
@@ -707,9 +720,10 @@ VIEWS.confirm = (o) => {
   const btn = h("button", { class: "tw-btn", type: "button" }, T("Отправить ") + fmtUnits(o.units, dec) + " " + o.cur);
   put(h("div", { class: "tw-sum" },
     h("div", {}, h("span", {}, T("Сумма")), h("b", {}, fmtUnits(o.units, dec) + " " + o.cur)),
-    h("div", {}, h("span", {}, T("Кому")), h("b", {}, o.name ? o.name + " · " + short(o.to) : o.to)),
+    h("div", {}, h("span", {}, T("Кому")), h("b", {}, o.cheque ? o.name + T(" · заберёт в чате") : o.name ? o.name + " · " + short(o.to) : o.to)),
     o.cmt ? h("div", {}, h("span", {}, T("Комментарий")), h("b", {}, o.cmt)) : null,
-    h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, o.cur === "TON" ? "≈ 0,005 TON" : "≈ 0,05 TON" + T(" (излишек вернётся)")))),
+    h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, o.cheque ? (o.cur === "TON" ? "≈ 0,02 TON" : "≈ 0,13 TON") + T(" (получатель получит ровно сумму)")
+      : o.cur === "TON" ? "≈ 0,005 TON" : "≈ 0,05 TON" + T(" (излишек вернётся)")))),
     isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
   if (!isUnlocked()) setTimeout(() => pw.focus(), 50);
   pw.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
@@ -724,8 +738,27 @@ VIEWS.confirm = (o) => {
       if (W.addr !== me.addr && !sameAddr(W.addr, me.addr)) { err.textContent = T("Сид-фраза не подходит к этому кошельку"); return; }
       const TW = W.TW, BN = TW.utils.BN;
       const seqno = await freshSeqno(me.addr);
-      let q;
-      if (o.cur === "TON") {
+      let q, chq = null;
+      if (o.cheque) {
+        // временный кошелёк: ключ — в чек (видят только вы и получатель), деньги — туда
+        const tw = await genMnemonic(), TWal = await walletOf(tw);
+        const amtS = plainUnits(o.units, dec);
+        const { data: msg, error: ce } = await sb.rpc("ton_cheque_create", { p_chat: o.chat, p_to: o.user.id, p_temp: TWal.addr, p_secret: tw.join(" "), p_cur: o.cur, p_amt: amtS, p_cmt: o.cmt || "" });
+        if (ce || !msg) { err.textContent = T("Не удалось создать перевод: ") + ((ce && ce.message) || ""); return; }
+        chq = msg; o.to = TWal.addr;
+      }
+      if (o.cheque && o.cur === "TON") {
+        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: o.to, amount: new BN((o.units + CHQ_TON_EXTRA).toString()), seqno, payload: o.cmt || undefined, sendMode: 3 });
+      } else if (o.cheque) {
+        const x = await refresh(true);
+        if (!x || !x.usdtWallet) { err.textContent = T("Не нашли ваш USDT-кошелёк. Попробуйте позже."); await sb.rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); return; }
+        const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(x.usdtWallet, true) });
+        const payload = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(o.units.toString()), toAddress: new TW.utils.Address(o.to),
+          responseAddress: new TW.utils.Address(me.addr), forwardAmount: new BN(1) });
+        q = W.w.methods.transfers({ secretKey: W.kp.secretKey, seqno, messages: [
+          { toAddress: toFriendly(x.usdtWallet, true), amount: new BN(JETTON_GAS.toString()), payload, sendMode: 3 },
+          { toAddress: o.to, amount: new BN(CHQ_USDT_GAS.toString()), sendMode: 3 }] });
+      } else if (o.cur === "TON") {
         q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: o.to, amount: new BN(o.units.toString()), seqno, payload: o.cmt || undefined, sendMode: 3 });
       } else {
         const x = await refresh(true);
@@ -739,11 +772,13 @@ VIEWS.confirm = (o) => {
       }
       const cell = await q.getQuery();
       const boc = TW.utils.bytesToBase64(await cell.toBoc(false));
-      await sendBoc(boc);
+      try { await sendBoc(boc); }
+      catch (e) { if (chq) await sb.rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); throw e; }   // не ушло — чек закрываем
       acc = null; hist = null;
-      // перевод из чата — карточка в этот чат
       let posted = false;
-      if (sendCtx && sendCtx.chat) {
+      if (chq) { posted = true; try { touchChat(chq); if (state.activeId === chq.chat_id) addMsg(chq); } catch (e) {} }
+      // перевод из чата — карточка в этот чат
+      else if (sendCtx && sendCtx.chat) {
         const amtS = plainUnits(o.units, dec);
         const { data, error } = await sb.from("messages").insert({ chat_id: sendCtx.chat, sender_id: state.me.id,
           body: "💎 " + amtS + " " + o.cur, pay: { cur: o.cur, amt: amtS, to: o.to, cmt: o.cmt || "" } }).select().single();
@@ -835,7 +870,8 @@ VIEWS.security = () => {
 };
 
 /* ---------- создание и восстановление ---------- */
-VIEWS.start = async () => {
+VIEWS.start = async (o) => {
+  const then = o && o.then;
   setHead(T("Кошелёк"));
   const has = await sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle().then((r) => r.data && r.data.address).catch(() => null);
   if (view !== "start") return;
@@ -843,8 +879,8 @@ VIEWS.start = async () => {
       h("b", { style: "font-size:24px" }, T("Кошелёк Mestario")),
       h("p", { class: "tw-p" }, T("Храните и переводите TON и USDT прямо в мессенджере — друзьям в чате или по @юзернейму."))),
     has ? h("div", { class: "tw-note" }, T("Ваш кошелёк ") + short(has) + T(" создан на другом устройстве. Чтобы пользоваться им здесь, восстановите его по сид-фразе.")) : null,
-    h("button", { class: "tw-btn", type: "button", onclick: () => show(has ? "import" : "email", has ? { expect: has } : { next: "create" }) }, has ? T("Восстановить по сид-фразе") : T("Создать кошелёк")),
-    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("email", has ? { next: "create", replace: true } : { next: "import" }) }, has ? T("Создать новый кошелёк") : T("У меня есть сид-фраза")),
+    h("button", { class: "tw-btn", type: "button", onclick: () => show(has ? "import" : "email", has ? { expect: has, then } : { next: "create", then }) }, has ? T("Восстановить по сид-фразе") : T("Создать кошелёк")),
+    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("email", has ? { next: "create", replace: true, then } : { next: "import", then }) }, has ? T("Создать новый кошелёк") : T("У меня есть сид-фраза")),
     h("p", { class: "tw-foot" }, T("Кошелёк некастодиальный: 24 слова и ключи хранятся только у вас. Mestario не видит их и не может восстановить.")));
 };
 VIEWS.secure = async (o) => {
@@ -879,7 +915,7 @@ VIEWS.email = (o) => {
     const { error } = await sb.auth.verifyOtp({ email, token: tk, type: "email" });
     ok.disabled = false;
     if (error) { err.textContent = T("Неверный или устаревший код"); return; }
-    show(o.next === "import" ? "import" : "pass", o);
+    show(o.next === "import" ? "import" : "pass", o);   // o.then едет дальше
   };
   code.addEventListener("keydown", (e) => { if (e.key === "Enter") ok.click(); });
   put(info, sendBtn, h("label", { class: "tw-f" }, h("span", {}, T("Код")), code), err, ok);
@@ -953,7 +989,7 @@ VIEWS.import = (o) => {
     if (w.length !== 24) { err.textContent = T("Нужно ровно 24 слова (сейчас ") + w.length + ")"; return; }
     go.disabled = true;
     try {
-      if (!await validMnemonic(w)) { err.textContent = T("Это не сид-фраза TON — проверьте слова"); return; }
+      if (!(await validMnemonic(w))) { err.textContent = T("Это не сид-фраза TON — проверьте слова"); return; }
       const W = await walletOf(w);
       if (o.expect && !sameAddr(W.addr, o.expect)) { err.textContent = T("Эта фраза от другого кошелька (") + short(W.addr) + T("). Ваш кошелёк Mestario: ") + short(o.expect); return; }
       show("pass", { words: w, then: o.then });
@@ -964,13 +1000,72 @@ VIEWS.import = (o) => {
   setTimeout(() => ta.focus(), 50);
 };
 
+/* ---------- «Получить» по переводу в чате ---------- */
+async function claim(id) {
+  ensureDlg(); if (!dlg.open) dlg.showModal();
+  await loadSrv(false);
+  need("claim", id);
+}
+VIEWS.claim = async (id) => {
+  setHead(T("Получение"));
+  const box = h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("in")), h("b", { style: "font-size:22px" }, T("Забираем перевод…")));
+  const info = h("p", { class: "tw-p" }, T("Проверяем перевод…")), err = h("div", { class: "tw-err" });
+  put(box, info, err);
+  const fail = (t, retry) => { info.textContent = ""; err.textContent = t; if (retry) put(h("button", { class: "tw-btn", type: "button", onclick: () => show("claim", id) }, T("Попробовать ещё раз"))); };
+  try {
+    const { data: c, error } = await sb.rpc("ton_cheque_take", { p_id: id });
+    if (error || !c) { fail(T("Этот перевод уже получен или возвращён отправителю.")); return; }
+    const me = myAddr(); if (!me) { fail(T("Сначала создайте кошелёк")); return; }
+    const words = c.secret.split(" ");
+    const T2 = await walletOf(words), TW = T2.TW, BN = TW.utils.BN;
+    if (!sameAddr(T2.addr, c.temp)) { fail(T("Ключ перевода повреждён. Напишите в поддержку.")); return; }
+    info.textContent = T("Смотрим, дошли ли деньги…");
+    const a = await loadAccount(c.temp);
+    const ton = BigInt(a.ton || 0), usdt = BigInt(a.usdt || 0);
+    if (ton < 3000000n && usdt === 0n) { fail(T("Деньги ещё в пути — блокчейн обычно подтверждает перевод за 5–15 секунд."), true); return; }
+    const dest = toFriendly(me, false), seqno = await freshSeqno(c.temp);
+    let q;
+    if (c.cur === "USDT" && usdt > 0n) {
+      if (!a.usdtWallet) { fail(T("Не нашли USDT на временном кошельке. Попробуйте через минуту."), true); return; }
+      const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(a.usdtWallet, true) });
+      const payload = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(usdt.toString()), toAddress: new TW.utils.Address(me),
+        responseAddress: new TW.utils.Address(me), forwardAmount: new BN(1) });
+      q = T2.w.methods.transfers({ secretKey: T2.kp.secretKey, seqno, messages: [
+        { toAddress: toFriendly(a.usdtWallet, true), amount: new BN(JETTON_GAS.toString()), payload, sendMode: 1 },
+        { toAddress: dest, amount: new BN(0), sendMode: 128 }] });
+    } else {
+      q = T2.w.methods.transfer({ secretKey: T2.kp.secretKey, toAddress: dest, amount: new BN(0), seqno, sendMode: 128 + 32 });
+    }
+    info.textContent = T("Отправляем на ваш кошелёк…");
+    await sendBoc(TW.utils.bytesToBase64(await (await q.getQuery()).toBoc(false)));
+    // ждём, пока временный кошелёк опустеет, — только потом закрываем перевод
+    let ok = false;
+    for (let i = 0; i < 20 && !ok; i++) {
+      await sleep(3000);
+      const b = await loadAccount(c.temp).catch(() => null);
+      if (b && b.ton != null && BigInt(b.ton) < 3000000n && BigInt(b.usdt || 0) === 0n) ok = true;
+    }
+    if (!ok) { fail(T("Перевод отправлен, но подтверждение задерживается. Загляните через минуту — деньги никуда не денутся."), true); return; }
+    await sb.rpc("ton_cheque_done", { p_id: id, p_to: me });
+    payStat.delete("chq" + id); acc = null; hist = null;
+    const refund = c.role === "sender";
+    body().replaceChildren();
+    put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")),
+      h("b", { style: "font-size:26px" }, (refund ? "" : "+") + fmtUnits(parseUnits(c.amt, DEC[c.cur]) || 0n, DEC[c.cur]) + " " + c.cur),
+      h("span", { class: "tw-p" }, refund ? T("Деньги вернулись на ваш кошелёк.") : T("Готово! Деньги на вашем кошельке."))),
+      h("button", { class: "tw-btn", type: "button", onclick: () => show("overview") }, T("Открыть кошелёк")));
+    document.querySelectorAll('.pay-card[data-chq="' + id + '"]').forEach((el) => el.dispatchEvent(new Event("twrefresh")));
+  } catch (e) { console.warn(e); fail(T("Не получилось: ") + ((e && e.message) || e), true); }
+};
+
 /* ---------- перевод из чата ---------- */
 async function openSend(peer, chatId) {
   const { data: a } = await sb.rpc("ton_address_of", { p_user: peer.id });
-  if (!a) { toast((peer.display_name || T("Собеседник")) + T(" ещё не заходил в Mestario после появления кошелька — кошелёк создастся, как только он откроет приложение")); return; }
-  await open("overview");
-  sendCtx = { chat: chatId, addr: a, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || "") };
-  need("send", { to: "@" + (peer.username || short(a)) });
+  ensureDlg(); if (!dlg.open) dlg.showModal();
+  await loadSrv(false);
+  sendCtx = a ? { chat: chatId, addr: a, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || "") }
+    : { chat: chatId, cheque: true, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || peer.display_name || "") };
+  need("send", { to: "@" + (peer.username || (a ? short(a) : peer.display_name || "")) });
 }
 
 /* ---------- карточка перевода в чате: статус берём из блокчейна ---------- */
@@ -997,7 +1092,38 @@ async function checkPay(m) {
   payStat.set(k, { s, at: Date.now() });
   return s;
 }
+function chequeCard(m, mine) {
+  const p = m.pay || {}, id = p.chq;
+  const amount = fmtUnits(parseUnits(p.amt, DEC[p.cur]) || 0n, DEC[p.cur]) + " " + p.cur;
+  const st = h("span", { class: "st wait" }, T("Проверяем…")), act = h("div", { class: "pay-acts" });
+  const title = h("b", { class: "t" }, mine ? T("Перевод отправлен") : T("Вам перевели"));
+  const sub = h("span", { class: "s" }, T("Блокчейн TON"));
+  const card = h("div", { class: "pay-card chq", "data-chq": id },
+    title, h("span", { class: "a" }, (mine ? "−" : "+") + amount), p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null, sub, st, act);
+  const paint = async () => {
+    const { data } = await sb.rpc("ton_cheque_info", { p_id: id }).catch(() => ({ data: null }));
+    if (!data) { st.className = "st bad"; st.textContent = T("Нет доступа"); return; }
+    act.replaceChildren();
+    if (data.status === "claimed") { st.className = "st"; st.textContent = T("Получено"); sub.textContent = mine ? T("Получатель забрал перевод") : T("Деньги на вашем кошельке"); }
+    else if (data.status === "refunded") { st.className = "st bad"; st.textContent = mine ? T("Возвращено вам") : T("Отправитель отменил перевод"); }
+    else {
+      st.className = "st wait"; st.textContent = T("Ждёт получения");
+      sub.textContent = mine ? T("Ждём, пока получатель нажмёт «Получить»") : T("Нажмите «Получить» — создадим кошелёк, и деньги придут на него");
+      if (data.for_me) act.append(h("button", { class: "pay-btn", type: "button", onclick: (e) => { e.stopPropagation(); claim(id); } }, T("Получить")));
+      else if (data.mine) {
+        let armed = false;
+        const b = h("button", { class: "pay-btn ghost", type: "button" }, T("Вернуть"));
+        b.onclick = (e) => { e.stopPropagation(); if (!armed) { armed = true; b.textContent = T("Точно вернуть?"); setTimeout(() => { armed = false; b.textContent = T("Вернуть"); }, 4000); return; } claim(id); };
+        act.append(b);
+      }
+    }
+  };
+  card.addEventListener("twrefresh", paint);
+  setTimeout(paint, 30);
+  return card;
+}
 function payCard(m, mine) {
+  if (m.pay && m.pay.chq) return chequeCard(m, mine);
   const p = m.pay || {};
   const st = h("span", { class: "st wait" }, T("Проверяем…"));
   const card = h("div", { class: "pay-card", role: "link", tabindex: "0", title: T("Открыть в Tonviewer"),
@@ -1025,14 +1151,11 @@ function payCard(m, mine) {
 }
 const open2 = (u) => { try { window.open(u, "_blank", "noopener"); } catch (e) {} };
 
-// кошелёк появляется у каждого сам: через несколько секунд после входа (один раз на аккаунт)
-let autoFor = null;
+// сменился аккаунт — забываем чужие данные
+let lastUser = null;
 setInterval(() => {
-  if (!window.state || !state.started || !state.me || document.hidden) return;
-  if (autoFor === state.me.id) return;
-  autoFor = state.me.id;
-  srvAddr = null; srvAt = 0; acc = null; hist = null; unlocked = null;
-  setTimeout(() => { if (state.me && state.me.id === autoFor) auto(); }, 4000);
-}, 3000);
-window.MW = { open, openSend, auto, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
+  if (!window.state || !state.me || lastUser === state.me.id) return;
+  lastUser = state.me.id; srvAddr = null; srvAt = 0; acc = null; hist = null; unlocked = null;
+}, 2000);
+window.MW = { open, openSend, claim, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();
