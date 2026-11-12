@@ -7670,7 +7670,7 @@ async function openChat(id) {
   cacheActive();   // переписка, из которой ушли, остаётся в памяти — вернуться в неё можно мгновенно
   state.activeId = id;
   routeSync();
-  state.msgs = []; state.hasMore = false; state.msgsReady = null;
+  state.msgs = []; state.hasMore = false; state.msgsReady = null; msgTail = 0;
   state.unread.delete(id);
   mentionChats.delete(id);
   setPending(null);
@@ -7700,7 +7700,9 @@ async function openChat(id) {
     const cached = cached0;
     state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
     state.hasMore = cached.hasMore; state.msgsReady = id;
+    msgTail = msgTailFor(state.msgs.length);
     renderMsgs(); paintPin(); scrollDown();
+    if (msgTail) msgFull(id);
     ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
     if (canAutoFocus()) $("text").focus();
   } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
@@ -7714,7 +7716,9 @@ async function openChat(id) {
       cached = saved; msgCache.set(id, saved);
       state.msgs = saved.msgs.concat(pendingHere());
       state.hasMore = saved.hasMore; state.msgsReady = id;
+      msgTail = msgTailFor(state.msgs.length);
       renderMsgs(); paintPin(); scrollDown();
+      if (msgTail) msgFull(id);
       ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
       if (canAutoFocus()) $("text").focus();
     }
@@ -7731,6 +7735,7 @@ async function openChat(id) {
     const tail = real.filter((m) => m.id >= from);
     if (sig(fresh.msgs) === sig(tail)) { msgCache.set(id, { msgs: real, hasMore: state.hasMore }); return; }
     const stick = nearBottom();
+    msgTail = 0;
     const older = tail.length && fresh.msgs.length ? real.filter((m) => m.id < from) : [];   // есть стык — старое остаётся на месте
     state.msgs = older.concat(fresh.msgs, pendingHere());
     state.hasMore = older.length ? state.hasMore : fresh.hasMore;
@@ -7758,7 +7763,7 @@ function closeChat(quiet) {
   leaveTyping();
   closeFind();
   if (selMode) selEnd();
-  state.activeId = null; state.msgs = [];
+  state.activeId = null; state.msgs = []; msgTail = 0;
   routeSync();
   $("conv").hidden = true; $("placeholder").hidden = false;
   $("app").classList.remove("chat-open");
@@ -8261,12 +8266,30 @@ function syncKids(box, kids) {
   }
 }
 let moreBtn = null;
+/* Быстрый показ чата: сначала рисуются только последние сообщения (ими заполнен экран), остальные — сразу следом.
+   Браузеру не нужно раскладывать всю переписку до первого кадра, и чат появляется без задержки. */
+let msgTail = 0;
+// сколько последних сообщений нужно, чтобы заполнить экран с запасом (на высоком мониторе — больше)
+function msgTailFor(n) { const need = Math.max(24, Math.ceil(innerHeight / 30)); return n > need + 10 ? need : 0; }
+function msgFull(id) {
+  const go = () => {
+    if (!msgTail) return;
+    if (state.activeId !== id) { msgTail = 0; return; }
+    if (slideBusy) { setTimeout(go, 120); return; }   // чат ещё въезжает — дорисуем после
+    msgTail = 0;
+    const box = $("msgs"), fromBottom = box.scrollHeight - box.scrollTop;
+    renderMsgs();
+    box.scrollTop = box.scrollHeight - fromBottom;   // добавилось сверху — то, на что смотрит человек, остаётся на месте
+  };
+  setTimeout(go, 60);
+}
 function renderMsgs(newId) {
   if (slideBusy && !newId) { slidePending = true; return; }   // перерисуем сразу после въезда
   if (msgNodesChat !== state.activeId) { msgNodes.clear(); dayCache.clear(); msgNodesChat = state.activeId; }
   msgStick = nearBottom();   // один раз до изменений, а не для каждого фото (иначе браузер пересчитывает раскладку на каждом)
   const kids = [];
-  if (state.hasMore) {
+  const from = msgTail && state.msgs.length > msgTail ? state.msgs.length - msgTail : 0;
+  if (state.hasMore && !from) {
     if (!moreBtn || moreBtn.dataset.lang !== String(window.SOROKA_LANG)) { moreBtn = h("button", { class: "btn ghost more", type: "button", onclick: loadEarlier }, T("Показать более ранние")); moreBtn.dataset.lang = String(window.SOROKA_LANG); }
     kids.push(moreBtn);
   }
@@ -8276,7 +8299,7 @@ function renderMsgs(newId) {
     : T("Здесь пока пусто. Напишите первое сообщение.")));
   let prev = "";
   const chat = state.chats.get(state.activeId);
-  for (let i = 0; i < state.msgs.length; i++) {
+  for (let i = from; i < state.msgs.length; i++) {
     let m = state.msgs[i];
     const d = new Date(m.created_at), k = dayKey(d);
     if (k !== prev) { kids.push(dayNode(d, k)); prev = k; }
@@ -8723,6 +8746,7 @@ function snippet(m) {
 }
 function senderName(c, id) { return id === state.me.id ? T("Вы") : c ? memberName(c, id) : T("Участник"); }
 async function jumpTo(id) {
+  if (msgTail) { msgTail = 0; renderMsgs(); }   // чат ещё дорисовывается — сначала показываем всё
   const chat = state.activeId;
   // сообщение может быть выше загруженного: подгружаем историю, пока не дойдём до него
   for (let n = 0; n < 40 && state.hasMore && state.msgs.length && state.msgs[0].id > id; n++) {
