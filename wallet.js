@@ -279,7 +279,74 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .pay-card .st { justify-self: start; margin-top: 4px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgb(52 199 89 / .16); color: #34c759; }
 .pay-card .st.wait { background: rgb(255 179 64 / .16); color: #ffb340; }
 .pay-card .st.bad { background: rgb(255 69 58 / .16); color: #ff6b62; }
-.srow .tw-new { margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #3d78e6; color: #fff; font-size: 11px; font-weight: 700; text-transform: lowercase; }
+.srow .tw-new { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #3d78e6; color: #fff; font-size: 11px; font-weight: 700; text-transform: lowercase; }
+/* ---------- анимации ---------- */
+@keyframes twIn { from { opacity: 0; transform: translateY(26px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes twFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes twUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes twFwd { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes twBack { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes twPop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
+@keyframes twShim { from { background-position: 180% 0; } to { background-position: -80% 0; } }
+@keyframes twPulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(52 199 89 / .45); } 60% { box-shadow: 0 0 0 7px rgb(52 199 89 / 0); } }
+@keyframes twDraw { to { stroke-dashoffset: 0; } }
+@keyframes twRing { 0% { transform: scale(.5); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes twShake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes twGlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes twFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes twSpin { to { transform: rotate(360deg); } }
+@keyframes twWait { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+#dlgTonW[open] { animation: twIn .34s cubic-bezier(.2, .9, .3, 1.1); }
+#dlgTonW[open]::backdrop { animation: twFade .3s ease; }
+#dlgTonW.closing { opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .18s ease, transform .18s ease; }
+.tw-body.fwd > * { animation: twFwd .32s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body.back > * { animation: twBack .32s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body.tab > * { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body > *:nth-child(2) { animation-delay: .04s; } .tw-body > *:nth-child(3) { animation-delay: .08s; } .tw-body > *:nth-child(4) { animation-delay: .12s; }
+.tw-body > *:nth-child(5) { animation-delay: .16s; } .tw-body > *:nth-child(6) { animation-delay: .2s; } .tw-body > *:nth-child(n+7) { animation-delay: .24s; }
+.tw-list.stag > .tw-row { animation: twUp .34s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
+.tw-card { background: linear-gradient(130deg, #18233a, #121a2b, #1b2a4a, #121a2b); background-size: 300% 300%; animation: twGlow 12s ease infinite; position: relative; overflow: hidden; }
+.tw-body.tab > .tw-card, .tw-body.fwd > .tw-card, .tw-body.back > .tw-card { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards, twGlow 12s ease infinite; }
+.tw-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / .07) 50%, transparent 60%); background-size: 250% 100%; animation: twShim 5s ease-in-out infinite; pointer-events: none; }
+.tw-card > * { position: relative; z-index: 1; }
+.tw-act, .tw-btn, .tw-ib, .tw-seg button, button.tw-row, a.tw-row, .tw-nav button { transition: transform .14s ease, background .18s ease, color .18s ease, opacity .18s ease, box-shadow .18s ease; }
+.tw-act:active, .tw-btn:active:not(:disabled) { transform: scale(.95); }
+.tw-ib:active { transform: scale(.88); }
+button.tw-row:active, a.tw-row:active { transform: scale(.985); }
+.tw-act svg { transition: transform .25s cubic-bezier(.2, .9, .3, 1.4); }
+.tw-act:hover svg { transform: translateY(-2px) scale(1.12); }
+.tw-act:nth-child(3):hover svg { transform: rotate(180deg); }
+.tw-btn:not(.ghost):not(.red):hover:not(:disabled) { box-shadow: 0 6px 20px rgb(61 120 230 / .4); transform: translateY(-1px); }
+.tw-btn.busy { position: relative; color: transparent !important; }
+.tw-btn.busy::after { content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px; border-radius: 50%; border: 2.5px solid rgb(255 255 255 / .35); border-top-color: #fff; animation: twSpin .7s linear infinite; }
+.tw-pill:not(.off) { animation: twPulse 2.4s ease-out infinite; }
+.tw-nav button { position: relative; }
+.tw-nav button.on::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 18px; height: 3px; margin-left: -9px; border-radius: 3px; background: #4f8dff; animation: twPop .3s ease backwards; }
+.tw-nav button + button.on::after { margin-left: 2px; }
+.tw-skel { background: linear-gradient(90deg, color-mix(in srgb, var(--ink) 8%, transparent) 25%, color-mix(in srgb, var(--ink) 18%, transparent) 50%, color-mix(in srgb, var(--ink) 8%, transparent) 75%); background-size: 200% 100%; animation: twShim 1.3s linear infinite; }
+.tw-in { transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.tw-in:focus { box-shadow: 0 0 0 4px rgb(79 141 255 / .18); }
+.tw-err:not(:empty) { animation: twShake .36s ease; }
+.tw-seg button.on { animation: twPop .26s ease; }
+.tw-words span { animation: twPop .32s cubic-bezier(.2, .9, .3, 1.2) backwards; animation-delay: calc(var(--i, 0) * 28ms + 120ms); transition: filter .3s ease; }
+.tw-qr { animation: twPop .45s cubic-bezier(.2, .9, .3, 1.15) backwards .1s; }
+.tw-coin { transition: transform .25s cubic-bezier(.2, .9, .3, 1.4); } button.tw-row:hover .tw-coin, a.tw-row:hover .tw-coin, button.tw-row:hover .tw-ico { transform: scale(1.1) rotate(-6deg); }
+.tw-ico { transition: transform .25s cubic-bezier(.2, .9, .3, 1.4); }
+.tw-coin.ton i { animation: twFloat 3s ease-in-out infinite; }
+.tw-center .logo { animation: twPop .5s cubic-bezier(.2, .9, .3, 1.2) backwards, twFloat 3.4s ease-in-out .5s infinite; box-shadow: 0 12px 34px rgb(79 100 240 / .45); }
+.tw-done .ok { position: relative; animation: twPop .5s cubic-bezier(.2, .9, .3, 1.2) backwards; }
+.tw-done .ok::before, .tw-done .ok::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #34c759; animation: twRing 1.2s ease-out .25s backwards; }
+.tw-done .ok::after { animation-delay: .5s; }
+.tw-done .ok svg path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: twDraw .45s ease-out .3s forwards; }
+.tw-done > b { animation: twUp .4s ease .35s backwards; } .tw-done > span.tw-p { animation: twUp .4s ease .45s backwards; }
+.tw-sum > div { animation: twUp .3s ease backwards; } .tw-sum > div:nth-child(2) { animation-delay: .05s; } .tw-sum > div:nth-child(3) { animation-delay: .1s; } .tw-sum > div:nth-child(4) { animation-delay: .15s; }
+.tw-new { animation: twPop .5s cubic-bezier(.2, .9, .3, 1.3) backwards .2s; }
+.pay-card { animation: twPop .42s cubic-bezier(.2, .9, .3, 1.15) backwards; transition: transform .16s ease; }
+.pay-card:active { transform: scale(.97); }
+.pay-card .st { transition: background .3s ease, color .3s ease; }
+.pay-card .st.wait { animation: twWait 1.3s ease-in-out infinite; }
+.pay-card .st.flip { animation: twPop .4s cubic-bezier(.2, .9, .3, 1.3); }
+@media (prefers-reduced-motion: reduce) { #dlgTonW, #dlgTonW *, #dlgTonW *::before, #dlgTonW *::after, .pay-card, .pay-card * { animation: none !important; transition: none !important; } .tw-done .ok svg path { stroke-dashoffset: 0; } }
 `;
 
 /* ---------- значки ---------- */
@@ -310,7 +377,7 @@ function ensureDlg() {
         h("button", { class: "tw-ib", type: "button", id: "twBack", "aria-label": T("Назад"), hidden: true }, sv("back")),
         h("h2", {}, sv("wallet"), h("span", { id: "twTitle" }, T("Кошелёк"))),
         h("span", { class: "tw-pill off", id: "twPill" }, T("Не создан")),
-        h("button", { class: "tw-ib", type: "button", "aria-label": T("Закрыть"), onclick: () => dlg.close() }, sv("close"))),
+        h("button", { class: "tw-ib", type: "button", "aria-label": T("Закрыть"), onclick: () => closeDlg() }, sv("close"))),
       h("div", { class: "tw-body", id: "twBody" }),
       h("nav", { class: "tw-nav", id: "twNav" })));
   dlg.addEventListener("close", () => { sendCtx = null; if (unlocked && unlocked.t) { clearTimeout(unlocked.t); } });
@@ -320,7 +387,7 @@ function ensureDlg() {
 const body = () => $("twBody");
 const put = (...kids) => body().append(...kids.filter((k) => k != null && k !== false));
 let backTo = null;
-function goBack() { const b = backTo; backTo = null; show(b || "overview"); }
+function goBack() { const b = backTo; backTo = null; navDir = "back"; show(b || "overview"); }
 function setHead(title, back) {
   $("twTitle").textContent = title;
   $("twBack").hidden = !back; backTo = back || null; $("twBack").onclick = () => goBack();
@@ -331,12 +398,42 @@ function setHead(title, back) {
   nav.hidden = !tabs.length;
   nav.replaceChildren(...tabs.map(([k, l]) => h("button", { type: "button", class: k === view ? "on" : "", onclick: () => show(k) }, l)));
 }
+const TABS = ["overview", "assets", "activity", "settings", "start"];
+let navDir = "tab";
 function show(v, arg) {
+  const dir = navDir !== "tab" ? navDir : TABS.includes(v) ? "tab" : "fwd";
+  navDir = "tab";
   view = v;
   const fn = VIEWS[v] || VIEWS.overview;
-  body().replaceChildren();
-  body().scrollTop = 0;
+  const b = body();
+  b.replaceChildren();
+  b.scrollTop = 0;
+  b.classList.remove("fwd", "back", "tab"); void b.offsetWidth; b.classList.add(dir);
   fn(arg);
+  stagger(b);
+}
+// очередность появления строк списков и слов
+function stagger(root) {
+  for (const l of root.querySelectorAll(".tw-list")) { l.classList.add("stag"); [...l.children].forEach((r, i) => r.style.setProperty("--i", Math.min(i, 12))); }
+  for (const l of root.querySelectorAll(".tw-words")) [...l.children].forEach((r, i) => r.style.setProperty("--i", i));
+}
+// число «набегает» до нового значения
+function countTo(el, to, fmt) {
+  const from = Number(el.dataset.v || 0), t0 = performance.now(), D = 700;
+  el.dataset.v = to;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || Math.abs(to - from) < 0.005) { el.textContent = fmt(to); return; }
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(from + (to - from) * e);
+    if (k < 1 && el.isConnected) requestAnimationFrame(step); else el.textContent = fmt(to);
+  };
+  requestAnimationFrame(step);
+}
+// плавное закрытие окна
+function closeDlg() {
+  if (!dlg || !dlg.open || dlg.classList.contains("closing")) return;
+  dlg.classList.add("closing");
+  setTimeout(() => { dlg.classList.remove("closing"); dlg.close(); }, 180);
 }
 async function open(v, arg) {
   if (!state.me) return;
@@ -378,7 +475,8 @@ const VIEWS = {};
 VIEWS.overview = () => {
   setHead(T("Кошелёк"));
   const a = acc || cached(), t = totals(a);
-  const big = h("span", { class: "big" + (a ? "" : " tw-skel") }, a ? usd(t.usd) : "$0.00");
+  const big = h("span", { class: "big" + (a ? "" : " tw-skel") }, a ? usd(0) : "$0.00");
+  if (a) countTo(big, t.usd, usd);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
     h("div", { class: "tw-acts" }, act("out", T("Отправить"), () => show("send")), act("in", T("Получить"), () => show("receive")),
@@ -386,7 +484,7 @@ VIEWS.overview = () => {
   const list = assetRows(a);
   put(card, h("h3", { class: "tw-h" }, T("Мои активы")), list,
     h("p", { class: "tw-foot" }, T("Ключи хранятся только на этом устройстве. Mestario не может ни потратить, ни восстановить ваши средства.")));
-  refresh(false).then((n) => { if (view !== "overview" || !n) return; const tt = totals(n); big.className = "big"; big.textContent = usd(tt.usd); list.replaceWith(assetRows(n)); });
+  refresh(false).then((n) => { if (view !== "overview" || !n) return; const tt = totals(n); big.className = "big"; countTo(big, tt.usd, usd); if (JSON.stringify([n.ton, n.usdt, n.tonUsd]) !== JSON.stringify(a ? [a.ton, a.usdt, a.tonUsd] : 0)) list.replaceWith(assetRows(n)); });
 };
 VIEWS.assets = () => {
   setHead(T("Активы"));
@@ -415,7 +513,8 @@ async function history(force) {
   try { hist = await loadEvents(v.addr, 40); histAt = Date.now(); } catch (e) { if (!hist) return null; }
   return hist;
 }
-function histList(list) {
+function histList(list) { const el = histList0(list); el.classList.add("stag"); [...el.children].forEach((r, i) => r.style.setProperty("--i", Math.min(i, 12))); return el; }
+function histList0(list) {
   if (list == null) return h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Не удалось загрузить историю. Проверьте интернет.")))));
   if (!list.length) return h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("b", {}, T("Пока пусто")), h("span", {}, T("Здесь появятся ваши переводы")))));
   const fmtT = (ts) => new Date(ts).toLocaleString(window.SOROKA_LANG === "en" ? "en-GB" : "ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -538,7 +637,7 @@ async function unlock(pass) {
 const isUnlocked = () => { const v = vault(); return !!(unlocked && v && unlocked.addr === v.addr && Date.now() < unlocked.until); };
 VIEWS.confirm = (o) => {
   setHead(T("Подтверждение"));
-  $("twBack").hidden = false; $("twBack").onclick = () => show("send", o.back);
+  $("twBack").hidden = false; $("twBack").onclick = () => { navDir = "back"; show("send", o.back); };
   const dec = DEC[o.cur], pw = pwField(), err = h("div", { class: "tw-err" });
   const btn = h("button", { class: "tw-btn", type: "button" }, T("Отправить ") + fmtUnits(o.units, dec) + " " + o.cur);
   put(h("div", { class: "tw-sum" },
@@ -552,7 +651,7 @@ VIEWS.confirm = (o) => {
   btn.onclick = async () => {
     if (busy) return;
     err.textContent = ""; btn.disabled = true; busy = true;
-    btn.textContent = T("Отправляем…");
+    btn.classList.add("busy");
     try {
       const words = await unlock(pw.value);
       if (!words) { err.textContent = T("Неверный пароль"); return; }
@@ -589,7 +688,7 @@ VIEWS.confirm = (o) => {
     } catch (e) {
       console.warn(e);
       err.textContent = /send|rate|fetch|network/i.test(String(e && e.message)) ? T("Сеть не приняла перевод. Проверьте интернет и попробуйте ещё раз.") : T("Не удалось отправить: ") + ((e && e.message) || e);
-    } finally { busy = false; btn.disabled = false; btn.textContent = T("Отправить ") + fmtUnits(o.units, dec) + " " + o.cur; }
+    } finally { busy = false; btn.disabled = false; btn.classList.remove("busy"); }
   };
 };
 VIEWS.done = (o) => {
@@ -599,7 +698,7 @@ VIEWS.done = (o) => {
     h("b", { style: "font-size:24px" }, "−" + fmtUnits(o.units, DEC[o.cur]) + " " + o.cur),
     h("span", { class: "tw-p" }, T("Перевод отправлен в сеть TON. Подтверждение обычно занимает 5–15 секунд.")),
     o.posted ? h("span", { class: "tw-p" }, T("Карточка перевода добавлена в чат.")) : null),
-    h("button", { class: "tw-btn", type: "button", onclick: () => { if (fromChat) dlg.close(); else show("overview"); } }, fromChat ? T("Вернуться в чат") : T("Готово")),
+    h("button", { class: "tw-btn", type: "button", onclick: () => { if (fromChat) closeDlg(); else show("overview"); } }, fromChat ? T("Вернуться в чат") : T("Готово")),
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("activity") }, T("Открыть историю")));
   sendCtx = fromChat ? sendCtx : null;
 };
@@ -834,8 +933,10 @@ function payCard(m, mine) {
     h("span", { class: "a" }, (mine ? "−" : "+") + fmtUnits(parseUnits(p.amt, DEC[p.cur]) || 0n, DEC[p.cur]) + " " + p.cur),
     p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null,
     h("span", { class: "s" }, T("Блокчейн TON")), st);
+  let lastS = null;
   const paint = (s) => {
-    st.className = "st" + (s === "ok" ? "" : s === "wait" ? " wait" : " bad");
+    st.className = "st" + (s === "ok" ? "" : s === "wait" ? " wait" : " bad") + (lastS && lastS !== s ? " flip" : "");
+    lastS = s;
     st.textContent = s === "ok" ? T("Подтверждено") : s === "wait" ? T("В обработке…") : s === "bad" ? T("Ошибка перевода") : T("Не найден в блокчейне");
     card.lastElementChild.previousElementSibling.textContent = s === "ok" ? T("Подтверждено в блокчейне TON") : T("Блокчейн TON");
   };
