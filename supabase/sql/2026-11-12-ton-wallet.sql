@@ -61,3 +61,24 @@ begin
 end $$;
 drop trigger if exists messages_pay_guard on public.messages;
 create trigger messages_pay_guard before insert on public.messages for each row when (new.pay is not null) execute function private.messages_pay_guard();
+
+-- (12.11, позже) кошелёк создаётся автоматически при входе; p_auto не перезаписывает уже записанный адрес
+drop function if exists public.ton_account_set(text);
+create or replace function public.ton_account_set(p_addr text, p_auto boolean default false) returns text
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); cur text;
+begin
+  if me is null or private.is_banned() then raise exception 'not allowed'; end if;
+  if p_addr is null then delete from public.ton_accounts where user_id = me; return null; end if;
+  if p_addr !~ '^[EU]Q[A-Za-z0-9_-]{46}$' then raise exception 'bad address'; end if;
+  if p_auto then
+    insert into public.ton_accounts (user_id, address) values (me, p_addr) on conflict (user_id) do nothing;
+  else
+    insert into public.ton_accounts (user_id, address) values (me, p_addr)
+    on conflict (user_id) do update set address = excluded.address, updated_at = now();
+  end if;
+  select address into cur from public.ton_accounts where user_id = me;
+  return cur;
+end $$;
+revoke all on function public.ton_account_set(text, boolean) from public, anon;
+grant execute on function public.ton_account_set(text, boolean) to authenticated;

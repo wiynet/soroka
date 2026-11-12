@@ -117,6 +117,59 @@ async function unseal(v, pass) {
     return td.decode(pt).split(" ");
   } catch (e) { return null; }
 }
+// «черновой» кошелёк создаётся сам при входе: ключ шифрования лежит рядом (защиты нет), пока человек не задаст пароль
+const dkKey = () => "mestario.tonw.dk." + (state.me && state.me.id);
+function devKey() {
+  try {
+    let k = localStorage.getItem(dkKey());
+    if (!k) { k = b64u(crypto.getRandomValues(new Uint8Array(32))); localStorage.setItem(dkKey(), k); }
+    return k;
+  } catch (e) { return null; }
+}
+let srvAddr = null, srvAt = 0;
+async function loadSrv(force) {
+  if (!force && srvAt && Date.now() - srvAt < 60000) return srvAddr;
+  const r = await sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle().catch(() => null);
+  if (r && !r.error) { srvAddr = (r.data && r.data.address) || null; srvAt = Date.now(); }
+  return srvAddr;
+}
+const myAddr = () => { const v = vault(); return v ? v.addr : srvAddr; };
+// full — защищён паролем; soft — создан сам, ещё не защищён; watch — на этом устройстве только просмотр; none — кошелька нет
+function mode() { const v = vault(); return v ? (v.soft ? "soft" : "full") : srvAddr ? "watch" : "none"; }
+let autoBusy = null;
+async function auto() {
+  if (!state.me || autoBusy) return autoBusy;
+  autoBusy = (async () => {
+    try {
+      const srv = await loadSrv(true);
+      const v = vault();
+      if (v) {
+        if (!srv) { const r = await sb.rpc("ton_account_set", { p_addr: v.addr, p_auto: true }); srvAddr = r.data || srvAddr; }
+        else if (!sameAddr(srv, v.addr) && v.soft) { try { localStorage.removeItem(lsKey()); } catch (e) {} }   // на сервере уже другой кошелёк — черновик не нужен
+        return;
+      }
+      if (srv || !devKey()) return;
+      const words = await genMnemonic(), W = await walletOf(words);
+      const sealed = await seal(words, devKey(), W.addr); sealed.soft = true;
+      if (!saveVault(sealed)) return;
+      const r = await sb.rpc("ton_account_set", { p_addr: W.addr, p_auto: true });
+      if (r.error) return;
+      srvAddr = r.data;
+      if (!sameAddr(r.data, W.addr)) { try { localStorage.removeItem(lsKey()); } catch (e) {} }   // другое устройство успело раньше
+    } catch (e) { console.warn("wallet auto", e); }
+    finally { setTimeout(() => { autoBusy = null; }, 0); }
+  })();
+  return autoBusy;
+}
+// куда пускаем: отправка и безопасность — только когда кошелёк защищён на этом устройстве
+function need(target, arg) {
+  const m = mode();
+  if (m === "full") { show(target, arg); return; }
+  const then = { v: target, arg };
+  if (m === "soft") show("secure", { then });
+  else if (m === "watch") show("import", { expect: srvAddr, then });
+  else show("start");
+}
 function vault() { try { const v = JSON.parse(localStorage.getItem(lsKey()) || "null"); return v && v.v === 1 && v.addr ? v : null; } catch (e) { return null; } }
 function saveVault(v) { try { localStorage.setItem(lsKey(), JSON.stringify(v)); return true; } catch (e) { return false; } }
 
@@ -200,6 +253,7 @@ const CSS = `
 .tw-ib:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .tw-ib svg { width: 22px; height: 22px; }
 .tw-pill { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgb(52 199 89 / .14); color: #34c759; white-space: nowrap; }
+.tw-pill.warn { background: rgb(255 179 64 / .15); color: #ffb340; }
 .tw-pill.off { background: color-mix(in srgb, var(--ink) 9%, transparent); color: color-mix(in srgb, var(--ink) 55%, transparent); }
 .tw-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 .tw-nav { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 0; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent); }
@@ -214,6 +268,9 @@ const CSS = `
 .tw-act { border: 0; border-radius: 16px; padding: 14px 6px 12px; background: #1f2f50; color: #fff; font: inherit; font-size: 15px; display: grid; justify-items: center; gap: 6px; cursor: pointer; transition: background .15s; }
 .tw-act:hover { background: #27396096; background: #263a62; }
 .tw-act svg { width: 22px; height: 22px; color: #7fb0ff; }
+.tw-warn { border-radius: 18px; background: rgb(255 179 64 / .1) !important; color: inherit; }
+.tw-warn .tw-ico { background: rgb(255 179 64 / .18); color: #ffb340; }
+.tw-warn .chev { font-size: 22px; opacity: .5; }
 .tw-h { margin: 4px 0 0; font-size: 20px; font-weight: 750; }
 .tw-list { border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 18px; overflow: hidden; }
 .tw-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
@@ -391,10 +448,10 @@ function goBack() { const b = backTo; backTo = null; navDir = "back"; show(b || 
 function setHead(title, back) {
   $("twTitle").textContent = title;
   $("twBack").hidden = !back; backTo = back || null; $("twBack").onclick = () => goBack();
-  const v = vault();
-  $("twPill").textContent = v ? T("Подключён") : T("Не создан");
-  $("twPill").classList.toggle("off", !v);
-  const nav = $("twNav"), tabs = v ? [["overview", T("Обзор")], ["assets", T("Активы")], ["activity", T("История")], ["settings", T("Настройки")]] : [];
+  const m = mode();
+  $("twPill").textContent = m === "full" ? T("Подключён") : m === "soft" ? T("Не защищён") : m === "watch" ? T("Просмотр") : T("Не создан");
+  $("twPill").className = "tw-pill" + (m === "full" ? "" : m === "soft" ? " warn" : " off");
+  const nav = $("twNav"), tabs = myAddr() ? [["overview", T("Обзор")], ["assets", T("Активы")], ["activity", T("История")], ["settings", T("Настройки")]] : [];
   nav.hidden = !tabs.length;
   nav.replaceChildren(...tabs.map(([k, l]) => h("button", { type: "button", class: k === view ? "on" : "", onclick: () => show(k) }, l)));
 }
@@ -439,15 +496,19 @@ async function open(v, arg) {
   if (!state.me) return;
   ensureDlg();
   if (!dlg.open) dlg.showModal();
-  const vv = vault();
-  if (!vv) { show("start"); return; }
-  show(v || "overview", arg);
+  if (!myAddr()) {
+    put(h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Готовим кошелёк…"))));
+    await auto();
+    if (!myAddr()) await loadSrv(true);
+  } else loadSrv(false);
+  if (!myAddr()) { show("start"); return; }
+  if (v === "send" || v === "security") need(v, arg); else show(v || "overview", arg);
 }
 
 /* ---------- обзор ---------- */
 function cached() { try { return JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch (e) { return null; } }
 async function refresh(force) {
-  const v = vault(); if (!v) return null;
+  const v = myAddr() ? { addr: myAddr() } : null; if (!v) return null;
   if (!force && acc && Date.now() - acc.at < 20000) return acc;
   try {
     const a = await loadAccount(v.addr);
@@ -479,10 +540,14 @@ VIEWS.overview = () => {
   if (a) countTo(big, t.usd, usd);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
-    h("div", { class: "tw-acts" }, act("out", T("Отправить"), () => show("send")), act("in", T("Получить"), () => show("receive")),
+    h("div", { class: "tw-acts" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
       act("swap", T("Обмен"), () => toast(T("Обмен TON ↔ USDT появится в следующем обновлении")))));
-  const list = assetRows(a);
-  put(card, h("h3", { class: "tw-h" }, T("Мои активы")), list,
+  const list = assetRows(a), m = mode();
+  const banner = m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
+      h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
+    : m === "watch" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("import", { expect: srvAddr, then: { v: "overview" } }) },
+      h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Только просмотр")), h("span", {}, T("Чтобы отправлять с этого устройства, введите сид-фразу"))), h("span", { class: "chev" }, "›")) : null;
+  put(card, banner, h("h3", { class: "tw-h" }, T("Мои активы")), list,
     h("p", { class: "tw-foot" }, T("Ключи хранятся только на этом устройстве. Mestario не может ни потратить, ни восстановить ваши средства.")));
   refresh(false).then((n) => { if (view !== "overview" || !n) return; const tt = totals(n); big.className = "big"; countTo(big, tt.usd, usd); if (JSON.stringify([n.ton, n.usdt, n.tonUsd]) !== JSON.stringify(a ? [a.ton, a.usdt, a.tonUsd] : 0)) list.replaceWith(assetRows(n)); });
 };
@@ -499,7 +564,7 @@ VIEWS.asset = (cur) => {
     h("span", { class: "big" }, fmtUnits(bal, dec, cur === "TON" ? 4 : 2) + " " + cur),
     h("span", { class: "sub" }, a ? usd(Number(BigInt(bal)) / 10 ** dec * (cur === "TON" ? a.tonUsd || 0 : a.usdtUsd || 1)) : ""),
     h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr" },
-      h("button", { class: "tw-act", type: "button", onclick: () => show("send", { cur }) }, sv("out"), h("span", {}, T("Отправить"))),
+      h("button", { class: "tw-act", type: "button", onclick: () => need("send", { cur }) }, sv("out"), h("span", {}, T("Отправить"))),
       h("button", { class: "tw-act", type: "button", onclick: () => show("receive") }, sv("in"), h("span", {}, T("Получить"))))));
   const box = h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Загружаем историю…")))));
   put(h("h3", { class: "tw-h" }, T("История")), box);
@@ -508,7 +573,7 @@ VIEWS.asset = (cur) => {
 
 /* ---------- история ---------- */
 async function history(force) {
-  const v = vault(); if (!v) return [];
+  const v = myAddr() ? { addr: myAddr() } : null; if (!v) return [];
   if (!force && hist && Date.now() - histAt < 20000) return hist;
   try { hist = await loadEvents(v.addr, 40); histAt = Date.now(); } catch (e) { if (!hist) return null; }
   return hist;
@@ -538,7 +603,7 @@ VIEWS.activity = () => {
 /* ---------- получить ---------- */
 VIEWS.receive = () => {
   setHead(T("Получить"), "overview");
-  const v = vault(), qr = h("div", { class: "tw-qr" });
+  const v = { addr: myAddr() }, qr = h("div", { class: "tw-qr" });
   put(h("p", { class: "tw-p", style: "text-align:center" }, T("Отправляйте на этот адрес только TON и USDT в сети TON.")), qr,
     h("div", { class: "tw-addr" }, v.addr),
     h("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:10px" },
@@ -566,7 +631,7 @@ async function resolveTo(s) {
     const { data: p } = await sb.from("profiles").select("id,display_name,username").ilike("username", name).maybeSingle();
     if (!p) return { err: T("Пользователь @") + name + T(" не найден") };
     const { data: a } = await sb.rpc("ton_address_of", { p_user: p.id });
-    if (!a) return { err: p.display_name + T(" ещё не создал кошелёк Mestario") };
+    if (!a) return { err: p.display_name + T(" ещё не заходил в Mestario после появления кошелька") };
     return { addr: a, name: p.display_name, user: p };
   }
   if (!toRaw(s)) return { err: T("Неверный адрес TON") };
@@ -605,7 +670,7 @@ VIEWS.send = (arg) => {
     try {
       const r = sendCtx && sendCtx.addr ? { addr: sendCtx.addr, name: sendCtx.name, user: sendCtx.user } : await resolveTo(to.value);
       if (r.err) { err.textContent = r.err; return; }
-      if (sameAddr(r.addr, vault().addr)) { err.textContent = T("Это ваш собственный адрес"); return; }
+      if (sameAddr(r.addr, myAddr())) { err.textContent = T("Это ваш собственный адрес"); return; }
       const x = await refresh(true);
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
       if (cur === "TON" && units > maxOf()) { err.textContent = T("Недостаточно TON (0,01 TON остаётся на комиссию)"); return; }
@@ -706,22 +771,21 @@ VIEWS.done = (o) => {
 /* ---------- настройки и безопасность (разделы как на макете) ---------- */
 VIEWS.settings = () => {
   setHead(T("Настройки"));
-  const v = vault();
   const row = (n, ic, title, sub, fn) => h("button", { class: "tw-row", type: "button", onclick: fn },
     h("span", { class: "tw-num" }, n), h("span", { class: "tw-ico" }, sv(ic)), h("span", { class: "tx" }, h("b", {}, title), h("span", {}, sub)));
   put(h("h3", { class: "tw-h" }, T("Все разделы")),
     h("div", { class: "tw-list" },
       row("01", "wallet", T("Обзор"), T("Общий баланс и активы"), () => show("overview")),
-      row("02", "out", T("Отправить"), T("Переводы по адресу и @юзернейму"), () => show("send")),
+      row("02", "out", T("Отправить"), T("Переводы по адресу и @юзернейму"), () => need("send")),
       row("03", "qr", T("Получить"), T("Адрес, QR-код и получение"), () => show("receive")),
       row("04", "hist", T("История"), T("История всех операций"), () => show("activity")),
-      row("05", "shield", T("Безопасность"), T("Восстановление и защита"), () => show("security")),
+      row("05", "shield", T("Безопасность"), T("Восстановление и защита"), () => need("security")),
       row("06", "gear", T("Настройки кошелька"), T("Адрес, сеть и устройство"), () => show("wsettings"))),
-    h("p", { class: "tw-foot" }, T("Адрес: ") + short(v.addr) + " · TON Mainnet · Wallet v4R2"));
+    h("p", { class: "tw-foot" }, T("Адрес: ") + short(myAddr()) + " · TON Mainnet · Wallet v4R2"));
 };
 VIEWS.wsettings = () => {
   setHead(T("Настройки кошелька"), "settings");
-  const v = vault();
+  const v = vault() || { addr: myAddr() };
   let armed = false;
   const del = h("button", { class: "tw-btn red", type: "button" }, T("Удалить кошелёк с этого устройства"));
   del.onclick = async () => {
@@ -729,7 +793,7 @@ VIEWS.wsettings = () => {
     try { localStorage.removeItem(lsKey()); localStorage.removeItem(cacheKey()); } catch (e) {}
     unlocked = null; acc = null; hist = null;
     toast(T("Кошелёк удалён с этого устройства"));
-    show("start");
+    navDir = "back"; open("overview");
   };
   put(h("div", { class: "tw-sum" },
       h("div", {}, h("span", {}, T("Адрес")), h("b", {}, v.addr)),
@@ -739,7 +803,7 @@ VIEWS.wsettings = () => {
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(v.addr, T("Адрес скопирован")) }, T("Скопировать адрес")),
     h("a", { class: "tw-btn ghost", style: "text-align:center;text-decoration:none", href: "https://tonviewer.com/" + v.addr, target: "_blank", rel: "noopener noreferrer" }, T("Открыть в Tonviewer")),
     h("p", { class: "tw-p" }, T("Тот же кошелёк можно открыть в Tonkeeper или другом кошельке TON: «Импорт» → 24 слова.")),
-    del);
+    vault() && !vault().soft ? del : null);
 };
 VIEWS.security = () => {
   setHead(T("Безопасность"), "settings");
@@ -783,9 +847,16 @@ VIEWS.start = async () => {
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("email", has ? { next: "create", replace: true } : { next: "import" }) }, has ? T("Создать новый кошелёк") : T("У меня есть сид-фраза")),
     h("p", { class: "tw-foot" }, T("Кошелёк некастодиальный: 24 слова и ключи хранятся только у вас. Mestario не видит их и не может восстановить.")));
 };
+VIEWS.secure = async (o) => {
+  const v = vault();
+  if (!v || !v.soft) { show(o.then ? o.then.v : "overview", o.then && o.then.arg); return; }
+  const words = await unseal(v, devKey());
+  if (!words) { put(h("div", { class: "tw-note" }, T("Не удалось открыть кошелёк на этом устройстве."))); return; }
+  show("email", { next: "pass", words, secure: true, addr: v.addr, then: o.then });
+};
 // подтверждение почты кодом — без этого кошелёк не создаётся
 VIEWS.email = (o) => {
-  setHead(T("Подтвердите почту"), "start");
+  setHead(T("Почта"), o.secure ? "overview" : "start");
   const email = state.me.email || "";
   if (!email || /@deleted\.invalid$/.test(email)) { put(h("div", { class: "tw-note" }, T("Чтобы создать кошелёк, к аккаунту должна быть привязана электронная почта."))); return; }
   const masked = email.replace(/^(.{2})[^@]*/, "$1•••");
@@ -814,32 +885,35 @@ VIEWS.email = (o) => {
   put(info, sendBtn, h("label", { class: "tw-f" }, h("span", {}, T("Код")), code), err, ok);
 };
 VIEWS.pass = (o) => {
-  setHead(T("Пароль кошелька"), "start");
+  setHead(T("Пароль кошелька"), o.secure || myAddr() ? "overview" : "start");
   const p1 = pwField(T("Придумайте пароль")), p2 = pwField(T("Повторите пароль")), err = h("div", { class: "tw-err" });
   p1.autocomplete = p2.autocomplete = "new-password";
-  const go = h("button", { class: "tw-btn", type: "button" }, o.words ? T("Сохранить кошелёк") : T("Создать кошелёк"));
+  const restore = !!o.words && !o.secure;
+  const go = h("button", { class: "tw-btn", type: "button" }, restore ? T("Сохранить кошелёк") : o.secure ? T("Дальше") : T("Создать кошелёк"));
   go.onclick = async () => {
     err.textContent = "";
     if (p1.value.length < 6) { err.textContent = T("Минимум 6 символов"); return; }
     if (p1.value !== p2.value) { err.textContent = T("Пароли не совпадают"); return; }
-    go.disabled = true; go.textContent = o.words ? T("Сохраняем…") : T("Создаём ключи…");
+    go.disabled = true; go.classList.add("busy");
     try {
       const words = o.words || await genMnemonic();
       const W = await walletOf(words);
-      if (o.words) { await finish(words, W.addr, p1.value); toast(T("Кошелёк восстановлен")); show("overview"); return; }
-      show("seed", { words, addr: W.addr, pass: p1.value });
+      if (restore) { await finish(words, W.addr, p1.value); toast(T("Кошелёк восстановлен")); afterSetup(o.then); return; }
+      show("seed", { words, addr: W.addr, pass: p1.value, then: o.then, secure: o.secure });
     } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
-    finally { go.disabled = false; }
+    finally { go.disabled = false; go.classList.remove("busy"); }
   };
   put(h("p", { class: "tw-p" }, T("Пароль защищает кошелёк на этом устройстве: он нужен для переводов и чтобы посмотреть сид-фразу. Восстановить его нельзя — но всегда можно войти заново по сид-фразе.")),
     p1, p2, err, go);
   setTimeout(() => p1.focus(), 50);
 };
+function afterSetup(then) { if (then && then.v) show(then.v, then.arg); else show("overview"); }
 async function finish(words, addr, pass) {
   if (!saveVault(await seal(words, pass, addr))) throw new Error(T("не хватает места в хранилище браузера"));
   unlocked = { addr, words, until: Date.now() + 5 * 60000 };
   acc = null; hist = null;
   const { error } = await sb.rpc("ton_account_set", { p_addr: addr });
+  if (!error) { srvAddr = addr; srvAt = Date.now(); }
   if (error) toast(T("Кошелёк сохранён, но адрес не записан на сервер — переводы по @юзернейму пока недоступны"));
 }
 VIEWS.seed = (o) => {
@@ -860,7 +934,7 @@ VIEWS.check = (o) => {
   go.onclick = async () => {
     if (idx.some((i, k) => ins[k].value.trim().toLowerCase() !== o.words[i])) { err.textContent = T("Слова не совпадают — проверьте запись"); return; }
     go.disabled = true;
-    try { await finish(o.words, o.addr, o.pass); toast(T("Кошелёк создан")); show("overview"); }
+    try { await finish(o.words, o.addr, o.pass); toast(o.secure ? T("Кошелёк защищён") : T("Кошелёк создан")); afterSetup(o.then); }
     catch (e) { err.textContent = T("Не удалось сохранить: ") + ((e && e.message) || e); go.disabled = false; }
   };
   put(h("p", { class: "tw-p" }, T("Введите слова №") + idx.map((i) => i + 1).join(", ") + T(" — чтобы убедиться, что вы их записали.")),
@@ -869,7 +943,7 @@ VIEWS.check = (o) => {
 };
 VIEWS.import = (o) => {
   o = o || {};
-  setHead(T("Восстановление"), "start");
+  setHead(T("Восстановление"), myAddr() ? "overview" : "start");
   const ta = h("textarea", { class: "tw-in", placeholder: T("24 слова через пробел"), autocapitalize: "off", autocomplete: "off", spellcheck: "false" });
   const err = h("div", { class: "tw-err" });
   const go = h("button", { class: "tw-btn", type: "button" }, T("Продолжить"));
@@ -882,7 +956,7 @@ VIEWS.import = (o) => {
       if (!await validMnemonic(w)) { err.textContent = T("Это не сид-фраза TON — проверьте слова"); return; }
       const W = await walletOf(w);
       if (o.expect && !sameAddr(W.addr, o.expect)) { err.textContent = T("Эта фраза от другого кошелька (") + short(W.addr) + T("). Ваш кошелёк Mestario: ") + short(o.expect); return; }
-      show("pass", { words: w });
+      show("pass", { words: w, then: o.then });
     } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
     finally { go.disabled = false; }
   };
@@ -892,12 +966,11 @@ VIEWS.import = (o) => {
 
 /* ---------- перевод из чата ---------- */
 async function openSend(peer, chatId) {
-  if (!vault()) { await open("start"); toast(T("Сначала создайте кошелёк")); return; }
   const { data: a } = await sb.rpc("ton_address_of", { p_user: peer.id });
-  if (!a) { toast((peer.display_name || T("Собеседник")) + T(" ещё не создал кошелёк Mestario — попросите его открыть «Кошелёк» в настройках")); return; }
-  ensureDlg(); if (!dlg.open) dlg.showModal();
+  if (!a) { toast((peer.display_name || T("Собеседник")) + T(" ещё не заходил в Mestario после появления кошелька — кошелёк создастся, как только он откроет приложение")); return; }
+  await open("overview");
   sendCtx = { chat: chatId, addr: a, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || "") };
-  show("send", { to: "@" + (peer.username || short(a)) });
+  need("send", { to: "@" + (peer.username || short(a)) });
 }
 
 /* ---------- карточка перевода в чате: статус берём из блокчейна ---------- */
@@ -952,5 +1025,14 @@ function payCard(m, mine) {
 }
 const open2 = (u) => { try { window.open(u, "_blank", "noopener"); } catch (e) {} };
 
-window.MW = { open, openSend, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
+// кошелёк появляется у каждого сам: через несколько секунд после входа (один раз на аккаунт)
+let autoFor = null;
+setInterval(() => {
+  if (!window.state || !state.started || !state.me || document.hidden) return;
+  if (autoFor === state.me.id) return;
+  autoFor = state.me.id;
+  srvAddr = null; srvAt = 0; acc = null; hist = null; unlocked = null;
+  setTimeout(() => { if (state.me && state.me.id === autoFor) auto(); }, 4000);
+}, 3000);
+window.MW = { open, openSend, auto, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();

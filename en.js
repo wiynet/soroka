@@ -1,5 +1,17 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Не защищён":"Not protected",
+"Просмотр":"View only",
+"Готовим кошелёк…":"Preparing your wallet…",
+"Защитите кошелёк":"Protect your wallet",
+"Почта, пароль и сид-фраза — нужно, чтобы отправлять":"Email, password and seed phrase — needed to send",
+"Только просмотр":"View only",
+"Чтобы отправлять с этого устройства, введите сид-фразу":"To send from this device, enter your seed phrase",
+"Не удалось открыть кошелёк на этом устройстве.":"Couldn't open the wallet on this device.",
+"Дальше":"Next",
+"Кошелёк защищён":"Wallet protected",
+" ещё не заходил в Mestario после появления кошелька — кошелёк создастся, как только он откроет приложение":" hasn't opened Mestario since wallets appeared — their wallet will be created as soon as they open the app",
+" ещё не заходил в Mestario после появления кошелька":" hasn't opened Mestario since wallets appeared",
 " (излишек вернётся)":" (excess is returned)",
 " · в обработке":" · pending",
 " · ошибка":" · failed",
