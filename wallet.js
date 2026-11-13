@@ -333,7 +333,7 @@ const CSS = `
 .tw-spark { width: 100%; height: 100%; display: block; } .tw-spark.up { color: #34c759; } .tw-spark.dn { color: #ff5a6a; }
 .tw-asset, .tw-asset > div { display: flex; flex-direction: column; gap: 16px; }
 .tw-ahead { display: flex; flex-direction: column; gap: 14px; }
-.tw-coin.big { width: 64px; height: 64px; font-size: 28px; } .tw-coin.big.ton i { width: 26px; height: 26px; }
+.tw-coin.big { width: 64px; height: 64px; }
 .tw-price { display: block; font-size: 40px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .tw-pchg { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 16px; font-variant-numeric: tabular-nums; min-height: 22px; }
 .tw-pchg .soft { opacity: .7; } .tw-pchg .lbl { color: color-mix(in srgb, var(--ink) 55%, transparent); }
@@ -406,8 +406,11 @@ button.tw-row { cursor: pointer; } button.tw-row:hover { background: color-mix(i
 .tw-row .rt span { font-size: 13px; color: color-mix(in srgb, var(--ink) 50%, transparent); }
 .tw-row .rt b.in { color: #34c759; }
 .tw-coin { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
-.tw-coin.ton { background: #1e3a6e; } .tw-coin.ton i { width: 18px; height: 18px; border-radius: 50%; background: #6aa8ff; }
-.tw-coin.usdt { background: #1f5a48; color: #6be0a8; font-weight: 800; font-size: 17px; }
+/* значки монет: TON и USDT (web3icons, MIT) */
+.tw-coin.ton, .tw-coin.usdt { background: center / 100% 100% no-repeat; font-size: 0 !important; color: transparent; }
+.tw-coin.ton i { display: none; }
+.tw-coin.ton { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2212%22 fill=%22%230098EA%22/%3E%3Cpath fill=%22%23fff%22 transform=%22translate%2812 12.4%29 scale%28.62%29 translate%28-12 -12%29%22 d=%22m20.661 7.22-7.846 12.494a1.058 1.058 0 0 1-1.794-.006L3.328 7.214A2.2 2.2 0 0 1 3 6.05a2.29 2.29 0 0 1 2.324-2.255h13.362C19.963 3.794 21 4.8 21 6.044c0 .413-.116.82-.339 1.175M5.218 6.8l5.723 8.826V5.912H5.816c-.592 0-.857.392-.598.89m7.84 8.826L18.783 6.8c.265-.497-.006-.89-.599-.89H13.06z%22/%3E%3C/svg%3E"); }
+.tw-coin.usdt { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2212%22 fill=%22%23009393%22/%3E%3Cpath fill=%22%23fff%22 transform=%22translate%2812 12.2%29 scale%28.68%29 translate%28-12 -12%29%22 d=%22m12 19.2-9-8.88L6.433 4.8h11.134L21 10.32zm.9-8.1v-1.098c1.62.08 3.132.396 3.6.805-.544.477-2.493.824-4.5.824s-3.956-.347-4.5-.824c.463-.41 1.98-.72 3.6-.81V11.1zm-5.4-.297v.661c.463.41 1.975.72 3.6.81V14.7h1.8v-2.43c1.62-.081 3.136-.396 3.6-.806v-1.318c-.464-.41-1.98-.725-3.6-.81V8.4h2.7V7.05H8.4V8.4h2.7v.936c-1.625.085-3.137.4-3.6.81z%22/%3E%3C/svg%3E"); }
 .tw-coin.ev { background: color-mix(in srgb, var(--ink) 9%, transparent); } .tw-coin svg { width: 20px; height: 20px; }
 .tw-num { flex: none; width: 30px; font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--ink) 50%, transparent); font-variant-numeric: tabular-nums; }
 .tw-ico { flex: none; width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 9%, transparent); }
@@ -518,7 +521,7 @@ button.tw-row:active, a.tw-row:active { transform: scale(.985); }
 .tw-qr { animation: twPop .45s cubic-bezier(.2, .9, .3, 1.15) backwards .1s; }
 .tw-coin { transition: transform .25s cubic-bezier(.2, .9, .3, 1.4); } button.tw-row:hover .tw-coin, a.tw-row:hover .tw-coin, button.tw-row:hover .tw-ico { transform: scale(1.1) rotate(-6deg); }
 .tw-ico { transition: transform .25s cubic-bezier(.2, .9, .3, 1.4); }
-.tw-coin.ton i { animation: twFloat 3s ease-in-out infinite; }
+
 .tw-center .logo { animation: twPop .5s cubic-bezier(.2, .9, .3, 1.2) backwards, twFloat 3.4s ease-in-out .5s infinite; box-shadow: 0 12px 34px rgb(79 100 240 / .45); }
 .tw-done .ok { position: relative; animation: twPop .5s cubic-bezier(.2, .9, .3, 1.2) backwards; }
 .tw-done .ok::before, .tw-done .ok::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #34c759; animation: twRing 1.2s ease-out .25s backwards; }
