@@ -1,5 +1,13 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+"Недостаточно TON: нужно ещё ≈ 0,011 TON на комиссии":"Not enough TON: another ≈ 0.011 TON is needed for fees",
+"Недостаточно TON: ≈ 0,006 TON остаётся на комиссию":"Not enough TON: ≈ 0.006 TON is kept for fees",
+"Для перевода USDT без кошелька у получателя нужно ≥ 0,115 TON (большая часть вернётся)":"Sending USDT to someone without a wallet needs ≥ 0.115 TON (most of it comes back)",
+"Запас на газ":"Gas reserve",
+"+0,005 TON — остаток получит получатель":"+0.005 TON — the rest goes to the recipient",
+"+0,11 TON — остаток вернётся вам и получателю":"+0.11 TON — the rest returns to you and the recipient",
+"+0,05 TON — излишек вернётся":"+0.05 TON — the excess comes back",
+"Комиссия сети ≈ 0,003 TON (за USDT ≈ 0,02 TON). Переводы в блокчейне нельзя отменить — проверьте адрес.":"Network fee ≈ 0.003 TON (USDT ≈ 0.02 TON). Blockchain transfers can't be undone — check the address.",
 " ещё не создал кошелёк. Откройте чат с ним и отправьте оттуда — деньги дождутся его.":" hasn't created a wallet yet. Open your chat with them and send from there — the money will wait for them.",
 "Недостаточно TON (нужно ещё 0,015 TON на комиссию получателя и 0,01 TON на вашу)":"Not enough TON (another 0.015 TON is needed for the recipient's fee and 0.01 TON for yours)",
 "Для перевода USDT без кошелька у получателя нужно ≥ 0,135 TON на комиссии":"Sending USDT to someone without a wallet needs ≥ 0.135 TON for fees",

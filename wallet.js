@@ -8,15 +8,19 @@
 "use strict";
 (function () {
 const WORDS = "abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid acoustic acquire across act action actor actress actual adapt add addict address adjust admit adult advance advice aerobic affair afford afraid again age agent agree ahead aim air airport aisle alarm album alcohol alert alien all alley allow almost alone alpha already also alter always amateur amazing among amount amused analyst anchor ancient anger angle angry animal ankle announce annual another answer antenna antique anxiety any apart apology appear apple approve april arch arctic area arena argue arm armed armor army around arrange arrest arrive arrow art artefact artist artwork ask aspect assault asset assist assume asthma athlete atom attack attend attitude attract auction audit august aunt author auto autumn average avocado avoid awake aware away awesome awful awkward axis baby bachelor bacon badge bag balance balcony ball bamboo banana banner bar barely bargain barrel base basic basket battle beach bean beauty because become beef before begin behave behind believe below belt bench benefit best betray better between beyond bicycle bid bike bind biology bird birth bitter black blade blame blanket blast bleak bless blind blood blossom blouse blue blur blush board boat body boil bomb bone bonus book boost border boring borrow boss bottom bounce box boy bracket brain brand brass brave bread breeze brick bridge brief bright bring brisk broccoli broken bronze broom brother brown brush bubble buddy budget buffalo build bulb bulk bullet bundle bunker burden burger burst bus business busy butter buyer buzz cabbage cabin cable cactus cage cake call calm camera camp can canal cancel candy cannon canoe canvas canyon capable capital captain car carbon card cargo carpet carry cart case cash casino castle casual cat catalog catch category cattle caught cause caution cave ceiling celery cement census century cereal certain chair chalk champion change chaos chapter charge chase chat cheap check cheese chef cherry chest chicken chief child chimney choice choose chronic chuckle chunk churn cigar cinnamon circle citizen city civil claim clap clarify claw clay clean clerk clever click client cliff climb clinic clip clock clog close cloth cloud clown club clump cluster clutch coach coast coconut code coffee coil coin collect color column combine come comfort comic common company concert conduct confirm congress connect consider control convince cook cool copper copy coral core corn correct cost cotton couch country couple course cousin cover coyote crack cradle craft cram crane crash crater crawl crazy cream credit creek crew cricket crime crisp critic crop cross crouch crowd crucial cruel cruise crumble crunch crush cry crystal cube culture cup cupboard curious current curtain curve cushion custom cute cycle dad damage damp dance danger daring dash daughter dawn day deal debate debris decade december decide decline decorate decrease deer defense define defy degree delay deliver demand demise denial dentist deny depart depend deposit depth deputy derive describe desert design desk despair destroy detail detect develop device devote diagram dial diamond diary dice diesel diet differ digital dignity dilemma dinner dinosaur direct dirt disagree discover disease dish dismiss disorder display distance divert divide divorce dizzy doctor document dog doll dolphin domain donate donkey donor door dose double dove draft dragon drama drastic draw dream dress drift drill drink drip drive drop drum dry duck dumb dune during dust dutch duty dwarf dynamic eager eagle early earn earth easily east easy echo ecology economy edge edit educate effort egg eight either elbow elder electric elegant element elephant elevator elite else embark embody embrace emerge emotion employ empower empty enable enact end endless endorse enemy energy enforce engage engine enhance enjoy enlist enough enrich enroll ensure enter entire entry envelope episode equal equip era erase erode erosion error erupt escape essay essence estate eternal ethics evidence evil evoke evolve exact example excess exchange excite exclude excuse execute exercise exhaust exhibit exile exist exit exotic expand expect expire explain expose express extend extra eye eyebrow fabric face faculty fade faint faith fall false fame family famous fan fancy fantasy farm fashion fat fatal father fatigue fault favorite feature february federal fee feed feel female fence festival fetch fever few fiber fiction field figure file film filter final find fine finger finish fire firm first fiscal fish fit fitness fix flag flame flash flat flavor flee flight flip float flock floor flower fluid flush fly foam focus fog foil fold follow food foot force forest forget fork fortune forum forward fossil foster found fox fragile frame frequent fresh friend fringe frog front frost frown frozen fruit fuel fun funny furnace fury future gadget gain galaxy gallery game gap garage garbage garden garlic garment gas gasp gate gather gauge gaze general genius genre gentle genuine gesture ghost giant gift giggle ginger giraffe girl give glad glance glare glass glide glimpse globe gloom glory glove glow glue goat goddess gold good goose gorilla gospel gossip govern gown grab grace grain grant grape grass gravity great green grid grief grit grocery group grow grunt guard guess guide guilt guitar gun gym habit hair half hammer hamster hand happy harbor hard harsh harvest hat have hawk hazard head health heart heavy hedgehog height hello helmet help hen hero hidden high hill hint hip hire history hobby hockey hold hole holiday hollow home honey hood hope horn horror horse hospital host hotel hour hover hub huge human humble humor hundred hungry hunt hurdle hurry hurt husband hybrid ice icon idea identify idle ignore ill illegal illness image imitate immense immune impact impose improve impulse inch include income increase index indicate indoor industry infant inflict inform inhale inherit initial inject injury inmate inner innocent input inquiry insane insect inside inspire install intact interest into invest invite involve iron island isolate issue item ivory jacket jaguar jar jazz jealous jeans jelly jewel job join joke journey joy judge juice jump jungle junior junk just kangaroo keen keep ketchup key kick kid kidney kind kingdom kiss kit kitchen kite kitten kiwi knee knife knock know lab label labor ladder lady lake lamp language laptop large later latin laugh laundry lava law lawn lawsuit layer lazy leader leaf learn leave lecture left leg legal legend leisure lemon lend length lens leopard lesson letter level liar liberty library license life lift light like limb limit link lion liquid list little live lizard load loan lobster local lock logic lonely long loop lottery loud lounge love loyal lucky luggage lumber lunar lunch luxury lyrics machine mad magic magnet maid mail main major make mammal man manage mandate mango mansion manual maple marble march margin marine market marriage mask mass master match material math matrix matter maximum maze meadow mean measure meat mechanic medal media melody melt member memory mention menu mercy merge merit merry mesh message metal method middle midnight milk million mimic mind minimum minor minute miracle mirror misery miss mistake mix mixed mixture mobile model modify mom moment monitor monkey monster month moon moral more morning mosquito mother motion motor mountain mouse move movie much muffin mule multiply muscle museum mushroom music must mutual myself mystery myth naive name napkin narrow nasty nation nature near neck need negative neglect neither nephew nerve nest net network neutral never news next nice night noble noise nominee noodle normal north nose notable note nothing notice novel now nuclear number nurse nut oak obey object oblige obscure observe obtain obvious occur ocean october odor off offer office often oil okay old olive olympic omit once one onion online only open opera opinion oppose option orange orbit orchard order ordinary organ orient original orphan ostrich other outdoor outer output outside oval oven over own owner oxygen oyster ozone pact paddle page pair palace palm panda panel panic panther paper parade parent park parrot party pass patch path patient patrol pattern pause pave payment peace peanut pear peasant pelican pen penalty pencil people pepper perfect permit person pet phone photo phrase physical piano picnic picture piece pig pigeon pill pilot pink pioneer pipe pistol pitch pizza place planet plastic plate play please pledge pluck plug plunge poem poet point polar pole police pond pony pool popular portion position possible post potato pottery poverty powder power practice praise predict prefer prepare present pretty prevent price pride primary print priority prison private prize problem process produce profit program project promote proof property prosper protect proud provide public pudding pull pulp pulse pumpkin punch pupil puppy purchase purity purpose purse push put puzzle pyramid quality quantum quarter question quick quit quiz quote rabbit raccoon race rack radar radio rail rain raise rally ramp ranch random range rapid rare rate rather raven raw razor ready real reason rebel rebuild recall receive recipe record recycle reduce reflect reform refuse region regret regular reject relax release relief rely remain remember remind remove render renew rent reopen repair repeat replace report require rescue resemble resist resource response result retire retreat return reunion reveal review reward rhythm rib ribbon rice rich ride ridge rifle right rigid ring riot ripple risk ritual rival river road roast robot robust rocket romance roof rookie room rose rotate rough round route royal rubber rude rug rule run runway rural sad saddle sadness safe sail salad salmon salon salt salute same sample sand satisfy satoshi sauce sausage save say scale scan scare scatter scene scheme school science scissors scorpion scout scrap screen script scrub sea search season seat second secret section security seed seek segment select sell seminar senior sense sentence series service session settle setup seven shadow shaft shallow share shed shell sheriff shield shift shine ship shiver shock shoe shoot shop short shoulder shove shrimp shrug shuffle shy sibling sick side siege sight sign silent silk silly silver similar simple since sing siren sister situate six size skate sketch ski skill skin skirt skull slab slam sleep slender slice slide slight slim slogan slot slow slush small smart smile smoke smooth snack snake snap sniff snow soap soccer social sock soda soft solar soldier solid solution solve someone song soon sorry sort soul sound soup source south space spare spatial spawn speak special speed spell spend sphere spice spider spike spin spirit split spoil sponsor spoon sport spot spray spread spring spy square squeeze squirrel stable stadium staff stage stairs stamp stand start state stay steak steel stem step stereo stick still sting stock stomach stone stool story stove strategy street strike strong struggle student stuff stumble style subject submit subway success such sudden suffer sugar suggest suit summer sun sunny sunset super supply supreme sure surface surge surprise surround survey suspect sustain swallow swamp swap swarm swear sweet swift swim swing switch sword symbol symptom syrup system table tackle tag tail talent talk tank tape target task taste tattoo taxi teach team tell ten tenant tennis tent term test text thank that theme then theory there they thing this thought three thrive throw thumb thunder ticket tide tiger tilt timber time tiny tip tired tissue title toast tobacco today toddler toe together toilet token tomato tomorrow tone tongue tonight tool tooth top topic topple torch tornado tortoise toss total tourist toward tower town toy track trade traffic tragic train transfer trap trash travel tray treat tree trend trial tribe trick trigger trim trip trophy trouble truck true truly trumpet trust truth try tube tuition tumble tuna tunnel turkey turn turtle twelve twenty twice twin twist two type typical ugly umbrella unable unaware uncle uncover under undo unfair unfold unhappy uniform unique unit universe unknown unlock until unusual unveil update upgrade uphold upon upper upset urban urge usage use used useful useless usual utility vacant vacuum vague valid valley valve van vanish vapor various vast vault vehicle velvet vendor venture venue verb verify version very vessel veteran viable vibrant vicious victory video view village vintage violin virtual virus visa visit visual vital vivid vocal voice void volcano volume vote voyage wage wagon wait walk wall walnut want warfare warm warrior wash wasp waste water wave way wealth weapon wear weasel weather web wedding weekend weird welcome west wet whale what wheat wheel when where whip whisper wide width wife wild will win window wine wing wink winner winter wire wisdom wise wish witness wolf woman wonder wood wool word work world worry worth wrap wreck wrestle wrist write wrong yard year yellow you young youth zebra zero zone zoo".split(" ");
-const TONWEB_SRC = "vendor/tonweb-0.0.66.js";
+// путь к библиотеке — рядом с этим файлом (в приложении он грузится с сайта)
+const TONWEB_SRC = (() => { try { return new URL("vendor/tonweb-0.0.66.js", document.currentScript && document.currentScript.src || location.href).href; } catch (e) { return "vendor/tonweb-0.0.66.js"; } })();
 const USDT_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs";
 const TONAPI = "https://tonapi.io/v2", TONCENTER = "https://toncenter.com/api";
-const TON_FEE_RESERVE = 10000000n;          // 0,01 TON остаётся на комиссию (и развёртывание кошелька при первом переводе)
+const TON_FEE_RESERVE = 6000000n;           // 0,01 TON остаётся на комиссию (и развёртывание кошелька при первом переводе)
 const JETTON_GAS = 50000000n;
 // перевод тому, у кого нет кошелька: запас на комиссию временного кошелька, чтобы получатель получил ровно сумму
-const CHQ_TON_EXTRA = 15000000n;            // 0,015 TON к переводу TON
-const CHQ_USDT_GAS = 80000000n;             // 0,08 TON во временный кошелёк, чтобы он мог переслать USDT               // 0,05 TON уходит вместе с USDT на газ, излишек возвращается
+const CHQ_TON_EXTRA = 5000000n;             // 0,005 TON к переводу TON: хватает на развёртывание и пересылку, остаток — получателю
+const CHQ_USDT_GAS = 60000000n;             // 0,06 TON во временный кошелёк, чтобы он мог переслать USDT; остаток — получателю               // 0,05 TON уходит вместе с USDT на газ, излишек возвращается
 const te = new TextEncoder(), td = new TextDecoder();
+// запрос к базе без падений: у ответов supabase нет .catch(), поэтому ловим через try
+async function dbq(p) { try { const r = await p; return r || { data: null, error: new Error("empty") }; } catch (e) { return { data: null, error: e }; } }
+const q_rpc = (n, a) => dbq(sb.rpc(n, a));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const lsKey = () => "mestario.tonw.v1." + (state.me && state.me.id);
 const cacheKey = () => "mestario.tonw.cache." + (state.me && state.me.id);
@@ -132,7 +136,7 @@ function devKey() {
 let srvAddr = null, srvAt = 0;
 async function loadSrv(force) {
   if (!force && srvAt && Date.now() - srvAt < 60000) return srvAddr;
-  const r = await sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle().catch(() => null);
+  const r = await dbq(sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle());
   if (r && !r.error) { srvAddr = (r.data && r.data.address) || null; srvAt = Date.now(); }
   return srvAddr;
 }
@@ -147,7 +151,7 @@ async function auto() {
       const srv = await loadSrv(true);
       const v = vault();
       if (v) {
-        if (!srv) { const r = await sb.rpc("ton_account_set", { p_addr: v.addr, p_auto: true }); srvAddr = r.data || srvAddr; }
+        if (!srv) { const r = await q_rpc("ton_account_set", { p_addr: v.addr, p_auto: true }); srvAddr = r.data || srvAddr; }
         else if (!sameAddr(srv, v.addr) && v.soft) { try { localStorage.removeItem(lsKey()); } catch (e) {} }   // на сервере уже другой кошелёк — черновик не нужен
         return;
       }
@@ -155,7 +159,7 @@ async function auto() {
       const words = await genMnemonic(), W = await walletOf(words);
       const sealed = await seal(words, devKey(), W.addr); sealed.soft = true;
       if (!saveVault(sealed)) return;
-      const r = await sb.rpc("ton_account_set", { p_addr: W.addr, p_auto: true });
+      const r = await q_rpc("ton_account_set", { p_addr: W.addr, p_auto: true });
       if (r.error) return;
       srvAddr = r.data;
       if (!sameAddr(r.data, W.addr)) { try { localStorage.removeItem(lsKey()); } catch (e) {} }   // другое устройство успело раньше
@@ -636,7 +640,7 @@ async function resolveTo(s) {
     const name = s.replace(/^@/, "").toLowerCase();
     const { data: p } = await sb.from("profiles").select("id,display_name,username").ilike("username", name).maybeSingle();
     if (!p) return { err: T("Пользователь @") + name + T(" не найден") };
-    const { data: a } = await sb.rpc("ton_address_of", { p_user: p.id });
+    const { data: a } = await q_rpc("ton_address_of", { p_user: p.id });
     if (!a) {
       // кошелька нет — переводим «чеком» в личный чат с ним
       const dm = [...state.chats.values()].find((c) => !c.is_group && c.members && c.members.length === 2 && c.members.some((m) => m.id === p.id));
@@ -685,10 +689,10 @@ VIEWS.send = (arg) => {
       const x = await refresh(true);
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
       const extra = r.cheque ? (cur === "TON" ? CHQ_TON_EXTRA : CHQ_USDT_GAS) : 0n;
-      if (cur === "TON" && units + extra > maxOf()) { err.textContent = r.cheque ? T("Недостаточно TON (нужно ещё 0,015 TON на комиссию получателя и 0,01 TON на вашу)") : T("Недостаточно TON (0,01 TON остаётся на комиссию)"); return; }
+      if (cur === "TON" && units + extra > maxOf()) { err.textContent = r.cheque ? T("Недостаточно TON: нужно ещё ≈ 0,011 TON на комиссии") : T("Недостаточно TON: ≈ 0,006 TON остаётся на комиссию"); return; }
       if (cur === "USDT") {
         if (units > BigInt(x.usdt || 0)) { err.textContent = T("Недостаточно USDT"); return; }
-        if (BigInt(x.ton || 0) < JETTON_GAS + extra + 5000000n) { err.textContent = r.cheque ? T("Для перевода USDT без кошелька у получателя нужно ≥ 0,135 TON на комиссии") : T("Для перевода USDT нужно ≥ 0,055 TON на комиссию сети"); return; }
+        if (BigInt(x.ton || 0) < JETTON_GAS + extra + 5000000n) { err.textContent = r.cheque ? T("Для перевода USDT без кошелька у получателя нужно ≥ 0,115 TON (большая часть вернётся)") : T("Для перевода USDT нужно ≥ 0,055 TON на комиссию сети"); return; }
       }
       show("confirm", { cur, units, to: r.addr, name: r.name, user: r.user, cheque: !!r.cheque, chat: r.chat, cmt: cmt.value.trim(), back: { cur, to: to.value, amt: amt.value, cmt: cmt.value } });
     } finally { go.disabled = false; }
@@ -700,7 +704,7 @@ VIEWS.send = (arg) => {
     h("label", { class: "tw-f" }, h("span", {}, T("Сумма")), h("div", { class: "tw-amt" }, amt,
       h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => { amt.value = plainUnits(maxOf(), DEC[cur]); } }, T("Макс")))),
     avail, h("label", { class: "tw-f" }, h("span", {}, T("Комментарий")), cmt), err, go,
-    h("p", { class: "tw-foot" }, T("Комиссия сети ≈ 0,005 TON. Переводы в блокчейне нельзя отменить — проверьте адрес.")));
+    h("p", { class: "tw-foot" }, T("Комиссия сети ≈ 0,003 TON (за USDT ≈ 0,02 TON). Переводы в блокчейне нельзя отменить — проверьте адрес.")));
   setTimeout(() => (to.value ? amt : to).focus(), 50);
 };
 function pwField(ph) { return h("input", { class: "tw-in", type: "password", placeholder: ph || T("Пароль кошелька"), autocomplete: "current-password" }); }
@@ -722,8 +726,8 @@ VIEWS.confirm = (o) => {
     h("div", {}, h("span", {}, T("Сумма")), h("b", {}, fmtUnits(o.units, dec) + " " + o.cur)),
     h("div", {}, h("span", {}, T("Кому")), h("b", {}, o.cheque ? o.name + T(" · заберёт в чате") : o.name ? o.name + " · " + short(o.to) : o.to)),
     o.cmt ? h("div", {}, h("span", {}, T("Комментарий")), h("b", {}, o.cmt)) : null,
-    h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, o.cheque ? (o.cur === "TON" ? "≈ 0,02 TON" : "≈ 0,13 TON") + T(" (получатель получит ровно сумму)")
-      : o.cur === "TON" ? "≈ 0,005 TON" : "≈ 0,05 TON" + T(" (излишек вернётся)")))),
+    h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, o.cur === "TON" ? (o.cheque ? "≈ 0,006 TON" : "≈ 0,003 TON") : (o.cheque ? "≈ 0,04 TON" : "≈ 0,02 TON"))),
+    o.cheque || o.cur === "USDT" ? h("div", {}, h("span", {}, T("Запас на газ")), h("b", {}, o.cheque && o.cur === "TON" ? T("+0,005 TON — остаток получит получатель") : o.cheque ? T("+0,11 TON — остаток вернётся вам и получателю") : T("+0,05 TON — излишек вернётся"))) : null),
     isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
   if (!isUnlocked()) setTimeout(() => pw.focus(), 50);
   pw.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
@@ -743,7 +747,7 @@ VIEWS.confirm = (o) => {
         // временный кошелёк: ключ — в чек (видят только вы и получатель), деньги — туда
         const tw = await genMnemonic(), TWal = await walletOf(tw);
         const amtS = plainUnits(o.units, dec);
-        const { data: msg, error: ce } = await sb.rpc("ton_cheque_create", { p_chat: o.chat, p_to: o.user.id, p_temp: TWal.addr, p_secret: tw.join(" "), p_cur: o.cur, p_amt: amtS, p_cmt: o.cmt || "" });
+        const { data: msg, error: ce } = await q_rpc("ton_cheque_create", { p_chat: o.chat, p_to: o.user.id, p_temp: TWal.addr, p_secret: tw.join(" "), p_cur: o.cur, p_amt: amtS, p_cmt: o.cmt || "" });
         if (ce || !msg) { err.textContent = T("Не удалось создать перевод: ") + ((ce && ce.message) || ""); return; }
         chq = msg; o.to = TWal.addr;
       }
@@ -751,7 +755,7 @@ VIEWS.confirm = (o) => {
         q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: o.to, amount: new BN((o.units + CHQ_TON_EXTRA).toString()), seqno, payload: o.cmt || undefined, sendMode: 3 });
       } else if (o.cheque) {
         const x = await refresh(true);
-        if (!x || !x.usdtWallet) { err.textContent = T("Не нашли ваш USDT-кошелёк. Попробуйте позже."); await sb.rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); return; }
+        if (!x || !x.usdtWallet) { err.textContent = T("Не нашли ваш USDT-кошелёк. Попробуйте позже."); await q_rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); return; }
         const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(x.usdtWallet, true) });
         const payload = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(o.units.toString()), toAddress: new TW.utils.Address(o.to),
           responseAddress: new TW.utils.Address(me.addr), forwardAmount: new BN(1) });
@@ -773,7 +777,7 @@ VIEWS.confirm = (o) => {
       const cell = await q.getQuery();
       const boc = TW.utils.bytesToBase64(await cell.toBoc(false));
       try { await sendBoc(boc); }
-      catch (e) { if (chq) await sb.rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); throw e; }   // не ушло — чек закрываем
+      catch (e) { if (chq) await q_rpc("ton_cheque_done", { p_id: chq.pay.chq, p_to: me.addr }); throw e; }   // не ушло — чек закрываем
       acc = null; hist = null;
       let posted = false;
       if (chq) { posted = true; try { touchChat(chq); if (state.activeId === chq.chat_id) addMsg(chq); } catch (e) {} }
@@ -948,7 +952,7 @@ async function finish(words, addr, pass) {
   if (!saveVault(await seal(words, pass, addr))) throw new Error(T("не хватает места в хранилище браузера"));
   unlocked = { addr, words, until: Date.now() + 5 * 60000 };
   acc = null; hist = null;
-  const { error } = await sb.rpc("ton_account_set", { p_addr: addr });
+  const { error } = await q_rpc("ton_account_set", { p_addr: addr });
   if (!error) { srvAddr = addr; srvAt = Date.now(); }
   if (error) toast(T("Кошелёк сохранён, но адрес не записан на сервер — переводы по @юзернейму пока недоступны"));
 }
@@ -1013,7 +1017,7 @@ VIEWS.claim = async (id) => {
   put(box, info, err);
   const fail = (t, retry) => { info.textContent = ""; err.textContent = t; if (retry) put(h("button", { class: "tw-btn", type: "button", onclick: () => show("claim", id) }, T("Попробовать ещё раз"))); };
   try {
-    const { data: c, error } = await sb.rpc("ton_cheque_take", { p_id: id });
+    const { data: c, error } = await q_rpc("ton_cheque_take", { p_id: id });
     if (error || !c) { fail(T("Этот перевод уже получен или возвращён отправителю.")); return; }
     const me = myAddr(); if (!me) { fail(T("Сначала создайте кошелёк")); return; }
     const words = c.secret.split(" ");
@@ -1046,7 +1050,7 @@ VIEWS.claim = async (id) => {
       if (b && b.ton != null && BigInt(b.ton) < 3000000n && BigInt(b.usdt || 0) === 0n) ok = true;
     }
     if (!ok) { fail(T("Перевод отправлен, но подтверждение задерживается. Загляните через минуту — деньги никуда не денутся."), true); return; }
-    await sb.rpc("ton_cheque_done", { p_id: id, p_to: me });
+    await q_rpc("ton_cheque_done", { p_id: id, p_to: me });
     payStat.delete("chq" + id); acc = null; hist = null;
     const refund = c.role === "sender";
     body().replaceChildren();
@@ -1060,7 +1064,7 @@ VIEWS.claim = async (id) => {
 
 /* ---------- перевод из чата ---------- */
 async function openSend(peer, chatId) {
-  const { data: a } = await sb.rpc("ton_address_of", { p_user: peer.id });
+  const { data: a } = await q_rpc("ton_address_of", { p_user: peer.id });
   ensureDlg(); if (!dlg.open) dlg.showModal();
   await loadSrv(false);
   sendCtx = a ? { chat: chatId, addr: a, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || "") }
@@ -1101,7 +1105,7 @@ function chequeCard(m, mine) {
   const card = h("div", { class: "pay-card chq", "data-chq": id },
     title, h("span", { class: "a" }, (mine ? "−" : "+") + amount), p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null, sub, st, act);
   const paint = async () => {
-    const { data } = await sb.rpc("ton_cheque_info", { p_id: id }).catch(() => ({ data: null }));
+    const { data } = await dbq(sb.rpc("ton_cheque_info", { p_id: id }));
     if (!data) { st.className = "st bad"; st.textContent = T("Нет доступа"); return; }
     act.replaceChildren();
     if (data.status === "claimed") { st.className = "st"; st.textContent = T("Получено"); sub.textContent = mine ? T("Получатель забрал перевод") : T("Деньги на вашем кошельке"); }
