@@ -113,8 +113,9 @@ async function aesKey(pass, salt, it) {
   const k = await crypto.subtle.importKey("raw", te.encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: it }, k, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
-async function seal(words, pass, addr) {
-  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), it = 250000;
+async function seal(words, pass, addr, it) {
+  it = it || 250000;
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aesKey(pass, salt, it), te.encode(words.join(" "))));
   return { v: 1, addr, it, salt: b64u(salt), iv: b64u(iv), ct: b64u(ct), at: Date.now() };
 }
@@ -124,6 +125,19 @@ async function unseal(v, pass) {
     return td.decode(pt).split(" ");
   } catch (e) { return null; }
 }
+/* ---------- копия на сервере: тот же шифр паролем кошелька, сервер видит только шифротекст ---------- */
+const cloudKey = () => "mestario.tonw.cloud." + (state.me && state.me.id);
+const cloudDone = (addr) => { try { return localStorage.getItem(cloudKey()) === addr; } catch (e) { return false; } };
+async function cloudPush(words, pass, addr) {
+  try {
+    const b = await seal(words, pass, addr, 600000);
+    const r = await q_rpc("ton_backup_set", { p_blob: b });
+    if (r.error) return false;
+    try { localStorage.setItem(cloudKey(), addr); } catch (e) {}
+    return true;
+  } catch (e) { return false; }
+}
+async function cloudHas() { const r = await q_rpc("ton_backup_has", {}); return !r.error && r.data === true; }
 // «черновой» кошелёк создаётся сам при входе: ключ шифрования лежит рядом (защиты нет), пока человек не задаст пароль
 const dkKey = () => "mestario.tonw.dk." + (state.me && state.me.id);
 function devKey() {
@@ -174,7 +188,7 @@ function need(target, arg) {
   if (m === "full") { show(target, arg); return; }
   const then = { v: target, arg };
   if (m === "soft") show("secure", { then });
-  else if (m === "watch") show("import", { expect: srvAddr, then });
+  else if (m === "watch") show("recover", { then });
   else show("start", { then });
 }
 function vault() { try { const v = JSON.parse(localStorage.getItem(lsKey()) || "null"); return v && v.v === 1 && v.addr ? v : null; } catch (e) { return null; } }
@@ -251,6 +265,9 @@ async function loadEvents(addr, limit) {
 const CSS = `
 #dlgTonW { width: min(520px, 100vw); max-width: 100vw; height: min(820px, 100dvh); max-height: 100dvh; padding: 0; border: 0; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; }
 @media (max-width: 560px) { #dlgTonW { width: 100vw; height: 100dvh; border-radius: 0; } }
+.tw-nav svg, .tw-nav .dsk { display: none; }
+.tw-ov, .tw-ov > div { display: flex; flex-direction: column; gap: 16px; }
+.tw-hrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 #dlgTonW::backdrop { background: rgb(0 0 0 / .55); }
 .tw-wrap { display: flex; flex-direction: column; height: 100%; }
 .tw-top { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent); }
@@ -418,6 +435,35 @@ button.tw-row:active, a.tw-row:active { transform: scale(.985); }
 .pay-card .st.wait { animation: twWait 1.3s ease-in-out infinite; }
 .pay-card .st.flip { animation: twPop .4s cubic-bezier(.2, .9, .3, 1.3); }
 @media (prefers-reduced-motion: reduce) { #dlgTonW, #dlgTonW *, #dlgTonW *::before, #dlgTonW *::after, .pay-card, .pay-card * { animation: none !important; transition: none !important; } .tw-done .ok svg path { stroke-dashoffset: 0; } }
+@media (min-width: 900px) and (min-height: 600px) {
+  #dlgTonW { width: min(1080px, 94vw); height: min(760px, 92vh); border-radius: 26px; }
+  .tw-wrap { display: grid; grid-template-columns: 250px 1fr; grid-template-rows: auto 1fr; grid-template-areas: "nav top" "nav body"; }
+  .tw-wrap.nonav { grid-template-columns: 1fr; grid-template-areas: "top" "body"; }
+  .tw-top { grid-area: top; padding: 18px 28px 14px; }
+  .tw-body { grid-area: body; padding: 24px 32px 32px; gap: 18px; }
+  .tw-body > * { width: 100%; max-width: 520px; margin-inline: auto; box-sizing: border-box; }
+  .tw-body.wide > * { max-width: none; }
+  .tw-nav { grid-area: nav; display: flex; flex-direction: column; justify-content: flex-start; flex-wrap: nowrap; gap: 4px; padding: 20px 14px; border-top: 0; border-right: 1px solid color-mix(in srgb, var(--ink) 8%, transparent); background: color-mix(in srgb, var(--ink) 3%, transparent); overflow-y: auto; }
+  .tw-nav .dsk { display: flex; }
+  .tw-nav button + button::before { content: none; }
+  .tw-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; border-radius: 12px; font-size: 15.5px; text-align: left; color: color-mix(in srgb, var(--ink) 70%, transparent); }
+  .tw-nav button svg { display: block; width: 20px; height: 20px; flex: none; }
+  .tw-nav button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+  .tw-nav button.on { background: rgb(79 141 255 / .14); color: #4f8dff; }
+  .tw-nav button.on::after { content: none; }
+  .tw-nav .tw-chip:not(:hover) { color: color-mix(in srgb, var(--ink) 60%, transparent); }
+  .tw-brand { align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 8px 18px; display: grid !important; grid-template-columns: auto 1fr; }
+  .tw-brand .logo { grid-row: span 2; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(150deg, #3d78e6, #6a4ff0); color: #fff; }
+  .tw-brand .logo svg { display: block; width: 22px; height: 22px; }
+  .tw-brand b { font-size: 18px; } .tw-brand small { font-size: 12px; color: color-mix(in srgb, var(--ink) 50%, transparent); }
+  .tw-nav .tw-chip { margin-top: auto; justify-content: space-between; font-family: ui-monospace, Menlo, monospace; font-size: 13px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .tw-nav .tw-chip svg { width: 16px; height: 16px; }
+  .tw-top h2 svg { display: none; }
+  .tw-ov { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .tw-card { padding: 30px 26px 24px; }
+  .tw-card .big { font-size: 52px; }
+  .tw-body.wide .tw-foot { text-align: left; }
+}
 `;
 
 /* ---------- значки ---------- */
@@ -433,6 +479,7 @@ const SV = {
   close: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
   back: '<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  coins: '<ellipse cx="10" cy="7" rx="6" ry="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M4 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7M4 12v5c0 1.7 2.7 3 6 3 1.3 0 2.5-.2 3.5-.6" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="17.5" cy="16.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.9"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" fill="none" stroke="currentColor" stroke-width="1.9"/>',
 };
 function sv(name) { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); s.innerHTML = SV[name]; return s; }
@@ -465,11 +512,23 @@ function setHead(title, back) {
   const m = mode();
   $("twPill").textContent = m === "full" ? T("Подключён") : m === "soft" ? T("Не защищён") : m === "watch" ? T("Просмотр") : T("Не создан");
   $("twPill").className = "tw-pill" + (m === "full" ? "" : m === "soft" ? " warn" : " off");
-  const nav = $("twNav"), tabs = myAddr() ? [["overview", T("Обзор")], ["assets", T("Активы")], ["activity", T("История")], ["settings", T("Настройки")]] : [];
+  const nav = $("twNav"), has = !!myAddr();
+  const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1],
+    ["activity", T("История"), "hist"], ["security", T("Безопасность"), "shield", 1], ["settings", T("Настройки"), "gear"]] : [];
+  const cur = SECT[view] || view;
   nav.hidden = !tabs.length;
-  nav.replaceChildren(...tabs.map(([k, l]) => h("button", { type: "button", class: k === view ? "on" : "", onclick: () => show(k) }, l)));
+  dlg.querySelector(".tw-wrap").classList.toggle("nonav", !tabs.length);
+  const addr = myAddr();
+  nav.replaceChildren(
+    h("div", { class: "tw-brand dsk" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Кошелёк")), h("small", {}, "TON · USDT")),
+    ...tabs.map(([k, l, ic, d]) => h("button", { type: "button", class: (k === cur ? "on" : "") + (d ? " dsk" : ""), onclick: () => (k === "send" || k === "security" ? need(k) : show(k)) }, sv(ic), h("span", {}, l))),
+    addr ? h("button", { type: "button", class: "tw-chip dsk", title: T("Скопировать адрес"), onclick: () => copyText(addr, T("Адрес скопирован")) }, h("span", {}, short(addr)), sv("copy")) : null);
 }
 const TABS = ["overview", "assets", "activity", "settings", "start"];
+// к какому пункту бокового меню относится экран
+const SECT = { asset: "assets", confirm: "send", done: "send", wsettings: "settings", recover: "overview", cloud: "overview", import: "overview", email: "overview", pass: "overview", seed: "overview", check: "overview", secure: "overview" };
+const WIDE = ["overview", "assets", "asset", "activity", "settings"];
+const isDesk = () => matchMedia("(min-width: 900px) and (min-height: 600px)").matches;
 let navDir = "tab";
 function show(v, arg) {
   const dir = navDir !== "tab" ? navDir : TABS.includes(v) ? "tab" : "fwd";
@@ -480,6 +539,7 @@ function show(v, arg) {
   b.replaceChildren();
   b.scrollTop = 0;
   b.classList.remove("fwd", "back", "tab"); void b.offsetWidth; b.classList.add(dir);
+  b.classList.toggle("wide", WIDE.includes(v));
   fn(arg);
   stagger(b);
 }
@@ -555,10 +615,16 @@ VIEWS.overview = () => {
   const list = assetRows(a), m = mode();
   const banner = m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
-    : m === "watch" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("import", { expect: srvAddr, then: { v: "overview" } }) },
-      h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Только просмотр")), h("span", {}, T("Чтобы отправлять с этого устройства, введите сид-фразу"))), h("span", { class: "chev" }, "›")) : null;
-  put(card, banner, h("h3", { class: "tw-h" }, T("Мои активы")), list,
-    h("p", { class: "tw-foot" }, T("Ключи хранятся только на этом устройстве. Mestario не может ни потратить, ни восстановить ваши средства.")));
+    : m === "watch" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("recover", { then: { v: "overview" } }) },
+      h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Только просмотр")), h("span", {}, T("Чтобы отправлять с этого устройства, войдите паролем кошелька и кодом из почты"))), h("span", { class: "chev" }, "›")) : null;
+  const recent = h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Загружаем…")))));
+  put(h("div", { class: "tw-ov" },
+    h("div", { class: "l" }, card, banner),
+    h("div", { class: "r" }, h("h3", { class: "tw-h" }, T("Мои активы")), list,
+      isDesk() ? h("div", { class: "tw-hrow" }, h("h3", { class: "tw-h" }, T("Последние операции")), h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => show("activity") }, T("Все"))) : null,
+      isDesk() ? recent : null,
+      h("p", { class: "tw-foot" }, T("Ключи хранятся на ваших устройствах, на сервере — только копия, зашифрованная паролем кошелька. Mestario не может ни потратить, ни восстановить ваши средства.")))));
+  if (isDesk()) history(false).then((l) => { if (view === "overview") recent.replaceWith(histList(l ? l.slice(0, 5) : l)); });
   refresh(false).then((n) => { if (view !== "overview" || !n) return; const tt = totals(n); big.className = "big"; countTo(big, tt.usd, usd); if (JSON.stringify([n.ton, n.usdt, n.tonUsd]) !== JSON.stringify(a ? [a.ton, a.usdt, a.tonUsd] : 0)) list.replaceWith(assetRows(n)); });
 };
 VIEWS.assets = () => {
@@ -714,6 +780,7 @@ async function unlock(pass) {
   const words = await unseal(v, pass);
   if (!words) return null;
   unlocked = { addr: v.addr, words, until: Date.now() + 5 * 60000 };
+  if (!v.soft && srvAddr && sameAddr(srvAddr, v.addr) && !cloudDone(srvAddr)) cloudPush(words, pass, srvAddr);   // кошельки, созданные до копии на сервере
   return words;
 }
 const isUnlocked = () => { const v = vault(); return !!(unlocked && v && unlocked.addr === v.addr && Date.now() < unlocked.until); };
@@ -866,9 +933,11 @@ VIEWS.security = () => {
     if (p1.value.length < 6) { err2.textContent = T("Новый пароль — минимум 6 символов"); return; }
     if (p1.value !== p2.value) { err2.textContent = T("Пароли не совпадают"); return; }
     saveVault(await seal(words, p1.value, vault().addr));
+    if (srvAddr) cloudPush(words, p1.value, srvAddr);
     p1.value = p2.value = ""; toast(T("Пароль кошелька изменён"));
   };
-  put(h("p", { class: "tw-p" }, T("Сид-фраза из 24 слов — единственный способ восстановить кошелёк, если вы потеряете устройство или удалите приложение. Запишите её на бумаге и храните в надёжном месте.")),
+  put(h("div", { class: "tw-note tw-info" }, srvAddr && cloudDone(srvAddr) ? T("Вход с другого устройства включён: там достаточно пароля кошелька и кода из почты. На сервере хранится только копия, зашифрованная этим паролем.") : T("Чтобы входить в кошелёк с других устройств паролем и кодом из почты, откройте сид-фразу ниже паролем один раз — копия сохранится.")),
+    h("p", { class: "tw-p" }, T("Сид-фраза из 24 слов — запасной ключ: с ней кошелёк можно восстановить, даже если вы забудете пароль. Запишите её на бумаге и храните в надёжном месте.")),
     h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, showBtn, out,
     h("h3", { class: "tw-h" }, T("Пароль")), p1, p2, err2, chg);
 };
@@ -882,10 +951,11 @@ VIEWS.start = async (o) => {
   put(h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("wallet")),
       h("b", { style: "font-size:24px" }, T("Кошелёк Mestario")),
       h("p", { class: "tw-p" }, T("Храните и переводите TON и USDT прямо в мессенджере — друзьям в чате или по @юзернейму."))),
-    has ? h("div", { class: "tw-note" }, T("Ваш кошелёк ") + short(has) + T(" создан на другом устройстве. Чтобы пользоваться им здесь, восстановите его по сид-фразе.")) : null,
-    h("button", { class: "tw-btn", type: "button", onclick: () => show(has ? "import" : "email", has ? { expect: has, then } : { next: "create", then }) }, has ? T("Восстановить по сид-фразе") : T("Создать кошелёк")),
+    has ? h("div", { class: "tw-note" }, T("Ваш кошелёк ") + short(has) + T(" создан на другом устройстве. Войдите в него паролем кошелька и кодом из почты.")) : null,
+    h("button", { class: "tw-btn", type: "button", onclick: () => show(has ? "recover" : "email", has ? { then } : { next: "create", then }) }, has ? T("Войти в кошелёк") : T("Создать кошелёк")),
+    has ? h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("import", { expect: has, then }) }, T("Войти по сид-фразе")) : null,
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("email", has ? { next: "create", replace: true, then } : { next: "import", then }) }, has ? T("Создать новый кошелёк") : T("У меня есть сид-фраза")),
-    h("p", { class: "tw-foot" }, T("Кошелёк некастодиальный: 24 слова и ключи хранятся только у вас. Mestario не видит их и не может восстановить.")));
+    h("p", { class: "tw-foot" }, T("Кошелёк некастодиальный: ключи у вас, на сервере — только копия, зашифрованная вашим паролем. Mestario не видит ни слова, ни пароль.")));
 };
 VIEWS.secure = async (o) => {
   const v = vault();
@@ -896,12 +966,12 @@ VIEWS.secure = async (o) => {
 };
 // подтверждение почты кодом — без этого кошелёк не создаётся
 VIEWS.email = (o) => {
-  setHead(T("Почта"), o.secure ? "overview" : "start");
+  setHead(T("Почта"), o.secure || o.next === "cloud" ? "overview" : "start");
   const email = state.me.email || "";
   if (!email || /@deleted\.invalid$/.test(email)) { put(h("div", { class: "tw-note" }, T("Чтобы создать кошелёк, к аккаунту должна быть привязана электронная почта."))); return; }
   const masked = email.replace(/^(.{2})[^@]*/, "$1•••");
   const code = h("input", { class: "tw-in", inputmode: "numeric", autocomplete: "one-time-code", placeholder: T("Код из письма"), maxlength: "10" });
-  const err = h("div", { class: "tw-err" }), info = h("p", { class: "tw-p" }, T("Отправим код на ") + masked + T(" — так мы убедимся, что кошелёк создаёте именно вы."));
+  const err = h("div", { class: "tw-err" }), info = h("p", { class: "tw-p" }, T("Отправим код на ") + masked + (o.next === "cloud" ? T(" — так мы убедимся, что в кошелёк входите именно вы.") : T(" — так мы убедимся, что кошелёк создаёте именно вы.")));
   const sendBtn = h("button", { class: "tw-btn ghost", type: "button" }, T("Отправить код"));
   const ok = h("button", { class: "tw-btn", type: "button", disabled: true }, T("Подтвердить"));
   sendBtn.onclick = async () => {
@@ -919,7 +989,7 @@ VIEWS.email = (o) => {
     const { error } = await sb.auth.verifyOtp({ email, token: tk, type: "email" });
     ok.disabled = false;
     if (error) { err.textContent = T("Неверный или устаревший код"); return; }
-    show(o.next === "import" ? "import" : "pass", o);   // o.then едет дальше
+    show(o.next === "import" ? "import" : o.next === "cloud" ? "cloud" : "pass", o);   // o.then едет дальше
   };
   code.addEventListener("keydown", (e) => { if (e.key === "Enter") ok.click(); });
   put(info, sendBtn, h("label", { class: "tw-f" }, h("span", {}, T("Код")), code), err, ok);
@@ -943,7 +1013,7 @@ VIEWS.pass = (o) => {
     } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
     finally { go.disabled = false; go.classList.remove("busy"); }
   };
-  put(h("p", { class: "tw-p" }, T("Пароль защищает кошелёк на этом устройстве: он нужен для переводов и чтобы посмотреть сид-фразу. Восстановить его нельзя — но всегда можно войти заново по сид-фразе.")),
+  put(h("p", { class: "tw-p" }, T("Пароль нужен для переводов и чтобы войти в кошелёк на другом устройстве — вместе с кодом из почты. Mestario хранит только зашифрованную им копию и не знает пароль, поэтому восстановить его нельзя — но всегда можно войти по сид-фразе.")),
     p1, p2, err, go);
   setTimeout(() => p1.focus(), 50);
 };
@@ -952,14 +1022,14 @@ async function finish(words, addr, pass) {
   if (!saveVault(await seal(words, pass, addr))) throw new Error(T("не хватает места в хранилище браузера"));
   unlocked = { addr, words, until: Date.now() + 5 * 60000 };
   acc = null; hist = null;
-  const { error } = await q_rpc("ton_account_set", { p_addr: addr });
-  if (!error) { srvAddr = addr; srvAt = Date.now(); }
+  const { data, error } = await q_rpc("ton_account_set", { p_addr: addr });
+  if (!error) { srvAddr = data || addr; srvAt = Date.now(); if (!(await cloudPush(words, pass, srvAddr))) toast(T("Копия кошелька на сервер не сохранилась — на другом устройстве пока войдите по сид-фразе")); }
   if (error) toast(T("Кошелёк сохранён, но адрес не записан на сервер — переводы по @юзернейму пока недоступны"));
 }
 VIEWS.seed = (o) => {
   setHead(T("Сид-фраза"));
   const grid = h("div", { class: "tw-words" }, ...o.words.map((w) => h("span", {}, w)));
-  put(h("div", { class: "tw-note" }, T("Запишите 24 слова по порядку на бумаге. Это единственный способ восстановить кошелёк. Никому их не показывайте — даже поддержке Mestario.")),
+  put(h("div", { class: "tw-note" }, T("Запишите 24 слова по порядку на бумаге. Это запасной ключ, если вы забудете пароль кошелька. Никому их не показывайте — даже поддержке Mestario.")),
     grid,
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(o.words.join(" "), T("Скопировано. Не храните сид-фразу в заметках и скриншотах.")) }, T("Скопировать")),
     h("button", { class: "tw-btn", type: "button", onclick: () => show("check", o) }, T("Я записал(а) слова")));
@@ -981,6 +1051,54 @@ VIEWS.check = (o) => {
     ...ins.map((x, k) => h("label", { class: "tw-f" }, h("span", {}, T("Слово №") + (idx[k] + 1)), x)), err, go,
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("seed", o) }, T("Показать слова ещё раз")));
 };
+// вход на новом устройстве: код из почты → зашифрованная копия с сервера → пароль кошелька
+VIEWS.recover = async (o) => {
+  o = o || {};
+  setHead(T("Вход в кошелёк"), "overview");
+  put(h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Проверяем…"))))));
+  const has = await cloudHas();
+  if (view !== "recover") return;
+  if (has) { show("email", { next: "cloud", then: o.then }); return; }
+  show("import", { expect: srvAddr, then: o.then, nocloud: true });
+};
+let cloudFails = 0, cloudWait = 0;
+VIEWS.cloud = async (o) => {
+  setHead(T("Пароль кошелька"), "overview");
+  const r = await q_rpc("ton_backup_get", {});
+  if (view !== "cloud") return;
+  if (r.error || !r.data) {
+    put(h("div", { class: "tw-note" }, r.error && /code/i.test(r.error.message || "") ? T("Код из почты устарел — запросите новый.") : T("Копия кошелька на сервере не найдена. Войдите по сид-фразе.")),
+      h("button", { class: "tw-btn", type: "button", onclick: () => show(r.error ? "recover" : "import", { expect: srvAddr, then: o.then }) }, r.error ? T("Получить код") : T("Войти по сид-фразе")));
+    return;
+  }
+  const blob = r.data, pw = pwField(T("Пароль кошелька")), err = h("div", { class: "tw-err" });
+  const go = h("button", { class: "tw-btn", type: "button" }, T("Войти"));
+  go.onclick = async () => {
+    err.textContent = "";
+    if (Date.now() < cloudWait) { err.textContent = T("Слишком много попыток. Подождите ") + Math.ceil((cloudWait - Date.now()) / 1000) + T(" с"); return; }
+    if (!pw.value) { err.textContent = T("Введите пароль"); return; }
+    go.disabled = true; go.classList.add("busy");
+    try {
+      const words = await unseal(blob, pw.value);
+      if (!words) { cloudFails++; if (cloudFails >= 5) { cloudWait = Date.now() + 30000 * (cloudFails - 4); } err.textContent = T("Неверный пароль кошелька"); return; }
+      cloudFails = 0;
+      const W = await walletOf(words);
+      if (srvAddr && !sameAddr(W.addr, srvAddr)) { err.textContent = T("Копия не совпадает с вашим кошельком. Войдите по сид-фразе."); return; }
+      if (!saveVault(await seal(words, pw.value, W.addr))) throw new Error(T("не хватает места в хранилище браузера"));
+      try { localStorage.setItem(cloudKey(), srvAddr || W.addr); } catch (e) {}
+      unlocked = { addr: W.addr, words, until: Date.now() + 5 * 60000 };
+      acc = null; hist = null;
+      toast(T("Кошелёк подключён на этом устройстве"));
+      afterSetup(o.then);
+    } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
+    finally { go.disabled = false; go.classList.remove("busy"); }
+  };
+  pw.addEventListener("keydown", (e) => { if (e.key === "Enter") go.click(); });
+  put(h("p", { class: "tw-p" }, T("Почта подтверждена. Введите пароль кошелька — тот, что вы задали при создании.")),
+    h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, go,
+    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("import", { expect: srvAddr, then: o.then }) }, T("Забыли пароль? Войти по сид-фразе")));
+  setTimeout(() => pw.focus(), 50);
+};
 VIEWS.import = (o) => {
   o = o || {};
   setHead(T("Восстановление"), myAddr() ? "overview" : "start");
@@ -1000,7 +1118,8 @@ VIEWS.import = (o) => {
     } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
     finally { go.disabled = false; }
   };
-  put(h("p", { class: "tw-p" }, T("Введите 24 слова сид-фразы. Подходит и кошелёк из Tonkeeper (тип v4R2).")), ta, err, go);
+  put(o.nocloud ? h("div", { class: "tw-note tw-info" }, T("Копии этого кошелька на сервере пока нет: она появится, когда вы откроете кошелёк паролем на устройстве, где его создали. Сейчас войти можно по сид-фразе.")) : null,
+    h("p", { class: "tw-p" }, T("Введите 24 слова сид-фразы. Подходит и кошелёк из Tonkeeper (тип v4R2).")), ta, err, go);
   setTimeout(() => ta.focus(), 50);
 };
 
