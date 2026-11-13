@@ -742,8 +742,7 @@ VIEWS.overview = () => {
   if (a && rates) countTo(big, t.val, fm);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
-    h("div", { class: "tw-acts" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
-      act("swap", T("Обмен"), () => toast(T("Обмен TON ↔ USDT появится в следующем обновлении")))));
+    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive"))));
   const list = assetRows(a), m = mode();
   const banner = m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
