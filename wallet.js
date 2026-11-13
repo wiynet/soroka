@@ -214,23 +214,82 @@ const tonapi = (path, opt) => net("tonapi", TONAPI + path, opt);
 async function j(r) { if (!r.ok) { const e = new Error("http " + r.status); e.status = r.status; throw e; } return r.json(); }
 
 async function loadAccount(addr) {
-  const [info, jet, rate] = await Promise.all([
+  const [info, jet] = await Promise.all([
     net("toncenter", TONCENTER + "/v3/walletInformation?use_v2=false&address=" + encodeURIComponent(addr)).then(j).catch(() => null),
-    tonapi("/accounts/" + encodeURIComponent(addr) + "/jettons?currencies=usd").then(j).catch((e) => (e.status === 404 ? { balances: [] } : null)),
-    tonapi("/rates?tokens=ton&currencies=usd").then(j).catch(() => null)]);
+    tonapi("/accounts/" + encodeURIComponent(addr) + "/jettons").then(j).catch((e) => (e.status === 404 ? { balances: [] } : null))]);
   const out = { at: Date.now(), ton: info ? String(info.balance || "0") : null, seqno: info && info.seqno != null ? Number(info.seqno) : 0,
-    status: info ? info.status : null, usdt: null, usdtWallet: null, tonUsd: null, usdtUsd: 1 };
+    status: info ? info.status : null, usdt: null, usdtWallet: null };
   if (jet) {
     out.usdt = "0";
     for (const b of jet.balances || []) if (sameAddr(b.jetton && b.jetton.address, USDT_MASTER)) {
       out.usdt = String(b.balance || "0"); out.usdtWallet = b.wallet_address && b.wallet_address.address;
-      const pr = b.price && b.price.prices && b.price.prices.USD; if (pr) out.usdtUsd = Number(pr);
     }
   }
-  const tp = rate && rate.rates && rate.rates.TON && rate.rates.TON.prices && rate.rates.TON.prices.USD;
-  if (tp) out.tonUsd = Number(tp);
   return out;
 }
+/* ---------- курс TON и USDT в $ и ₽: tonapi, обновляем раз в 5 минут ---------- */
+const FIATS = { usd: { sym: "$", loc: "en-US", pre: true, name: "Доллар США" }, rub: { sym: "₽", loc: "ru-RU", pre: false, name: "Российский рубль" } };
+const fiatKey = "mestario.tonw.fiat", rateKey = "mestario.tonw.rates", RATE_TTL = 5 * 60000;
+function fiat() { try { const f = localStorage.getItem(fiatKey); return FIATS[f] ? f : "usd"; } catch (e) { return "usd"; } }
+function setFiat(f) { try { localStorage.setItem(fiatKey, f); } catch (e) {} }
+function money(n, dig, f) {
+  f = f || fiat(); const F = FIATS[f]; n = Number(n) || 0; dig = dig == null ? 2 : dig;
+  const s = Math.abs(n).toLocaleString(F.loc, { minimumFractionDigits: dig, maximumFractionDigits: dig });
+  return (n < 0 ? "−" : "") + (F.pre ? F.sym + s : s + "\u00a0" + F.sym);
+}
+const priceDig = (p) => (p > 0 && p < 10 ? (fiat() === "usd" ? 3 : 2) : 2);
+const pct = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toLocaleString(fiat() === "rub" ? "ru-RU" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\u00a0%";
+let rates = null, ratesBusy = null;
+function cachedRates() { try { const r = JSON.parse(localStorage.getItem(rateKey) || "null"); return r && r.TON ? r : null; } catch (e) { return null; } }
+function loadRates(force) {
+  if (!rates) rates = cachedRates();
+  if (!force && rates && Date.now() - rates.at < RATE_TTL) return Promise.resolve(rates);
+  if (ratesBusy) return ratesBusy;
+  ratesBusy = (async () => {
+    try {
+      const r = await tonapi("/rates?tokens=ton," + USDT_MASTER + "&currencies=usd,rub").then(j);
+      const num = (x) => (x == null ? null : parseFloat(String(x).replace("−", "-").replace(",", ".")));
+      const pick = (o) => o && o.prices && { usd: num(o.prices.USD), rub: num(o.prices.RUB), d24: { usd: num(o.diff_24h && o.diff_24h.USD), rub: num(o.diff_24h && o.diff_24h.RUB) } };
+      const ton = pick(r.rates && r.rates.TON); if (!ton || !ton.usd) throw new Error("no rate");
+      const uk = Object.keys(r.rates).find((k) => k !== "TON");
+      const usdt = pick(r.rates[uk]) || { usd: 1, rub: ton.rub / ton.usd, d24: { usd: 0, rub: 0 } };
+      if (!usdt.rub) usdt.rub = usdt.usd * ton.rub / ton.usd;
+      rates = { at: Date.now(), TON: ton, USDT: usdt };
+      try { localStorage.setItem(rateKey, JSON.stringify(rates)); } catch (e) {}
+    } catch (e) { console.warn("rates", e); }
+    finally { setTimeout(() => { ratesBusy = null; }, 0); }
+    return rates;
+  })();
+  return ratesBusy;
+}
+const rateOf = (cur) => { const r = rates && rates[cur]; return r ? r[fiat()] || 0 : cur === "USDT" && fiat() === "usd" ? 1 : 0; };
+const diffOf = (cur) => { const r = rates && rates[cur]; return r && r.d24 ? r.d24[fiat()] : null; };
+// пока окно открыто — каждые 5 минут свежий курс; экраны подписываются и обновляют цифры на месте
+let rateSubs = [], rateTimer = null;
+const onRates = (fn) => rateSubs.push(fn);
+function ratesTick() { loadRates(true).then(() => { for (const fn of rateSubs) try { fn(); } catch (e) {} }); }
+function startRates() {
+  if (!rateTimer) rateTimer = setInterval(ratesTick, RATE_TTL);
+  if (!rates || Date.now() - rates.at >= RATE_TTL) ratesTick(); else loadRates(false);
+}
+function stopRates() { clearInterval(rateTimer); rateTimer = null; }
+
+// график цены: точки [время, цена]
+const PERIODS = [["H", "Ч", 3600, "Последний час"], ["D", "Д", 86400, "Последний день"], ["W", "Н", 7 * 86400, "Последняя неделя"],
+  ["M", "М", 30 * 86400, "Последний месяц"], ["6M", "6М", 182 * 86400, "Последние полгода"], ["Y", "Г", 365 * 86400, "Последний год"]];
+const chartCache = {};
+async function loadChart(cur, per) {
+  const P = PERIODS.find((x) => x[0] === per) || PERIODS[1], f = fiat(), key = cur + f + per, c = chartCache[key];
+  if (c && Date.now() - c.at < RATE_TTL) return c.pts;
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const r = await tonapi("/rates/chart?token=" + (cur === "TON" ? "ton" : USDT_MASTER) + "&currency=" + f + "&start_date=" + (now - P[2]) + "&end_date=" + now + "&points_count=" + (per === "H" ? 60 : 200)).then(j);
+    const pts = (r.points || []).map((p) => [p[0] * 1000, Number(p[1])]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
+    if (pts.length > 1) chartCache[key] = { at: Date.now(), pts };
+    return pts;
+  } catch (e) { return c ? c.pts : null; }
+}
+
 async function freshSeqno(addr) {
   try { const r = await net("toncenter", TONCENTER + "/v3/walletInformation?use_v2=false&address=" + encodeURIComponent(addr)).then(j); return Number(r.seqno || 0); }
   catch (e) { try { const r = await tonapi("/wallet/" + encodeURIComponent(addr) + "/seqno").then(j); return Number(r.seqno || 0); } catch (e2) { return 0; } }
@@ -265,6 +324,45 @@ async function loadEvents(addr, limit) {
 const CSS = `
 #dlgTonW { width: min(520px, 100vw); max-width: 100vw; height: min(820px, 100dvh); max-height: 100dvh; padding: 0; border: 0; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; }
 @media (max-width: 560px) { #dlgTonW { width: 100vw; height: 100dvh; border-radius: 0; } }
+.tw-chg { font-style: normal; } .tw-chg.dn, .tw-pchg .dn, .tw-mkt .c.dn { color: #ff5a6a; } .tw-chg.up, .tw-pchg .up, .tw-mkt .c.up { color: #34c759; }
+.tw-mkt { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 18px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tw-mkt:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.tw-mkt .tx { display: grid; gap: 2px; } .tw-mkt .tx b { font-size: 16px; } .tw-mkt .c { font-size: 13.5px; }
+.tw-mkt .p { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.tw-mkt .sp { width: 84px; height: 34px; }
+.tw-spark { width: 100%; height: 100%; display: block; } .tw-spark.up { color: #34c759; } .tw-spark.dn { color: #ff5a6a; }
+.tw-asset, .tw-asset > div { display: flex; flex-direction: column; gap: 16px; }
+.tw-ahead { display: flex; flex-direction: column; gap: 14px; }
+.tw-coin.big { width: 64px; height: 64px; font-size: 28px; } .tw-coin.big.ton i { width: 26px; height: 26px; }
+.tw-price { display: block; font-size: 40px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tw-pchg { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 16px; font-variant-numeric: tabular-nums; min-height: 22px; }
+.tw-pchg .soft { opacity: .7; } .tw-pchg .lbl { color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.tw-chartw { position: relative; margin: 0 -16px; padding: 22px 0 30px; }
+.tw-chart { position: relative; height: 220px; touch-action: pan-y; cursor: crosshair; }
+.tw-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.tw-chart .gl { stroke: color-mix(in srgb, var(--ink) 8%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tw-chart .ln { animation: twDraw 1s cubic-bezier(.3, .7, .2, 1) both; stroke-dasharray: 2400; }
+@keyframes twDraw { from { stroke-dashoffset: 2400; } to { stroke-dashoffset: 0; } }
+.tw-chart .cur { stroke: color-mix(in srgb, var(--ink) 35%, transparent); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+.tw-chart.scrub .cur, .tw-chart.scrub .tw-dot, .tw-chart.scrub .tw-tip { opacity: 1; }
+.tw-dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #3d8bff; box-shadow: 0 0 0 4px rgb(61 139 255 / .25); opacity: 0; pointer-events: none; }
+.tw-tip { position: absolute; top: -22px; transform: translateX(-50%); font-size: 12px; padding: 2px 8px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 10%, var(--bg)); white-space: nowrap; opacity: 0; pointer-events: none; font-variant-numeric: tabular-nums; }
+.tw-chart-empty { height: 100%; display: grid; place-items: center; color: color-mix(in srgb, var(--ink) 50%, transparent); font-size: 14px; }
+.tw-chartw .hi, .tw-chartw .lo { position: absolute; right: 16px; font: 13px ui-monospace, Menlo, monospace; color: color-mix(in srgb, var(--ink) 55%, transparent); pointer-events: none; }
+.tw-chartw .hi { top: 0; } .tw-chartw .lo { bottom: 30px; transform: translateY(100%); }
+.tw-tl { position: absolute; left: 0; right: 0; bottom: 4px; height: 18px; font: 13px ui-monospace, Menlo, monospace; color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.tw-tl span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tw-per { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.tw-per button { border: 0; border-radius: 999px; padding: 10px 0; background: none; color: inherit; font: inherit; font-size: 17px; font-weight: 650; cursor: pointer; }
+.tw-per button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.tw-per button.on { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.tw-bal { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 22px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.tw-bal .tx { display: grid; gap: 2px; min-width: 0; } .tw-bal .tx b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .tw-bal .tx span { color: color-mix(in srgb, var(--ink) 55%, transparent); font-variant-numeric: tabular-nums; }
+.tw-acts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tw-act2 { border: 0; border-radius: 20px; padding: 16px 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: inherit; font: inherit; font-size: 16px; font-weight: 600; display: grid; justify-items: center; gap: 6px; cursor: pointer; }
+.tw-act2:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); } .tw-act2 svg { width: 24px; height: 24px; }
+.tw-link { white-space: nowrap; border: 0; background: none; color: #3d8bff; font: inherit; font-size: 16px; cursor: pointer; padding: 4px; }
+#twPill.click { cursor: pointer; }
 .tw-nav svg, .tw-nav .dsk { display: none; }
 .tw-ov, .tw-ov > div { display: flex; flex-direction: column; gap: 16px; }
 .tw-hrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -387,14 +485,14 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 #dlgTonW[open] { animation: twIn .34s cubic-bezier(.2, .9, .3, 1.1); }
 #dlgTonW[open]::backdrop { animation: twFade .3s ease; }
 #dlgTonW.closing { opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .18s ease, transform .18s ease; }
-.tw-body.fwd > * { animation: twFwd .32s cubic-bezier(.2, .8, .2, 1) backwards; }
-.tw-body.back > * { animation: twBack .32s cubic-bezier(.2, .8, .2, 1) backwards; }
-.tw-body.tab > * { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body.tw-fwd > * { animation: twFwd .32s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body.tw-back > * { animation: twBack .32s cubic-bezier(.2, .8, .2, 1) backwards; }
+.tw-body.tw-tab > * { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards; }
 .tw-body > *:nth-child(2) { animation-delay: .04s; } .tw-body > *:nth-child(3) { animation-delay: .08s; } .tw-body > *:nth-child(4) { animation-delay: .12s; }
 .tw-body > *:nth-child(5) { animation-delay: .16s; } .tw-body > *:nth-child(6) { animation-delay: .2s; } .tw-body > *:nth-child(n+7) { animation-delay: .24s; }
 .tw-list.stag > .tw-row { animation: twUp .34s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
 .tw-card { background: linear-gradient(130deg, #18233a, #121a2b, #1b2a4a, #121a2b); background-size: 300% 300%; animation: twGlow 12s ease infinite; position: relative; overflow: hidden; }
-.tw-body.tab > .tw-card, .tw-body.fwd > .tw-card, .tw-body.back > .tw-card { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards, twGlow 12s ease infinite; }
+.tw-body.tw-tab > .tw-card, .tw-body.tw-fwd > .tw-card, .tw-body.tw-back > .tw-card { animation: twUp .36s cubic-bezier(.2, .8, .2, 1) backwards, twGlow 12s ease infinite; }
 .tw-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / .07) 50%, transparent 60%); background-size: 250% 100%; animation: twShim 5s ease-in-out infinite; pointer-events: none; }
 .tw-card > * { position: relative; z-index: 1; }
 .tw-act, .tw-btn, .tw-ib, .tw-seg button, button.tw-row, a.tw-row, .tw-nav button { transition: transform .14s ease, background .18s ease, color .18s ease, opacity .18s ease, box-shadow .18s ease; }
@@ -463,6 +561,15 @@ button.tw-row:active, a.tw-row:active { transform: scale(.985); }
   .tw-card { padding: 30px 26px 24px; }
   .tw-card .big { font-size: 52px; }
   .tw-body.wide .tw-foot { text-align: left; }
+  .tw-asset { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+  .tw-asset > .l { position: sticky; top: 0; }
+  .tw-chartw { margin: 0; } .tw-chartw .hi, .tw-chartw .lo { right: 0; }
+  .tw-chart { height: 300px; }
+  .tw-ahead { flex-direction: row; align-items: center; gap: 18px; }
+  .tw-price { font-size: 46px; }
+  .tw-nav .tw-login { margin-top: 10px; justify-content: center; background: #3d78e6; color: #fff !important; font-weight: 650; }
+  .tw-nav .tw-login:hover { background: #4a85f0; }
+  .tw-nav .tw-login svg { display: none !important; }
 }
 `;
 
@@ -498,7 +605,7 @@ function ensureDlg() {
         h("button", { class: "tw-ib", type: "button", "aria-label": T("Закрыть"), onclick: () => closeDlg() }, sv("close"))),
       h("div", { class: "tw-body", id: "twBody" }),
       h("nav", { class: "tw-nav", id: "twNav" })));
-  dlg.addEventListener("close", () => { sendCtx = null; if (unlocked && unlocked.t) { clearTimeout(unlocked.t); } });
+  dlg.addEventListener("close", () => { sendCtx = null; stopRates(); if (unlocked && unlocked.t) { clearTimeout(unlocked.t); } });
   document.body.append(dlg);
   return dlg;
 }
@@ -511,7 +618,9 @@ function setHead(title, back) {
   $("twBack").hidden = !back; backTo = back || null; $("twBack").onclick = () => goBack();
   const m = mode();
   $("twPill").textContent = m === "full" ? T("Подключён") : m === "soft" ? T("Не защищён") : m === "watch" ? T("Просмотр") : T("Не создан");
-  $("twPill").className = "tw-pill" + (m === "full" ? "" : m === "soft" ? " warn" : " off");
+  $("twPill").className = "tw-pill" + (m === "full" ? "" : m === "soft" ? " warn" : " off") + (m === "watch" ? " click" : "");
+  $("twPill").onclick = m === "watch" ? () => show("recover", { then: { v: view } }) : null;
+  $("twPill").title = m === "watch" ? T("Войти паролем кошелька и кодом из почты") : "";
   const nav = $("twNav"), has = !!myAddr();
   const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1],
     ["activity", T("История"), "hist"], ["security", T("Безопасность"), "shield", 1], ["settings", T("Настройки"), "gear"]] : [];
@@ -519,10 +628,11 @@ function setHead(title, back) {
   nav.hidden = !tabs.length;
   dlg.querySelector(".tw-wrap").classList.toggle("nonav", !tabs.length);
   const addr = myAddr();
-  nav.replaceChildren(
+  nav.replaceChildren(...[
     h("div", { class: "tw-brand dsk" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Кошелёк")), h("small", {}, "TON · USDT")),
     ...tabs.map(([k, l, ic, d]) => h("button", { type: "button", class: (k === cur ? "on" : "") + (d ? " dsk" : ""), onclick: () => (k === "send" || k === "security" ? need(k) : show(k)) }, sv(ic), h("span", {}, l))),
-    addr ? h("button", { type: "button", class: "tw-chip dsk", title: T("Скопировать адрес"), onclick: () => copyText(addr, T("Адрес скопирован")) }, h("span", {}, short(addr)), sv("copy")) : null);
+    m === "watch" ? h("button", { type: "button", class: "tw-login dsk", onclick: () => show("recover", { then: { v: "overview" } }) }, h("span", {}, T("Войти в кошелёк"))) : null,
+    addr ? h("button", { type: "button", class: "tw-chip dsk", title: T("Скопировать адрес"), onclick: () => copyText(addr, T("Адрес скопирован")) }, h("span", {}, short(addr)), sv("copy")) : null].filter(Boolean));
 }
 const TABS = ["overview", "assets", "activity", "settings", "start"];
 // к какому пункту бокового меню относится экран
@@ -533,12 +643,12 @@ let navDir = "tab";
 function show(v, arg) {
   const dir = navDir !== "tab" ? navDir : TABS.includes(v) ? "tab" : "fwd";
   navDir = "tab";
-  view = v;
+  view = v; rateSubs = [];
   const fn = VIEWS[v] || VIEWS.overview;
   const b = body();
   b.replaceChildren();
   b.scrollTop = 0;
-  b.classList.remove("fwd", "back", "tab"); void b.offsetWidth; b.classList.add(dir);
+  b.classList.remove("tw-fwd", "tw-back", "tw-tab"); void b.offsetWidth; b.classList.add("tw-" + dir);
   b.classList.toggle("wide", WIDE.includes(v));
   fn(arg);
   stagger(b);
@@ -570,6 +680,7 @@ async function open(v, arg) {
   if (!state.me) return;
   ensureDlg();
   if (!dlg.open) dlg.showModal();
+  startRates();
   if (!myAddr()) await loadSrv(true); else loadSrv(false);
   if (!myAddr()) { show("start", { then: v && v !== "overview" ? { v, arg } : null }); return; }
   if (v === "send" || v === "security") need(v, arg); else show(v || "overview", arg);
@@ -591,23 +702,41 @@ async function refresh(force) {
 function totals(a) {
   if (!a) return null;
   const ton = Number(BigInt(a.ton || 0)) / 1e9, us = Number(BigInt(a.usdt || 0)) / 1e6;
-  return { ton, us, usd: (a.tonUsd ? ton * a.tonUsd : 0) + us * (a.usdtUsd || 1) };
+  return { ton, us, val: ton * rateOf("TON") + us * rateOf("USDT"), ok: !!rates };
 }
 function assetRows(a) {
   const t = totals(a), skel = !a;
-  const row = (cls, inner, name, sub, amt, val) => h("button", { class: "tw-row", type: "button", onclick: () => show("asset", cls === "ton" ? "TON" : "USDT") },
-    h("span", { class: "tw-coin " + cls }, inner), h("span", { class: "tx" }, h("b", {}, name), h("span", {}, sub)),
+  const sub = (cur) => {
+    const p = rateOf(cur), d = diffOf(cur);
+    if (!p) return h("span", {}, cur === "TON" ? "TON" : "USDT · TON");
+    return h("span", {}, money(p, priceDig(p)), d != null && cur === "TON" ? h("i", { class: "tw-chg " + (d < 0 ? "dn" : "up") }, " " + pct(d)) : null);
+  };
+  const row = (cls, inner, name, cur, amt, val) => h("button", { class: "tw-row", type: "button", onclick: () => show("asset", cur) },
+    h("span", { class: "tw-coin " + cls }, inner), h("span", { class: "tx" }, h("b", {}, name), sub(cur)),
     h("span", { class: "rt" }, h("b", { class: skel ? "tw-skel" : "" }, amt), h("span", { class: skel ? "tw-skel" : "" }, val)));
+  const v = (n, cur) => (rateOf(cur) ? money(n * rateOf(cur)) : "—");
   return h("div", { class: "tw-list" },
-    row("ton", h("i"), "Toncoin", "TON", skel ? "0 TON" : fmtUnits(a.ton || 0, 9, 4) + " TON", skel ? "$0" : a.tonUsd ? usd(t.ton * a.tonUsd) : "—"),
-    row("usdt", "₮", "Tether USD", "USDT · TON", skel ? "0 USDT" : fmtUnits(a.usdt || 0, 6, 2) + " USDT", skel ? "$0" : usd(t.us * (a.usdtUsd || 1))));
+    row("ton", h("i"), "Toncoin", "TON", skel ? "0 TON" : fmtUnits(a.ton || 0, 9, 4) + " TON", skel ? money(0) : v(t.ton, "TON")),
+    row("usdt", "₮", "Tether USD", "USDT", skel ? "0 USDT" : fmtUnits(a.usdt || 0, 6, 2) + " USDT", skel ? money(0) : v(t.us, "USDT")));
+}
+// маленькая линия цены за сутки
+function spark(pts, w, hh) {
+  const s2 = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s2.setAttribute("viewBox", "0 0 " + w + " " + hh); s2.setAttribute("preserveAspectRatio", "none"); s2.classList.add("tw-spark");
+  if (!pts || pts.length < 2) return s2;
+  const ys = pts.map((p) => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), sp = hi - lo || 1, t0 = pts[0][0], tw = pts[pts.length - 1][0] - t0 || 1;
+  const d = pts.map((p, i) => (i ? "L" : "M") + ((p[0] - t0) / tw * w).toFixed(1) + " " + (hh - 2 - (p[1] - lo) / sp * (hh - 4)).toFixed(1)).join("");
+  s2.innerHTML = '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
+  s2.classList.add(ys[ys.length - 1] < ys[0] ? "dn" : "up");
+  return s2;
 }
 const VIEWS = {};
 VIEWS.overview = () => {
   setHead(T("Кошелёк"));
   const a = acc || cached(), t = totals(a);
-  const big = h("span", { class: "big" + (a ? "" : " tw-skel") }, a ? usd(0) : "$0.00");
-  if (a) countTo(big, t.usd, usd);
+  const big = h("span", { class: "big" + (a && rates ? "" : " tw-skel") }, money(0));
+  const fm = (n) => money(n);
+  if (a && rates) countTo(big, t.val, fm);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
     h("div", { class: "tw-acts" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
@@ -617,34 +746,109 @@ VIEWS.overview = () => {
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
     : m === "watch" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("recover", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Только просмотр")), h("span", {}, T("Чтобы отправлять с этого устройства, войдите паролем кошелька и кодом из почты"))), h("span", { class: "chev" }, "›")) : null;
+  const mk = h("span", { class: "p" }), mc = h("span", { class: "c" }), sp = h("span", { class: "sp" });
+  const paintMk = () => { const p = rateOf("TON"), d = diffOf("TON"); mk.textContent = p ? money(p, priceDig(p)) : "—"; mc.textContent = d != null ? pct(d) + " " + T("за сутки") : ""; mc.className = "c " + (d < 0 ? "dn" : "up"); };
+  paintMk();
+  loadChart("TON", "D").then((pts) => { if (pts) sp.replaceChildren(spark(pts, 120, 40)); });
+  const market = h("button", { class: "tw-mkt", type: "button", onclick: () => show("asset", "TON") },
+    h("span", { class: "tw-coin ton" }, h("i")), h("span", { class: "tx" }, h("b", {}, T("Курс Toncoin")), mc), sp, mk);
+  onRates(() => { paintMk(); const n = acc || cached(); if (n) { const tt = totals(n); big.className = "big"; countTo(big, tt.val, fm); list.replaceChildren(...assetRows(n).children); } });
   const recent = h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Загружаем…")))));
   put(h("div", { class: "tw-ov" },
-    h("div", { class: "l" }, card, banner),
+    h("div", { class: "l" }, card, banner, market),
     h("div", { class: "r" }, h("h3", { class: "tw-h" }, T("Мои активы")), list,
       isDesk() ? h("div", { class: "tw-hrow" }, h("h3", { class: "tw-h" }, T("Последние операции")), h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => show("activity") }, T("Все"))) : null,
       isDesk() ? recent : null,
       h("p", { class: "tw-foot" }, T("Ключи хранятся на ваших устройствах, на сервере — только копия, зашифрованная паролем кошелька. Mestario не может ни потратить, ни восстановить ваши средства.")))));
   if (isDesk()) history(false).then((l) => { if (view === "overview") recent.replaceWith(histList(l ? l.slice(0, 5) : l)); });
-  refresh(false).then((n) => { if (view !== "overview" || !n) return; const tt = totals(n); big.className = "big"; countTo(big, tt.usd, usd); if (JSON.stringify([n.ton, n.usdt, n.tonUsd]) !== JSON.stringify(a ? [a.ton, a.usdt, a.tonUsd] : 0)) list.replaceWith(assetRows(n)); });
+  Promise.all([refresh(false), loadRates(false)]).then(([n]) => { if (view !== "overview" || !n) return; const tt = totals(n); if (rates) { big.className = "big"; countTo(big, tt.val, fm); } list.replaceChildren(...assetRows(n).children); paintMk(); });
 };
 VIEWS.assets = () => {
   setHead(T("Активы"));
   const a = acc || cached(), list = assetRows(a);
-  put(list, h("p", { class: "tw-foot" }, T("Поддерживаются TON и USDT в сети TON. Курс — tonapi.io.")));
-  refresh(false).then((n) => { if (view === "assets" && n) list.replaceWith(assetRows(n)); });
+  put(list, h("p", { class: "tw-foot" }, T("Поддерживаются TON и USDT в сети TON. Курс — tonapi.io, обновляется каждые 5 минут.")));
+  Promise.all([refresh(false), loadRates(false)]).then(([n]) => { if (view === "assets" && n) list.replaceChildren(...assetRows(n).children); });
+  onRates(() => { const n = acc || cached(); if (n) list.replaceChildren(...assetRows(n).children); });
 };
+let assetPer = "D";
 VIEWS.asset = (cur) => {
+  cur = cur === "USDT" ? "USDT" : "TON";
   setHead(cur === "TON" ? "Toncoin" : "Tether USD", "assets");
-  const a = acc || cached(), dec = DEC[cur], bal = a ? (cur === "TON" ? a.ton : a.usdt) || "0" : "0";
-  put(h("div", { class: "tw-card" }, h("small", {}, cur === "TON" ? "Toncoin" : "Tether USD · TON"),
-    h("span", { class: "big" }, fmtUnits(bal, dec, cur === "TON" ? 4 : 2) + " " + cur),
-    h("span", { class: "sub" }, a ? usd(Number(BigInt(bal)) / 10 ** dec * (cur === "TON" ? a.tonUsd || 0 : a.usdtUsd || 1)) : ""),
-    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr" },
-      h("button", { class: "tw-act", type: "button", onclick: () => need("send", { cur }) }, sv("out"), h("span", {}, T("Отправить"))),
-      h("button", { class: "tw-act", type: "button", onclick: () => show("receive") }, sv("in"), h("span", {}, T("Получить"))))));
+  const a = acc || cached(), dec = DEC[cur], bal = () => { const x = acc || a; return x ? (cur === "TON" ? x.ton : x.usdt) || "0" : "0"; };
+  const price = h("b", { class: "tw-price" }), chg = h("div", { class: "tw-pchg" }), hi = h("span", { class: "hi" }), lo = h("span", { class: "lo" });
+  const svgBox = h("div", { class: "tw-chart" }), tl = h("div", { class: "tw-tl" });
+  let pts = null, scrub = false;
+  const P = () => PERIODS.find((x) => x[0] === assetPer);
+  const head = (p, base, label) => {
+    price.textContent = p ? money(p, priceDig(p)) : "—";
+    if (!p || !base) { chg.replaceChildren(h("span", { class: "lbl" }, T(label))); return; }
+    const d = p - base, r = d / base * 100;
+    chg.replaceChildren(h("span", { class: d < 0 ? "dn" : "up" }, pct(r)), h("span", { class: (d < 0 ? "dn" : "up") + " soft" }, money(Math.abs(d), priceDig(p))), h("span", { class: "lbl" }, T(label)));
+  };
+  const paintHead = () => { if (scrub) return; const p = rateOf(cur); const base = pts && pts.length > 1 ? pts[0][1] : null; head(p || (pts && pts[pts.length - 1][1]), base, P()[3]); };
+  const fmtTs = (ts) => new Date(ts).toLocaleString(window.SOROKA_LANG === "en" ? "en-GB" : "ru-RU",
+    assetPer === "H" || assetPer === "D" ? { hour: "2-digit", minute: "2-digit" } : assetPer === "Y" || assetPer === "6M" ? { day: "numeric", month: "short", year: "2-digit" } : { day: "numeric", month: "short" });
+  const draw = () => {
+    svgBox.replaceChildren(); tl.replaceChildren();
+    if (!pts || pts.length < 2) { svgBox.append(h("div", { class: "tw-chart-empty" }, pts == null ? T("Не удалось загрузить график") : T("Загружаем график…"))); hi.textContent = lo.textContent = ""; return; }
+    const W = 600, H = 240, ys = pts.map((p) => p[1]), mn = Math.min(...ys), mx = Math.max(...ys), sp = mx - mn || mx * 0.01 || 1, t0 = pts[0][0], tw = pts[pts.length - 1][0] - t0 || 1;
+    const X = (t) => (t - t0) / tw * W, Y = (v) => 14 + (1 - (v - mn) / sp) * (H - 28);
+    const line = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
+    const dn = ys[ys.length - 1] < ys[0];
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
+    const gid = "twg" + Math.random().toString(36).slice(2, 7);
+    let grid = ""; for (let g = 1; g < 5; g++) grid += '<line x1="' + (W * g / 5) + '" x2="' + (W * g / 5) + '" y1="0" y2="' + H + '" class="gl"/>';
+    svg.innerHTML = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d8bff" stop-opacity=".38"/><stop offset="1" stop-color="#3d8bff" stop-opacity="0"/></linearGradient></defs>' + grid +
+      '<path d="' + line + "L" + W + " " + H + "L0 " + H + 'Z" fill="url(#' + gid + ')"/><path class="ln" d="' + line + '" fill="none" stroke="#3d8bff" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<line class="cur" x1="0" x2="0" y1="0" y2="' + H + '" vector-effect="non-scaling-stroke"/>';
+    const dot = h("i", { class: "tw-dot" }), tip = h("span", { class: "tw-tip" });
+    svgBox.append(svg, dot, tip);
+    hi.textContent = money(mx, priceDig(mx)); lo.textContent = money(mn, priceDig(mn));
+    for (const g of [1, 3]) { const tt = t0 + tw * g / 5; tl.append(h("span", { style: "left:" + (g * 20) + "%" }, fmtTs(tt))); }
+    svgBox.classList.toggle("dn", dn);
+    const at = (clientX) => {
+      const r = svgBox.getBoundingClientRect(), x = Math.max(0, Math.min(1, (clientX - r.left) / r.width)), t = t0 + x * tw;
+      let i = 0; while (i < pts.length - 1 && pts[i + 1][0] <= t) i++;
+      const p = pts[i]; scrub = true;
+      svgBox.classList.add("scrub");
+      const px = X(p[0]) / W * 100, py = Y(p[1]) / H * 100;
+      dot.style.left = px + "%"; dot.style.top = py + "%";
+      svg.querySelector(".cur").setAttribute("x1", X(p[0])); svg.querySelector(".cur").setAttribute("x2", X(p[0]));
+      tip.textContent = fmtTs(p[0]); tip.style.left = Math.max(8, Math.min(92, px)) + "%";
+      head(p[1], pts[0][1], P()[3]);
+    };
+    const end = () => { scrub = false; svgBox.classList.remove("scrub"); paintHead(); };
+    svgBox.onpointermove = (e) => at(e.clientX);
+    svgBox.onpointerdown = (e) => { at(e.clientX); try { svgBox.setPointerCapture(e.pointerId); } catch (x) {} };
+    svgBox.onpointerleave = svgBox.onpointerup = svgBox.onpointercancel = end;
+  };
+  const seg = h("div", { class: "tw-per" }, ...PERIODS.map(([k, l]) => h("button", { type: "button", class: k === assetPer ? "on" : "", onclick: (e) => {
+    assetPer = k; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); load(); } }, T(l))));
+  const load = () => { const per = assetPer; pts = undefined; draw(); paintHead();
+    loadChart(cur, per).then((p) => { if (view !== "asset" || per !== assetPer) return; pts = p; draw(); paintHead(); }); };
+  const valEl = h("span", {}), amtEl = h("b", {});
+  const paintBal = () => { const b = bal(), n = Number(BigInt(b)) / 10 ** dec, r = rateOf(cur); amtEl.textContent = fmtUnits(b, dec, cur === "TON" ? 9 : 6) + " " + (cur === "TON" ? "TON" : "USDT"); valEl.textContent = r ? money(n * r) : ""; };
+  paintBal();
+  const coin = () => h("span", { class: "tw-coin " + (cur === "TON" ? "ton" : "usdt") }, cur === "TON" ? h("i") : "₮");
   const box = h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Загружаем историю…")))));
-  put(h("h3", { class: "tw-h" }, T("История")), box);
-  history(false).then((list) => { if (view === "asset") box.replaceWith(histList((list || []).filter((x) => !x.other && (cur === "TON" ? x.cur === "TON" : x.usdt)))); });
+  put(h("div", { class: "tw-asset" },
+    h("div", { class: "l" },
+      h("div", { class: "tw-ahead" }, h("span", { class: "tw-coin big " + (cur === "TON" ? "ton" : "usdt") }, cur === "TON" ? h("i") : "₮"), h("div", {}, price, chg)),
+      h("div", { class: "tw-chartw" }, svgBox, hi, lo, tl), seg),
+    h("div", { class: "r" },
+      h("h3", { class: "tw-h" }, T("Ваш баланс")),
+      h("div", { class: "tw-bal" }, coin(), h("span", { class: "tx" }, amtEl, valEl)),
+      h("div", { class: "tw-acts2" },
+        h("button", { class: "tw-act2", type: "button", onclick: () => need("send", { cur }) }, sv("out"), h("span", {}, T("Отправить"))),
+        h("button", { class: "tw-act2", type: "button", onclick: () => show("receive") }, sv("qr"), h("span", {}, T("Получить")))),
+      h("div", { class: "tw-hrow" }, h("h3", { class: "tw-h" }, T("История транзакций")), h("button", { class: "tw-link", type: "button", onclick: () => show("activity") }, T("Смотреть все"))),
+      box)));
+  load();
+  loadRates(false).then(() => { if (view === "asset") { paintHead(); paintBal(); } });
+  onRates(() => { paintHead(); paintBal(); delete chartCache[cur + fiat() + assetPer]; if (!scrub) load(); });
+  refresh(false).then(() => { if (view === "asset") paintBal(); });
+  history(false).then((list) => { if (view === "asset") box.replaceWith(histList((list || []).filter((x) => !x.other && (cur === "TON" ? x.cur === "TON" : x.usdt)).slice(0, 8))); });
 };
 
 /* ---------- история ---------- */
@@ -886,7 +1090,7 @@ VIEWS.settings = () => {
       row("03", "qr", T("Получить"), T("Адрес, QR-код и получение"), () => show("receive")),
       row("04", "hist", T("История"), T("История всех операций"), () => show("activity")),
       row("05", "shield", T("Безопасность"), T("Восстановление и защита"), () => need("security")),
-      row("06", "gear", T("Настройки кошелька"), T("Адрес, сеть и устройство"), () => show("wsettings"))),
+      row("06", "gear", T("Настройки кошелька"), T("Валюта цен ($ или ₽), адрес, сеть и устройство"), () => show("wsettings"))),
     h("p", { class: "tw-foot" }, T("Адрес: ") + short(myAddr()) + " · TON Mainnet · Wallet v4R2"));
 };
 VIEWS.wsettings = () => {
@@ -901,7 +1105,12 @@ VIEWS.wsettings = () => {
     toast(T("Кошелёк удалён с этого устройства"));
     navDir = "back"; open("overview");
   };
-  put(h("div", { class: "tw-sum" },
+  const fseg = h("div", { class: "tw-seg" }, ...Object.entries(FIATS).map(([k, F]) => h("button", { type: "button", class: k === fiat() ? "on" : "", onclick: (e) => {
+    setFiat(k); [...fseg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); fnote.textContent = rateLine(); toast(T("Цены теперь в ") + (k === "usd" ? T("долларах") : T("рублях"))); } }, F.sym + "  " + T(F.name))));
+  const rateLine = () => { const p = rateOf("TON"); return p ? T("1 TON = ") + money(p, priceDig(p)) + (rates ? T(" · обновлено в ") + new Date(rates.at).toLocaleTimeString(window.SOROKA_LANG === "en" ? "en-GB" : "ru-RU", { hour: "2-digit", minute: "2-digit" }) : "") + T(". Курс обновляется каждые 5 минут.") : T("Курс обновляется каждые 5 минут."); };
+  const fnote = h("p", { class: "tw-foot", style: "text-align:left;margin-block:0" }, rateLine());
+  onRates(() => { fnote.textContent = rateLine(); });
+  put(h("h3", { class: "tw-h" }, T("Валюта цен")), fseg, fnote, h("h3", { class: "tw-h" }, T("Кошелёк")), h("div", { class: "tw-sum" },
       h("div", {}, h("span", {}, T("Адрес")), h("b", {}, v.addr)),
       h("div", {}, h("span", {}, T("Сеть")), h("b", {}, "TON Mainnet")),
       h("div", {}, h("span", {}, T("Тип")), h("b", {}, "Wallet v4R2")),
