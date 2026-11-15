@@ -3412,6 +3412,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   function check() {
     if (!b) return;
     var ids = ["app", "auth", "intro"];
+    // быстрый запуск из сохранённого на устройстве: без паузы и без «въезда» — как будто приложение и не закрывалось
+    if (window.__mFast) { var g = b; b = null; g.remove(); return; }
     for (var i = 0; i < ids.length; i++) { var e = document.getElementById(ids[i]); if (e && !e.hidden) { setTimeout(done, Math.max(0, 350 - (Date.now() - t0))); return; } }
     if (Date.now() - t0 > 8000) return done();
     setTimeout(check, 50);
@@ -6854,6 +6856,8 @@ async function enter() {
     const gate = await sb.rpc("site_gate");
     if (gate.data && gate.data.closed && !gate.data.admin) { showClosed(); return; }
     siteInfo = gate.data || null;
+    // в следующий раз (в этом же сеансе) мессенджер откроется сразу, без этих трёх запросов
+    patchSnap({ profile: data, site: siteInfo, unlocked: pinOpen, sid: sidOf(storedSession()) });
     startApp();
     checkSite();
     return;
@@ -6896,7 +6900,8 @@ async function startApp() {
   loadBlocked();
   giftTypes().then(() => { renderList(); if (state.activeId) { renderHead(); if (state.msgs.some((m) => m.gift_type)) renderMsgs(); } });
   // список чатов с прошлого раза показываем сразу, свежий подгружается следом
-  if (!state.chats.size && loadChatsSnap()) renderList(); else if (!state.chats.size) paintSkeleton();
+  applySnap();
+  if (!state.chats.size && loadChatsSnap()) { renderList(); restoreLastChat(); } else if (!state.chats.size) paintSkeleton();
   const idbReady = idbLoadAll();   // сохранённая переписка — чтобы чаты открывались сразу
   await loadChats();
   loadFolders();
@@ -6911,7 +6916,8 @@ async function startApp() {
   handleLink();
   checkIncomingCall();
   askLoginCodeOnce();
-  flash($("chatList"), 900);
+  if (!fastStart) flash($("chatList"), 900);
+  fastStart = false;
   subscribeInbox();
   if (IN_APP || IN_ELECTRON) setTimeout(appNotifyInit, 3000);
   sb.rpc("touch_presence").then(() => {});
@@ -7108,6 +7114,7 @@ async function loadStoryUsers(force) {
   storyUsers = new Set([...storyFeed.keys()].filter((id) => id !== state.me.id));
   const key = JSON.stringify([...storyFeed].sort((a, b) => a[0] < b[0] ? -1 : 1));
   if (key === storyFeedKey) return;
+  patchSnap({ story: [...storyFeed] });
   storyFeedKey = key;
   if (state.started) renderList();
 }
@@ -7194,7 +7201,7 @@ function saveChatsSnap() {
     localStorage.setItem(chatsKey(), JSON.stringify({ t: Date.now(), chats, unread: [...state.unread] }));
   } catch (e) {}
 }
-const saveChatsSoon = debounce(() => (window.requestIdleCallback || setTimeout)(saveChatsSnap, { timeout: 4000 }), 5000);
+const saveChatsSoon = debounce(() => (window.requestIdleCallback || setTimeout)(saveChatsSnap, { timeout: 2000 }), 1500);
 function loadChatsSnap() {
   try {
     const j = JSON.parse(localStorage.getItem(chatsKey()) || "null");
@@ -7203,6 +7210,66 @@ function loadChatsSnap() {
     state.unread = new Map(j.unread || []);
     return true;
   } catch (e) { return false; }
+}
+/* остальное для мгновенного запуска — профиль, папки, контакты, истории — тоже лежит на устройстве.
+   Телефон выгружает приложение из памяти, пока оно в фоне; при возврате всё рисуется из снимка сразу, а сервер сверяется следом. */
+function snapKey(uid) { return "mestario.me." + (uid || (state.me && state.me.id)); }
+function readSnap(uid) { try { const j = JSON.parse(localStorage.getItem(snapKey(uid)) || "null"); return j && typeof j === "object" ? j : null; } catch (e) { return null; } }
+function patchSnap(part) {
+  if (!state.me) return;
+  try { const j = readSnap() || {}; Object.assign(j, part, { t: Date.now() }); localStorage.setItem(snapKey(), JSON.stringify(j)); } catch (e) {}
+}
+function applySnap() {
+  const s = readSnap();
+  if (!s) return;
+  if (Array.isArray(s.folders) && !folders.length) folders = s.folders;
+  if (Array.isArray(s.contacts) && !contacts.size) { contacts = new Map(s.contacts.map((r) => [r.user_id, r])); contactsVer++; }
+  if (Array.isArray(s.story) && !storyFeed.size) {
+    storyFeed = new Map(s.story);
+    storyUsers = new Set([...storyFeed.keys()].filter((id) => id !== state.me.id));
+    storyFeedKey = JSON.stringify([...storyFeed].sort((a, b) => a[0] < b[0] ? -1 : 1));
+  }
+}
+// сохранённый вход Supabase и номер сеанса в нём (ПИН-код спрашивается один раз на сеанс)
+function storedSession() {
+  try { const ref = new URL(SUPABASE_URL).hostname.split(".")[0]; const s = JSON.parse(localStorage.getItem("sb-" + ref + "-auth-token") || "null"); return s && (s.currentSession || s); } catch (e) { return null; }
+}
+function sidOf(s) {
+  try { const p = s.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"); return JSON.parse(atob(p + "=".repeat((4 - p.length % 4) % 4))).session_id || null; } catch (e) { return null; }
+}
+// вход уже был на этом устройстве в этом же сеансе — открываем мессенджер, не дожидаясь сервера
+let fastStart = false;
+function fastBoot() {
+  if (state.started || state.me || state.codeGate) return;
+  if (/access_token|refresh_token|type=recovery|approve-|error/.test(location.hash) || /[?&](code|error)=/.test(location.search)) return;
+  const ses = storedSession(), user = ses && ses.user;
+  if (!user || !user.id || !ses.refresh_token) return;
+  const s = readSnap(user.id);
+  if (!s || !s.profile || s.profile.id !== user.id || s.profile.banned_at || !s.unlocked || !s.sid || s.sid !== sidOf(ses)) return;
+  if (!accounts().some((a) => a.id === user.id)) return;
+  state.me = user; state.profile = s.profile; siteInfo = s.site || null;
+  fastStart = true; window.__mFast = 1;
+  startApp();
+  recheckEnter(user.id);
+}
+// фоновая проверка после быстрого запуска: свежий профиль, блокировка, ПИН-код, закрыт ли сайт
+async function recheckEnter(uid) {
+  const live = () => state.started && state.me && state.me.id === uid;
+  const { data, error } = await sb.from("profiles").select("*,collectible_usernames(username),collectible_numbers(number)").eq("id", uid).maybeSingle();
+  if (!live() || error) return;
+  if (!data) { stopApp(); enter(); return; }
+  state.profile = data;
+  if (data.banned_at) { stopApp(); showBanned(); return; }
+  refreshMe(); renderList();
+  if (!(await pinGateQuiet())) { if (live()) { stopApp(); pinGate(); } return; }
+  const gate = await sb.rpc("site_gate");
+  if (!live()) return;
+  if (gate.data && gate.data.closed && !gate.data.admin) { showClosed(); return; }
+  if (gate.data) { siteInfo = gate.data; patchSnap({ site: gate.data }); paintSiteBanner(); }
+}
+async function pinGateQuiet() {
+  const { data, error } = await sb.rpc("pin_status");
+  return !!(error || !data || data.unlocked);
 }
 // пока чатов нет даже в снимке — мерцающие заготовки строк
 function paintSkeleton() {
@@ -7878,11 +7945,12 @@ const voiceBlobs = new Map();   // путь файла -> обещание ад�
 function voiceUrl(m) {
   let pr = voiceBlobs.get(m.file_path);
   if (!pr) {
-    pr = sb.storage.from("attachments").download(m.file_path).then((r) => {
-      if (r.error || !r.data) throw new Error("download");
+    // запись лежит на устройстве — играет сразу и без сети; иначе скачиваем и сохраняем
+    pr = mediaGet("v:" + m.file_path, () => sb.storage.from("attachments").download(m.file_path).then((r) => {
+      if (r.error || !r.data) return null;
       const type = (m.file_type || "").split(";")[0] || r.data.type || "audio/mpeg";
-      return URL.createObjectURL(r.data.type === type ? r.data : new Blob([r.data], { type }));
-    });
+      return r.data.type === type ? r.data : new Blob([r.data], { type });
+    })).then((u) => { if (!u) throw new Error("download"); return u; });
     pr.catch(() => voiceBlobs.delete(m.file_path));
     voiceBlobs.set(m.file_path, pr);
   }
@@ -7956,7 +8024,7 @@ function openPhoto(src, m) {
 function photoNode(m) {
   const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
   img.addEventListener("click", () => openPhoto(img.src, m));
-  signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+  photoSrc(m).then((u) => { if (u) img.src = u; });
   return img;
 }
 const isPhoto = (m) => !!m.file_path && (m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml";
@@ -8012,7 +8080,7 @@ function msgNode(m, group) {
       const stick = msgStick != null ? msgStick : nearBottom();
       img.addEventListener("load", () => { img.style.minHeight = "0"; img.style.minWidth = "0"; if (stick) scrollDown(); });
       img.addEventListener("click", () => openPhoto(img.src, m));
-      signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+      photoSrc(m).then((u) => { if (u) img.src = u; });
       el.append(img);
     } else {
       el.append(h("button", { class: "file", type: "button", onclick: async () => {
@@ -9139,13 +9207,20 @@ function bubbleFor(m, c) {
 }
 function contactsChanged() {
   contactsVer++;
+  patchSnap({ contacts: [...contacts.values()] });
   rowCache.clear(); msgNodes.clear();
   renderList();
   if (state.activeId) { renderHead(); repaintKeep(); }
 }
 async function loadContacts() {
-  const { data } = await sb.from("contacts").select("user_id,name,avatar_path,bubble");
-  contacts = new Map((data || []).map((r) => [r.user_id, r]));
+  const { data, error } = await sb.from("contacts").select("user_id,name,avatar_path,bubble");
+  if (error) return;
+  const rows = (data || []).slice().sort((a, b) => (a.user_id < b.user_id ? -1 : 1));
+  // контакты те же, что в снимке, — ничего не перерисовываем (иначе при каждом запуске перестраивались все строки и сообщения)
+  const same = JSON.stringify(rows) === JSON.stringify([...contacts.values()].sort((a, b) => (a.user_id < b.user_id ? -1 : 1)));
+  patchSnap({ contacts: rows });
+  if (same) return;
+  contacts = new Map(rows.map((r) => [r.user_id, r]));
   contactsChanged();
 }
 function bubblePicker(cur, onPick, withNone) {
@@ -9395,7 +9470,7 @@ async function openMediaList(c) {
       box.replaceChildren(h("div", { class: "u-thumbs", style: "padding:0" }, ...ph.map((m) => {
         const isV = /^video\//.test(m.file_type);
         const el = isV ? h("video", { muted: true, playsinline: true, preload: "metadata" }) : h("img", { alt: m.file_name || "", loading: "lazy" });
-        signedUrl(m.file_path).then((u) => { if (u) el.src = u + (isV ? "#t=0.1" : ""); });
+        (isV ? signedUrl(m.file_path) : photoSrc(m)).then((u) => { if (u) el.src = u + (isV ? "#t=0.1" : ""); });
         return h("button", { type: "button", onclick: () => { d.close(); $("dlgUser").close(); openChat(c.id); setTimeout(() => jumpTo(m.id), 400); } }, el);
       })));
     } else if (cur === "file") {
@@ -12058,7 +12133,7 @@ function paintProfileChat(p) {
     $("uMediaN").textContent = String(n);
     $("uThumbs").replaceChildren(...(ph.data || []).map((m) => {
       const img = h("img", { alt: m.file_name || T("Фото"), loading: "lazy" });
-      signedUrl(m.file_path).then((u) => { if (u) img.src = u; });
+      photoSrc(m).then((u) => { if (u) img.src = u; });
       return h("button", { type: "button", "aria-label": T("Открыть фото"), onclick: () => { if (img.src) { $("viewerImg").src = img.src; $("viewer").showModal(); } } }, img);
     }));
     $("uMediaCard").hidden = false;
@@ -13636,6 +13711,7 @@ async function loadMyGifts() {
 function refreshMe() {
   const p = state.profile;
   keepProfile(p);
+  if (p && state.me && p.id === state.me.id) patchSnap({ profile: p });
   if (viewed && viewed.id === p.id && $("dlgUser").open) { viewed = p; paintUser(p); loadUserStories(p.id); }
   $("btnProfile").replaceChildren(avatar(p.display_name, p.id, true, p.avatar_path));
   $("pfAvatar").replaceChildren(avatar(p.display_name, p.id, "lg", p.avatar_path));
@@ -14994,6 +15070,7 @@ async function loadFolders() {
   const { data, error } = await sb.from("chat_folders").select("id,title,chat_ids,position").order("position").order("id");
   if (error) return;
   folders = Array.isArray(data) ? data.map((f) => ({ ...f, chat_ids: Array.isArray(f.chat_ids) ? f.chat_ids : [] })) : [];
+  patchSnap({ folders });
   if (state.started) renderList();
 }
 function inFolder(c, tab) {
@@ -15120,11 +15197,13 @@ async function claimDaily() {
 // последние сообщения 20 верхних чатов скачиваются сразу после входа, поэтому чат открывается без ожидания;
 // дальше заготовки обновляются сами по новым сообщениям
 const msgCache = new Map();   // chat_id → { msgs, hasMore }
+// сколько последних сообщений каждого чата держим на устройстве: хватает на пару экранов вверх и почти не занимает места
+const KEEP = 150, IDB_CHATS = 300;
 function cacheActive() {
   if (!state.activeId || !state.chats.has(state.activeId)) return;
   const real = state.msgs.filter((m) => !isTemp(m));
   if (!real.length && !msgCache.has(state.activeId)) return;
-  msgCache.set(state.activeId, { msgs: real.slice(-PAGE * 2), hasMore: state.hasMore || real.length > PAGE * 2 });
+  msgCache.set(state.activeId, { msgs: real.slice(-KEEP), hasMore: state.hasMore || real.length > KEEP });
   idbSaveChat(state.activeId);
 }
 /* переписка хранится на устройстве (IndexedDB) до выхода из аккаунта: чаты открываются сразу, даже без сети */
@@ -15144,7 +15223,7 @@ function idb() {
 async function idbSaveChat(id) {
   const e = msgCache.get(id), db = await idb();
   if (!e || !db || !state.me) return;
-  try { db.transaction("msgs", "readwrite").objectStore("msgs").put({ u: state.me.id, chat: id, msgs: e.msgs.slice(-PAGE * 2), hasMore: !!e.hasMore || e.msgs.length > PAGE * 2, t: Date.now() }, state.me.id + ":" + id); } catch (x) {}
+  try { db.transaction("msgs", "readwrite").objectStore("msgs").put({ u: state.me.id, chat: id, msgs: e.msgs.slice(-KEEP), hasMore: !!e.hasMore || e.msgs.length > KEEP, t: Date.now() }, state.me.id + ":" + id); } catch (x) {}
 }
 const idbSaveSoon = new Map();
 function idbTouch(id) { clearTimeout(idbSaveSoon.get(id)); idbSaveSoon.set(id, setTimeout(() => { idbSaveSoon.delete(id); idbSaveChat(id); }, 1200)); }
@@ -15156,7 +15235,13 @@ async function idbLoadAll() {
     try {
       const rq = db.transaction("msgs").objectStore("msgs").getAll();
       rq.onsuccess = () => {
-        for (const v of rq.result || []) if (v && v.u === me && v.chat && !msgCache.has(v.chat) && v.chat !== state.activeId) msgCache.set(v.chat, { msgs: (v.msgs || []).filter(notExpired), hasMore: !!v.hasMore });
+        const all = (rq.result || []).filter((v) => v && v.u === me && v.chat);
+        for (const v of all) if (!msgCache.has(v.chat) && v.chat !== state.activeId) msgCache.set(v.chat, { msgs: (v.msgs || []).filter(notExpired), hasMore: !!v.hasMore });
+        // давно не открывавшиеся чаты сверх лимита с устройства убираем
+        if (all.length > IDB_CHATS) {
+          const old = all.sort((a, b) => (b.t || 0) - (a.t || 0)).slice(IDB_CHATS);
+          try { const st = db.transaction("msgs", "readwrite").objectStore("msgs"); for (const v of old) { st.delete(me + ":" + v.chat); msgCache.delete(v.chat); } } catch (e) {}
+        }
         res();
       };
       rq.onerror = () => res();
@@ -15180,6 +15265,81 @@ async function idbClear() {
   const db = await idb();
   if (!db) return;
   try { db.transaction("msgs", "readwrite").objectStore("msgs").clear(); } catch (e) {}
+}
+/* ушли из приложения (свернули, переключились, заблокировали экран) — сразу всё сохраняем:
+   телефон может выгрузить страницу из памяти, и при возврате она откроется с того же места, а не «с нуля» */
+function lastKey() { return "mestario.last." + (state.me && state.me.id); }
+function flushLocal() {
+  if (!state.started || !state.me) return;
+  cacheActive();
+  saveChatsSnap();
+  try { localStorage.setItem(lastKey(), JSON.stringify({ id: state.activeId || null, t: Date.now() })); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushLocal(); });
+addEventListener("pagehide", flushLocal);
+// страницу выгрузили, пока она была в фоне (меньше получаса назад), — возвращаем в тот же чат без анимации
+function restoreLastChat() {
+  let v = null;
+  try { v = JSON.parse(localStorage.getItem(lastKey()) || "null"); localStorage.removeItem(lastKey()); } catch (e) {}
+  if (!v || !v.id || Date.now() - v.t > 1800000 || state.activeId || !state.chats.has(v.id)) return;
+  if (ROUTER_ON && location.pathname !== "/") return;   // на сайте адрес сам откроет нужный экран
+  const was = instantNav; instantNav = true;
+  try { openChat(v.id); } finally { instantNav = was; }
+}
+
+/* фото и голосовые тоже хранятся на устройстве (Cache Storage): после перезапуска показываются сразу и без сети.
+   Ссылка на файл в хранилище каждый раз новая, поэтому обычный кэш браузера их не узнавал и качал заново. */
+const MEDIA_CACHE = "mestario-media-v1", MEDIA_MAX = 500, MEDIA_BIG = 8 << 20;
+const mediaMem = new Map();   // ключ → обещание blob:-адреса
+let mediaIdx = null;
+const mediaReq = (k) => "https://media.mestario.lol/" + encodeURIComponent(k);
+function mediaIndex() {
+  if (!mediaIdx) { try { mediaIdx = JSON.parse(localStorage.getItem("mestario.media") || "[]"); } catch (e) {} if (!Array.isArray(mediaIdx)) mediaIdx = []; }
+  return mediaIdx;
+}
+const mediaIdxSave = debounce(() => { try { localStorage.setItem("mestario.media", JSON.stringify(mediaIndex())); } catch (e) {} }, 2000);
+function mediaTouch(k) {
+  const a = mediaIndex(), i = a.indexOf(k);
+  if (i >= 0) a.splice(i, 1);
+  a.push(k);
+  // самые давние файлы сверх лимита удаляем
+  const old = a.length > MEDIA_MAX ? a.splice(0, a.length - MEDIA_MAX) : [];
+  if (old.length) caches.open(MEDIA_CACHE).then((c) => { for (const x of old) c.delete(mediaReq(x)); }).catch(() => {});
+  mediaIdxSave();
+}
+function mediaGet(k, fetchBlob) {
+  let p = mediaMem.get(k);
+  if (p) return p;
+  p = (async () => {
+    const cs = window.caches ? await caches.open(MEDIA_CACHE).catch(() => null) : null;
+    if (cs) {
+      const hit = await cs.match(mediaReq(k)).catch(() => null);
+      if (hit) { mediaTouch(k); return URL.createObjectURL(await hit.blob()); }
+    }
+    const blob = await fetchBlob();
+    if (!blob || !blob.size) return null;
+    if (cs && blob.size < MEDIA_BIG) cs.put(mediaReq(k), new Response(blob, { headers: { "content-type": blob.type || "application/octet-stream" } })).then(() => mediaTouch(k)).catch(() => {});
+    return URL.createObjectURL(blob);
+  })().catch(() => null);
+  p.then((u) => { if (!u) mediaMem.delete(k); });
+  mediaMem.set(k, p);
+  // в памяти держим не больше 300 фото (голосовые маленькие и нужны проигрывателю — их не трогаем)
+  if (mediaMem.size > 300) for (const [ok, op] of mediaMem) { if (!ok.startsWith("f:")) continue; mediaMem.delete(ok); setTimeout(() => op.then((u) => u && URL.revokeObjectURL(u)), 60000); break; }
+  return p;
+}
+// фото из переписки: с устройства, иначе скачиваем по ссылке и сохраняем
+function photoSrc(m) {
+  return mediaGet("f:" + m.file_path, async () => {
+    const u = await signedUrl(m.file_path);
+    if (!u) return null;
+    const r = await fetch(u);
+    return r.ok ? r.blob() : null;
+  }).then((u) => u || signedUrl(m.file_path));
+}
+function mediaClear() {
+  mediaMem.clear(); mediaIdx = [];
+  try { localStorage.removeItem("mestario.media"); } catch (e) {}
+  if (window.caches) caches.delete(MEDIA_CACHE).catch(() => {});
 }
 async function fetchPage(id) {
   const c = state.chats.get(id);
@@ -20220,8 +20380,10 @@ $("refCopy").addEventListener("click", async () => { try { await navigator.clipb
 $("refShare").addEventListener("click", () => { navigator.share({ title: "Mestario", text: T("Заходи ко мне в Mestario — получишь 25 Mest при регистрации"), url: refUrl() }).catch(() => {}); });
 
 /* ---------- ПИН-код ---------- */
+let pinOpen = false;   // сервер явно подтвердил: в этом сеансе ПИН-код уже введён (или его нет)
 async function pinGate() {
   const { data, error } = await sb.rpc("pin_status");
+  pinOpen = !!(!error && data && data.unlocked);
   if (error || !data) return true;
   if (data.unlocked) return true;
   showAuth("pin");
@@ -20417,8 +20579,9 @@ async function logout() {
   const sub = await pushSub().catch(() => null);
   if (sub) await savePush(sub, false).catch(() => {});
   state.adding = false; $("authBack").hidden = true;
-  try { localStorage.removeItem(chatsKey()); } catch (e) {}   // снимок списка чатов не оставляем на устройстве
+  try { localStorage.removeItem(chatsKey()); localStorage.removeItem(snapKey()); } catch (e) {}   // снимок списка чатов и профиля не оставляем на устройстве
   idbClear();   // и сохранённую переписку тоже
+  mediaClear();   // и сохранённые фото и голосовые
   // сеанс закрываем на сервере по-настоящему: иначе в «Устройствах» висит вышедшее устройство.
   // Ключ доступа мог истечь, пока приложение спало, — сначала обновляем его.
   try { await sb.auth.getSession(); await sb.rpc("end_my_session"); } catch (e) {}
@@ -20623,6 +20786,8 @@ window.addEventListener("beforeinstallprompt", (e) => e.preventDefault());
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
+// всё объявлено — можно сразу открыть мессенджер из сохранённого (сервер ответит и сверится следом)
+try { fastBoot(); } catch (e) { console.warn("fastBoot", e); }
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
