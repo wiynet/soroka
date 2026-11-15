@@ -1,6 +1,6 @@
 /* ============================================================================================
    Встроенный TON-кошелёк Mestario.
-   Некастодиальный: сид-фраза (24 слова) создаётся прямо на устройстве и хранится только здесь,
+   Некастодиальный: сид-фраза (12 или 24 слова) создаётся прямо на устройстве и хранится только здесь,
    зашифрованная паролем кошелька (PBKDF2 + AES-GCM). На сервер уходит лишь публичный адрес —
    чтобы друзья могли переводить по @юзернейму, и карточки переводов в чатах.
    Подпись — tonweb (vendor/, грузится только когда нужен ключ). Балансы, история и курс — tonapi.io и toncenter.com.
@@ -78,14 +78,15 @@ async function pbkdf2_512(key, salt, it) {
   return new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-512", salt: te.encode(salt), iterations: it }, k, 512));
 }
 async function isBasic(words) { const e = await hmac512(words.join(" ")); return (await pbkdf2_512(e, "TON seed version", 390))[0] === 0; }
-async function genMnemonic() {
+async function genMnemonic(n) {
+  n = n === 12 ? 12 : 24;
   for (;;) {
-    const r = crypto.getRandomValues(new Uint16Array(24)), w = Array.from(r, (x) => WORDS[x & 2047]);
+    const r = crypto.getRandomValues(new Uint16Array(n)), w = Array.from(r, (x) => WORDS[x & 2047]);
     if (await isBasic(w)) return w;
   }
 }
 const cleanWords = (s) => String(s || "").toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
-async function validMnemonic(w) { return w.length === 24 && w.every((x) => WORDS.includes(x)) && await isBasic(w); }
+async function validMnemonic(w) { return (w.length === 24 || w.length === 12) && w.every((x) => WORDS.includes(x)) && await isBasic(w); }
 async function seedOf(words) { const e = await hmac512(words.join(" ")); return (await pbkdf2_512(e, "TON default seed", 100000)).slice(0, 32); }
 
 /* ---------- tonweb (только когда нужен ключ) ---------- */
@@ -1114,12 +1115,13 @@ VIEWS.wsettings = () => {
   onRates(() => { fnote.textContent = rateLine(); });
   put(h("h3", { class: "tw-h" }, T("Валюта цен")), fseg, fnote, h("h3", { class: "tw-h" }, T("Кошелёк")), h("div", { class: "tw-sum" },
       h("div", {}, h("span", {}, T("Адрес")), h("b", {}, v.addr)),
+      walletMail() ? h("div", {}, h("span", {}, T("Почта кошелька")), h("b", {}, walletMail())) : null,
       h("div", {}, h("span", {}, T("Сеть")), h("b", {}, "TON Mainnet")),
       h("div", {}, h("span", {}, T("Тип")), h("b", {}, "Wallet v4R2")),
       h("div", {}, h("span", {}, T("Создан")), h("b", {}, new Date(v.at || Date.now()).toLocaleDateString()))),
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(v.addr, T("Адрес скопирован")) }, T("Скопировать адрес")),
     h("a", { class: "tw-btn ghost", style: "text-align:center;text-decoration:none", href: "https://tonviewer.com/" + v.addr, target: "_blank", rel: "noopener noreferrer" }, T("Открыть в Tonviewer")),
-    h("p", { class: "tw-p" }, T("Тот же кошелёк можно открыть в Tonkeeper или другом кошельке TON: «Импорт» → 24 слова.")),
+    h("p", { class: "tw-p" }, T("Кошелёк из 24 слов можно открыть и в Tonkeeper или другом кошельке TON: «Импорт» → 24 слова.")),
     vault() && !vault().soft ? del : null);
 };
 VIEWS.security = () => {
@@ -1148,7 +1150,7 @@ VIEWS.security = () => {
     p1.value = p2.value = ""; toast(T("Пароль кошелька изменён"));
   };
   put(h("div", { class: "tw-note tw-info" }, srvAddr && cloudDone(srvAddr) ? T("Вход с другого устройства включён: там достаточно пароля кошелька и кода из почты. На сервере хранится только копия, зашифрованная этим паролем.") : T("Чтобы входить в кошелёк с других устройств паролем и кодом из почты, откройте сид-фразу ниже паролем один раз — копия сохранится.")),
-    h("p", { class: "tw-p" }, T("Сид-фраза из 24 слов — запасной ключ: с ней кошелёк можно восстановить, даже если вы забудете пароль. Запишите её на бумаге и храните в надёжном месте.")),
+    h("p", { class: "tw-p" }, T("Сид-фраза — запасной ключ: с ней кошелёк можно восстановить, даже если вы забудете пароль. Запишите её на бумаге и храните в надёжном месте.")),
     h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, showBtn, out,
     h("h3", { class: "tw-h" }, T("Пароль")), p1, p2, err2, chg);
 };
@@ -1176,34 +1178,64 @@ VIEWS.secure = async (o) => {
   show("email", { next: "pass", words, secure: true, addr: v.addr, then: o.then });
 };
 // подтверждение почты кодом — без этого кошелёк не создаётся
+// отдельный вход Supabase только для проверки другой почты: сессия в памяти, текущий вход не трогает
+function mailClient() {
+  return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "mestario-tonw-mail" } });
+}
+const mailKey = () => "mestario.tonw.mail." + (state.me && state.me.id);
+const walletMail = () => { try { return localStorage.getItem(mailKey()) || ""; } catch (e) { return ""; } };
 VIEWS.email = (o) => {
   setHead(T("Почта"), o.secure || o.next === "cloud" ? "overview" : "start");
-  const email = state.me.email || "";
-  if (!email || /@deleted\.invalid$/.test(email)) { put(h("div", { class: "tw-note" }, T("Чтобы создать кошелёк, к аккаунту должна быть привязана электронная почта."))); return; }
-  const masked = email.replace(/^(.{2})[^@]*/, "$1•••");
+  const acct = state.me.email && !/@deleted\.invalid$/.test(state.me.email) ? state.me.email : "";
+  const allowOther = o.next !== "cloud";   // вход с другого устройства — только почта аккаунта
+  if (!acct && !allowOther) { put(h("div", { class: "tw-note" }, T("К аккаунту не привязана электронная почта."))); return; }
+  let other = !acct, email = acct, side = null, sentTo = "";
+  const mask = (e) => e.replace(/^(.{2})[^@]*/, "$1•••");
+  const mailIn = h("input", { class: "tw-in", type: "email", autocomplete: "email", placeholder: "name@example.com", autocapitalize: "off", spellcheck: "false" });
+  const mailBox = h("label", { class: "tw-f" }, h("span", {}, T("Почта для кошелька")), mailIn);
   const code = h("input", { class: "tw-in", inputmode: "numeric", autocomplete: "one-time-code", placeholder: T("Код из письма"), maxlength: "10" });
-  const err = h("div", { class: "tw-err" }), info = h("p", { class: "tw-p" }, T("Отправим код на ") + masked + (o.next === "cloud" ? T(" — так мы убедимся, что в кошелёк входите именно вы.") : T(" — так мы убедимся, что кошелёк создаёте именно вы.")));
+  const err = h("div", { class: "tw-err" }), info = h("p", { class: "tw-p" });
   const sendBtn = h("button", { class: "tw-btn ghost", type: "button" }, T("Отправить код"));
   const ok = h("button", { class: "tw-btn", type: "button", disabled: true }, T("Подтвердить"));
+  const swap = h("button", { class: "tw-link", type: "button" });
+  const paint = () => {
+    mailBox.hidden = !other;
+    info.textContent = other ? T("Укажите любую свою почту — пришлём на неё код. Почта аккаунта при этом не меняется.")
+      : T("Отправим код на ") + mask(acct) + (o.next === "cloud" ? T(" — так мы убедимся, что в кошелёк входите именно вы.") : T(" — так мы убедимся, что кошелёк создаёте именно вы."));
+    swap.hidden = !allowOther || !acct;
+    swap.textContent = other ? T("Использовать почту аккаунта") : T("Другая почта");
+  };
+  swap.onclick = () => { other = !other; sentTo = ""; ok.disabled = true; err.textContent = ""; paint(); if (other) setTimeout(() => mailIn.focus(), 30); };
   sendBtn.onclick = async () => {
-    err.textContent = ""; sendBtn.disabled = true;
-    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    err.textContent = "";
+    email = other ? mailIn.value.trim().toLowerCase() : acct;
+    if (other && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = T("Введите почту полностью, например name@gmail.com"); return; }
+    sendBtn.disabled = true;
+    let error;
+    if (other && email !== (acct || "").toLowerCase()) { side = mailClient(); ({ error } = await side.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })); }
+    else { side = null; ({ error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })); }
     if (error) { err.textContent = /rate|seconds/i.test(error.message) ? T("Код уже отправлен. Повторить можно через минуту.") : T("Не удалось отправить код: ") + error.message; sendBtn.disabled = false; return; }
-    info.textContent = T("Код отправлен на ") + masked + T(". Письмо приходит за минуту — загляните и в «Спам».");
+    sentTo = email;
+    info.textContent = T("Код отправлен на ") + mask(email) + T(". Письмо приходит за минуту — загляните и в «Спам».") + (side ? T(" Введите код в течение 2 минут.") : "");
     ok.disabled = false; code.focus();
     setTimeout(() => { sendBtn.disabled = false; sendBtn.textContent = T("Отправить ещё раз"); }, 60000);
   };
   ok.onclick = async () => {
     const tk = code.value.replace(/\D/g, "");
     if (tk.length < 6) { err.textContent = T("Введите код из письма"); return; }
+    if (!sentTo) { err.textContent = T("Сначала отправьте код"); return; }
     ok.disabled = true; err.textContent = "";
-    const { error } = await sb.auth.verifyOtp({ email, token: tk, type: "email" });
+    const { error } = await (side || sb).auth.verifyOtp({ email: sentTo, token: tk, type: "email" });
     ok.disabled = false;
     if (error) { err.textContent = T("Неверный или устаревший код"); return; }
+    if (side) { try { await side.auth.signOut({ scope: "local" }); } catch (e) {} side = null; }
+    try { localStorage.setItem(mailKey(), sentTo); } catch (e) {}
     show(o.next === "import" ? "import" : o.next === "cloud" ? "cloud" : "pass", o);   // o.then едет дальше
   };
+  mailIn.addEventListener("keydown", (e) => { if (e.key === "Enter") sendBtn.click(); });
   code.addEventListener("keydown", (e) => { if (e.key === "Enter") ok.click(); });
-  put(info, sendBtn, h("label", { class: "tw-f" }, h("span", {}, T("Код")), code), err, ok);
+  paint();
+  put(info, mailBox, sendBtn, h("label", { class: "tw-f" }, h("span", {}, T("Код")), code), err, ok, swap);
 };
 VIEWS.pass = (o) => {
   setHead(T("Пароль кошелька"), o.secure || myAddr() ? "overview" : "start");
@@ -1239,15 +1271,28 @@ async function finish(words, addr, pass) {
 }
 VIEWS.seed = (o) => {
   setHead(T("Сид-фраза"));
-  const grid = h("div", { class: "tw-words" }, ...o.words.map((w) => h("span", {}, w)));
-  put(h("div", { class: "tw-note" }, T("Запишите 24 слова по порядку на бумаге. Это запасной ключ, если вы забудете пароль кошелька. Никому их не показывайте — даже поддержке Mestario.")),
-    grid,
+  const fresh = !o.fixed;   // новая фраза: можно выбрать длину
+  const grid = h("div", { class: "tw-words" }), note = h("div", { class: "tw-note" }), warn = h("p", { class: "tw-foot", style: "text-align:left;margin-block:0" });
+  const paint = () => {
+    const n = o.words.length;
+    grid.replaceChildren(...o.words.map((w) => h("span", {}, w)));
+    note.textContent = T("Запишите ") + n + T(" слов по порядку на бумаге. Это запасной ключ, если вы забудете пароль кошелька. Никому их не показывайте — даже поддержке Mestario.");
+    warn.textContent = n === 12 ? T("12 слов короче записывать и так же открываются в Mestario. Но Tonkeeper и другие кошельки TON рассчитаны на 24 слова: по 12 словам они могут не открыть этот кошелёк. Если хотите пользоваться им и в других приложениях — выберите 24.") : "";
+  };
+  const seg = fresh ? h("div", { class: "tw-seg" }, ...[24, 12].map((n) => h("button", { type: "button", class: o.words.length === n ? "on" : "", onclick: async (e) => {
+    if (o.words.length === n) return;
+    const b = e.currentTarget; [...seg.children].forEach((x) => { x.disabled = true; });
+    try { o.words = await genMnemonic(n); o.addr = (await walletOf(o.words)).addr; } finally { [...seg.children].forEach((x) => { x.disabled = false; x.classList.toggle("on", x === b); }); }
+    paint();
+  } }, n + T(" слов")))) : null;
+  paint();
+  put(seg, note, grid, warn,
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(o.words.join(" "), T("Скопировано. Не храните сид-фразу в заметках и скриншотах.")) }, T("Скопировать")),
     h("button", { class: "tw-btn", type: "button", onclick: () => show("check", o) }, T("Я записал(а) слова")));
 };
 VIEWS.check = (o) => {
   setHead(T("Проверка"), null);
-  const idx = []; while (idx.length < 3) { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 24; if (!idx.includes(r)) idx.push(r); }
+  const idx = []; while (idx.length < 3) { const r = crypto.getRandomValues(new Uint8Array(1))[0] % o.words.length; if (!idx.includes(r)) idx.push(r); }
   idx.sort((x, y) => x - y);
   const ins = idx.map((i) => h("input", { class: "tw-in", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: T("Слово №") + (i + 1) }));
   const err = h("div", { class: "tw-err" });
@@ -1260,7 +1305,7 @@ VIEWS.check = (o) => {
   };
   put(h("p", { class: "tw-p" }, T("Введите слова №") + idx.map((i) => i + 1).join(", ") + T(" — чтобы убедиться, что вы их записали.")),
     ...ins.map((x, k) => h("label", { class: "tw-f" }, h("span", {}, T("Слово №") + (idx[k] + 1)), x)), err, go,
-    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("seed", o) }, T("Показать слова ещё раз")));
+    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("seed", Object.assign(o, { fixed: true })) }, T("Показать слова ещё раз")));
 };
 // вход на новом устройстве: код из почты → зашифрованная копия с сервера → пароль кошелька
 VIEWS.recover = async (o) => {
@@ -1313,13 +1358,13 @@ VIEWS.cloud = async (o) => {
 VIEWS.import = (o) => {
   o = o || {};
   setHead(T("Восстановление"), myAddr() ? "overview" : "start");
-  const ta = h("textarea", { class: "tw-in", placeholder: T("24 слова через пробел"), autocapitalize: "off", autocomplete: "off", spellcheck: "false" });
+  const ta = h("textarea", { class: "tw-in", placeholder: T("12 или 24 слова через пробел"), autocapitalize: "off", autocomplete: "off", spellcheck: "false" });
   const err = h("div", { class: "tw-err" });
   const go = h("button", { class: "tw-btn", type: "button" }, T("Продолжить"));
   go.onclick = async () => {
     err.textContent = "";
     const w = cleanWords(ta.value);
-    if (w.length !== 24) { err.textContent = T("Нужно ровно 24 слова (сейчас ") + w.length + ")"; return; }
+    if (w.length !== 24 && w.length !== 12) { err.textContent = T("Нужно 12 или 24 слова (сейчас ") + w.length + ")"; return; }
     go.disabled = true;
     try {
       if (!(await validMnemonic(w))) { err.textContent = T("Это не сид-фраза TON — проверьте слова"); return; }
@@ -1330,7 +1375,7 @@ VIEWS.import = (o) => {
     finally { go.disabled = false; }
   };
   put(o.nocloud ? h("div", { class: "tw-note tw-info" }, T("Копии этого кошелька на сервере пока нет: она появится, когда вы откроете кошелёк паролем на устройстве, где его создали. Сейчас войти можно по сид-фразе.")) : null,
-    h("p", { class: "tw-p" }, T("Введите 24 слова сид-фразы. Подходит и кошелёк из Tonkeeper (тип v4R2).")), ta, err, go);
+    h("p", { class: "tw-p" }, T("Введите 12 или 24 слова сид-фразы. Подходит и кошелёк из Tonkeeper (тип v4R2, 24 слова).")), ta, err, go);
   setTimeout(() => ta.focus(), 50);
 };
 
