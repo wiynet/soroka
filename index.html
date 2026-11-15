@@ -851,7 +851,8 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
   @keyframes px-in { 0% { transform: translateX(-170%) translateY(10%) scale(1.25); } 75% { transform: translateX(6%); } 100% { transform: none; } }
 }
 /* в спокойном и экономном режиме замирает только «жизнь» сцены, само улучшение доигрывается */
-:root.calm .em.pxem:not(.pxu) .pxl *, :root[data-lite] .em.pxem:not(.pxu) .pxl * { animation-play-state: paused !important; }
+/* только движущиеся части по классу: правило вида «.pxl *» заставляло пересчитывать стили всей страницы при каждом «засыпании» */
+:root.calm .em.pxem:not(.pxu) .pxl .px3d, :root.calm .em.pxem:not(.pxu) .pxl .px-p-lid, :root.calm .em.pxem:not(.pxu) .pxl .px-glow, :root.calm .em.pxem:not(.pxu) .pxl .px-slash, :root.calm .em.pxem:not(.pxu) .pxl .px-aura, :root.calm .em.pxem:not(.pxu) .pxl .px-bub, :root.calm .em.pxem:not(.pxu) .pxl .px-p-w1, :root.calm .em.pxem:not(.pxu) .pxl .px-p-w2, :root.calm .em.pxem:not(.pxu) .pxl .px-speed, :root.calm .em.pxem:not(.pxu) .pxl .px-road, :root.calm .em.pxem:not(.pxu) .pxl .px-spk, :root[data-lite] .em.pxem:not(.pxu) .pxl .px3d, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-p-lid, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-glow, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-slash, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-aura, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-bub, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-p-w1, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-p-w2, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-speed, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-road, :root[data-lite] .em.pxem:not(.pxu) .pxl .px-spk { animation-play-state: paused !important; }
 /* ---------- анимированные эмодзи-стикеры Mestario: одиночный эмодзи из набора показывается как живой стикер ---------- */
 .msg.astkm .astk { margin: 2px 0; }
 .astk { position: relative; width: 150px; height: 150px; display: grid; place-items: center; isolation: isolate; }
@@ -1756,7 +1757,8 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 /* телефон: без «пятен» и лишней работы видеокарты */
 @media (max-width: 760px) {
   /* открытый раньше чат не подсвечивается в списке, когда мы снова в списке */
-  #app:not(.chat-open) #chatList .row.active { background: transparent; }
+  /* (без :not(.chat-open) — такое правило заставляло пересчитывать стили всего приложения при каждом входе в чат и выходе) */
+  #chatList .row.active { background: transparent; }
 }
 @media (pointer: coarse) {
   /* размытие под тем, что едет при прокрутке, пересчитывается каждый кадр — на телефоне заменяем плотной подложкой */
@@ -2331,7 +2333,7 @@ textarea.input { resize: vertical; min-height: 72px; }
 @keyframes greet-in { from { opacity: 0; transform: translateY(14px) scale(.96); } }
 @keyframes greet-wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20%, 40% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
 @keyframes greet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-:root.calm .greet-card .em, :root.calm .greet-card img, :root[data-lite] .greet-card .em { animation-play-state: paused; }
+:root.calm .greet-card .em, :root[data-lite] .greet-card .em { animation-play-state: paused; }
 .greet-preview { display: grid; place-items: center; padding: 14px 0 10px; border-radius: 18px; margin: 8px 0; background: var(--panel-2); }
 .greet-preview .greet-card { animation: none; margin: 0; }
 #dlgGreet input { width: 100%; margin-bottom: 6px; }
@@ -3140,7 +3142,7 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 
 /* покой: после нескольких секунд без касаний фоновые «вечные» анимации замирают — видеокарта не работает впустую */
 :root.calm .tabbar, :root.calm .star, :root.calm .worn, :root.calm .gem, :root.calm .nft::after, :root.calm .coin.big,
-:root.calm .orb, :root.calm .sparks i, :root.calm[data-wall="crystal"] .pane::before, :root.calm .home-arrow, :root.calm .gift.tile .em, :root.calm .gv .em { animation-play-state: paused !important; }
+:root.calm .orb, :root.calm[data-wall="crystal"] .pane::before, :root.calm .home-arrow, :root.calm .gift.tile .em, :root.calm .gv .em { animation-play-state: paused !important; }
 
 /* ---------- «жидкое стекло» в духе iOS 26: полупрозрачные панели с размытием, бликом по краю и мягкой тенью ---------- */
 :root[data-glass="liquid"] {
@@ -3307,7 +3309,8 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
       try { if (keep.length) r.selectorText = keep.join(","); else list.deleteRule(i); } catch (e) {}
     }
   }
-  function run() { for (var k = 0; k < document.styleSheets.length; k++) { try { clean(document.styleSheets[k]); } catch (e) {} } }
+  var cleaned = window.WeakSet ? new WeakSet() : null;
+  function run() { for (var k = 0; k < document.styleSheets.length; k++) { var sh = document.styleSheets[k]; if (cleaned && cleaned.has(sh)) continue; try { clean(sh); if (cleaned) cleaned.add(sh); } catch (e) {} } }
   run();
   document.addEventListener("DOMContentLoaded", run);
 })();
@@ -3371,6 +3374,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
     r.setAttribute("data-bubble", s.bubble === "sharp" ? "sharp" : "round");
     // слабое устройство (мало памяти или ядер): облегчённый режим без тяжёлых фоновых эффектов
     var weak = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+    try { if (localStorage.getItem("mestario.slowDev") === "1") weak = true; } catch (e) {}   // телефон сам показал, что не успевает (см. «замер плавности»)
     if (s.lite === "on" || (s.lite !== "off" && weak)) r.setAttribute("data-lite", ""); else r.removeAttribute("data-lite");
     // «жидкое стекло»: само включается в приложении для iPhone, вручную — в настройках оформления
     var glass = s.glass === "on" || (s.glass !== "off" && location.protocol === "capacitor:");
@@ -3744,7 +3748,8 @@ void main() {
     return !app || app.hidden || window.innerWidth > 760 || app.classList.contains("chat-open");
   }
   function draw(now) {
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // плавный градиент: на телефоне рисуем в обычном разрешении — разницы не видно, а пикселей вчетверо меньше
+    var dpr = coarse ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     var w = Math.max(1, Math.round(cv.clientWidth * dpr)), hh = Math.max(1, Math.round(cv.clientHeight * dpr));
     if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; gl.viewport(0, 0, w, hh); }
     gl.uniform4f(U.u_scene, w, hh, (now - t0) / 1000 * -1.37, 4.0);
@@ -5951,9 +5956,29 @@ void main() {
 const ANIM_RATE = 0.85;
 function aMs(ms) { return Math.round(ms / ANIM_RATE); }
 (function () {
-  const slow = (e, pick) => { const t = e.target; if (!t || !t.getAnimations) return; for (const a of t.getAnimations()) if (pick(a) && a.playbackRate === 1) a.playbackRate = ANIM_RATE; };
-  document.addEventListener("animationstart", (e) => slow(e, (a) => a.animationName === e.animationName), true);
-  document.addEventListener("transitionrun", (e) => slow(e, (a) => a.transitionProperty === e.propertyName), true);
+  // CSS-анимации и переходы замедляем один раз прямо в стилях. Раньше на каждом старте анимации
+  // вызывался getAnimations() — это заставляло браузер пересчитывать стили сотни раз за запуск и при открытии чата.
+  const scale = (v) => !v || v.indexOf("var(") >= 0 ? null : v.split(",").map((x) => {
+    const m = /^\s*(-?[\d.]+)(m?s)\s*$/.exec(x);
+    return m ? String(Math.round(parseFloat(m[1]) / ANIM_RATE * (m[2] === "s" ? 1000 : 1))) + "ms" : x.trim();
+  }).join(", ");
+  const walk = (list) => {
+    for (const r of list) {
+      if (r.cssRules && !r.style) { try { walk(r.cssRules); } catch (e) {} continue; }
+      const st = r.style;
+      if (!st) continue;
+      for (const k of ["animationDuration", "animationDelay", "transitionDuration", "transitionDelay"]) {
+        const v = st[k];
+        if (!v || v === "0s") continue;
+        const n = scale(v);
+        if (n && n !== v) try { st[k] = n; } catch (e) {}
+      }
+    }
+  };
+  const done = new WeakSet();
+  window.slowSheets = () => { for (const s of document.styleSheets) { if (done.has(s)) continue; try { walk(s.cssRules); done.add(s); } catch (e) {} } };
+  slowSheets();
+  document.addEventListener("DOMContentLoaded", slowSheets);
   const native = Element.prototype.animate;
   Element.prototype.animate = function (k, o) {
     if (typeof o === "number") o = o / ANIM_RATE;
@@ -7357,6 +7382,10 @@ function closeCtx() {
     const el = ctxEl; ctxEl = null;
     if (motionOK()) { el.classList.add("out"); el.style.pointerEvents = "none"; setTimeout(() => el.remove(), aMs(150)); } else el.remove();
   } if (heldRows) { heldRows = false; for (const r of document.querySelectorAll(".row.held")) r.classList.remove("held"); } }
+// долгое нажатие не считается, если за это время что-то прокручивалось: иначе меню иногда выскакивало посреди прокрутки
+let lastScrollAt = 0;
+addEventListener("scroll", () => { lastScrollAt = performance.now(); }, { passive: true, capture: true });
+function scrolledSince(t) { return lastScrollAt > t + 30; }
 function chatCtxBind(row, c) {
   row.addEventListener("contextmenu", (e) => { e.preventDefault(); openChatCtx(c, e.clientX, e.clientY, row); });
   // на телефоне правой кнопки нет: то же меню по долгому нажатию
@@ -7365,7 +7394,8 @@ function chatCtxBind(row, c) {
   row.addEventListener("touchstart", (e) => {
     const t = e.touches[0]; sx = t.clientX; sy = t.clientY; row._held = false;
     stop();
-    timer = setTimeout(() => { timer = 0; row._held = true; if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {} openChatCtx(c, sx, sy, row); }, 480);
+    const t0 = performance.now();
+    timer = setTimeout(() => { timer = 0; if (scrolledSince(t0)) return; row._held = true; if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {} openChatCtx(c, sx, sy, row); }, 480);
   }, { passive: true });
   row.addEventListener("touchmove", (e) => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) stop(); }, { passive: true });
   row.addEventListener("touchend", (e) => { stop(); if (row._held) { e.preventDefault(); setTimeout(() => { row._held = false; }, 400); } });
@@ -8242,8 +8272,11 @@ function msgMenuBind(el, m, group) {
     stop(); held = false;
     if (e.touches.length !== 1) return;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    const t0 = performance.now();
     timer = setTimeout(() => {
-      timer = 0; held = true;
+      timer = 0;
+      if (scrolledSince(t0)) return;   // палец вёл прокрутку, а не держал сообщение
+      held = true;
       if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {}
       openMsgMenu(m, group);
     }, 480);
@@ -15086,6 +15119,7 @@ function setFolderTab(t) {
   renderList();
   $("chatList").scrollTop = 0;
 }
+let folderSig = "";
 function paintFolders(chats) {
   const bar = $("folderBar");
   const show = !searchMode && !$("search").value.trim() && !archView && chats.length > 0;
@@ -15095,8 +15129,13 @@ function paintFolders(chats) {
   for (const f of folders) tabs.push(["f" + f.id, f.title, f]);
   if (!tabs.some((t) => t[0] === folderTab)) folderTab = "all";
   const unreadIn = (id) => chats.filter((c) => !c.muted && state.unread.has(c.id) && (id.startsWith("f") || !c.archived) && inFolder(c, id)).length;
-  bar.replaceChildren(...tabs.map(([id, label, f]) => {
-    const n = id === "all" ? 0 : unreadIn(id);
+  const counts = tabs.map(([id]) => id === "all" ? 0 : unreadIn(id));
+  // ничего не поменялось — кнопки папок не пересоздаём (список перерисовывается на каждое новое сообщение)
+  const sig = folderTab + "|" + window.SOROKA_LANG + "|" + tabs.map(([id, label], i) => id + ":" + label + ":" + counts[i]).join(",") + "|" + folders.map((f) => f.id + ":" + f.chat_ids.join(".")).join(",");
+  if (sig === folderSig && bar.children.length) return;
+  folderSig = sig;
+  bar.replaceChildren(...tabs.map(([id, label, f], i) => {
+    const n = counts[i];
     const b = h("button", { type: "button", role: "tab", "aria-selected": String(folderTab === id), class: folderTab === id ? "on" : null,
       onclick: () => { if (b._held) { b._held = false; return; } if (folderTab !== id) setFolderTab(id); } },
       label, n ? h("span", { class: "n" }, n > 99 ? "99+" : String(n)) : null);
@@ -15224,6 +15263,17 @@ async function idbSaveChat(id) {
   const e = msgCache.get(id), db = await idb();
   if (!e || !db || !state.me) return;
   try { db.transaction("msgs", "readwrite").objectStore("msgs").put({ u: state.me.id, chat: id, msgs: e.msgs.slice(-KEEP), hasMore: !!e.hasMore || e.msgs.length > KEEP, t: Date.now() }, state.me.id + ":" + id); } catch (x) {}
+}
+function idbSaveMany(ids) {
+  if (!ids.length) return;
+  (window.requestIdleCallback || setTimeout)(async () => {
+    const db = await idb();
+    if (!db || !state.me) return;
+    try {
+      const st = db.transaction("msgs", "readwrite").objectStore("msgs"), me = state.me.id;
+      for (const id of ids) { const e = msgCache.get(id); if (e) st.put({ u: me, chat: id, msgs: e.msgs.slice(-KEEP), hasMore: !!e.hasMore || e.msgs.length > KEEP, t: Date.now() }, me + ":" + id); }
+    } catch (x) {}
+  }, { timeout: 3000 });
 }
 const idbSaveSoon = new Map();
 function idbTouch(id) { clearTimeout(idbSaveSoon.get(id)); idbSaveSoon.set(id, setTimeout(() => { idbSaveSoon.delete(id); idbSaveChat(id); }, 1200)); }
@@ -15372,7 +15422,9 @@ async function prefetchChats() {
     for (let i = 0; i < list.length; i += 4) {   // по 4 запроса за раз, чтобы не мешать остальному
       if (!state.started) return;
       const part = list.slice(i, i + 4), got = await Promise.all(part.map((c) => fetchPage(c.id)));
-      got.forEach((g, k) => { const id = part[k].id; prefetchedAt.set(id, Date.now()); if (g && id !== state.activeId) { msgCache.set(id, g); idbSaveChat(id); } });
+      const fresh = [];
+      got.forEach((g, k) => { const id = part[k].id; prefetchedAt.set(id, Date.now()); if (g && id !== state.activeId) { msgCache.set(id, g); fresh.push(id); } });
+      idbSaveMany(fresh);   // одной записью и в свободный момент, чтобы не мешать прокрутке
       trimMsgCache();
     }
   } finally { prefetching = false; }
@@ -18993,6 +19045,32 @@ document.addEventListener("pointerup", (e) => {
   // быстрый тап (меньше 90 мс): волна сразу по отпусканию
   if (rpTouch && e.pointerId === rpTouch.id) { const st = rpTouch; rpCancel(); rippleAt(st.t, st.x, st.y); }
 }, { passive: true });
+/* замер плавности: в режиме «Авто» смотрим, успевает ли устройство рисовать кадры во время прокрутки.
+   Если больше трети кадров дольше 1/25 секунды — включаем облегчённый режим (и запоминаем на следующие запуски). */
+(function () {
+  const root = document.documentElement;
+  if (root.hasAttribute("data-lite") || !window.sorokaSettings || window.sorokaSettings.lite !== "auto") return;
+  let slow = 0, all = 0, last = 0, raf = 0, until = 0;
+  const tick = (t) => {
+    raf = 0;
+    if (last && !document.hidden) { all++; if (t - last > 40) slow++; }
+    last = t;
+    if (all >= 240) {
+      if (slow / all > 0.34) {
+        try { localStorage.setItem("mestario.slowDev", "1"); } catch (e) {}
+        root.setAttribute("data-lite", "");
+        return;
+      }
+      slow = all = 0;   // всё плавно — продолжаем следить по новой
+    }
+    if (performance.now() < until) raf = requestAnimationFrame(tick); else last = 0;
+  };
+  addEventListener("scroll", () => {
+    if (root.hasAttribute("data-lite")) return;
+    until = performance.now() + 300;
+    if (!raf) raf = requestAnimationFrame(tick);
+  }, { passive: true, capture: true });
+})();
 // на телефоне прокрутка «приглушает» фон: пока список едет, бегущие обои не тратят кадры
 (function () {
   const root = document.documentElement;
