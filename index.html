@@ -7356,13 +7356,16 @@ function rowSig(c) {
   const o = !c.is_group ? other(c) : null;
   const who = o ? [o.id, o.display_name, o.avatar_path, o.verified, o.premium_until, o.name_hue, o.worn_type, o.worn_number, o.is_admin, o.is_chief, o.hide_crown, o.hide_tick, o.badge_style, o.badge_path, o.banned_at].join("|") : "";
   return [c.id, chatTitle(c), c.avatar_path, c.last_text, c.last_sender, c.last_text ? listTime(c.last_at) : "", state.unread.get(c.id) || 0,
-    mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.id === state.activeId ? 1 : 0, c.is_channel ? 1 : 0,
+    mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.is_channel ? 1 : 0,
     o && storyUsers.has(o.id) ? ((storyFeed.get(o.id) || {}).seen ? "s" : "S") : "", who,
     c.is_group && c.last_sender ? memberName(c, c.last_sender) : "", window.SOROKA_LANG, contactsVer, o ? avOf(o) : ""].join("¦");
 }
+// подсветка открытого чата — только класс на той же строке: раньше строка при входе и выходе из чата
+// пересоздавалась и заново проигрывала появление (аватар, счётчик), будто чат открывается ещё раз
+function rowActive(el, c) { const on = c.id === state.activeId; if (el.classList.contains("active") !== on) el.classList.toggle("active", on); return el; }
 function chatRowCached(c) {
   const sig = rowSig(c), hit = rowCache.get(c.id);
-  if (hit && hit.sig === sig) return hit.el;
+  if (hit && hit.sig === sig) return rowActive(hit.el, c);
   const el = chatRow(c);
   rowCache.set(c.id, { sig, el });
   if (rowCache.size > 600) rowCache.delete(rowCache.keys().next().value);
@@ -7798,7 +7801,7 @@ async function openChat(id) {
     const cached = cached0;
     state.msgs = cached.msgs.filter(notExpired).concat(pendingHere());
     state.hasMore = cached.hasMore; state.msgsReady = id;
-    msgTail = msgTailFor(state.msgs.length);
+    msgTail = warmChat(id) ? 0 : msgTailFor(state.msgs.length);   // узлы уже готовы — рисуем всё сразу, без дорисовки сверху
     renderMsgs(); paintPin(); scrollDown();
     if (msgTail) msgFull(id);
     ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
@@ -8325,8 +8328,24 @@ function msgMenuBind(el, m, group) {
 let slideBusy = false, slidePending = false;
 // Готовые узлы сообщений: при перерисовке берём тот же узел, если у сообщения ничего не изменилось.
 // Тогда фото не перезагружаются, анимации не стартуют заново, а новое сообщение не перестраивает всю переписку.
-const msgNodes = new Map();
+let msgNodes = new Map();
 let msgNodesChat = null, msgStick = null;
+// готовые узлы последних открытых чатов: вернулся в чат — переписка встаёт сразу целиком, те же узлы, без повторных анимаций
+const nodeStash = new Map();   // chat_id → { nodes, days }
+function msgNodesFor(id) {
+  if (msgNodesChat === id) return;
+  if (msgNodesChat && msgNodes.size) {
+    nodeStash.delete(msgNodesChat);
+    nodeStash.set(msgNodesChat, { nodes: msgNodes, days: dayCache });
+    while (nodeStash.size > 5) nodeStash.delete(nodeStash.keys().next().value);
+  }
+  const got = nodeStash.get(id);
+  nodeStash.delete(id);
+  msgNodes = got ? got.nodes : new Map();
+  dayCache = got ? got.days : new Map();
+  msgNodesChat = id;
+}
+const warmChat = (id) => msgNodesChat === id || nodeStash.has(id);
 function userSig(p) {
   return p ? [p.id, nameOf(p), avOf(p), p.bubble, contactsVer, p.verified, p.is_admin, p.premium_until, p.name_hue, p.hide_crown, p.hide_tick,
     p.badge_style, p.badge_path, p.worn_type, p.worn_number, p.worn_model, p.worn_backdrop].join("|") : "";
@@ -8385,7 +8404,7 @@ function mrowFor(node, last, who, senderId) {
   mrowCache.set(node, { sig, el });
   return el;
 }
-const dayCache = new Map();
+let dayCache = new Map();
 function dayNode(d, k) {
   const label = dayLabel(d), hit = dayCache.get(k);
   if (hit && hit.label === label) return hit.el;
@@ -8423,7 +8442,7 @@ function msgFull(id) {
 }
 function renderMsgs(newId) {
   if (slideBusy && !newId) { slidePending = true; return; }   // перерисуем сразу после въезда
-  if (msgNodesChat !== state.activeId) { msgNodes.clear(); dayCache.clear(); msgNodesChat = state.activeId; }
+  if (msgNodesChat !== state.activeId) msgNodesFor(state.activeId);
   msgStick = nearBottom();   // один раз до изменений, а не для каждого фото (иначе браузер пересчитывает раскладку на каждом)
   const kids = [];
   const from = msgTail && state.msgs.length > msgTail ? state.msgs.length - msgTail : 0;
@@ -8465,7 +8484,7 @@ function renderMsgs(newId) {
   paintBotKb();
   if (before && before.length) {
     const had = new Set(before.map((x) => x.id));
-    for (const n of $("msgs").querySelectorAll(".msg[data-id]")) if (had.has(n.dataset.id)) { n.classList.add("keep"); const r = n.closest(".mrow"); if (r) r.classList.add("keep"); }
+    for (const n of $("msgs").querySelectorAll(".msg[data-id]")) if (had.has(n.dataset.id) && !n.classList.contains("keep")) { n.classList.add("keep"); const r = n.closest(".mrow"); if (r) r.classList.add("keep"); }
   }
   msgsGone(before);
   if (newId && flyFrom && Date.now() - flyFrom.t < 1500) {
@@ -9276,7 +9295,7 @@ function bubbleFor(m, c) {
 function contactsChanged() {
   contactsVer++;
   patchSnap({ contacts: [...contacts.values()] });
-  rowCache.clear(); msgNodes.clear();
+  rowCache.clear(); msgNodes.clear(); nodeStash.clear();
   renderList();
   if (state.activeId) { renderHead(); repaintKeep(); }
 }
@@ -18962,7 +18981,7 @@ function flipList(list, paint) {
     }
   }
   const rows = [...list.children].filter((r) => r.dataset.cid);
-  for (const r of rows) if (had.has(r.dataset.cid)) r.classList.add("keep");
+  for (const r of rows) if (had.has(r.dataset.cid) && !r.classList.contains("keep")) r.classList.add("keep");
   for (const r of rows) {
     const c = r.querySelector(".count:not(.at)"), was = listCounts.get(r.dataset.cid), now = c ? c.textContent : "";
     if (ok && c && was !== undefined && was !== now) c.classList.add("bump");
