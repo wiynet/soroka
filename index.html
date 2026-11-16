@@ -2469,7 +2469,8 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   #app { position: relative; overflow: hidden; display: block; }
   #app > .sidebar { position: absolute; inset: 0; z-index: 0; }
   #app > .peek-dim { position: absolute; inset: 0; z-index: 1; display: block; background: rgb(0 0 0 / .32); opacity: 0; pointer-events: none; }
-  #app > .pane { position: absolute; inset: 0; z-index: 2; isolation: isolate; background-color: var(--bg); transform: translate3d(100%, 0, 0); visibility: hidden; box-shadow: -14px 0 34px rgb(0 0 0 / .28); }
+  /* закрытый чат стоит на 48px дальше правого края: его тень уходит за экран вместе с ним, а не исчезает рывком */
+  #app > .pane { position: absolute; inset: 0; z-index: 2; isolation: isolate; background-color: var(--bg); transform: translate3d(calc(100% + 48px), 0, 0); visibility: hidden; box-shadow: -14px 0 34px rgb(0 0 0 / .28); }
   #app.chat-open > .pane { transform: none; visibility: visible; }
   #app.chat-open > .sidebar { transform: translate3d(-28%, 0, 0); }
   #app.chat-open > .peek-dim { opacity: 1; }
@@ -3283,6 +3284,34 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   /* смена темы — короткий лёгкий кроссфейд (только на ПК; на телефонах и в облегчённом режиме — мгновенно) */
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .18s; animation-timing-function: ease-out; }
 }
+
+/* ---------- карточка перевода TON в переписке: стили здесь, чтобы она была оформлена сразу, ещё до загрузки кошелька ---------- */
+.msg.paym { padding: 4px; background: none !important; box-shadow: none !important; }
+.pay-card { width: min(300px, 68vw); padding: 16px 18px 15px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 10%, var(--panel, #222)); display: grid; gap: 6px; text-align: left; cursor: pointer; }
+.msg.mine .pay-card { background: #233a66; color: #fff; }
+.pay-card b.t { font-size: 17px; }
+.pay-card .a { font-size: 30px; font-weight: 800; letter-spacing: -.01em; color: #34c759; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.msg.mine .pay-card .a { color: #fff; }
+.pay-card .s { font-size: 14px; opacity: .7; }
+.pay-card .c { font-size: 14px; opacity: .85; }
+.pay-card.chq { cursor: default; }
+.pay-acts:empty { display: none; }
+.pay-acts { margin-top: 6px; }
+.pay-btn { width: 100%; border: 0; border-radius: 14px; padding: 12px; background: #3d78e6; color: #fff; font: inherit; font-size: 16px; font-weight: 650; cursor: pointer; transition: transform .14s ease, filter .15s ease; }
+.pay-btn:hover { filter: brightness(1.1); } .pay-btn:active { transform: scale(.96); }
+.pay-btn.ghost { background: rgb(255 255 255 / .12); color: inherit; }
+.pay-card .st { justify-self: start; margin-top: 4px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgb(52 199 89 / .16); color: #34c759; }
+.pay-card .st.wait { background: rgb(255 179 64 / .16); color: #ffb340; }
+.pay-card .st.bad { background: rgb(255 69 58 / .16); color: #ff6b62; }
+.pay-card { animation: twPop .42s cubic-bezier(.2, .9, .3, 1.15) backwards; transition: transform .16s ease; }
+.pay-card:active { transform: scale(.97); }
+.pay-card .st { transition: background .3s ease, color .3s ease; }
+.pay-card .st.wait { animation: twWait 1.3s ease-in-out infinite; }
+.pay-card .st.flip { animation: twPop .4s cubic-bezier(.2, .9, .3, 1.3); }
+.keep .pay-card, .keep .pay-card .st.flip { animation: none; }
+@keyframes twPop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
+@keyframes twWait { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .pay-card, .pay-card * { animation: none !important; transition: none !important; } }
 </style>
 <script>
 /* Сенсорный экран без мыши: правила :hover «залипают» после касания — строка остаётся подсвеченной, пока не ткнёшь
@@ -8082,6 +8111,33 @@ function photoBox(img, m) {
   img.style.minHeight = "0"; img.style.minWidth = "0";
   return true;
 }
+// карточка перевода, пока модуль кошелька ещё грузится: тот же вид и размер, без голого текста
+function payStub(m, mine) {
+  const p = m.pay || {}, amt = String(p.amt || "0").replace(".", window.SOROKA_LANG === "en" ? "." : ",") + " " + (p.cur || "TON");
+  // последнее известное состояние (его сохраняет кошелёк) — карточка сразу того же вида и высоты, что и настоящая
+  let saved = null; try { saved = JSON.parse(localStorage.getItem("mestario.paystat") || "{}")[(p.chq ? "c:" + p.chq : "p:" + m.id)] || null; } catch (e) {}
+  let sub = T("Блокчейн TON"), st = h("span", { class: "st wait" }, T("Проверяем…")), btn = null;
+  if (p.chq && saved) {
+    if (saved.status === "claimed") { st = h("span", { class: "st" }, T("Получено")); sub = mine ? T("Получатель забрал перевод") : T("Деньги на вашем кошельке"); }
+    else if (saved.status === "refunded") st = h("span", { class: "st bad" }, mine ? T("Возвращено вам") : T("Отправитель отменил перевод"));
+    else {
+      st = h("span", { class: "st wait" }, T("Ждёт получения"));
+      sub = mine ? T("Ждём, пока получатель нажмёт «Получить»") : T("Нажмите «Получить» — создадим кошелёк, и деньги придут на него");
+      if (saved.for_me) btn = h("button", { class: "pay-btn", type: "button" }, T("Получить"));
+      else if (saved.mine) btn = h("button", { class: "pay-btn ghost", type: "button" }, T("Вернуть"));
+    }
+  } else if (!p.chq && saved) {
+    st = h("span", { class: "st" + (saved === "ok" ? "" : " bad") }, saved === "ok" ? T("Подтверждено") : T("Ошибка перевода"));
+    if (saved === "ok") sub = T("Подтверждено в блокчейне TON");
+  }
+  return h("div", { class: "pay-card" + (p.chq ? " chq" : "") },
+    h("b", { class: "t" }, mine ? T("Перевод отправлен") : p.chq ? T("Вам перевели") : T("Перевод получен")),
+    h("span", { class: "a" }, (mine ? "−" : "+") + amt),
+    p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null,
+    h("span", { class: "s" }, sub), st, p.chq ? h("div", { class: "pay-acts" }, btn) : null);
+}
+// модуль кошелька загрузился — карточки переводов в открытой переписке становятся «живыми»
+addEventListener("mw-ready", () => { if (state.started && state.activeId && state.msgs.some((m) => m.pay)) renderMsgs(); });
 function photoNode(m) {
   const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
   img.addEventListener("load", () => photoDims(m, img), { once: true });   // в альбоме клетки квадратные — размер только запоминаем
@@ -8249,9 +8305,9 @@ function msgNode(m, group) {
         h("span", { class: "line" }, mine ? T("Получатель: ") + (o ? o.display_name : T("собеседник")) : T("Выдал администратор: ") + (o ? o.display_name : T("администратор"))),
         m.event_note && h("span", { class: "note" }, m.event_note)));
   } else {
-    const text = m.geo_lat != null || (m.pay && window.MW) ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
+    const text = m.geo_lat != null || m.pay ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
     if (m.geo_lat != null) { el.classList.add("geom"); el.append(geoCard(m)); }
-    if (m.pay && window.MW) { el.classList.add("paym"); el.append(MW.payCard(m, mine)); }
+    if (m.pay) { el.classList.add("paym"); el.append(window.MW ? MW.payCard(m, mine) : payStub(m, mine)); }
     const as = !group && !m.file_path && m.geo_lat == null ? astkOf(text) : null;
     if (as) { el.classList.add("stk", "astkm"); el.append(astkNode(as)); }
     else if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : fmtText(text))));
@@ -8353,6 +8409,7 @@ function userSig(p) {
 // подпись всего, от чего зависит вид сообщения; null — такие сообщения не кешируем (опросы, подарки, розыгрыши, неотправленные)
 function msgSig(m, group, c) {
   if (isTemp(m) || m.poll_id || m.gift_type || m.event_kind || (m.giveaway_id && /^🎉/.test(m.body || ""))) return null;
+  if (m.pay && !window.MW) return null;   // заглушку перевода не кешируем: после загрузки кошелька её заменит настоящая карточка
   const list = group || [m];
   const parts = [window.SOROKA_LANG, state.me.id, list.map((x) => JSON.stringify(x)).join("\n"), bubbleFor(m, c) || "", contactsVer];
   const mine = m.sender_id === state.me.id;
@@ -16532,8 +16589,9 @@ function phoneLayout() { return innerWidth <= 760; }
 // только их сдвиг и затемнение — без пересчёта раскладки, поэтому ничего не дёргается.
 const PANE_OPEN = { pane: 0, side: -PEEK * 100, dim: 1 }, PANE_SHUT = { pane: 100, side: 0, dim: 0 };
 function peekEls() { return { app: $("app"), pane: document.querySelector("#app > .pane"), side: document.querySelector("#app > .sidebar"), dim: $("peekDim") }; }
+const paneX = (p) => "translate3d(calc(" + p + "% + " + (p * 0.48).toFixed(2) + "px),0,0)";   // тень закрытого чата — за краем экрана
 function paneFrames(a, b) {
-  const t = (v) => ({ pane: "translate3d(" + v.pane + "%,0,0)", side: "translate3d(" + v.side + "%,0,0)", dim: String(v.dim) });
+  const t = (v) => ({ pane: paneX(v.pane), side: "translate3d(" + v.side + "%,0,0)", dim: String(v.dim) });
   const x = t(a), y = t(b);
   return { pane: [{ transform: x.pane }, { transform: y.pane }], side: [{ transform: x.side }, { transform: y.side }], dim: [{ opacity: x.dim }, { opacity: y.dim }] };
 }
@@ -16544,7 +16602,7 @@ function paneStop() {
 // положение при перетаскивании: k = 0 — чат открыт, k = 1 — закрыт
 function paneAt(k) {
   const { pane, side, dim } = peekEls();
-  pane.style.transform = "translate3d(" + k * 100 + "%,0,0)";
+  pane.style.transform = paneX(k * 100);
   side.style.transform = "translate3d(" + PANE_OPEN.side * (1 - k) + "%,0,0)";
   dim.style.opacity = String(1 - k);
 }
@@ -20923,7 +20981,7 @@ try { fastBoot(); } catch (e) { console.warn("fastBoot", e); }
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=b05de562d0"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=eb5b61762e"; document.body.append(s); })();
 </script>
 </body>
 </html>

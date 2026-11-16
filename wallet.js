@@ -452,23 +452,6 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-center .logo svg { width: 42px; height: 42px; }
 .tw-skel { color: transparent !important; background: color-mix(in srgb, var(--ink) 10%, transparent); border-radius: 8px; }
 /* карточка перевода в чате */
-.msg.paym { padding: 4px; background: none !important; box-shadow: none !important; }
-.pay-card { width: min(300px, 68vw); padding: 16px 18px 15px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 10%, var(--panel, #222)); display: grid; gap: 6px; text-align: left; cursor: pointer; }
-.msg.mine .pay-card { background: #233a66; color: #fff; }
-.pay-card b.t { font-size: 17px; }
-.pay-card .a { font-size: 30px; font-weight: 800; letter-spacing: -.01em; color: #34c759; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.msg.mine .pay-card .a { color: #fff; }
-.pay-card .s { font-size: 14px; opacity: .7; }
-.pay-card .c { font-size: 14px; opacity: .85; }
-.pay-card.chq { cursor: default; }
-.pay-acts:empty { display: none; }
-.pay-acts { margin-top: 6px; }
-.pay-btn { width: 100%; border: 0; border-radius: 14px; padding: 12px; background: #3d78e6; color: #fff; font: inherit; font-size: 16px; font-weight: 650; cursor: pointer; transition: transform .14s ease, filter .15s ease; }
-.pay-btn:hover { filter: brightness(1.1); } .pay-btn:active { transform: scale(.96); }
-.pay-btn.ghost { background: rgb(255 255 255 / .12); color: inherit; }
-.pay-card .st { justify-self: start; margin-top: 4px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgb(52 199 89 / .16); color: #34c759; }
-.pay-card .st.wait { background: rgb(255 179 64 / .16); color: #ffb340; }
-.pay-card .st.bad { background: rgb(255 69 58 / .16); color: #ff6b62; }
 .srow .tw-new { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #3d78e6; color: #fff; font-size: 11px; font-weight: 700; text-transform: lowercase; }
 /* ---------- анимации ---------- */
 @keyframes twIn { from { opacity: 0; transform: translateY(26px) scale(.97); } to { opacity: 1; transform: none; } }
@@ -531,11 +514,6 @@ button.tw-row:active, a.tw-row:active { transform: scale(.985); }
 .tw-done > b { animation: twUp .4s ease .35s backwards; } .tw-done > span.tw-p { animation: twUp .4s ease .45s backwards; }
 .tw-sum > div { animation: twUp .3s ease backwards; } .tw-sum > div:nth-child(2) { animation-delay: .05s; } .tw-sum > div:nth-child(3) { animation-delay: .1s; } .tw-sum > div:nth-child(4) { animation-delay: .15s; }
 .tw-new { animation: twPop .5s cubic-bezier(.2, .9, .3, 1.3) backwards .2s; }
-.pay-card { animation: twPop .42s cubic-bezier(.2, .9, .3, 1.15) backwards; transition: transform .16s ease; }
-.pay-card:active { transform: scale(.97); }
-.pay-card .st { transition: background .3s ease, color .3s ease; }
-.pay-card .st.wait { animation: twWait 1.3s ease-in-out infinite; }
-.pay-card .st.flip { animation: twPop .4s cubic-bezier(.2, .9, .3, 1.3); }
 @media (prefers-reduced-motion: reduce) { #dlgTonW, #dlgTonW *, #dlgTonW *::before, #dlgTonW *::after, .pay-card, .pay-card * { animation: none !important; transition: none !important; } .tw-done .ok svg path { stroke-dashoffset: 0; } }
 @media (min-width: 900px) and (min-height: 600px) {
   #dlgTonW { width: min(1080px, 94vw); height: min(760px, 92vh); border-radius: 26px; }
@@ -597,9 +575,10 @@ function sv(name) { const s = document.createElementNS("http://www.w3.org/2000/s
 
 /* ---------- окно ---------- */
 let dlg = null, view = "overview", acc = null, unlocked = null, sendCtx = null, hist = null, histAt = 0, busy = false;
+// стили подключаются сразу при загрузке, а не при первом открытии окна
+(() => { const st = document.createElement("style"); st.textContent = CSS; document.head.append(st); if (window.slowSheets) slowSheets(); })();
 function ensureDlg() {
   if (dlg) return dlg;
-  const st = document.createElement("style"); st.textContent = CSS; document.head.append(st);
   dlg = h("dialog", { id: "dlgTonW", "aria-label": T("Кошелёк") },
     h("div", { class: "tw-wrap" },
       h("div", { class: "tw-top" },
@@ -1449,6 +1428,19 @@ async function openSend(peer, chatId) {
 
 /* ---------- карточка перевода в чате: статус берём из блокчейна ---------- */
 const payStat = new Map(), evCache = new Map();
+/* последнее известное состояние переводов хранится на устройстве: карточка сразу рисуется в нужном виде
+   (с кнопкой и статусом), а не «Проверяем…» с прыжком размера после ответа сервера */
+const PAYK = "mestario.paystat";
+let paySaved = null;
+function payMem() { if (!paySaved) { try { paySaved = JSON.parse(localStorage.getItem(PAYK) || "{}"); } catch (e) {} if (!paySaved || typeof paySaved !== "object") paySaved = {}; } return paySaved; }
+let payT = 0;
+function payRemember(k, v) {
+  const m = payMem();
+  if (JSON.stringify(m[k]) === JSON.stringify(v)) return;
+  m[k] = v;
+  clearTimeout(payT);
+  payT = setTimeout(() => { const ks = Object.keys(m); for (const x of ks.slice(0, Math.max(0, ks.length - 400))) delete m[x]; try { localStorage.setItem(PAYK, JSON.stringify(m)); } catch (e) {} }, 800);
+}
 async function eventsOf(addr) {
   const c = evCache.get(addr);
   if (c && Date.now() - c.at < 15000) return c.p;
@@ -1469,6 +1461,7 @@ async function checkPay(m) {
     else if (Date.now() - p.at > 15 * 60000) s = "lost";
   }
   payStat.set(k, { s, at: Date.now() });
+  if (s === "ok" || s === "bad") payRemember("p:" + k, s);
   return s;
 }
 function chequeCard(m, mine) {
@@ -1479,9 +1472,7 @@ function chequeCard(m, mine) {
   const sub = h("span", { class: "s" }, T("Блокчейн TON"));
   const card = h("div", { class: "pay-card chq", "data-chq": id },
     title, h("span", { class: "a" }, (mine ? "−" : "+") + amount), p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null, sub, st, act);
-  const paint = async () => {
-    const { data } = await dbq(sb.rpc("ton_cheque_info", { p_id: id }));
-    if (!data) { st.className = "st bad"; st.textContent = T("Нет доступа"); return; }
+  const draw = (data) => {
     act.replaceChildren();
     if (data.status === "claimed") { st.className = "st"; st.textContent = T("Получено"); sub.textContent = mine ? T("Получатель забрал перевод") : T("Деньги на вашем кошельке"); }
     else if (data.status === "refunded") { st.className = "st bad"; st.textContent = mine ? T("Возвращено вам") : T("Отправитель отменил перевод"); }
@@ -1497,6 +1488,15 @@ function chequeCard(m, mine) {
       }
     }
   };
+  const paint = async () => {
+    const { data } = await dbq(sb.rpc("ton_cheque_info", { p_id: id }));
+    if (!data) { if (!payMem()["c:" + id]) { st.className = "st bad"; st.textContent = T("Нет доступа"); } return; }
+    const v = { status: data.status, for_me: !!data.for_me, mine: !!data.mine };
+    payRemember("c:" + id, v);
+    draw(v);
+  };
+  const known = payMem()["c:" + id];
+  if (known) draw(known);
   card.addEventListener("twrefresh", paint);
   setTimeout(paint, 30);
   return card;
@@ -1524,7 +1524,8 @@ function payCard(m, mine) {
     paint(s);
     if (s === "wait" && n < 20) setTimeout(() => tick(n + 1), n < 6 ? 5000 : 15000);
   };
-  const cachedS = payStat.get(m.id); if (cachedS) paint(cachedS.s);
+  const cachedS = payStat.get(m.id) || (payMem()["p:" + m.id] && { s: payMem()["p:" + m.id] });
+  if (cachedS) { paint(cachedS.s); lastS = null; }
   setTimeout(() => tick(0), 50);
   return card;
 }
@@ -1536,5 +1537,6 @@ setInterval(() => {
   if (!window.state || !state.me || lastUser === state.me.id) return;
   lastUser = state.me.id; srvAddr = null; srvAt = 0; acc = null; hist = null; unlocked = null;
 }, 2000);
+setTimeout(() => dispatchEvent(new Event("mw-ready")), 0);
 window.MW = { open, openSend, claim, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();
