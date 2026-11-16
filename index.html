@@ -8051,8 +8051,37 @@ function openPhoto(src, m) {
   $("viewerSave").hidden = !viewerMsg;
   $("viewer").showModal();
 }
+/* размеры фото запоминаем на устройстве: при следующем показе место под ним сразу нужное,
+   и переписка не дёргается по нескольку раз, пока фото загружаются */
+let photoDimMap = null;
+function dimsMap() {
+  if (!photoDimMap) { try { photoDimMap = JSON.parse(localStorage.getItem("mestario.dims") || "{}"); } catch (e) {} if (!photoDimMap || typeof photoDimMap !== "object") photoDimMap = {}; }
+  return photoDimMap;
+}
+const dimsSave = debounce(() => {
+  const d = dimsMap(), k = Object.keys(d);
+  if (k.length > 3000) for (const x of k.slice(0, k.length - 3000)) delete d[x];
+  try { localStorage.setItem("mestario.dims", JSON.stringify(d)); } catch (e) {}
+}, 1500);
+function photoDims(m, img) {
+  if (!m.file_path || !img.naturalWidth) return;
+  const d = dimsMap(), v = [img.naturalWidth, img.naturalHeight];
+  const old = d[m.file_path];
+  if (old && old[0] === v[0] && old[1] === v[1]) return;
+  d[m.file_path] = v; dimsSave();
+}
+function photoBox(img, m) {
+  const v = m.file_path && dimsMap()[m.file_path];
+  if (!v || !v[0] || !v[1]) return false;
+  // тот же размер, что браузер даст загруженному фото: не шире пузыря, своей ширины и 340px по высоте, пропорции свои
+  img.style.aspectRatio = v[0] + " / " + v[1];
+  img.style.width = Math.min(v[0], Math.round(340 * v[0] / v[1])) + "px";   // уже пузыря не станет: max-width: 100% в стилях
+  img.style.minHeight = "0"; img.style.minWidth = "0";
+  return true;
+}
 function photoNode(m) {
   const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
+  img.addEventListener("load", () => photoDims(m, img), { once: true });   // в альбоме клетки квадратные — размер только запоминаем
   img.addEventListener("click", () => openPhoto(img.src, m));
   photoSrc(m).then((u) => { if (u) img.src = u; });
   return img;
@@ -8107,8 +8136,14 @@ function msgNode(m, group) {
   } else if (m.file_path) {
     if ((m.file_type || "").startsWith("image/") && m.file_type !== "image/svg+xml") {
       const img = h("img", { class: "photo", alt: m.file_name || T("Фото"), loading: "lazy" });
-      const stick = msgStick != null ? msgStick : nearBottom();
-      img.addEventListener("load", () => { img.style.minHeight = "0"; img.style.minWidth = "0"; if (stick) scrollDown(); });
+      const sized = photoBox(img, m);   // размер уже известен — место под фото сразу нужное, переписка не прыгает
+      const stick = msgStick != null ? msgStick : nearBottom(), built = Date.now();
+      img.addEventListener("load", () => {
+        photoDims(m, img);
+        img.style.minHeight = "0"; img.style.minWidth = "0";
+        // вниз докручиваем, только если фото выросло, человек был внизу и с тех пор сам не листал
+        if (!sized && stick && lastInputAt < built) scrollDown();
+      });
       img.addEventListener("click", () => openPhoto(img.src, m));
       photoSrc(m).then((u) => { if (u) img.src = u; });
       el.append(img);
