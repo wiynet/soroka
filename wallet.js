@@ -1749,7 +1749,7 @@ async function loadNftQuote() {
   if (r && !r.error && r.data) nftQuote = r.data;
   return nftQuote;
 }
-const nftPrice = (q, asset) => (q && q[asset] ? fmtUnits(BigInt(q[asset]), 9, 2) + " " + (asset === "ton" ? "TON" : "MST") : "—");
+const nftPrice = (q, asset) => (q && q.free ? T("бесплатно") : q && q[asset] ? fmtUnits(BigInt(q[asset]), 9, 2) + " " + (asset === "ton" ? "TON" : "MST") : "—");
 VIEWS.nft = () => {
   setHead("NFT", "overview");
   const addr = srvAddr || myAddr();
@@ -1784,7 +1784,7 @@ VIEWS.nft = () => {
         : [empty(isNum ? T("Коллекционных номеров нет. Их можно купить на маркете.") : T("Коллекционных юзернеймов нет. Их можно купить на маркете."))]));
     }
     hint.textContent = T("Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. Вывод одного NFT стоит ")
-      + nftPrice(nftQuote, "ton") + (nftQuote && nftQuote.mst ? T(" или ") + nftPrice(nftQuote, "mst") + T(" (в MST вдвое дешевле)") : "")
+      + nftPrice(nftQuote, "ton") + (nftQuote && nftQuote.mst && !nftQuote.free ? T(" или ") + nftPrice(nftQuote, "mst") + T(" (в MST вдвое дешевле)") : "")
       + T(". Если NFT продать или передать, из кошелька он пропадёт.");
   };
   put(seg, grid, hint);
@@ -1831,9 +1831,10 @@ VIEWS.nftlink = async (o) => {
   if (view !== "nftlink") return;
   const price = h("b", {}), err = h("div", { class: "tw-err" }), pw = pwField();
   const btn = h("button", { class: "tw-btn", type: "button" });
-  const seg = h("div", { class: "tw-seg" }, ...[["ton", "TON"], ["mst", T("MST · −50%")]].map(([v, l]) => h("button", { type: "button", class: v === asset ? "on" : "", disabled: v === "mst" && !(q && q.mst), onclick: (e) => {
+  const free = !!(q && q.free);
+  const seg = free ? null : h("div", { class: "tw-seg" }, ...[["ton", "TON"], ["mst", T("MST · −50%")]].map(([v, l]) => h("button", { type: "button", class: v === asset ? "on" : "", disabled: v === "mst" && !(q && q.mst), onclick: (e) => {
     asset = v; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); paint(); } }, l)));
-  const paint = () => { price.textContent = nftPrice(q, asset); btn.textContent = T("Оплатить ") + nftPrice(q, asset); err.textContent = ""; };
+  const paint = () => { price.textContent = nftPrice(q, asset); btn.textContent = free ? T("Вывести в кошелёк") : T("Оплатить ") + nftPrice(q, asset); err.textContent = ""; };
   paint();
   const wait = async (code) => {
     body().replaceChildren();
@@ -1858,6 +1859,12 @@ VIEWS.nftlink = async (o) => {
     try {
       const { data: ord, error } = await q_rpc("nft_link_order", { p_kind: o.kind, p_ref: o.ref, p_asset: asset });
       if (error || !ord) { err.textContent = nftLinkErr(error); return; }
+      if (ord.free) {
+        body().replaceChildren();
+        put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")), h("b", { style: "font-size:22px" }, o.label || "NFT"), h("span", { class: "tw-p" }, T("Готово! NFT теперь в вашем кошельке Mestario."))),
+          h("button", { class: "tw-btn", type: "button", onclick: () => show("nft") }, T("К моим NFT")));
+        return;
+      }
       const x = await refresh(true), units = BigInt(ord.units);
       if (!x) { err.textContent = T("Не удалось проверить баланс. Попробуйте ещё раз."); return; }
       if (asset === "ton" && BigInt(x.ton || 0) < units + 10000000n) { err.textContent = T("Не хватает TON: нужно ") + nftPrice(q, "ton") + T(" и немного на комиссию сети."); return; }
@@ -1882,7 +1889,7 @@ VIEWS.nftlink = async (o) => {
   };
   put(h("div", { class: "tw-sum" }, h("div", {}, h("span", {}, "NFT"), h("b", {}, o.label || o.ref)), h("div", {}, h("span", {}, T("Цена")), price)),
     h("p", { class: "tw-p" }, T("NFT появится во вкладке NFT вашего кошелька Mestario, а в его карточке будет виден адрес кошелька. Пользоваться им в Mestario можно как раньше.")),
-    seg, isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
+    seg, isUnlocked() || free ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
 };
 // из чата и профиля: «Вывести в кошелёк Mestario»
 async function nftLink(kind, ref, label) {

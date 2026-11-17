@@ -12,11 +12,15 @@ create table if not exists private.nft_link_config (
   id boolean primary key default true check (id),
   address text not null,                 -- куда приходят деньги
   ton_nano bigint not null default 20000000,
-  mst_share numeric not null default 0.5  -- в MST — вдвое дешевле
+  mst_share numeric not null default 0.5, -- в MST — вдвое дешевле
+  free_users uuid[] not null default '{}' -- кому бесплатно
 );
+alter table private.nft_link_config add column if not exists free_users uuid[] not null default '{}';
 alter table private.nft_link_config enable row level security;
-insert into private.nft_link_config (address) values ('UQCPFUNA7Dusz1tycxfHwcV2sbH9s87oyTP5mEY2_nwQTTXR')
-on conflict (id) do update set address = excluded.address;
+-- @boss — бесплатно
+insert into private.nft_link_config (address, free_users) values ('UQCPFUNA7Dusz1tycxfHwcV2sbH9s87oyTP5mEY2_nwQTTXR',
+  array(select id from public.profiles where username = 'boss'))
+on conflict (id) do update set address = excluded.address, free_users = excluded.free_users;
 
 -- NFT, выведенные в кошелёк: показываем, пока владелец тот же
 create table if not exists public.wallet_nfts (
@@ -59,7 +63,7 @@ $$;
 -- цена: TON и MST (MST — по самой низкой цене пула за 6 часов, как и остальные оплаты в MST)
 create or replace function public.nft_link_quote() returns jsonb
 language sql stable security definer set search_path = '' as $$
-  select jsonb_build_object('address', c.address, 'ton', c.ton_nano::text,
+  select jsonb_build_object('address', c.address, 'ton', c.ton_nano::text, 'free', auth.uid() = any (c.free_users),
     'mst', (select (ceil(c.ton_nano * c.mst_share * 1e9 / min(p.nano_per_mst) / 1e7) * 1e7)::bigint::text
             from private.mst_prices p where p.at > now() - interval '6 hours'),
     'master', (select master from private.mst_config where enabled))
@@ -77,6 +81,12 @@ begin
   if private.nft_owner(p_kind, p_ref) is distinct from me then raise exception 'not yours'; end if;
   if exists (select 1 from public.wallet_nfts w where w.kind = p_kind and w.ref = p_ref and w.user_id = me) then raise exception 'already linked'; end if;
   if (select count(*) from public.nft_link_orders where user_id = me and created_at > now() - interval '1 hour') >= 20 then raise exception 'too many orders'; end if;
+  -- бесплатно: сразу в кошелёк, без оплаты
+  if me = any ((select free_users from private.nft_link_config)) then
+    insert into public.wallet_nfts (kind, ref, user_id) values (p_kind, p_ref, me)
+    on conflict (kind, ref) do update set user_id = excluded.user_id, linked_at = now();
+    return jsonb_build_object('free', true);
+  end if;
   q := public.nft_link_quote();
   u := case when p_asset = 'ton' then (q->>'ton')::bigint else (q->>'mst')::bigint end;
   if u is null or u <= 0 then raise exception 'mst off'; end if;
