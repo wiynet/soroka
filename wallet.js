@@ -605,7 +605,8 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-nft-foot { display: grid; gap: 6px; justify-items: center; }
 .tw-nft-w.on { color: #3d8bff; }
 .tw-nft-go { border: 0; border-radius: 10px; padding: 7px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; background: color-mix(in srgb, #3d8bff 14%, transparent); color: #3d8bff; width: 100%; }
-.tw-nft-go.back { background: color-mix(in srgb, var(--ink) 8%, transparent); color: inherit; }
+.tw-nft-it.off .gift.tile, .tw-nft-it.off .tw-nft-card { opacity: .55; filter: saturate(.6); }
+.tw-nft-card.num { background: radial-gradient(120% 90% at 30% 10%, #4fd39b, #1f8f63 55%, #0f4d36); }
 .tw-nft-w { font: 12px ui-monospace, Menlo, monospace; color: color-mix(in srgb, var(--ink) 55%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .tw-nft-empty { grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 40px 12px; text-align: center; color: color-mix(in srgb, var(--ink) 55%, transparent); }
 .tw-nft-empty svg { width: 34px; height: 34px; opacity: .6; }
@@ -1741,8 +1742,14 @@ VIEWS.import = (o) => {
   setTimeout(() => ta.focus(), 50);
 };
 
-/* ---------- NFT: коллекционные подарки, юзернеймы и номера, привязанные к кошельку ---------- */
-let nftTab = "gifts";
+/* ---------- NFT в кошельке: подарки-NFT, юзернеймы и номера, выведенные в кошелёк (услуга: 0,02 TON или вдвое дешевле в MST) ---------- */
+let nftTab = "gifts", nftQuote = null;
+async function loadNftQuote() {
+  const r = await q_rpc("nft_link_quote", {}).catch(() => null);
+  if (r && !r.error && r.data) nftQuote = r.data;
+  return nftQuote;
+}
+const nftPrice = (q, asset) => (q && q[asset] ? fmtUnits(BigInt(q[asset]), 9, 2) + " " + (asset === "ton" ? "TON" : "MST") : "—");
 VIEWS.nft = () => {
   setHead("NFT", "overview");
   const addr = srvAddr || myAddr();
@@ -1752,76 +1759,54 @@ VIEWS.nft = () => {
   const grid = h("div", { class: "tw-nft" }), hint = h("p", { class: "tw-foot" });
   let data = null;
   const empty = (t) => h("div", { class: "tw-nft-empty" }, sv("gem"), h("span", {}, t));
-  // где NFT: в Mestario, выводится или в блокчейне TON (и на каком кошельке)
-  const wline = (kind, ref, label) => {
-    const ch = data && data.chain.get(kind + ":" + ref), ord = data && data.orders.find((o) => o.kind === kind && o.ref === ref && (o.status === "pending" || o.status === "paid"));
-    const onc = ch && (ch.status === "onchain" || ch.status === "minting" || ch.status === "moving");
-    const where = ord && ord.status === "paid" || ch && (ch.status === "minting" || ch.status === "moving") ? T("Выводится в блокчейн…")
-      : onc ? T("В блокчейне TON · ") + short(ch.dest || "") : addr ? T("Кошелёк ") + short(addr) : T("кошелёк не создан");
-    const btn = data && data.info && data.info.on && kind
-      ? h("button", { class: "tw-nft-go" + (onc ? " back" : ""), type: "button", onclick: (e) => { e.stopPropagation(); show(onc ? "nftback" : "nftout", { kind, ref, label, ch }); } },
-          onc ? T("Вернуть в Mestario") : ord && ord.status === "pending" ? T("Оплатить вывод") : T("В блокчейн"))
-      : null;
-    return h("span", { class: "tw-nft-foot" }, h("span", { class: "tw-nft-w" + (onc ? " on" : ""), title: (ch && ch.dest) || addr || "" }, where), btn);
+  const foot = (kind, ref, label) => {
+    if (data.linked.has(kind + ":" + ref)) return h("span", { class: "tw-nft-foot" }, h("span", { class: "tw-nft-w on", title: addr || "" }, T("В кошельке · ") + (addr ? short(addr) : "")));
+    if (!nftQuote || !nftQuote.ton) return h("span", { class: "tw-nft-foot" }, h("span", { class: "tw-nft-w" }, T("Не в кошельке")));
+    return h("span", { class: "tw-nft-foot" }, h("button", { class: "tw-nft-go", type: "button", onclick: (e) => { e.stopPropagation(); need("nftlink", { kind, ref, label }); } },
+      T("Вывести в кошелёк · ") + nftPrice(nftQuote, "ton")));
   };
+  const sorted = (arr, key) => arr.slice().sort((a, b) => (data.linked.has(key(b)) ? 1 : 0) - (data.linked.has(key(a)) ? 1 : 0));
   const paint = () => {
     if (!data) { grid.replaceChildren(h("div", { class: "tw-nft-empty" }, h("span", {}, T("Загружаем…")))); return; }
     if (nftTab === "gifts") {
       const byId = new Map((data.types || []).map((t) => [t.id, t]));
-      grid.replaceChildren(...(data.gifts.length ? data.gifts.map((g) => {
-        const t = byId.get(g.type_id) || { emoji: "🎁", name: T("Подарок") };
-        const tile = typeof giftTile === "function" ? giftTile(g, t, "button", { type: "button", noMenu: true, onclick: () => { try { openGiftView(g.id); } catch (e) {} } }) : h("button", { class: "gift tile" }, t.name + " №" + g.nft_number);
-        return h("div", { class: "tw-nft-it" }, tile, wline("gift", String(g.id), t.name + " №" + g.nft_number));
-      }) : [empty(T("Коллекционных подарков пока нет. Улучшите подарок до NFT — и он появится здесь."))]));
+      grid.replaceChildren(...(data.gifts.length ? sorted(data.gifts, (g) => "gift:" + g.id).map((g) => {
+        const t = byId.get(g.type_id) || { emoji: "🎁", name: T("Подарок") }, label = t.name + " №" + g.nft_number;
+        const tile = typeof giftTile === "function" ? giftTile(g, t, "button", { type: "button", noMenu: true, onclick: () => { try { openGiftView(g.id); } catch (e) {} } }) : h("button", { class: "gift tile" }, label);
+        return h("div", { class: "tw-nft-it" + (data.linked.has("gift:" + g.id) ? "" : " off") }, tile, foot("gift", String(g.id), label));
+      }) : [empty(T("Коллекционных подарков пока нет. Улучшите подарок до NFT — и его можно будет вывести сюда."))]));
     } else {
-      const isNum = nftTab === "nums", list = isNum ? data.nums : data.names;
-      grid.replaceChildren(...(list.length ? list.map((v) => h("button", { class: "tw-nft-it tw-nft-tag", type: "button", onclick: () => { try { openNftInfo(isNum ? "num" : "user", v, state.profile); } catch (e) {} } },
-        h("span", { class: "tw-nft-card" }, sv("gem"), h("b", {}, isNum ? v : "@" + v), h("small", {}, isNum ? T("Коллекционный номер") : T("Коллекционный юзернейм"))), wline(isNum ? "num" : "user", v, isNum ? v : "@" + v)))
+      const isNum = nftTab === "nums", kind = isNum ? "num" : "user", list = isNum ? data.nums : data.names;
+      grid.replaceChildren(...(list.length ? sorted(list, (v) => kind + ":" + v).map((v) => h("div", { class: "tw-nft-it" + (data.linked.has(kind + ":" + v) ? "" : " off") },
+        h("button", { class: "tw-nft-tag", type: "button", onclick: () => { try { openNftInfo(isNum ? "num" : "name", v, state.profile); } catch (e) {} } },
+          h("span", { class: "tw-nft-card" + (isNum ? " num" : "") }, sv("gem"), h("b", {}, isNum ? v : "@" + v), h("small", {}, isNum ? T("Коллекционный номер") : T("Коллекционный юзернейм")))),
+        foot(kind, v, isNum ? v : "@" + v)))
         : [empty(isNum ? T("Коллекционных номеров нет. Их можно купить на маркете.") : T("Коллекционных юзернеймов нет. Их можно купить на маркете."))]));
     }
-    hint.textContent = T("Ваши NFT привязаны к кошельку Mestario ") + (addr ? short(addr) : "") + T(" — его адрес видят все в карточке юзернейма или номера. ")
-      + (data.info && data.info.on ? T("Любой NFT можно вывести в блокчейн TON — по одному за раз: на кошелёк Mestario сразу, в Tonkeeper и другие кошельки — через 14 дней после получения. Пока NFT в блокчейне, продать или подарить его внутри Mestario нельзя — сначала верните.")
-        : T("Скоро их можно будет вывести в блокчейн TON, и они появятся в Tonkeeper."));
+    hint.textContent = T("Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. Вывод одного NFT стоит ")
+      + nftPrice(nftQuote, "ton") + (nftQuote && nftQuote.mst ? T(" или ") + nftPrice(nftQuote, "mst") + T(" (в MST вдвое дешевле)") : "")
+      + T(". Если NFT продать или передать, из кошелька он пропадёт.");
   };
   put(seg, grid, hint);
   paint();
   (async () => {
     try {
       const me = state.me.id;
-      const [types, g, u, n, info, chain] = await Promise.all([typeof giftTypes === "function" ? giftTypes() : Promise.resolve([]),
+      const [types, g, u, n, l] = await Promise.all([typeof giftTypes === "function" ? giftTypes() : Promise.resolve([]),
         sb.from("gifts").select("id,type_id,nft_number,nft_model,nft_backdrop,hidden,pinned_at").eq("to_id", me).is("sold_at", null).not("nft_number", "is", null).order("id", { ascending: false }).limit(120),
         sb.from("collectible_usernames").select("username").eq("owner_id", me).order("username"),
         sb.from("collectible_numbers").select("number").eq("owner_id", me).order("number"),
-        q_rpc("nft_info", {}).catch(() => ({ data: null })),
-        sb.from("nft_chain").select("kind,ref,status,item_addr,dest").then((r) => r, () => ({ data: [] }))]);
+        sb.from("wallet_nfts").select("kind,ref").eq("user_id", me).then((r) => r, () => ({ data: [] })), loadNftQuote()]);
       if (view !== "nft") return;
-      const inf = info && !info.error ? info.data : null;
       data = { types, gifts: g.data || [], names: (u.data || []).map((x) => x.username), nums: (n.data || []).map((x) => x.number),
-        info: inf, orders: (inf && inf.orders) || [], chain: new Map(((chain && chain.data) || []).map((c) => [c.kind + ":" + c.ref, c])) };
-      const cnt = { gifts: data.gifts.length, names: data.names.length, nums: data.nums.length };
+        linked: new Set(((l && l.data) || []).map((x) => x.kind + ":" + x.ref)) };
+      const cnt = { gifts: data.gifts.filter((x) => data.linked.has("gift:" + x.id)).length, names: data.names.filter((x) => data.linked.has("user:" + x)).length, nums: data.nums.filter((x) => data.linked.has("num:" + x)).length };
       [...seg.children].forEach((b, i) => { const k = tabs[i][0]; b.textContent = tabs[i][1] + (cnt[k] ? " · " + cnt[k] : ""); });
       paint(); stagger(body());
     } catch (e) { if (view === "nft") grid.replaceChildren(empty(T("Не удалось загрузить NFT. Попробуйте ещё раз."))); }
   })();
 };
-
-// вывод одного NFT в блокчейн: куда (кошелёк Mestario — сразу, другой — через 14 дней), оплата комиссии 0,1 TON
-function nftErr(e) {
-  const m = String((e && e.message) || e || "");
-  const hold = /hold until (\S+)/.exec(m);
-  if (hold) { let d = hold[1]; try { d = new Date(hold[1]).toLocaleDateString(window.SOROKA_LANG === "en" ? "en-GB" : "ru-RU", { day: "numeric", month: "long" }); } catch (x) {} return T("В Tonkeeper и другие кошельки этот NFT можно вывести с ") + d + T(" — через 14 дней после получения. На кошелёк Mestario — уже сейчас."); }
-  return /one at a time/.test(m) ? T("Сейчас уже выводится другой NFT. Выводить можно по одному — дождитесь, пока он появится в блокчейне.")
-    : /already on chain/.test(m) ? T("Этот NFT уже в блокчейне.")
-    : /listed/.test(m) ? T("NFT выставлен на маркете — сначала снимите его с продажи.")
-    : /on auction/.test(m) ? T("NFT сейчас на аукционе — сначала снимите его с торгов.")
-    : /not yours/.test(m) ? T("Этот NFT вам больше не принадлежит.")
-    : /not mestario wallet/.test(m) ? T("Кошелёк Mestario не привязан к аккаунту — откройте кошелёк ещё раз.")
-    : /bad address/.test(m) ? T("Неверный адрес кошелька TON.")
-    : /nft off/.test(m) ? T("Вывод в блокчейн ещё не включён.")
-    : /not on chain/.test(m) ? T("Этот NFT сейчас не в блокчейне.")
-    : T("Не получилось: ") + m.slice(0, 120);
-}
-// подписать и отправить с кошелька Mestario: перевод TON с комментарием или перевод NFT
+// подписать и отправить с кошелька Mestario
 async function nftSign(pass, build) {
   const words = await unlock(pass);
   if (!words) throw new Error(T("Неверный пароль"));
@@ -1832,94 +1817,82 @@ async function nftSign(pass, build) {
   await sendBoc(W.TW.utils.bytesToBase64(await (await q.getQuery()).toBoc(false)));
   acc = null; hist = null;
 }
-VIEWS.nftout = (o) => {
-  setHead(T("В блокчейн TON"), "nft");
-  const mine = srvAddr || myAddr();
-  let ext = false;
-  const seg = h("div", { class: "tw-seg" }, ...[[false, T("Кошелёк Mestario")], [true, T("Другой кошелёк")]].map(([v, l]) => h("button", { type: "button", class: v === ext ? "on" : "", onclick: (e) => {
-    ext = v; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); paint(); } }, l)));
-  const to = h("input", { class: "tw-in", placeholder: T("Адрес TON: UQ… или EQ…"), autocapitalize: "off", autocomplete: "off", spellcheck: "false" });
-  const toBox = h("label", { class: "tw-f" }, h("span", {}, T("Куда вывести")), to);
-  const mineBox = h("div", { class: "tw-note tw-info" });
-  const pw = pwField(), err = h("div", { class: "tw-err" });
-  const fee = 100000000n;
-  const btn = h("button", { class: "tw-btn", type: "button" }, T("Вывести за 0,1 TON"));
-  const paint = () => {
-    toBox.hidden = !ext; mineBox.hidden = ext;
-    mineBox.textContent = mine ? T("NFT появится на вашем кошельке Mestario ") + short(mine) + T(" — сразу, без ожидания.") : T("Сначала создайте кошелёк Mestario.");
-    err.textContent = "";
-  };
+function nftLinkErr(e) {
+  const m = String((e && e.message) || e || "");
+  return /already linked/.test(m) ? T("Этот NFT уже в вашем кошельке.") : /not yours/.test(m) ? T("Этот NFT вам больше не принадлежит.")
+    : /mst off/.test(m) ? T("Оплата в MST сейчас недоступна — оплатите в TON.") : /too many/.test(m) ? T("Слишком много заказов подряд — подождите немного.")
+    : T("Не получилось: ") + m.slice(0, 120);
+}
+// вывод NFT в кошелёк: выбор TON или MST, оплата на кошелёк Mestario с кодом, ждём подтверждения
+VIEWS.nftlink = async (o) => {
+  setHead(T("Вывести в кошелёк"), "nft");
+  let asset = "ton";
+  const q = nftQuote || await loadNftQuote();
+  if (view !== "nftlink") return;
+  const price = h("b", {}), err = h("div", { class: "tw-err" }), pw = pwField();
+  const btn = h("button", { class: "tw-btn", type: "button" });
+  const seg = h("div", { class: "tw-seg" }, ...[["ton", "TON"], ["mst", T("MST · −50%")]].map(([v, l]) => h("button", { type: "button", class: v === asset ? "on" : "", disabled: v === "mst" && !(q && q.mst), onclick: (e) => {
+    asset = v; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); paint(); } }, l)));
+  const paint = () => { price.textContent = nftPrice(q, asset); btn.textContent = T("Оплатить ") + nftPrice(q, asset); err.textContent = ""; };
   paint();
+  const wait = async (code) => {
+    body().replaceChildren();
+    const st = h("span", { class: "tw-p" }, T("Ждём подтверждения сети — обычно до минуты…"));
+    put(h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("gem")), h("b", { style: "font-size:22px" }, o.label || "NFT"), st));
+    for (let i = 0; i < 45 && view === "nftlink"; i++) {
+      if (i % 2 === 0) { try { sb.functions.invoke("ton-check", { body: {} }).catch(() => {}); } catch (e) {} }
+      await sleep(4000);
+      const r = await q_rpc("nft_link_status", { p_code: code }).catch(() => null);
+      if (r && r.data === "paid") {
+        body().replaceChildren();
+        put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")), h("b", { style: "font-size:22px" }, o.label || "NFT"), h("span", { class: "tw-p" }, T("Готово! NFT теперь в вашем кошельке Mestario."))),
+          h("button", { class: "tw-btn", type: "button", onclick: () => show("nft") }, T("К моим NFT")));
+        return;
+      }
+    }
+    if (view === "nftlink") st.textContent = T("Оплата отправлена, но сеть ещё не подтвердила её. NFT появится в кошельке сам — можно закрыть это окно.");
+  };
   btn.onclick = async () => {
     if (busy) return;
-    err.textContent = "";
-    const dest = ext ? to.value.trim() : mine;
-    if (!dest || !toRaw(dest)) { err.textContent = T("Неверный адрес кошелька TON."); return; }
-    busy = true; btn.disabled = true; btn.classList.add("busy");
+    err.textContent = ""; busy = true; btn.disabled = true; btn.classList.add("busy");
     try {
-      const destF = dest.startsWith("0:") || dest.startsWith("-1:") ? toFriendly(dest, false) : dest;
-      const { data: ord, error } = await q_rpc("nft_out_order", { p_kind: o.kind, p_ref: o.ref, p_dest: destF, p_external: ext });
-      if (error || !ord) { err.textContent = nftErr(error); return; }
-      const x = await refresh(true);
-      if (!x || BigInt(x.ton || 0) < BigInt(ord.fee) + 10000000n) { err.textContent = T("Не хватает TON: нужно 0,1 TON и немного на комиссию. Заказ сохранён — пополните кошелёк и нажмите ещё раз."); return; }
-      await nftSign(pw.value, async (W, seqno) => W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: ord.pay_to, amount: new W.TW.utils.BN(String(ord.fee)), seqno, payload: ord.code, sendMode: 3 }));
-      body().replaceChildren();
-      put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")), h("b", { style: "font-size:22px" }, o.label || "NFT"),
-        h("span", { class: "tw-p" }, T("Оплата отправлена. NFT появится в блокчейне в течение пары минут — статус виден в разделе NFT."))),
-        h("button", { class: "tw-btn", type: "button", onclick: () => show("nft") }, T("К моим NFT")));
+      const { data: ord, error } = await q_rpc("nft_link_order", { p_kind: o.kind, p_ref: o.ref, p_asset: asset });
+      if (error || !ord) { err.textContent = nftLinkErr(error); return; }
+      const x = await refresh(true), units = BigInt(ord.units);
+      if (!x) { err.textContent = T("Не удалось проверить баланс. Попробуйте ещё раз."); return; }
+      if (asset === "ton" && BigInt(x.ton || 0) < units + 10000000n) { err.textContent = T("Не хватает TON: нужно ") + nftPrice(q, "ton") + T(" и немного на комиссию сети."); return; }
+      if (asset === "mst") {
+        if (BigInt(balOf(x, "MST") || 0) < units) { err.textContent = T("Не хватает MST: нужно ") + fmtUnits(units, 9, 2) + " MST."; return; }
+        if (BigInt(x.ton || 0) < JETTON_GAS + 5000000n) { err.textContent = T("Для перевода MST нужно ≥ 0,055 TON на комиссию сети (большая часть вернётся)."); return; }
+      }
+      await nftSign(pw.value, async (W, seqno, me) => {
+        const TW = W.TW, BN = TW.utils.BN;
+        if (asset === "ton") return W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: ord.address, amount: new BN(units.toString()), seqno, payload: ord.code, sendMode: 3 });
+        const jwa = jwOf(x, "MST");
+        if (!jwa) throw new Error(T("Не нашли ваш кошелёк MST. Попробуйте позже."));
+        const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(jwa, true) });
+        const fwd = new TW.boc.Cell(); fwd.bits.writeUint(0, 32); fwd.bits.writeBytes(te.encode(ord.code));
+        const payload = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(units.toString()), toAddress: new TW.utils.Address(ord.address),
+          responseAddress: new TW.utils.Address(me), forwardAmount: new BN(1), forwardPayload: fwd });
+        return W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(jwa, true), amount: new BN(JETTON_GAS.toString()), seqno, payload, sendMode: 3 });
+      });
+      wait(ord.code);
     } catch (e) { err.textContent = (e && e.message) || String(e); }
     finally { busy = false; btn.disabled = false; btn.classList.remove("busy"); }
   };
-  put(h("div", { class: "tw-sum" }, h("div", {}, h("span", {}, "NFT"), h("b", {}, o.label || o.ref)), h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, "0,1 TON"))),
-    h("p", { class: "tw-p" }, T("Выводится по одному NFT за раз. Пока он в блокчейне, продать или подарить его внутри Mestario нельзя — его можно вернуть в любой момент.")),
-    seg, mineBox, toBox, h("p", { class: "tw-foot", style: "text-align:left" }, T("В Tonkeeper и другие кошельки — через 14 дней после того, как NFT стал вашим.")),
-    isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
+  put(h("div", { class: "tw-sum" }, h("div", {}, h("span", {}, "NFT"), h("b", {}, o.label || o.ref)), h("div", {}, h("span", {}, T("Цена")), price)),
+    h("p", { class: "tw-p" }, T("NFT появится во вкладке NFT вашего кошелька Mestario, а в его карточке будет виден адрес кошелька. Пользоваться им в Mestario можно как раньше.")),
+    seg, isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
 };
-// вернуть NFT из блокчейна в Mestario: отправить его на служебный кошелёк с кодом возврата
-VIEWS.nftback = async (o) => {
-  setHead(T("Вернуть в Mestario"), "nft");
-  put(h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Готовим возврат…"))))));
-  const { data: ord, error } = await q_rpc("nft_back_order", { p_kind: o.kind, p_ref: o.ref });
-  if (view !== "nftback") return;
-  body().replaceChildren();
-  if (error || !ord) { put(h("div", { class: "tw-note" }, nftErr(error)), h("button", { class: "tw-btn", type: "button", onclick: () => show("nft") }, T("Назад"))); return; }
-  const owner = await tonapi("/nfts/" + encodeURIComponent(ord.item)).then(j).then((n) => n && n.owner && n.owner.address).catch(() => null);
-  if (view !== "nftback") return;
-  const mineHas = owner && sameAddr(owner, myAddr()) && vault();
-  const err = h("div", { class: "tw-err" }), pw = pwField();
-  const info = h("div", { class: "tw-sum" }, h("div", {}, h("span", {}, "NFT"), h("b", {}, o.label || o.ref)),
-    h("div", {}, h("span", {}, T("Куда")), h("b", { title: ord.to }, T("Mestario · ") + short(ord.to))),
-    h("div", {}, h("span", {}, T("Комментарий")), h("b", {}, ord.code)));
-  if (mineHas) {
-    const btn = h("button", { class: "tw-btn", type: "button" }, T("Вернуть в Mestario"));
-    btn.onclick = async () => {
-      if (busy) return;
-      err.textContent = ""; busy = true; btn.disabled = true; btn.classList.add("busy");
-      try {
-        const x = await refresh(true);
-        if (!x || BigInt(x.ton || 0) < 60000000n) { err.textContent = T("Нужно ≈ 0,06 TON на комиссию сети (большая часть вернётся)."); return; }
-        await nftSign(pw.value, async (W, seqno, me) => {
-          const TW = W.TW, BN = TW.utils.BN;
-          const item = new TW.token.nft.NftItem(NOPROV, { address: toFriendly(ord.item, true) });
-          const fwd = new TW.boc.Cell(); fwd.bits.writeUint(0, 32); fwd.bits.writeBytes(te.encode(ord.code));
-          const payload = await item.createTransferBody({ newOwnerAddress: new TW.utils.Address(ord.to), forwardAmount: new BN(10000000), forwardPayload: fwd, responseAddress: new TW.utils.Address(me), queryId: Date.now() });
-          return W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(ord.item, true), amount: new BN(50000000), seqno, payload, sendMode: 3 });
-        });
-        body().replaceChildren();
-        put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")), h("span", { class: "tw-p" }, T("NFT отправлен в Mestario. Через минуту-две он снова станет обычным — его можно будет продать или подарить."))),
-          h("button", { class: "tw-btn", type: "button", onclick: () => show("nft") }, T("К моим NFT")));
-      } catch (e) { err.textContent = (e && e.message) || String(e); }
-      finally { busy = false; btn.disabled = false; btn.classList.remove("busy"); }
-    };
-    put(info, isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
-  } else {
-    put(h("p", { class: "tw-p" }, T("NFT сейчас в другом кошельке (") + (owner ? short(toFriendly(owner, false)) : "—") + T("). Откройте его — например, Tonkeeper — и отправьте этот NFT на адрес Mestario с комментарием:")),
-      info,
-      h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(ord.to, T("Адрес скопирован")) }, T("Скопировать адрес")),
-      h("button", { class: "tw-btn ghost", type: "button", onclick: () => copyText(ord.code, T("Комментарий скопирован")) }, T("Скопировать комментарий")),
-      h("p", { class: "tw-foot", style: "text-align:left" }, T("Без комментария Mestario не узнает, кому вернуть NFT. Код действует 3 дня.")));
-  }
-};
+// из чата и профиля: «Вывести в кошелёк Mestario»
+async function nftLink(kind, ref, label) {
+  if (!state.me) return;
+  ensureDlg(); if (!dlg.open) dlg.showModal();
+  startRates();
+  await loadSrv(true);
+  if (!myAddr()) { show("start", { then: { v: "nftlink", arg: { kind, ref, label } } }); return; }
+  need("nftlink", { kind, ref, label });
+}
 
 /* ---------- «Получить» по переводу в чате ---------- */
 // временный кошелёк перевода: сколько на нём осталось и куда ушли деньги (пустой счёт в сети «не существует» — это тоже 0)
@@ -2149,5 +2122,5 @@ setTimeout(() => dispatchEvent(new Event("mw-ready")), 0);
   if (typeof state !== "undefined" && state.me && state.started) { try { if (vault()) loadSrv(true).then(syncAddr).catch(() => {}); } catch (e) {} return; }
   if (n < 30) setTimeout(() => bootSync(n + 1), 4000);
 })(0);
-window.MW = { open, openSend, claim, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
+window.MW = { open, openSend, claim, nftLink, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();

@@ -1583,6 +1583,9 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .pr-num { font: 700 42px/1.1 var(--display); letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pr-num .u { margin-left: .22em; font-size: .5em; letter-spacing: 0; }
 .pr-alt { font-size: 14px; color: var(--muted); }
+.gt-wallet { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; margin: 4px 0 10px; padding: 11px 14px; border: 0; border-radius: 14px;
+  background: color-mix(in srgb, #3d8bff 12%, transparent); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.gt-wallet .chev { color: #3d8bff; font-size: 20px; }
 .pr-disc { color: #1f9d55; font-weight: 600; } .pr-disc s { color: var(--muted); font-weight: 400; }
 .pr-alt:empty { display: none; }
 .pr-btn { --pb-a: #2353e6; --pb-b: #3b6cf6; min-height: 62px; padding: 8px 18px; line-height: 1.15; text-wrap: balance; border: 4px solid var(--pb-a); border-radius: 999px; background: linear-gradient(to top, var(--pb-a), var(--pb-b), var(--pb-a)); color: #fff; font: 650 19px/1.1 var(--display); box-shadow: 0 3px 10px color-mix(in srgb, var(--pb-a) 50%, transparent); transition: transform .12s, filter .15s, opacity .15s; }
@@ -3424,7 +3427,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e55f96803b"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=928ea7c671"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5371,6 +5374,7 @@ void main() {
   <div class="dlg">
     <h2>Передать подарок</h2>
     <div class="hint">Подарок перейдёт к этому человеку насовсем: вернуть его сможете только если он передаст его обратно. Передача стоит 25 Mest.</div>
+    <button class="gt-wallet" type="button" id="gtWallet" hidden><span>💎</span><span>Можно вывести и в кошелёк Mestario — там он будет виден среди ваших NFT</span><span class="chev">›</span></button>
     <input class="input" id="gtSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
     <div class="scroll" id="gtPeople" style="max-height:300px"></div>
     <div class="actions">
@@ -10858,8 +10862,7 @@ $("maDel").addEventListener("click", async () => {
 // маркет: NFT-юзернеймы (лоты, покупка, предложения цены) и подарки
 function marketError(e) {
   const m = (e && e.message) || "";
-  return /nft on chain/.test(m) ? T("Этот NFT сейчас в блокчейне TON. Сначала верните его в Mestario: Кошелёк → NFT → «Вернуть в Mestario».")
-    : /insufficient/.test(m) ? T("Не хватает Mest.")
+  return /insufficient/.test(m) ? T("Не хватает Mest.")
     : /use buy/.test(m) ? T("Предложение должно быть ниже цены лота. За эту сумму юзернейм можно просто купить.")
     : /not open/.test(m) ? T("Этот лот уже закрыт.")
     : /stale listing/.test(m) ? T("Лот больше не принадлежит продавцу и недействителен.")
@@ -11010,7 +11013,7 @@ async function openNftInfo(kind, value, owner) {
   const [w, lt, mw] = await Promise.all([
     owner ? sb.from("user_wallets").select("ton,tron").eq("user_id", owner.id).maybeSingle() : Promise.resolve({ data: null }),
     sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle(),
-    owner ? sb.rpc("ton_address_of", { p_user: owner.id }) : Promise.resolve({ data: null })]);   // кошелёк Mestario, к которому привязан NFT
+    owner ? sb.rpc("nft_wallet_of", { p_kind: kind === "num" ? "num" : "user", p_ref: value }) : Promise.resolve({ data: null })]);   // кошелёк Mestario, если NFT выведен в него
   if (nftCopyText !== label) return;
   if (nftCtx && nftCtx.value === value) { nftCtx.lot = lt.data && lt.data.id ? lt.data : null; nftCtx.ready = true; }
   const ws = w.data || {};
@@ -11051,6 +11054,7 @@ function nftActions() {
       if ($("dlgNft").open) openNftInfo(c.kind, c.value, c.owner);
     });
   } else if (c.mine && c.ready) add(T("Продать на маркете"), () => toMarket("sell"));
+  if (c.mine && window.MW && MW.nftLink) add(T("Вывести в кошелёк Mestario"), () => { $("dlgNft").close(); MW.nftLink(isNum ? "num" : "user", c.value, isNum ? c.value : "@" + c.value); });
   if (c.owner && !c.mine) add(T("Профиль владельца"), async () => {
     const { data } = await sb.from("profiles").select(PF).eq("id", c.owner.id).maybeSingle();
     if (!data || !data.id) { toast(T("Не удалось открыть профиль")); return; }
@@ -13346,8 +13350,16 @@ $("gtSearch").addEventListener("input", debounce(() => paintGiveTo($("gtSearch")
 $("gvGive").addEventListener("click", () => {
   if (!gvGift) return;
   gtPick = null; $("gtSearch").value = ""; $("gtGo").disabled = true; $("gtGo").textContent = T("Выберите человека");
+  $("gtWallet").hidden = !(gvGift.nft_number != null && window.MW && MW.nftLink);
   $("dlgGiveTo").showModal();
   paintGiveTo("");
+});
+// «вывести в кошелёк Mestario» — одной строкой в окне передачи
+$("gtWallet").addEventListener("click", () => {
+  if (!gvGift || !window.MW || !MW.nftLink) return;
+  const g = gvGift, t = (state.giftTypes || []).find((x) => x.id === g.type_id);
+  $("dlgGiveTo").close();
+  MW.nftLink("gift", String(g.id), (t ? t.name : T("Подарок")) + " №" + g.nft_number);
 });
 $("gtGo").addEventListener("click", async () => {
   if (!gvGift || !gtPick) return;
@@ -21123,7 +21135,7 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=aee118f63a"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=ec89faa430"; document.body.append(s); })();
 </script>
 </body>
 </html>

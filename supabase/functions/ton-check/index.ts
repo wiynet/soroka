@@ -142,11 +142,52 @@ async function scanMst(): Promise<number> {
   }
   return paid;
 }
+// NFT в кошельке Mestario: оплата 0,02 TON или MST на кошелёк владельца Mestario с кодом «NFT-XXXXXX»
+const NFT_CODE = /NFT-[A-Z0-9]{6}/;
+async function scanNftLink(): Promise<number> {
+  let p: any;
+  try { p = await rpc("nft_link_pending"); } catch { return 0; }   // ещё не настроено
+  const orders: any[] = p && p.address ? (p.orders || []) : [];
+  if (!orders.length) return 0;
+  const want = new Map(orders.map((o) => [String(o.code), o]));
+  let paid = 0;
+  if (orders.some((o) => o.asset === "ton")) {
+    await sleep(1100);
+    const txs = await txsOf(p.address).catch(() => [] as any[]);
+    for (const tx of txs) {
+      const m = tx.in_msg;
+      if (!m || !m.source) continue;
+      const code = commentOf(m).match(NFT_CODE)?.[0], o = code && want.get(code);
+      if (!o || o.asset !== "ton") continue;
+      const res = await rpc("nft_link_settle", { p_code: code, p_tx: "ton:" + String(tx.transaction_id?.hash || ""), p_asset: "ton", p_units: Number(m.value) });
+      if (res === "paid" || res === "not owner") { paid++; want.delete(code!); }
+    }
+  }
+  if (p.master && [...want.values()].some((o) => o.asset === "mst")) {
+    const me = rawOf(p.address), master = rawOf(p.master);
+    await sleep(1300);   // tonapi без ключа — запрос в секунду, рядом идёт проверка оплат MST
+    const r = await fetch(`${TONAPI}/accounts/${encodeURIComponent(p.address)}/events?limit=50`);
+    const j = r.ok ? await r.json() : { events: [] };
+    for (const ev of j.events || []) {
+      if (ev.in_progress) continue;
+      for (const a of ev.actions || []) {
+        if (a.type !== "JettonTransfer" || a.status !== "ok") continue;
+        const t = a.JettonTransfer || {};
+        if (rawOf(t.jetton?.address) !== master || rawOf(t.recipient?.address) !== me) continue;
+        const code = String(t.comment || "").toUpperCase().match(NFT_CODE)?.[0], o = code && want.get(code);
+        if (!o || o.asset !== "mst" || !/^[0-9]{1,20}$/.test(String(t.amount || ""))) continue;
+        const res = await rpc("nft_link_settle", { p_code: code, p_tx: "ton-ev:" + ev.event_id, p_asset: "mst", p_units: String(t.amount) });
+        if (res === "paid" || res === "not owner") { paid++; want.delete(code!); }
+      }
+    }
+  }
+  return paid;
+}
 function scanThrottled(): Promise<number> {
   if (running) return running;
   if (Date.now() - lastScan < 2500) return Promise.resolve(0);
   lastScan = Date.now();
-  running = Promise.allSettled([scan(), scanUsdt(), scanMst()]).then((rs) => {
+  running = Promise.allSettled([scan(), scanUsdt(), scanMst(), scanNftLink()]).then((rs) => {
     for (const x of rs) if (x.status === "rejected") console.error(x.reason);
     return rs.reduce((n, x) => n + (x.status === "fulfilled" ? x.value : 0), 0);
   }).finally(() => { running = null; });
@@ -174,7 +215,7 @@ Deno.serve(async (req) => {
     let scanErr = "";
     try { await scanThrottled(); } catch (e) { scanErr = String(e).slice(0, 120); console.error(e); }
     const code = String(input.code || "").toUpperCase().match(CODE)?.[0];
-    if (!code) return reply({ ok: true });
+    if (!code) return reply({ ok: true, ...(scanErr ? { retry: true } : {}) });
     // статус отдаём только владельцу заказа
     const auth = req.headers.get("Authorization") || "";
     const u = await fetch(`${URL}/auth/v1/user`, { headers: { apikey: KEY, Authorization: auth } });
