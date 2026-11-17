@@ -1165,8 +1165,11 @@ VIEWS.done = (o) => {
 /* ---------- обмен TON ↔ MST через пул DeDust CPMM v2 ----------
    TON → MST: сообщение PayNative прямо в пул; MST → TON: обычный перевод жетона в пул с PayJetton внутри.
    Пул присылает результат на этот же кошелёк, излишек газа возвращается. Формат сверен эмуляцией в сети TON. */
-const SWAP_GAS = 250000000n;        // 0,25 TON идёт с обменом на газ, почти всё возвращается
-const SWAP_FWD = 150000000n;        // 0,15 TON уходит пулу вместе с MST (как у самого DeDust)
+// газ подобран эмуляцией в сети: меньше — пул отклоняет обмен (деньги возвращаются), а это — с небольшим запасом.
+// Реально тратится ≈ 0,006 TON, остальное пул возвращает вместе с результатом.
+const SWAP_GAS = 80000000n;         // TON → MST: 0,08 TON к сумме обмена (порог пула ≈ 0,06)
+const SWAP_GAS_J = 100000000n;      // MST → TON: 0,1 TON на перевод жетона…
+const SWAP_FWD = 70000000n;         // …из них 0,07 TON уходит пулу вместе с MST (порог ≈ 0,05)
 let swapSlip = 100;                 // проскальзывание, сотые доли процента
 function swapCells(TW, minOut) {
   const BN = TW.utils.BN;
@@ -1192,7 +1195,7 @@ VIEWS.swap = (arg) => {
   const fmtA = (v, c) => fmtUnits(v, DEC[c], c === "TON" ? 4 : 2) + " " + c;
   const maxIn = () => {
     const x = acc || a; if (!x) return 0n;
-    if (from === "TON") { const b = BigInt(x.ton || 0) - SWAP_GAS - 10000000n; return b > 0n ? b : 0n; }
+    if (from === "TON") { const b = BigInt(x.ton || 0) - SWAP_GAS - 10000000n; return b > 0n ? b : 0n; }   // 0,01 TON остаётся на комиссию
     return BigInt(balOf(x, "MST"));
   };
   const paint = () => {
@@ -1214,7 +1217,7 @@ VIEWS.swap = (arg) => {
       units ? h("div", {}, h("span", {}, T("Влияние на цену")), h("b", { class: impact > 5 ? "tw-warnt" : "" }, impact < 0.01 ? "< 0,01%" : impact.toFixed(2).replace(".", window.SOROKA_LANG === "en" ? "." : ",") + "%")) : null,
       units ? h("div", {}, h("span", {}, T("Получите минимум")), h("b", {}, fmtA(minOut, to()))) : null,
       h("div", {}, h("span", {}, T("Комиссия пула")), h("b", {}, (pool.fee / 100).toLocaleString(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU") + "%")),
-      h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, T("≈ 0,01 TON (с обменом уходит 0,25 TON, излишек вернётся)"))));
+      h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, "≈ 0,01 TON")));
     pwBox.hidden = isUnlocked();
   };
   amt.addEventListener("input", () => { err.textContent = ""; paint(); });
@@ -1244,10 +1247,10 @@ VIEWS.swap = (arg) => {
       pool = p; paint();
       if (!p || !p.swap) { err.textContent = T("Пул сейчас недоступен. Попробуйте позже."); return; }
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
-      if (from === "TON" && units > maxIn()) { err.textContent = T("Недостаточно TON: с обменом уходит ещё 0,25 TON на газ (излишек вернётся)"); return; }
+      if (from === "TON" && units > maxIn()) { err.textContent = T("Недостаточно TON: ≈ 0,09 TON нужно на комиссию сети (почти всё вернётся)"); return; }
       if (from === "MST") {
         if (units > BigInt(balOf(x, "MST"))) { err.textContent = T("Недостаточно MST"); return; }
-        if (BigInt(x.ton || 0) < SWAP_GAS + 10000000n) { err.textContent = T("Для обмена нужно ≥ 0,26 TON на газ (излишек вернётся)"); return; }
+        if (BigInt(x.ton || 0) < SWAP_GAS_J + 10000000n) { err.textContent = T("Для обмена нужно ≥ 0,11 TON на комиссию сети (почти всё вернётся)"); return; }
       }
       if (out <= 0n) { err.textContent = T("Слишком маленькая сумма"); return; }
       const minOut = out * BigInt(10000 - swapSlip) / 10000n;
@@ -1269,7 +1272,7 @@ VIEWS.swap = (arg) => {
         const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(jwa, true) });
         const tb = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(units.toString()), toAddress: new TW.utils.Address(toFriendly(MST_POOL, true)),
           responseAddress: new TW.utils.Address(me.addr), forwardAmount: new BN(SWAP_FWD.toString()), forwardPayload: pj });
-        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(jwa, true), amount: new BN(SWAP_GAS.toString()), seqno, payload: tb, sendMode: 3 });
+        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(jwa, true), amount: new BN(SWAP_GAS_J.toString()), seqno, payload: tb, sendMode: 3 });
       }
       await sendBoc(TW.utils.bytesToBase64(await (await q.getQuery()).toBoc(false)));
       acc = null; hist = null; poolSt = null;

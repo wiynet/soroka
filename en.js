@@ -1,5 +1,7 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Недостаточно TON: ≈ 0,09 TON нужно на комиссию сети (почти всё вернётся)": "Not enough TON: ≈ 0.09 TON is needed for the network fee (almost all of it comes back)",
+  "Для обмена нужно ≥ 0,11 TON на комиссию сети (почти всё вернётся)": "A swap needs ≥ 0.11 TON for the network fee (almost all of it comes back)",
   " нужно ≥ 0,055 TON на комиссию сети": " you need ≥ 0.055 TON for the network fee",
   ". Попробуйте позже.": ". Try again later.",
   "MST можно перевести только тому, у кого уже есть кошелёк. Переведите TON или USDT — или попросите друга открыть кошелёк в Mestario.": "MST can only be sent to someone who already has a wallet. Send TON or USDT instead — or ask your friend to open the wallet in Mestario.",
