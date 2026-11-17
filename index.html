@@ -3312,6 +3312,13 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 @keyframes twPop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
 @keyframes twWait { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .pay-card, .pay-card * { animation: none !important; transition: none !important; } }
+
+/* ---------- удалённый аккаунт: просмотр сохранённой переписки ---------- */
+.gone-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 50; min-height: 44px; box-sizing: border-box; padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: color-mix(in srgb, var(--danger) 18%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); font-size: 13px; line-height: 1.3; }
+.gone-bar b { color: var(--danger); }
+.gone-bar .btn { flex: none; }
+:root.gone body { padding-top: var(--gone-h, 56px); box-sizing: border-box; }
+:root.gone #composer, :root.gone .tabbar, :root.gone .get-apps, :root.gone #storyBar, :root.gone #btnMarket, :root.gone #btnSupport, :root.gone #btnNewGroup, :root.gone #btnCall, :root.gone #btnVideo { display: none !important; }
 </style>
 <script>
 /* Сенсорный экран без мыши: правила :hover «залипают» после касания — строка остаётся подсвеченной, пока не ткнёшь
@@ -3416,7 +3423,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=084ee200b9"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=9fe935e561"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5856,6 +5863,7 @@ void main() {
       <li>Mest, премиум, подарки и коллекционные юзернеймы пропадут без возврата.</li>
       <li>Сообщения, которые вы отправили другим людям, останутся у них, но без вашего имени.</li>
       <li>Почту после удаления можно использовать для нового аккаунта.</li>
+      <li>Ваши чаты (последние 150 сообщений каждого) сохранятся на этом устройстве — их можно будет читать, но не писать.</li>
     </ul>
     <label class="field"><span>Пароль от аккаунта</span><input class="input" id="daPass" type="password" autocomplete="current-password" required></label>
     <label class="field"><span>Чтобы подтвердить, напишите слово УДАЛИТЬ</span><input class="input" id="daWord" autocomplete="off" autocapitalize="characters" spellcheck="false" required></label>
@@ -6034,7 +6042,7 @@ const PF = "hide_crown,hide_tick,badge_style,badge_path,profile_bg,banner,id,use
 
 const $ = (id) => document.getElementById(id);
 const settings = window.sorokaSettings;
-if (!window.supabase) {
+if (!window.supabase && !localStorage.getItem("mestario.gone")) {   // удалённому аккаунту сервер не нужен — смотрит сохранённое и без интернета
   document.body.textContent = T("Не удалось загрузить библиотеку. Проверьте интернет и обновите страницу.");
   throw new Error("supabase-js not loaded");
 }
@@ -6063,7 +6071,25 @@ const sbFetch = async (url, opts) => {
     }
   }
 };
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: sbFetch } });
+/* аккаунт удалён с этого устройства: чаты открыты только для чтения из сохранённого на телефоне.
+   К серверу не обращаемся вовсе — вместо клиента Supabase заглушка, все её запросы просто никогда не завершаются */
+const goneAcc = (() => { try { const g = JSON.parse(localStorage.getItem("mestario.gone") || "null"); return g && g.id ? g : null; } catch (e) { return null; } })();
+function offlineClient() {
+  const never = new Promise(() => {});
+  const P = new Proxy(function () {}, {
+    get(t, k) {
+      if (k === "then") return (res, rej) => never.then(res, rej);
+      if (k === Symbol.toPrimitive) return () => "";
+      if (k === Symbol.iterator) return function* () {};
+      if (k === "getPublicUrl") return () => ({ data: { publicUrl: "" } });
+      if (k === "onAuthStateChange") return () => ({ data: { subscription: { unsubscribe() {} } } });
+      return P;
+    },
+    apply() { return P; },
+  });
+  return P;
+}
+const sb = goneAcc ? offlineClient() : window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: sbFetch } });
 
 const state = {
   me: null, profile: null, recovering: false, started: false, isAdmin: false, isChief: false, editing: null, timer: null, replyTo: null, replies: new Map(), giftInfo: new Map(), giveaways: new Map(), reacts: new Map(), reactsLoaded: new Set(), reactPop: null, giftTypes: null, balance: 0,
@@ -7835,7 +7861,7 @@ async function openChat(id) {
     if (msgTail) msgFull(id);
     ensureReplies(); loadScheduled(); markReadSoon(); loadTranscripts(id);
     if (canAutoFocus()) $("text").focus();
-  } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, T("Загружаем сообщения…")));
+  } else $("msgs").replaceChildren(h("div", { class: "empty-note" }, goneAcc ? T("Эта переписка не сохранилась на устройстве") : T("Загружаем сообщения…")));
   const net = fetchPage(id);
   // в памяти переписки нет — пока идёт запрос, показываем сохранённую на устройстве (обычно это пара миллисекунд)
   let cached = cached0;
@@ -15502,6 +15528,29 @@ function mediaClear() {
   try { localStorage.removeItem("mestario.media"); } catch (e) {}
   if (window.caches) caches.delete(MEDIA_CACHE).catch(() => {});
 }
+// перед удалением аккаунта: последние сообщения всех чатов — на устройство (по 6 чатов за раз, не дольше 25 секунд)
+async function saveArchive(progress) {
+  const ids = [...state.chats.keys()], t0 = Date.now();
+  let n = 0;
+  cacheActive();
+  const one = async (id) => {
+    const c = state.chats.get(id);
+    const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null)
+      .gt("id", (c || {}).cleared || 0).order("id", { ascending: false }).limit(KEEP);
+    if (!error && Array.isArray(data) && data.length) msgCache.set(id, { msgs: data.slice().reverse().filter(notExpired), hasMore: data.length >= KEEP });
+    progress(++n, ids.length);
+  };
+  for (let i = 0; i < ids.length && Date.now() - t0 < 25000; i += 6) await Promise.all(ids.slice(i, i + 6).map(one));
+  const db = await idb();
+  if (!db) return;
+  await new Promise((res) => {
+    try {
+      const tx = db.transaction("msgs", "readwrite"), st = tx.objectStore("msgs"), me = state.me.id;
+      for (const [id, e] of msgCache) st.put({ u: me, chat: id, msgs: e.msgs.slice(-KEEP), hasMore: !!e.hasMore, t: Date.now() }, me + ":" + id);
+      tx.oncomplete = tx.onerror = tx.onabort = () => res();
+    } catch (x) { res(); }
+  });
+}
 async function fetchPage(id) {
   const c = state.chats.get(id);
   const { data, error } = await sb.from("messages").select("*").eq("chat_id", id).is("deleted_at", null)
@@ -20736,6 +20785,10 @@ $("delAccForm").addEventListener("submit", (e) => {
   if (word !== "УДАЛИТЬ" && word !== "DELETE") { err.textContent = T("Напишите слово УДАЛИТЬ, чтобы подтвердить"); return; }
   busy(e.target, async () => {
     if (!(await confirmPassword(pass, err))) return;
+    // перед удалением сохраняем переписку на устройство: после удаления её можно будет читать
+    const btn = e.target.querySelector("button[type=submit]");
+    await saveArchive((n, all) => { if (btn) btn.textContent = T("Сохраняем чаты") + " " + n + "/" + all; });
+    if (btn) btn.textContent = T("Удаляем…");
     const { error } = await sb.rpc("delete_my_account", { p_password: pass });
     if (error) {
       const m = error.message || "";
@@ -20749,11 +20802,17 @@ $("delAccForm").addEventListener("submit", (e) => {
     if (ok.data !== false && !ok.error) { err.textContent = T("Не удалось удалить аккаунт. Попробуйте ещё раз."); return; }
     $("dlgDelAcc").close();
     for (const d of document.querySelectorAll("dialog[open]")) d.close();
-    try { localStorage.removeItem(recentKey()); } catch (x) {}
+    // вход на сервер больше не нужен: убираем ключи входа, а сохранённые чаты оставляем для просмотра
     kickedOnce = true;
-    await logout();
-    kickedOnce = false;
-    toast(T("Аккаунт удалён"));
+    const me = state.me.id, name = state.profile && state.profile.display_name;
+    try {
+      localStorage.removeItem(recentKey());
+      localStorage.setItem("soroka.accounts", JSON.stringify(accounts().filter((a) => a.id !== me)));
+      for (const k of Object.keys(localStorage)) if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k);
+      localStorage.setItem("mestario.gone", JSON.stringify({ id: me, name, at: Date.now() }));
+    } catch (x) {}
+    saveChatsSnap();
+    location.replace("/");
   });
 });
 async function checkSessionAlive() {
@@ -20976,8 +21035,33 @@ window.addEventListener("beforeinstallprompt", (e) => e.preventDefault());
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
+// удалённый аккаунт: открываем сохранённые чаты для чтения
+function goneBoot() {
+  const s = readSnap(goneAcc.id) || {};
+  state.me = { id: goneAcc.id, email: "" };
+  state.profile = Object.assign({ id: goneAcc.id, display_name: goneAcc.name || "" }, s.profile || {});
+  document.documentElement.classList.add("gone");
+  window.__mFast = 1;
+  const bar = h("div", { class: "gone-bar", role: "status" },
+    h("span", null, h("b", null, T("Ваш аккаунт удалён.")), " ", T("Переписка сохранена на этом устройстве и доступна только для чтения.")),
+    h("button", { class: "btn ghost sm", type: "button", onclick: goneExit }, T("Выйти")));
+  document.body.prepend(bar);
+  const fit = () => document.documentElement.style.setProperty("--gone-h", bar.offsetHeight + "px");
+  fit(); addEventListener("resize", fit);
+  startApp();
+}
+// выйти из просмотра: всё сохранённое стирается с устройства, открывается обычный вход
+async function goneExit() {
+  if (!confirm(T("Сохранённая переписка удалённого аккаунта сотрётся с этого устройства. Выйти?"))) return;
+  try {
+    localStorage.removeItem("mestario.gone"); localStorage.removeItem(chatsKey()); localStorage.removeItem(snapKey());
+    localStorage.removeItem(lastKey()); localStorage.removeItem("mestario.dims"); localStorage.removeItem("mestario.paystat");
+  } catch (e) {}
+  await idbClear(); mediaClear();
+  location.replace("/");
+}
 // всё объявлено — можно сразу открыть мессенджер из сохранённого (сервер ответит и сверится следом)
-try { fastBoot(); } catch (e) { console.warn("fastBoot", e); }
+try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot", e); }
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */

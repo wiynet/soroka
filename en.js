@@ -1,5 +1,12 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Ваш аккаунт удалён.": "Your account has been deleted.",
+  "Переписка сохранена на этом устройстве и доступна только для чтения.": "Your chats are saved on this device and are read-only.",
+  "Эта переписка не сохранилась на устройстве": "This chat wasn't saved on this device",
+  "Сохранённая переписка удалённого аккаунта сотрётся с этого устройства. Выйти?": "The saved chats of the deleted account will be erased from this device. Sign out?",
+  "Сохраняем чаты": "Saving chats",
+  "Удаляем…": "Deleting…",
+  "Ваши чаты (последние 150 сообщений каждого) сохранятся на этом устройстве — их можно будет читать, но не писать.": "Your chats (the last 150 messages of each) will stay on this device — you'll be able to read them but not write.",
 "Запишите ":"Write down the ",
 " слов по порядку на бумаге. Это запасной ключ, если вы забудете пароль кошелька. Никому их не показывайте — даже поддержке Mestario.":" words in order on paper. It's your backup key if you forget the wallet password. Never show them to anyone — not even Mestario support.",
 "12 слов короче записывать и так же открываются в Mestario. Но Tonkeeper и другие кошельки TON рассчитаны на 24 слова: по 12 словам они могут не открыть этот кошелёк. Если хотите пользоваться им и в других приложениях — выберите 24.":"12 words are shorter to write down and open in Mestario just the same. But Tonkeeper and other TON wallets expect 24 words and may not open this wallet from 12. If you want to use it in other apps too, choose 24.",
