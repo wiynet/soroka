@@ -554,6 +554,9 @@ const CSS = `
 .tw-card .big { display: block; margin: 10px 0 6px; font-size: 44px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .tw-card .sub { color: #9aa6bd; font-size: 15px; }
 .tw-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.tw-acts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tw-acts.four .tw-act { font-size: 13px; padding: 12px 2px 10px; min-width: 0; }
+.tw-acts.four .tw-act span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tw-act { border: 0; border-radius: 16px; padding: 14px 6px 12px; background: #1f2f50; color: #fff; font: inherit; font-size: 15px; display: grid; justify-items: center; gap: 6px; cursor: pointer; transition: background .15s; }
 .tw-act:hover { background: #27396096; background: #263a62; }
 .tw-act svg { width: 22px; height: 22px; color: #7fb0ff; }
@@ -806,7 +809,7 @@ function setHead(title, back) {
   $("twPill").onclick = m === "watch" ? () => show("recover", { then: { v: view } }) : null;
   $("twPill").title = m === "watch" ? T("Войти паролем кошелька и кодом из почты") : "";
   const nav = $("twNav"), has = !!myAddr();
-  const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1], ["swap", T("Обмен"), "swap", 1],
+  const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1], ["swap", T("Обмен"), "swap", 1], ["nft", "NFT", "gem", 1],
     ["activity", T("История"), "hist"], ["security", T("Безопасность"), "shield", 1], ["settings", T("Настройки"), "gear"]] : [];
   const cur = SECT[view] || view;
   nav.hidden = !tabs.length;
@@ -820,7 +823,7 @@ function setHead(title, back) {
 }
 const TABS = ["overview", "assets", "activity", "settings", "start"];
 // к какому пункту бокового меню относится экран
-const SECT = { asset: "assets", confirm: "send", done: "send", swapok: "swap", wsettings: "settings", recover: "overview", cloud: "overview", import: "overview", email: "overview", pass: "overview", seed: "overview", check: "overview", secure: "overview" };
+const SECT = { nftlink: "nft", asset: "assets", confirm: "send", done: "send", swapok: "swap", wsettings: "settings", recover: "overview", cloud: "overview", import: "overview", email: "overview", pass: "overview", seed: "overview", check: "overview", secure: "overview" };
 const WIDE = ["overview", "assets", "asset", "activity", "settings"];
 const isDesk = () => matchMedia("(min-width: 900px) and (min-height: 600px)").matches;
 let navDir = "tab";
@@ -924,7 +927,7 @@ VIEWS.overview = () => {
   if (a && rates) countTo(big, t.val, fm);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
-    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr 1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
+    h("div", { class: "tw-acts four" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
       act("swap", T("Обмен"), () => need("swap", { from: "TON" })), act("gem", "NFT", () => show("nft"))));
   const list = assetRows(a), m = mode(), vv = vault();
   const other = vv && !vv.soft && srvAddr && !sameAddr(vv.addr, srvAddr);
