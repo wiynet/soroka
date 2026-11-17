@@ -68,6 +68,7 @@ const showDig = (c) => (c === "TON" ? 4 : JETS[c] ? JETS[c].show : 4);
 const balOf = (x, c) => (!x ? "0" : c === "TON" ? x.ton || "0" : (x.jet && x.jet[c] && x.jet[c].bal) || (c === "USDT" && x.usdt) || "0");
 const jwOf = (x, c) => (x && ((x.jet && x.jet[c] && x.jet[c].wallet) || (c === "USDT" && x.usdtWallet))) || null;
 function parseUnits(s, dec) {
+  dec = Number.isInteger(dec) ? dec : 9;
   s = String(s || "").trim().replace(",", ".");
   if (!/^[0-9]{1,12}(\.[0-9]*)?$/.test(s)) return null;
   const [i, f = ""] = s.split(".");
@@ -163,12 +164,24 @@ function devKey() {
     return k;
   } catch (e) { return null; }
 }
-let srvAddr = null, srvAt = 0;
+let srvAddr = null, srvAt = 0, srvOk = false;
 async function loadSrv(force) {
   if (!force && srvAt && Date.now() - srvAt < 60000) return srvAddr;
-  const r = await dbq(sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle());
-  if (r && !r.error) { srvAddr = (r.data && r.data.address) || null; srvAt = Date.now(); }
+  let r = null;
+  for (let i = 0; i < 2 && !(r && !r.error); i++) {   // медленный ответ сервера не должен превращаться в «кошелька нет»
+    if (i) await sleep(800);
+    r = await dbq(sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle()).catch((e) => ({ error: e }));
+  }
+  if (r && !r.error) { srvAddr = (r.data && r.data.address) || null; srvAt = Date.now(); srvOk = true; }
   return srvAddr;
+}
+// кошелёк открыт на этом устройстве, а к аккаунту не привязан (сбой при создании, старая версия) —
+// привязываем, иначе друзья видят «нет кошелька» и переводят «чеком»
+async function syncAddr() {
+  const v = vault();
+  if (!v || v.soft || !srvOk || srvAddr) return;
+  const r = await q_rpc("ton_account_set", { p_addr: v.addr, p_auto: true });
+  if (r && !r.error && r.data) { srvAddr = r.data; srvAt = Date.now(); }
 }
 const myAddr = () => { const v = vault(); return v ? v.addr : srvAddr; };
 // full — защищён паролем; soft — создан сам, ещё не защищён; watch — на этом устройстве только просмотр; none — кошелька нет
@@ -339,7 +352,7 @@ async function poolTick() {
   const old = rates.MST && rates.MST.ton;
   rates.MST = m;
   try { localStorage.setItem(rateKey, JSON.stringify(rates)); } catch (e) {}
-  if (old !== m.ton) { mstChainSt = null; for (const k of Object.keys(chartCache)) if (k.startsWith("MST")) delete chartCache[k]; for (const fn of rateSubs) try { fn(); } catch (e) {} }
+  if (old !== m.ton) { if (mstChainSt) mstChainSt.at = 0; for (const k of Object.keys(chartCache)) if (k.startsWith("MST")) delete chartCache[k]; for (const fn of rateSubs) try { fn(); } catch (e) {} }
 }
 function startRates() {
   if (!poolTimer) { poolTimer = setInterval(poolTick, 20000); setTimeout(poolTick, 1500); }
@@ -351,7 +364,8 @@ function stopRates() { clearInterval(rateTimer); rateTimer = null; clearInterval
 // настоящая история цены MST из сделок пула (бирж-агрегаторов с графиком у токена пока нет).
 // Идём от нынешних запасов пула назад по обменам: до обмена TON→MST в пуле было на ton_in меньше TON и на amount_out больше MST,
 // и наоборот для MST→TON. Пополнения пула цену не меняют. Точки — цена MST в TON после каждого обмена.
-let mstChainSt = null, mstChainBusy = null;
+const MCK = "mestario.tonw.mstchain";
+let mstChainSt = (() => { try { const v = JSON.parse(localStorage.getItem(MCK) || "null"); return v && Array.isArray(v.pts) ? { at: 0, pts: v.pts } : null; } catch (e) { return null; } })(), mstChainBusy = null;
 function mstChain() {
   if (mstChainSt && Date.now() - mstChainSt.at < 60000) return Promise.resolve(mstChainSt.pts);
   if (mstChainBusy) return mstChainBusy;
@@ -383,6 +397,7 @@ function mstChain() {
       }
       pts.sort((a, b) => a[0] - b[0]);
       mstChainSt = { at: Date.now(), pts };
+      try { localStorage.setItem(MCK, JSON.stringify({ pts: pts.slice(-2000) })); } catch (e) {}
     } catch (e) { console.warn("mst chart", e); }
     finally { setTimeout(() => { mstChainBusy = null; }, 0); }
     return mstChainSt ? mstChainSt.pts : null;
@@ -394,8 +409,23 @@ function mstChain() {
 const PERIODS = [["H", "Ч", 3600, "Последний час"], ["D", "Д", 86400, "Последний день"], ["W", "Н", 7 * 86400, "Последняя неделя"],
   ["M", "М", 30 * 86400, "Последний месяц"], ["6M", "6М", 182 * 86400, "Последние полгода"], ["Y", "Г", 365 * 86400, "Последний год"]];
 const chartCache = {};
+// графики хранятся и на устройстве: при открытии сразу рисуем последний, а свежий догружаем
+const CHK = "mestario.tonw.charts";
+function chartDisk(key, val) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CHK) || "{}");
+    if (val === undefined) return all[key] || null;
+    all[key] = val;
+    const ks = Object.keys(all).sort((a, b) => all[b].at - all[a].at);
+    for (const k of ks.slice(24)) delete all[k];
+    localStorage.setItem(CHK, JSON.stringify(all));
+  } catch (e) {}
+  return null;
+}
+function chartPeek(cur, per) { const key = cur + fiat() + per, c = chartCache[key] || chartDisk(key); return c && c.pts && c.pts.length > 1 ? c.pts : null; }
 async function loadChart(cur, per) {
-  const P = PERIODS.find((x) => x[0] === per) || PERIODS[1], f = fiat(), key = cur + f + per, c = chartCache[key];
+  const P = PERIODS.find((x) => x[0] === per) || PERIODS[1], f = fiat(), key = cur + f + per;
+  const c = chartCache[key] || (chartCache[key] = chartDisk(key) || undefined);
   if (c && Date.now() - c.at < RATE_TTL) return c.pts;
   const now = Math.floor(Date.now() / 1000);
   try {
@@ -418,7 +448,7 @@ async function loadChart(cur, per) {
       if (cur0) pts.push([Date.now(), cur0]);
       if (pts.length === 1) pts.unshift([from, pts[0][1]]);
     }
-    if (pts.length > 1) chartCache[key] = { at: Date.now(), pts };
+    if (pts.length > 1) { chartCache[key] = { at: Date.now(), pts }; chartDisk(key, chartCache[key]); }
     return pts;
   } catch (e) { return c ? c.pts : null; }
 }
@@ -817,7 +847,7 @@ async function open(v, arg) {
   ensureDlg();
   if (!dlg.open) dlg.showModal();
   startRates();
-  if (!myAddr()) await loadSrv(true); else loadSrv(false);
+  if (!myAddr()) await loadSrv(true); else loadSrv(true).then(syncAddr);
   if (!myAddr()) { show("start", { then: v && v !== "overview" ? { v, arg } : null }); return; }
   if (v === "send" || v === "security") need(v, arg); else show(v || "overview", arg);
 }
@@ -878,8 +908,12 @@ VIEWS.overview = () => {
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
     h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
       act("swap", T("Обмен"), () => need("swap", { from: "TON" }))));
-  const list = assetRows(a), m = mode();
-  const banner = m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
+  const list = assetRows(a), m = mode(), vv = vault();
+  const other = vv && !vv.soft && srvAddr && !sameAddr(vv.addr, srvAddr);
+  const banner = other ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("start", { then: { v: "overview" }, mismatch: true }) },
+      h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("На этом устройстве другой кошелёк")),
+        h("span", {}, T("Здесь открыт ") + short(vv.addr) + T(", а к аккаунту привязан ") + short(srvAddr) + T(". Переводы по @юзернейму приходят на привязанный. Нажмите, чтобы войти в него."))), h("span", { class: "chev" }, "›"))
+    : m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
     : m === "watch" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("recover", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Только просмотр")), h("span", {}, T("Чтобы отправлять с этого устройства, войдите паролем кошелька и кодом из почты"))), h("span", { class: "chev" }, "›")) : null;
@@ -927,7 +961,7 @@ VIEWS.asset = (cur) => {
     assetPer === "H" || assetPer === "D" ? { hour: "2-digit", minute: "2-digit" } : assetPer === "Y" || assetPer === "6M" ? { day: "numeric", month: "short", year: "2-digit" } : { day: "numeric", month: "short" });
   const draw = () => {
     svgBox.replaceChildren(); tl.replaceChildren();
-    if (!pts || pts.length < 2) { svgBox.append(h("div", { class: "tw-chart-empty" }, pts == null ? T("Не удалось загрузить график") : pts.length < 2 && pts !== undefined && cur === "MST" ? T("График появится, когда накопится история цены") : T("Загружаем график…"))); hi.textContent = lo.textContent = ""; return; }
+    if (!pts || pts.length < 2) { svgBox.onpointermove = svgBox.onpointerdown = null; svgBox.append(h("div", { class: "tw-chart-empty" }, pts == null ? T("Не удалось загрузить график") : pts.length < 2 && pts !== undefined && cur === "MST" ? T("График появится, когда накопится история цены") : T("Загружаем график…"))); hi.textContent = lo.textContent = ""; return; }
     const W = 600, H = 240, ys = pts.map((p) => p[1]), mn = Math.min(...ys), mx = Math.max(...ys), sp = mx - mn || mx * 0.01 || 1, t0 = pts[0][0], tw = pts[pts.length - 1][0] - t0 || 1;
     const X = (t) => (t - t0) / tw * W, Y = (v) => 14 + (1 - (v - mn) / sp) * (H - 28);
     const line = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
@@ -944,7 +978,9 @@ VIEWS.asset = (cur) => {
     hi.textContent = money(mx, priceDig(mx)); lo.textContent = money(mn, priceDig(mn));
     for (const g of [1, 3]) { const tt = t0 + tw * g / 5; tl.append(h("span", { style: "left:" + (g * 20) + "%" }, fmtTs(tt))); }
     svgBox.classList.toggle("dn", dn);
+    const pts0 = pts;
     const at = (clientX) => {
+      const pts = pts0;
       const r = svgBox.getBoundingClientRect(), x = Math.max(0, Math.min(1, (clientX - r.left) / r.width)), t = t0 + x * tw;
       let i = 0; while (i < pts.length - 1 && pts[i + 1][0] <= t) i++;
       const p = pts[i]; scrub = true;
@@ -962,7 +998,7 @@ VIEWS.asset = (cur) => {
   };
   const seg = h("div", { class: "tw-per" }, ...PERIODS.map(([k, l]) => h("button", { type: "button", class: k === assetPer ? "on" : "", onclick: (e) => {
     assetPer = k; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); load(); } }, T(l))));
-  const load = () => { const per = assetPer; pts = undefined; draw(); paintHead();
+  const load = () => { const per = assetPer; pts = chartPeek(cur, per) || undefined; draw(); paintHead();
     loadChart(cur, per).then((p) => { if (view !== "asset" || per !== assetPer) return; pts = p; draw(); paintHead(); }); };
   const valEl = h("span", {}), amtEl = h("b", {});
   const paintBal = () => { const b = bal(), n = Number(BigInt(b)) / 10 ** dec, r = rateOf(cur); amtEl.textContent = fmtUnits(b, dec, cur === "USDT" ? 6 : 9) + " " + cur; valEl.textContent = r ? money(n * r) : ""; };
@@ -1045,6 +1081,16 @@ VIEWS.receive = () => {
 };
 
 /* ---------- отправить ---------- */
+// адрес кошелька человека; при сбое связи — повтор, а ошибку отдаём отдельно (это не «кошелька нет»)
+async function addrOf(uid) {
+  let r = null;
+  for (let i = 0; i < 3; i++) {
+    if (i) await sleep(700 * i);
+    r = await q_rpc("ton_address_of", { p_user: uid }).catch((e) => ({ error: e }));
+    if (r && !r.error) return { data: r.data || null, error: null };
+  }
+  return { data: null, error: (r && r.error) || new Error("network") };
+}
 async function resolveTo(s) {
   s = String(s || "").trim();
   if (!s) return { err: T("Укажите получателя") };
@@ -1052,7 +1098,8 @@ async function resolveTo(s) {
     const name = s.replace(/^@/, "").toLowerCase();
     const { data: p } = await sb.from("profiles").select("id,display_name,username").ilike("username", name).maybeSingle();
     if (!p) return { err: T("Пользователь @") + name + T(" не найден") };
-    const { data: a } = await q_rpc("ton_address_of", { p_user: p.id });
+    const { data: a, error: ae } = await addrOf(p.id);
+    if (ae) return { err: T("Не удалось проверить кошелёк получателя — попробуйте ещё раз") };
     if (!a) {
       // кошелька нет — переводим «чеком» в личный чат с ним
       const dm = [...state.chats.values()].find((c) => !c.is_group && c.members && c.members.length === 2 && c.members.some((m) => m.id === p.id));
@@ -1101,7 +1148,7 @@ VIEWS.send = (arg) => {
       const x = await refresh(true);
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
       // человеку без кошелька («чеком») пока можно перевести только TON и USDT
-      if (r.cheque && cur === "MST") { err.textContent = T("MST можно перевести только тому, у кого уже есть кошелёк. Переведите TON или USDT — или попросите друга открыть кошелёк в Mestario."); return; }
+      if (r.cheque && cur === "MST") { err.textContent = T("У получателя пока не привязан кошелёк к аккаунту, а MST можно перевести только на кошелёк. Попросите его открыть «Кошелёк» в Mestario (он привяжется сам) — или переведите TON или USDT."); return; }
       const extra = r.cheque ? (cur === "TON" ? CHQ_TON_EXTRA : CHQ_USDT_GAS) : 0n;
       if (cur === "TON" && units + extra > maxOf()) { err.textContent = r.cheque ? T("Недостаточно TON: нужно ещё ≈ 0,011 TON на комиссии") : T("Недостаточно TON: ≈ 0,006 TON остаётся на комиссию"); return; }
       if (cur !== "TON") {
@@ -1446,8 +1493,14 @@ VIEWS.security = () => {
 VIEWS.start = async (o) => {
   const then = o && o.then;
   setHead(T("Кошелёк"));
-  const has = await sb.from("ton_accounts").select("address").eq("user_id", state.me.id).maybeSingle().then((r) => r.data && r.data.address).catch(() => null);
+  await loadSrv(true);
   if (view !== "start") return;
+  if (!srvOk) {
+    put(h("div", { class: "tw-note" }, T("Не удалось связаться с сервером, чтобы проверить ваш кошелёк. Проверьте интернет и попробуйте ещё раз.")),
+      h("button", { class: "tw-btn", type: "button", onclick: () => show("start", o) }, T("Повторить")));
+    return;
+  }
+  const v0 = vault(), has = srvAddr && !(v0 && !v0.soft && sameAddr(v0.addr, srvAddr) && !(o && o.mismatch)) ? srvAddr : null;
   put(h("div", { class: "tw-center" }, h("span", { class: "logo" }, sv("wallet")),
       h("b", { style: "font-size:24px" }, T("Кошелёк Mestario")),
       h("p", { class: "tw-p" }, T("Храните и переводите TON и USDT прямо в мессенджере — друзьям в чате или по @юзернейму."))),
@@ -1539,7 +1592,7 @@ VIEWS.pass = (o) => {
       const words = o.words || await genMnemonic();
       const W = await walletOf(words);
       if (restore) { await finish(words, W.addr, p1.value); toast(T("Кошелёк восстановлен")); afterSetup(o.then); return; }
-      show("seed", { words, addr: W.addr, pass: p1.value, then: o.then, secure: o.secure });
+      show("seed", { words, addr: W.addr, pass: p1.value, then: o.then, secure: o.secure, replace: o.replace });
     } catch (e) { err.textContent = T("Не удалось: ") + ((e && e.message) || e); }
     finally { go.disabled = false; go.classList.remove("busy"); }
   };
@@ -1548,7 +1601,12 @@ VIEWS.pass = (o) => {
   setTimeout(() => p1.focus(), 50);
 };
 function afterSetup(then) { if (then && then.v) show(then.v, then.arg); else show("overview"); }
-async function finish(words, addr, pass) {
+async function finish(words, addr, pass, replace) {
+  if (!replace) {
+    await loadSrv(true);
+    if (!srvOk) throw new Error(T("нет связи с сервером — попробуйте ещё раз"));
+    if (srvAddr && !sameAddr(srvAddr, addr)) throw new Error(T("к аккаунту уже привязан другой кошелёк (") + short(srvAddr) + T("). Войдите в него или выберите «Создать новый кошелёк»"));
+  }
   if (!saveVault(await seal(words, pass, addr))) throw new Error(T("не хватает места в хранилище браузера"));
   unlocked = { addr, words, until: Date.now() + 5 * 60000 };
   acc = null; hist = null;
@@ -1587,7 +1645,7 @@ VIEWS.check = (o) => {
   go.onclick = async () => {
     if (idx.some((i, k) => ins[k].value.trim().toLowerCase() !== o.words[i])) { err.textContent = T("Слова не совпадают — проверьте запись"); return; }
     go.disabled = true;
-    try { await finish(o.words, o.addr, o.pass); toast(o.secure ? T("Кошелёк защищён") : T("Кошелёк создан")); afterSetup(o.then); }
+    try { await finish(o.words, o.addr, o.pass, !!(o.replace || o.secure)); toast(o.secure ? T("Кошелёк защищён") : T("Кошелёк создан")); afterSetup(o.then); }
     catch (e) { err.textContent = T("Не удалось сохранить: ") + ((e && e.message) || e); go.disabled = false; }
   };
   put(h("p", { class: "tw-p" }, T("Введите слова №") + idx.map((i) => i + 1).join(", ") + T(" — чтобы убедиться, что вы их записали.")),
@@ -1667,9 +1725,31 @@ VIEWS.import = (o) => {
 };
 
 /* ---------- «Получить» по переводу в чате ---------- */
+// временный кошелёк перевода: сколько на нём осталось и куда ушли деньги (пустой счёт в сети «не существует» — это тоже 0)
+async function tempState(addr) {
+  const [a, jet, ev] = await Promise.all([
+    tonapi("/accounts/" + encodeURIComponent(addr)).then(j).catch((e) => (e.status === 404 ? { balance: 0 } : null)),
+    tonapi("/accounts/" + encodeURIComponent(addr) + "/jettons").then(j).catch((e) => (e.status === 404 ? { balances: [] } : null)),
+    tonapi("/accounts/" + encodeURIComponent(addr) + "/events?limit=10").then(j).catch(() => null)]);
+  let usdt = jet ? 0n : null;
+  for (const b of (jet && jet.balances) || []) if (sameAddr(b.jetton && b.jetton.address, JETS.USDT.master)) usdt = BigInt(b.balance || 0);
+  let out = null;
+  for (const e of (ev && ev.events) || []) for (const x of e.actions || []) {
+    if (x.status !== "ok") continue;
+    const t = x.TonTransfer || x.JettonTransfer;
+    if (t && t.sender && sameAddr(t.sender.address, addr) && t.recipient && !out) out = toFriendly(t.recipient.address, false);
+  }
+  return { ton: a ? BigInt(a.balance || 0) : null, usdt, out };
+}
+// отметить перевод завершённым: куда ушли деньги, сервер сам решит — забрал получатель или вернулось отправителю
+async function chequeSettle(id, to) {
+  let r = await q_rpc("ton_cheque_settle", { p_id: id, p_to: to }).catch((e) => ({ error: e }));
+  if (r && r.error && /function|schema cache|not find/i.test(String(r.error.message || ""))) r = await q_rpc("ton_cheque_done", { p_id: id, p_to: to });
+  return r && !r.error ? r.data : null;
+}
 async function claim(id) {
   ensureDlg(); if (!dlg.open) dlg.showModal();
-  await loadSrv(false);
+  await loadSrv(true); syncAddr();
   need("claim", id);
 }
 VIEWS.claim = async (id) => {
@@ -1686,9 +1766,25 @@ VIEWS.claim = async (id) => {
     const T2 = await walletOf(words), TW = T2.TW, BN = TW.utils.BN;
     if (!sameAddr(T2.addr, c.temp)) { fail(T("Ключ перевода повреждён. Напишите в поддержку.")); return; }
     info.textContent = T("Смотрим, дошли ли деньги…");
+    const st0 = await tempState(c.temp);
+    if (st0.ton == null) { fail(T("Не удалось проверить перевод в блокчейне. Попробуйте через минуту."), true); return; }
+    if (st0.ton < 3000000n && !st0.usdt) {
+      // деньги уже ушли с временного кошелька (прошлая попытка дошла, а отметка — нет): просто закрываем перевод
+      if (st0.out) {
+        const res = await chequeSettle(id, st0.out);
+        payStat.delete("chq" + id); acc = null; hist = null;
+        document.querySelectorAll('.pay-card[data-chq="' + id + '"]').forEach((el) => el.dispatchEvent(new Event("twrefresh")));
+        const mineGot = sameAddr(st0.out, me);
+        body().replaceChildren();
+        put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")),
+          h("span", { class: "tw-p" }, mineGot ? T("Этот перевод уже на вашем кошельке.") : res === "refunded" ? T("Этот перевод уже вернулся отправителю.") : T("Этот перевод уже забрал получатель."))),
+          h("button", { class: "tw-btn", type: "button", onclick: () => show("overview") }, T("Открыть кошелёк")));
+        return;
+      }
+      fail(T("Деньги ещё в пути — блокчейн обычно подтверждает перевод за 5–15 секунд."), true); return;
+    }
     const a = await loadAccount(c.temp);
-    const ton = BigInt(a.ton || 0), usdt = BigInt(a.usdt || 0);
-    if (ton < 3000000n && usdt === 0n) { fail(T("Деньги ещё в пути — блокчейн обычно подтверждает перевод за 5–15 секунд."), true); return; }
+    const usdt = st0.usdt || 0n;
     const dest = toFriendly(me, false), seqno = await freshSeqno(c.temp);
     let q;
     if (c.cur === "USDT" && usdt > 0n) {
@@ -1708,11 +1804,11 @@ VIEWS.claim = async (id) => {
     let ok = false;
     for (let i = 0; i < 20 && !ok; i++) {
       await sleep(3000);
-      const b = await loadAccount(c.temp).catch(() => null);
-      if (b && b.ton != null && BigInt(b.ton) < 3000000n && BigInt(b.usdt || 0) === 0n) ok = true;
+      const b = await tempState(c.temp).catch(() => null);
+      if (b && b.ton != null && b.ton < 3000000n && !b.usdt) ok = true;
     }
     if (!ok) { fail(T("Перевод отправлен, но подтверждение задерживается. Загляните через минуту — деньги никуда не денутся."), true); return; }
-    await q_rpc("ton_cheque_done", { p_id: id, p_to: me });
+    await chequeSettle(id, me);
     payStat.delete("chq" + id); acc = null; hist = null;
     const refund = c.role === "sender";
     body().replaceChildren();
@@ -1726,8 +1822,10 @@ VIEWS.claim = async (id) => {
 
 /* ---------- перевод из чата ---------- */
 async function openSend(peer, chatId) {
-  const { data: a } = await q_rpc("ton_address_of", { p_user: peer.id });
   ensureDlg(); if (!dlg.open) dlg.showModal();
+  const { data: a, error: ae } = await addrOf(peer.id);
+  if (ae) { view = "senderr"; body().replaceChildren(); setHead(T("Отправить")); put(h("div", { class: "tw-note" }, T("Не удалось проверить кошелёк получателя — сервер не ответил. Попробуйте ещё раз.")),
+    h("button", { class: "tw-btn", type: "button", onclick: () => openSend(peer, chatId) }, T("Повторить"))); return; }
   await loadSrv(false);
   sendCtx = a ? { chat: chatId, addr: a, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || "") }
     : { chat: chatId, cheque: true, name: peer.display_name, user: peer, toLabel: "@" + (peer.username || peer.display_name || "") };
@@ -1816,7 +1914,7 @@ function payCard(m, mine) {
   const card = h("div", { class: "pay-card", role: "link", tabindex: "0", title: T("Открыть в Tonviewer"),
       onclick: (e) => { e.stopPropagation(); open2("https://tonviewer.com/" + p.from); } },
     h("b", { class: "t" }, mine ? T("Перевод отправлен") : T("Перевод получен")),
-    h("span", { class: "a" }, (mine ? "−" : "+") + fmtUnits(parseUnits(p.amt, DEC[p.cur]) || 0n, DEC[p.cur]) + " " + p.cur),
+    h("span", { class: "a" }, (mine ? "−" : "+") + fmtUnits(parseUnits(p.amt, DEC[p.cur] || 9) || 0n, DEC[p.cur] || 9) + " " + (p.cur || "")),
     p.cmt ? h("span", { class: "c" }, "«" + p.cmt + "»") : null,
     h("span", { class: "s" }, T("Блокчейн TON")), st);
   let lastS = null;
@@ -1843,8 +1941,13 @@ const open2 = (u) => { try { window.open(u, "_blank", "noopener"); } catch (e) {
 let lastUser = null;
 setInterval(() => {
   if (!window.state || !state.me || lastUser === state.me.id) return;
-  lastUser = state.me.id; srvAddr = null; srvAt = 0; acc = null; hist = null; unlocked = null;
+  lastUser = state.me.id; srvAddr = null; srvAt = 0; srvOk = false; acc = null; hist = null; unlocked = null;
 }, 2000);
 setTimeout(() => dispatchEvent(new Event("mw-ready")), 0);
+// после входа: если на устройстве есть кошелёк, а к аккаунту он не привязан — тихо привязываем (раз за запуск)
+(function bootSync(n) {
+  if (window.state && state.me && state.started) { try { if (vault()) loadSrv(true).then(syncAddr).catch(() => {}); } catch (e) {} return; }
+  if (n < 30) setTimeout(() => bootSync(n + 1), 4000);
+})(0);
 window.MW = { open, openSend, claim, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();

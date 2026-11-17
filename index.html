@@ -3424,7 +3424,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d6c0f8877f"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=360672e30e"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -7072,9 +7072,9 @@ function subscribeInbox() {
   sb.auth.getSession().then(({ data }) => go(data && data.session), () => go(null));
   // если канал не поднялся за 12 секунд — пересоздаём
   rtTimer = setTimeout(() => { if (state.started && state.channel === ch && !rtOk) { rtWasDown = true; subscribeInbox(); } }, 12000);
-  // пока канал лежит, раз в 15 секунд сами спрашиваем новые сообщения открытого чата
+  // пока канал лежит, раз в 5 секунд сами спрашиваем новые сообщения открытого чата (запрос лёгкий — только открытый чат)
   clearInterval(rtPoll);
-  rtPoll = setInterval(() => { if (state.started && !rtOk && !document.hidden) catchUpActive(); }, 15000);
+  rtPoll = setInterval(() => { if (state.started && !rtOk && !document.hidden) catchUpActive(); }, 5000);
 }
 let catchUpBusy = false;
 async function catchUp() {
@@ -7084,10 +7084,13 @@ async function catchUp() {
 }
 // последние сообщения открытого чата: добавляем пропущенные, применяем пропущенные правки и удаления.
 // Сравниваем по набору, а не «всё, что новее последнего»: своё сообщение могло прийти раньше чужого пропущенного.
+let cuaBusy = false;
 async function catchUpActive() {
   const id = state.activeId;
-  if (!id || !state.msgs.length) return;
-  const { data } = await sb.from("messages").select("*").eq("chat_id", id).gt("id", (state.chats.get(id) || {}).cleared || 0).order("id", { ascending: false }).limit(60);
+  if (!id || !state.msgs.length || cuaBusy) return;   // медленный ответ не должен копить запросы друг за другом
+  cuaBusy = true;
+  let data;
+  try { ({ data } = await sb.from("messages").select("*").eq("chat_id", id).gt("id", (state.chats.get(id) || {}).cleared || 0).order("id", { ascending: false }).limit(60)); } finally { cuaBusy = false; }
   if (!data || state.activeId !== id) return;
   const real = state.msgs.filter((m) => !isTemp(m)), oldest = real.length ? real[0].id : 0;
   const have = new Map(real.map((m) => [m.id, m]));
@@ -8335,7 +8338,7 @@ function msgNode(m, group) {
   } else {
     const text = m.geo_lat != null || m.pay ? "" : group ? group.map((x) => x.body).filter(Boolean).join("\n") : m.body;
     if (m.geo_lat != null) { el.classList.add("geom"); el.append(geoCard(m)); }
-    if (m.pay) { el.classList.add("paym"); el.append(window.MW ? MW.payCard(m, mine) : payStub(m, mine)); }
+    if (m.pay) { el.classList.add("paym"); let pc = null; try { pc = window.MW ? MW.payCard(m, mine) : null; } catch (e) { pc = null; } el.append(pc || payStub(m, mine)); }
     const as = !group && !m.file_path && m.geo_lat == null ? astkOf(text) : null;
     if (as) { el.classList.add("stk", "astkm"); el.append(astkNode(as)); }
     else if (text) el.append(h("div", { class: "body" }, ...(!mine && isAiChat(c) && text.includes("```") ? aiRich(text) : fmtText(text))));
@@ -8470,7 +8473,14 @@ function msgNodeCached(m, group, c) {
     const hit = msgNodes.get(key);
     if (hit && hit.sig === sig) { if (!hit.el.isConnected) hit.el.classList.remove("new"); return hit.el; }
   }
-  const el = msgNode(m, group);
+  // одно «сломанное» сообщение (например, карточка из старой версии кошелька) не должно мешать открыть весь чат
+  let el;
+  try { el = msgNode(m, group); }
+  catch (e) {
+    try { diagErr("msgNode: " + (e && e.message), "msg " + m.id, e && e.stack); } catch (x) {}
+    try { el = msgNode({ ...m, pay: null, markup: null }, group); }
+    catch (e2) { el = h("div", { class: "msg", "data-id": String(m.id) }, h("div", { class: "bubble" }, String(m.body || T("Сообщение не удалось показать")))); }
+  }
   if (sig != null) { msgNodes.set(key, { sig, el }); if (msgNodes.size > 1500) msgNodes.delete(msgNodes.keys().next().value); }
   else msgNodes.delete(key);
   return el;
@@ -21109,7 +21119,7 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=10fea2d3df"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=fcf7670e89"; document.body.append(s); })();
 </script>
 </body>
 </html>
