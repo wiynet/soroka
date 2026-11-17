@@ -1783,8 +1783,8 @@ VIEWS.nft = () => {
         foot(kind, v, isNum ? v : "@" + v)))
         : [empty(isNum ? T("Коллекционных номеров нет. Их можно купить на маркете.") : T("Коллекционных юзернеймов нет. Их можно купить на маркете."))]));
     }
-    hint.textContent = T("Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. Вывод одного NFT стоит ")
-      + nftPrice(nftQuote, "ton") + (nftQuote && nftQuote.mst && !nftQuote.free ? T(" или ") + nftPrice(nftQuote, "mst") + T(" (в MST вдвое дешевле)") : "")
+    hint.textContent = T("Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. ")
+      + (nftQuote && nftQuote.free ? T("Для вас вывод бесплатный") : T("Вывод одного NFT стоит ") + nftPrice(nftQuote, "ton")) + (nftQuote && nftQuote.mst && !nftQuote.free ? T(" или ") + nftPrice(nftQuote, "mst") + T(" (в MST вдвое дешевле)") : "")
       + T(". Если NFT продать или передать, из кошелька он пропадёт.");
   };
   put(seg, grid, hint);

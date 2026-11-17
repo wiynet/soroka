@@ -1,5 +1,8 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. ": "NFTs you add show up here, and the username or number card shows your Mestario wallet address. ",
+  "Для вас вывод бесплатный": "Adding is free for you",
+  "Вывод одного NFT стоит ": "Adding one NFT costs ",
   "бесплатно": "free",
   "В кошельке · ": "In wallet · ",
   "Вывести в кошелёк · ": "Add to wallet · ",
