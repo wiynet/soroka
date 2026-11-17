@@ -1583,6 +1583,7 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .pr-num { font: 700 42px/1.1 var(--display); letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pr-num .u { margin-left: .22em; font-size: .5em; letter-spacing: 0; }
 .pr-alt { font-size: 14px; color: var(--muted); }
+.pr-disc { color: #1f9d55; font-weight: 600; } .pr-disc s { color: var(--muted); font-weight: 400; }
 .pr-alt:empty { display: none; }
 .pr-btn { --pb-a: #2353e6; --pb-b: #3b6cf6; min-height: 62px; padding: 8px 18px; line-height: 1.15; text-wrap: balance; border: 4px solid var(--pb-a); border-radius: 999px; background: linear-gradient(to top, var(--pb-a), var(--pb-b), var(--pb-a)); color: #fff; font: 650 19px/1.1 var(--display); box-shadow: 0 3px 10px color-mix(in srgb, var(--pb-a) 50%, transparent); transition: transform .12s, filter .15s, opacity .15s; }
 .pr-btn small { display: block; margin-top: 3px; font: 500 12.5px/1.2 var(--font, inherit); opacity: .85; letter-spacing: 0; }
@@ -3423,7 +3424,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=7228c5a034"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=d6c0f8877f"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -14309,7 +14310,11 @@ const usdtStr = (micro) => (Number(micro) / 1e6).toFixed(2).replace(/\.00$/, "")
 const usdtExact = (micro) => (Number(micro) / 1e6).toFixed(2);
 // MestCoin (MST): цену в MST сервер считает по пулу DeDust (по самой низкой цене MST за последние часы — так её нельзя «накрутить»)
 const mstOn = () => !!(payInfo && payInfo.mst_on && Number(payInfo.mst_units_per_mest) > 0);
-const mstUnits = (mest) => Math.ceil(mest * Number(payInfo && payInfo.mst_units_per_mest || 0) / 1e7) * 1e7;   // до 0,01 MST вверх
+// при оплате в MST всё дешевле в mst_discount раз (сейчас в 1,2); до 0,01 MST вверх — так же считает сервер
+const mstDisc = () => Math.max(1, Number(payInfo && payInfo.mst_discount) || 1);
+const mstFull = (mest) => Math.ceil(mest * Number(payInfo && payInfo.mst_units_per_mest || 0) / 1e7) * 1e7;
+const mstUnits = (mest) => Math.ceil(mest * Number(payInfo && payInfo.mst_units_per_mest || 0) / mstDisc() / 1e7) * 1e7;
+const mstDiscTxt = () => T("в {n} раза дешевле").replace("{n}", String(mstDisc()).replace(".", window.SOROKA_LANG === "en" ? "." : ","));
 const mstStr = (u) => (Number(u) / 1e9).toFixed(2).replace(/\.?0+$/, "");
 function tonErr(error) {
   const m = String(error && error.message || "");
@@ -14329,7 +14334,7 @@ const PAY_METHODS = {
   tonc: { ico: "💎", short: () => T("Кошелёк"), name: () => T("TON через кошелёк"), note: () => T("Tonkeeper, Telegram Wallet, MyTonWallet — подтвердить в одно касание") },
   tonm: { ico: "⇄", short: () => T("По адресу"), name: () => T("TON переводом"), note: () => T("По адресу или QR-коду — из любого кошелька или с биржи") },
   usdt: { ico: "₮", short: () => "USDT", name: () => T("USDT · TRC-20"), note: () => (usdtOn() ? T("Сеть TRON. Перевести нужно точную сумму") : T("Скоро")) },
-  mst: { ico: "M", short: () => "MST", name: () => T("MestCoin (MST)"), note: () => (mstOn() ? T("Из кошелька Mestario или Tonkeeper — по курсу пула") : T("Скоро")) },
+  mst: { ico: "M", short: () => "MST", name: () => T("MestCoin (MST)"), note: () => (mstOn() ? T("Из кошелька Mestario или Tonkeeper — по курсу пула") + (mstDisc() > 1 ? ", " + mstDiscTxt() : "") : T("Скоро")) },
   mest: { ico: "", short: () => "Mest", name: () => T("Mest с баланса"), note: () => T("На счёте: ") + coins(Number(state.balance) || 0) },
 };
 function tpPrice(m, mode) {
@@ -14419,6 +14424,7 @@ function tpAltLine() {
   const usd = Number(payInfo && payInfo.ton_usd) || 0;
   if (tpMethod === "tonc" || tpMethod === "tonm") { const n = tpMode.nano(); return n && usd ? "≈ $" + (n / 1e9 * usd).toFixed(2) : ""; }
   if (tpMethod === "usdt") { const n = tpMode.nano(); return n ? "≈ " + tonStr(n) + " TON" : ""; }
+  if (tpMethod === "mst") { const u = tpMode.units && tpMode.units(); return u && mstDisc() > 1 ? h("span", { class: "pr-disc" }, h("s", {}, mstStr(mstFull(u)) + " MST"), " " + mstDiscTxt()) : ""; }
   if (tpMethod === "mest") { const left = (Number(state.balance) || 0) - (Number(tpMode.mestPrice && tpMode.mestPrice()) || 0); return left >= 0 ? T("Останется: ") + coins(left) : T("Не хватает: ") + coins(-left); }
   return "";
 }
@@ -14486,7 +14492,8 @@ function paintTopup() {
   paintMethods();
   const price = tpPrice(tpMethod);
   rollText($("tpSum"), price);
-  $("tpAlt").textContent = price === "—" ? "" : tpAltLine();
+  const alt = price === "—" ? "" : tpAltLine();
+  if (typeof alt === "string") $("tpAlt").textContent = alt; else $("tpAlt").replaceChildren(alt);
   const ok = price !== "—" && tpAvail(tpMethod);
   $("tpPay").disabled = !ok;
   $("tpPay").className = "pr-btn" + (tpMethod === "tonc" || tpMethod === "tonm" ? " ton" : tpMethod === "usdt" ? " usdt" : "");

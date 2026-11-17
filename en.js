@@ -17,6 +17,7 @@ window.SOROKA_EN = {
   "Допустимое проскальзывание": "Slippage tolerance",
   "Ждём перевод MST. Как только сеть его подтвердит, заказ выполнится сам.": "Waiting for the MST transfer. Once the network confirms it, the order completes automatically.",
   "Из кошелька Mestario или Tonkeeper — по курсу пула": "From the Mestario wallet or Tonkeeper — at the pool rate",
+  "в {n} раза дешевле": "{n}× cheaper",
   "Комиссия пула": "Pool fee",
   "Комиссия сети ≈ 0,003 TON (за USDT и MST ≈ 0,02 TON). Переводы в блокчейне нельзя отменить — проверьте адрес.": "Network fee ≈ 0.003 TON (≈ 0.02 TON for USDT and MST). Blockchain transfers can't be undone — check the address.",
   "Курс": "Rate",
