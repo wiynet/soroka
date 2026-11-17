@@ -339,7 +339,7 @@ async function poolTick() {
   const old = rates.MST && rates.MST.ton;
   rates.MST = m;
   try { localStorage.setItem(rateKey, JSON.stringify(rates)); } catch (e) {}
-  if (old !== m.ton) { for (const k of Object.keys(chartCache)) if (k.startsWith("MST")) delete chartCache[k]; for (const fn of rateSubs) try { fn(); } catch (e) {} }
+  if (old !== m.ton) { mstChainSt = null; for (const k of Object.keys(chartCache)) if (k.startsWith("MST")) delete chartCache[k]; for (const fn of rateSubs) try { fn(); } catch (e) {} }
 }
 function startRates() {
   if (!poolTimer) { poolTimer = setInterval(poolTick, 20000); setTimeout(poolTick, 1500); }
@@ -347,6 +347,48 @@ function startRates() {
   if (!rates || Date.now() - rates.at >= RATE_TTL) ratesTick(); else loadRates(false);
 }
 function stopRates() { clearInterval(rateTimer); rateTimer = null; clearInterval(poolTimer); poolTimer = null; }
+
+// настоящая история цены MST из сделок пула (бирж-агрегаторов с графиком у токена пока нет).
+// Идём от нынешних запасов пула назад по обменам: до обмена TON→MST в пуле было на ton_in меньше TON и на amount_out больше MST,
+// и наоборот для MST→TON. Пополнения пула цену не меняют. Точки — цена MST в TON после каждого обмена.
+let mstChainSt = null, mstChainBusy = null;
+function mstChain() {
+  if (mstChainSt && Date.now() - mstChainSt.at < 60000) return Promise.resolve(mstChainSt.pts);
+  if (mstChainBusy) return mstChainBusy;
+  mstChainBusy = (async () => {
+    try {
+      const p = await loadPool(false);
+      if (!p || !(p.mst > 0n)) throw new Error("pool");
+      let ton = Number(p.ton), mst = Number(p.mst), before = "", deployed = false;
+      const pts = [[Date.now(), ton / mst]];
+      for (let page = 0; page < 10 && !deployed; page++) {
+        const r = await tonapi("/accounts/" + MST_POOL + "/events?limit=100" + (before ? "&before_lt=" + before : "")).then(j);
+        const evs = r.events || [];
+        for (const ev of evs) {
+          if (ev.in_progress) continue;
+          for (const a of ev.actions || []) {
+            if (a.type === "ContractDeploy") { deployed = true; pts.push([ev.timestamp * 1000, ton / mst]); }
+            if (a.type !== "JettonSwap" || a.status !== "ok") continue;
+            const s = a.JettonSwap || {}, t = ev.timestamp * 1000;
+            pts.push([t, ton / mst]);   // цена сразу после этого обмена
+            if (s.ton_in) { ton -= Number(s.ton_in); mst += Number(s.amount_out || 0); }
+            else if (s.ton_out) { ton += Number(s.ton_out); mst -= Number(s.amount_in || 0); }
+            if (!(ton > 0 && mst > 0)) { deployed = true; break; }
+            pts.push([t - 1, ton / mst]);   // и перед ним: на графике видна «ступенька»
+          }
+          if (deployed) break;
+        }
+        if (evs.length < 100 || !r.next_from) break;
+        before = r.next_from;
+      }
+      pts.sort((a, b) => a[0] - b[0]);
+      mstChainSt = { at: Date.now(), pts };
+    } catch (e) { console.warn("mst chart", e); }
+    finally { setTimeout(() => { mstChainBusy = null; }, 0); }
+    return mstChainSt ? mstChainSt.pts : null;
+  })();
+  return mstChainBusy;
+}
 
 // график цены: точки [время, цена]
 const PERIODS = [["H", "Ч", 3600, "Последний час"], ["D", "Д", 86400, "Последний день"], ["W", "Н", 7 * 86400, "Последняя неделя"],
@@ -362,10 +404,16 @@ async function loadChart(cur, per) {
       const r = await tonapi("/rates/chart?token=" + (cur === "TON" ? "ton" : JETS[cur].master) + "&currency=" + f + "&start_date=" + (now - P[2]) + "&end_date=" + now + "&points_count=" + (per === "H" ? 60 : 200)).then(j);
       pts = (r.points || []).map((p) => [p[0] * 1000, Number(p[1])]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
     } catch (e) { if (cur !== "MST") throw e; }
-    // MST: пока у бирж нет истории, строим по ценам пула, накопленным на устройстве (в TON → по нынешнему курсу TON)
+    // MST: пока у бирж нет истории, строим по сделкам пула (а если сеть недоступна — по ценам, накопленным на устройстве).
+    // Цена в TON → по нынешнему курсу TON
     if (cur === "MST" && pts.length < 2) {
+      if (!rates || !rates.TON) await loadRates(false);
       const tp = rateOf("TON"), from = Date.now() - P[2] * 1000;
-      pts = mstHist().filter((x) => x[0] >= from).map((x) => [x[0], x[1] * tp]);
+      if (!tp) throw new Error("rate");
+      const all = (await mstChain()) || mstHist();
+      const inside = all.filter((x) => x[0] >= from);
+      const prev = all.filter((x) => x[0] < from).pop();   // цена на начало периода
+      pts = (prev ? [[from, prev[1]]] : []).concat(inside).map((x) => [x[0], x[1] * tp]);
       const cur0 = rates && rates.MST ? rates.MST[f] : 0;
       if (cur0) pts.push([Date.now(), cur0]);
       if (pts.length === 1) pts.unshift([from, pts[0][1]]);
