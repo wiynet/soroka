@@ -82,7 +82,7 @@ begin
   if exists (select 1 from public.wallet_nfts w where w.kind = p_kind and w.ref = p_ref and w.user_id = me) then raise exception 'already linked'; end if;
   if (select count(*) from public.nft_link_orders where user_id = me and created_at > now() - interval '1 hour') >= 20 then raise exception 'too many orders'; end if;
   -- бесплатно: сразу в кошелёк, без оплаты
-  if me = any ((select free_users from private.nft_link_config)) then
+  if exists (select 1 from private.nft_link_config c where me = any (c.free_users)) then
     insert into public.wallet_nfts (kind, ref, user_id) values (p_kind, p_ref, me)
     on conflict (kind, ref) do update set user_id = excluded.user_id, linked_at = now();
     return jsonb_build_object('free', true);
