@@ -1583,6 +1583,10 @@ img.mart { width: 1em; height: 1em; object-fit: contain; vertical-align: -.14em;
 .pr-num { font: 700 42px/1.1 var(--display); letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pr-num .u { margin-left: .22em; font-size: .5em; letter-spacing: 0; }
 .pr-alt { font-size: 14px; color: var(--muted); }
+.gift.tile .walb { position: absolute; left: 6px; bottom: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .45); color: #8fc2ff; z-index: 2; }
+.gift.tile .walb svg { width: 14px; height: 14px; }
+.gv-wallet { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gv-wallet > svg { width: 15px; height: 15px; color: #3d8bff; }
 .gt-wallet { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; margin: 4px 0 10px; padding: 11px 14px; border: 0; border-radius: 14px;
   background: color-mix(in srgb, #3d8bff 12%, transparent); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
 .gt-wallet .chev { color: #3d8bff; font-size: 20px; }
@@ -3427,7 +3431,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5b6028140d"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f46a582fa7"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -11008,27 +11012,22 @@ async function openNftInfo(kind, value, owner) {
   $("nftHint").textContent = "";
   const fact = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
   const ownerLine = owner ? owner.display_name + " · @" + owner.username : T("скрыт");
-  $("nftFacts").replaceChildren(...fact(T("Владелец"), ownerLine), ...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("загружаем…"))));
+  $("nftFacts").replaceChildren(...fact(T("Владелец"), ownerLine));
   if (!$("dlgNft").open) $("dlgNft").showModal();
-  const [w, lt, mw] = await Promise.all([
-    owner ? sb.from("user_wallets").select("ton,tron").eq("user_id", owner.id).maybeSingle() : Promise.resolve({ data: null }),
+  // адрес показываем только если NFT выведен в кошелёк Mestario; иначе — просто владелец
+  const [lt, mw] = await Promise.all([
     sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle(),
-    owner ? sb.rpc("nft_wallet_of", { p_kind: kind === "num" ? "num" : "user", p_ref: value }) : Promise.resolve({ data: null })]);   // кошелёк Mestario, если NFT выведен в него
+    owner ? sb.rpc("nft_wallet_of", { p_kind: isNum ? "num" : "user", p_ref: value }) : Promise.resolve({ data: null })]);
   if (nftCopyText !== label) return;
   if (nftCtx && nftCtx.value === value) { nftCtx.lot = lt.data && lt.data.id ? lt.data : null; nftCtx.ready = true; }
-  const ws = w.data || {};
-  const addr = (a) => h("span", {}, h("code", { title: a }, shortAddr(a)), h("button", { class: "wl-copy", type: "button", onclick: () => copyText(a, T("Адрес скопирован")) }, T("Копировать")));
+  const addr = (a) => h("span", { class: "gv-wallet" }, icon("gem"), h("code", { title: a }, shortAddr(a)), h("button", { class: "wl-copy", type: "button", onclick: () => copyText(a, T("Адрес скопирован")) }, T("Копировать")));
   const rows = [...fact(T("Владелец"), ownerLine)];
-  const mwa = mw && mw.data;
-  if (mwa) rows.push(...fact(T("Кошелёк Mestario"), addr(mwa)));
-  if (ws.ton || ws.tron) {
-    if (ws.ton) rows.push(...fact(T("Кошелёк TON"), addr(ws.ton)));
-    if (ws.tron) rows.push(...fact(T("Кошелёк TRON"), addr(ws.tron)));
-  } else if (!mwa) rows.push(...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("не привязан"))));
+  const mwa = mw && !mw.error && mw.data;
+  if (mwa) rows.push(...fact(T("Кошелёк"), addr(mwa)));
   if (lt.data && lt.data.id) { rows.push(...fact(T("Маркет"), T("продаётся за ") + lotPrice(lt.data))); nftLotId = lt.data.id; $("nftLot").hidden = false; }
   $("nftFacts").replaceChildren(...rows);
   const mine = owner && owner.id === state.me.id;
-  $("nftHint").textContent = mwa || ws.ton || ws.tron ? "" : mine ? T("Привяжите кошелёк в настройках → «Криптокошельки», и он будет показан здесь.") : T("Владелец ещё не привязал криптокошелёк к аккаунту.");
+  $("nftHint").textContent = !mwa && mine ? T("Выведите его в кошелёк Mestario (меню «⋯»), и здесь будет виден адрес вашего кошелька.") : "";
 }
 // «⋯» в окне NFT-юзернейма или номера
 function nftActions() {
@@ -13057,6 +13056,14 @@ async function giftMenu(id, anchor) {
   wait.replaceWith(...actItems(gvActions(false)));
   liftPop(pop);
 }
+// какие подарки выведены в кошелёк Mestario: значок на плитке
+async function markWalletGifts(box, rows) {
+  const ids = rows.filter((g) => g.nft_number != null).map((g) => String(g.id));
+  if (!ids.length) return;
+  const { data } = await sb.from("wallet_nfts").select("ref,user_id").eq("kind", "gift").in("ref", ids);
+  const on = new Set((data || []).filter((w) => rows.some((g) => String(g.id) === w.ref && (!g.to_id || g.to_id === w.user_id))).map((w) => w.ref));
+  for (const el of box.querySelectorAll("[data-gid]")) if (on.has(el.dataset.gid) && !el.querySelector(".walb")) el.append(h("span", { class: "walb", title: T("Выведен в кошелёк Mestario") }, icon("gem")));
+}
 function giftTile(g, t, tag, attrs, ...subs) {
   const look = giftLook(g, t);
   const { noMenu, ...tileAttrs } = attrs || {};
@@ -13096,10 +13103,11 @@ async function loadUserGifts(id) {
     // свой подарок открывается всегда, чужой: только NFT (его может рассмотреть любой)
     const open = true;   // любой подарок можно открыть: в его окне видно, кто подарил, и оттуда можно перейти в профиль
     const about = t.name + (g.nft_number != null ? " №" + g.nft_number : "") + (g.from ? T(" · от: ") + g.from.display_name : "") + (g.note ? " · «" + g.note + "»" : "");
-    const el = giftTile(g, t, open ? "button" : "div", { type: open ? "button" : null, title: about, "aria-label": about, onclick: open ? () => openGiftView(g.id) : null });
+    const el = giftTile(g, t, open ? "button" : "div", { type: open ? "button" : null, title: about, "aria-label": about, "data-gid": String(g.id), onclick: open ? () => openGiftView(g.id) : null });
     el.style.animationDelay = Math.min(i, 10) * 35 + "ms";
     return el;
   }) : [h("div", { class: "small muted", style: "grid-column:1/-1;text-align:center" }, res.error ? T("Не удалось загрузить подарки.") : T("Подарков пока нет."))]));
+  markWalletGifts($("uGifts"), rows.map((g) => ({ ...g, to_id: id }))).catch(() => {});
 }
 // имя человека в окне подарка: по нажатию открывается его профиль
 function whoLink(u) {
@@ -13140,6 +13148,9 @@ async function openGiftView(id, fresh, quiet) {
   // выставлен ли подарок на маркете
   const lr = g.nft_number != null && !g.sold_at ? await sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq("gift_id", g.id).eq("status", "open").maybeSingle() : { data: null };
   const onSale = lr && lr.data && lr.data.id ? lr.data : null;
+  // выведен ли NFT в кошелёк Mestario: тогда рядом с владельцем — адрес кошелька, иначе только имя
+  const wr = g.nft_number != null && !g.sold_at ? await sb.rpc("nft_wallet_of", { p_kind: "gift", p_ref: String(g.id) }) : { data: null };
+  const walletAddr = wr && !wr.error && wr.data ? wr.data : null;
   const t = types.find((x) => x.id === g.type_id) || { emoji: "🎁", name: T("Подарок") };
   const look = giftLook(g, t), st = stats.get(g.type_id) || { sold: 0, nfts: 0 };
   const mine = g.to_id === state.me.id && !g.sold_at;
@@ -13162,6 +13173,8 @@ async function openGiftView(id, fresh, quiet) {
   $("gvFacts").replaceChildren(
     ...(look ? [
       ...fact(T("Владелец"), whoLink(g.to)),
+      ...(walletAddr ? fact(T("Кошелёк"), h("span", { class: "gv-wallet" }, icon("gem"), h("code", { title: walletAddr }, shortAddr(walletAddr)),
+        h("button", { class: "wl-copy", type: "button", onclick: () => copyText(walletAddr, T("Адрес скопирован")) }, T("Копировать")))) : []),
       ...fact(T("Модель"), look.m.name, look.mp && h("span", { class: "pct" }, look.mp)),
       ...fact(T("Фон"), look.b.name, look.bp && h("span", { class: "pct" }, look.bp)),
       ...fact(T("Выпущено"), String(st.nfts || g.nft_number) + T(" шт.") + (t.supply ? T(" · тираж подарка ") + t.supply : ""))] : []),
@@ -13891,7 +13904,7 @@ async function loadMyGifts() {
     const t = byId.get(g.type_id) || { emoji: "🎁", name: T("Подарок") };
     const tag = !g.hidden && g.nft_number == null && canUpgrade(t) ? T("улучшить") : "";
     const about = t.name + (g.nft_number != null ? " №" + g.nft_number : "") + (g.from ? T(" · от: ") + g.from.display_name : "") + (g.hidden ? " · " + T("скрыт") : "");
-    const el = giftTile(g, t, "button", { type: "button", title: about, "aria-label": about, "data-gift": g.id, onclick: () => {
+    const el = giftTile(g, t, "button", { type: "button", title: about, "aria-label": about, "data-gift": g.id, "data-gid": String(g.id), onclick: () => {
       if (!mgMode) { openGiftView(g.id); return; }
       if (mgSel.has(g.id)) mgSel.delete(g.id); else mgSel.add(g.id);
       paintMgBar();
@@ -13900,6 +13913,7 @@ async function loadMyGifts() {
     return el;
   }));
   paintMgBar();
+  markWalletGifts($("myGifts"), rows.map((g) => ({ ...g, to_id: state.me.id }))).catch(() => {});
   $("myGiftsHint").textContent = res.error ? T("Не удалось загрузить подарки.") : rows.length
     ? T("Нажмите на подарок, чтобы открыть его. «Выбрать» позволяет скрыть, закрепить или удалить сразу несколько. Скрытые подарки видны только вам: они отмечены перечёркнутым глазом.")
     : T("Подарков пока нет. Когда вам что-нибудь подарят, оно появится здесь и в вашем профиле.");
