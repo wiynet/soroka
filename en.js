@@ -1,5 +1,13 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Кошелёк ": "Wallet ",
+  "кошелёк не создан": "no wallet yet",
+  "Коллекционных подарков пока нет. Улучшите подарок до NFT — и он появится здесь.": "No collectible gifts yet. Upgrade a gift to an NFT and it will appear here.",
+  "Коллекционных номеров нет. Их можно купить на маркете.": "No collectible numbers. You can buy them on the market.",
+  "Коллекционных юзернеймов нет. Их можно купить на маркете.": "No collectible usernames. You can buy them on the market.",
+  "Ваши NFT привязаны к кошельку Mestario ": "Your NFTs are linked to your Mestario wallet ",
+  " — его адрес видят все в карточке юзернейма или номера. Скоро их можно будет вывести в блокчейн TON, и они появятся в Tonkeeper.": " — everyone sees its address on the username or number card. Soon you'll be able to move them to the TON blockchain, and they'll appear in Tonkeeper.",
+  "Не удалось загрузить NFT. Попробуйте ещё раз.": "Couldn't load NFTs. Please try again.",
   "Не удалось связаться с сервером, чтобы проверить ваш кошелёк. Проверьте интернет и попробуйте ещё раз.": "Couldn't reach the server to check your wallet. Check your connection and try again.",
   "нет связи с сервером — попробуйте ещё раз": "no connection to the server — please try again",
   "к аккаунту уже привязан другой кошелёк (": "another wallet is already linked to this account (",

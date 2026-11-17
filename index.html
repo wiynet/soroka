@@ -3424,7 +3424,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=360672e30e"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6f0e921cb3"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -11006,22 +11006,25 @@ async function openNftInfo(kind, value, owner) {
   const ownerLine = owner ? owner.display_name + " · @" + owner.username : T("скрыт");
   $("nftFacts").replaceChildren(...fact(T("Владелец"), ownerLine), ...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("загружаем…"))));
   if (!$("dlgNft").open) $("dlgNft").showModal();
-  const [w, lt] = await Promise.all([
+  const [w, lt, mw] = await Promise.all([
     owner ? sb.from("user_wallets").select("ton,tron").eq("user_id", owner.id).maybeSingle() : Promise.resolve({ data: null }),
-    sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle()]);
+    sb.from("nft_listings").select("id,price,ton_nano,seller_id").eq(isNum ? "number" : "username", value).eq("status", "open").maybeSingle(),
+    owner ? sb.rpc("ton_address_of", { p_user: owner.id }) : Promise.resolve({ data: null })]);   // кошелёк Mestario, к которому привязан NFT
   if (nftCopyText !== label) return;
   if (nftCtx && nftCtx.value === value) { nftCtx.lot = lt.data && lt.data.id ? lt.data : null; nftCtx.ready = true; }
   const ws = w.data || {};
   const addr = (a) => h("span", {}, h("code", { title: a }, shortAddr(a)), h("button", { class: "wl-copy", type: "button", onclick: () => copyText(a, T("Адрес скопирован")) }, T("Копировать")));
   const rows = [...fact(T("Владелец"), ownerLine)];
+  const mwa = mw && mw.data;
+  if (mwa) rows.push(...fact(T("Кошелёк Mestario"), addr(mwa)));
   if (ws.ton || ws.tron) {
     if (ws.ton) rows.push(...fact(T("Кошелёк TON"), addr(ws.ton)));
     if (ws.tron) rows.push(...fact(T("Кошелёк TRON"), addr(ws.tron)));
-  } else rows.push(...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("не привязан"))));
+  } else if (!mwa) rows.push(...fact(T("Кошелёк"), h("span", { class: "wl-none" }, T("не привязан"))));
   if (lt.data && lt.data.id) { rows.push(...fact(T("Маркет"), T("продаётся за ") + lotPrice(lt.data))); nftLotId = lt.data.id; $("nftLot").hidden = false; }
   $("nftFacts").replaceChildren(...rows);
   const mine = owner && owner.id === state.me.id;
-  $("nftHint").textContent = ws.ton || ws.tron ? "" : mine ? T("Привяжите кошелёк в настройках → «Криптокошельки», и он будет показан здесь.") : T("Владелец ещё не привязал криптокошелёк к аккаунту.");
+  $("nftHint").textContent = mwa || ws.ton || ws.tron ? "" : mine ? T("Привяжите кошелёк в настройках → «Криптокошельки», и он будет показан здесь.") : T("Владелец ещё не привязал криптокошелёк к аккаунту.");
 }
 // «⋯» в окне NFT-юзернейма или номера
 function nftActions() {
@@ -21119,7 +21122,7 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=fcf7670e89"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=023ecebcdc"; document.body.append(s); })();
 </script>
 </body>
 </html>

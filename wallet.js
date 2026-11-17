@@ -593,6 +593,18 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .tw-seg button { border: 0; border-radius: 11px; padding: 10px; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .tw-seg button.on { background: var(--bg); box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
+.tw-nft { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 14px; }
+.tw-nft-it { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tw-nft-it .gift.tile { width: 100%; aspect-ratio: 1; margin: 0; }
+.tw-nft-tag { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tw-nft-card { aspect-ratio: 1; border-radius: 18px; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 10px; text-align: center;
+  background: radial-gradient(120% 90% at 30% 10%, #6aa9ff, #3b5bdb 55%, #24307a); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); overflow: hidden; }
+.tw-nft-card svg { width: 30px; height: 30px; opacity: .9; }
+.tw-nft-card b { font-size: 17px; word-break: break-all; line-height: 1.15; }
+.tw-nft-card small { font-size: 11px; opacity: .8; }
+.tw-nft-w { font: 12px ui-monospace, Menlo, monospace; color: color-mix(in srgb, var(--ink) 55%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.tw-nft-empty { grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 40px 12px; text-align: center; color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.tw-nft-empty svg { width: 34px; height: 34px; opacity: .6; }
 .tw-btn { border: 0; border-radius: 16px; padding: 15px 16px; background: #3d78e6; color: #fff; font: inherit; font-size: 17px; font-weight: 650; cursor: pointer; width: 100%; }
 .tw-btn:disabled { opacity: .5; cursor: default; }
 .tw-btn.ghost { background: color-mix(in srgb, var(--ink) 8%, transparent); color: inherit; }
@@ -740,6 +752,7 @@ button.tw-row:active, a.tw-row:active { transform: scale(.985); }
 
 /* ---------- значки ---------- */
 const SV = {
+  gem: '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor" opacity=".28"/><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M9 3l-2 6 5 12 5-12-2-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
   out: '<path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   in: '<path d="M17 7L7 17M15 17H7V9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   swap: '<path d="M20 11a8 8 0 00-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0014.3 4.9L20 16m0 4v-4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -906,8 +919,8 @@ VIEWS.overview = () => {
   if (a && rates) countTo(big, t.val, fm);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
-    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
-      act("swap", T("Обмен"), () => need("swap", { from: "TON" }))));
+    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr 1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
+      act("swap", T("Обмен"), () => need("swap", { from: "TON" })), act("gem", "NFT", () => show("nft"))));
   const list = assetRows(a), m = mode(), vv = vault();
   const other = vv && !vv.soft && srvAddr && !sameAddr(vv.addr, srvAddr);
   const banner = other ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("start", { then: { v: "overview" }, mismatch: true }) },
@@ -1724,6 +1737,53 @@ VIEWS.import = (o) => {
   setTimeout(() => ta.focus(), 50);
 };
 
+/* ---------- NFT: коллекционные подарки, юзернеймы и номера, привязанные к кошельку ---------- */
+let nftTab = "gifts";
+VIEWS.nft = () => {
+  setHead("NFT", "overview");
+  const addr = srvAddr || myAddr();
+  const tabs = [["gifts", T("Подарки")], ["names", T("Юзернеймы")], ["nums", T("Номера")]];
+  const seg = h("div", { class: "tw-seg" }, ...tabs.map(([k, l]) => h("button", { type: "button", class: k === nftTab ? "on" : "", onclick: (e) => {
+    nftTab = k; [...seg.children].forEach((b) => b.classList.toggle("on", b === e.currentTarget)); paint(); } }, l)));
+  const grid = h("div", { class: "tw-nft" }), hint = h("p", { class: "tw-foot" });
+  let data = null;
+  const empty = (t) => h("div", { class: "tw-nft-empty" }, sv("gem"), h("span", {}, t));
+  const wline = () => h("span", { class: "tw-nft-w", title: addr || "" }, addr ? T("Кошелёк ") + short(addr) : T("кошелёк не создан"));
+  const paint = () => {
+    if (!data) { grid.replaceChildren(h("div", { class: "tw-nft-empty" }, h("span", {}, T("Загружаем…")))); return; }
+    if (nftTab === "gifts") {
+      const byId = new Map((data.types || []).map((t) => [t.id, t]));
+      grid.replaceChildren(...(data.gifts.length ? data.gifts.map((g) => {
+        const t = byId.get(g.type_id) || { emoji: "🎁", name: T("Подарок") };
+        const tile = typeof giftTile === "function" ? giftTile(g, t, "button", { type: "button", noMenu: true, onclick: () => { try { openGiftView(g.id); } catch (e) {} } }) : h("button", { class: "gift tile" }, t.name + " №" + g.nft_number);
+        return h("div", { class: "tw-nft-it" }, tile, wline());
+      }) : [empty(T("Коллекционных подарков пока нет. Улучшите подарок до NFT — и он появится здесь."))]));
+    } else {
+      const isNum = nftTab === "nums", list = isNum ? data.nums : data.names;
+      grid.replaceChildren(...(list.length ? list.map((v) => h("button", { class: "tw-nft-it tw-nft-tag", type: "button", onclick: () => { try { openNftInfo(isNum ? "num" : "user", v, state.profile); } catch (e) {} } },
+        h("span", { class: "tw-nft-card" }, sv("gem"), h("b", {}, isNum ? v : "@" + v), h("small", {}, isNum ? T("Коллекционный номер") : T("Коллекционный юзернейм"))), wline()))
+        : [empty(isNum ? T("Коллекционных номеров нет. Их можно купить на маркете.") : T("Коллекционных юзернеймов нет. Их можно купить на маркете."))]));
+    }
+    hint.textContent = T("Ваши NFT привязаны к кошельку Mestario ") + (addr ? short(addr) : "") + T(" — его адрес видят все в карточке юзернейма или номера. Скоро их можно будет вывести в блокчейн TON, и они появятся в Tonkeeper.");
+  };
+  put(seg, grid, hint);
+  paint();
+  (async () => {
+    try {
+      const me = state.me.id;
+      const [types, g, u, n] = await Promise.all([typeof giftTypes === "function" ? giftTypes() : Promise.resolve([]),
+        sb.from("gifts").select("id,type_id,nft_number,nft_model,nft_backdrop,hidden,pinned_at").eq("to_id", me).is("sold_at", null).not("nft_number", "is", null).order("id", { ascending: false }).limit(120),
+        sb.from("collectible_usernames").select("username").eq("owner_id", me).order("username"),
+        sb.from("collectible_numbers").select("number").eq("owner_id", me).order("number")]);
+      if (view !== "nft") return;
+      data = { types, gifts: g.data || [], names: (u.data || []).map((x) => x.username), nums: (n.data || []).map((x) => x.number) };
+      const cnt = { gifts: data.gifts.length, names: data.names.length, nums: data.nums.length };
+      [...seg.children].forEach((b, i) => { const k = tabs[i][0]; b.textContent = tabs[i][1] + (cnt[k] ? " · " + cnt[k] : ""); });
+      paint(); stagger(body());
+    } catch (e) { if (view === "nft") grid.replaceChildren(empty(T("Не удалось загрузить NFT. Попробуйте ещё раз."))); }
+  })();
+};
+
 /* ---------- «Получить» по переводу в чате ---------- */
 // временный кошелёк перевода: сколько на нём осталось и куда ушли деньги (пустой счёт в сети «не существует» — это тоже 0)
 async function tempState(addr) {
@@ -1940,13 +2000,16 @@ const open2 = (u) => { try { window.open(u, "_blank", "noopener"); } catch (e) {
 // сменился аккаунт — забываем чужие данные
 let lastUser = null;
 setInterval(() => {
-  if (!window.state || !state.me || lastUser === state.me.id) return;
-  lastUser = state.me.id; srvAddr = null; srvAt = 0; srvOk = false; acc = null; hist = null; unlocked = null;
+  if (typeof state === "undefined" || !state.me || lastUser === state.me.id) return;
+  const first = lastUser === null;
+  lastUser = state.me.id; srvAddr = null; srvAt = 0; srvOk = false; acc = null; hist = null; unlocked = null; sendCtx = null;
+  // переключились на другой аккаунт при открытом кошельке — закрываем его, чтобы не показать чужой кошелёк
+  if (!first && dlg && dlg.open) { try { dlg.close(); } catch (e) {} }
 }, 2000);
 setTimeout(() => dispatchEvent(new Event("mw-ready")), 0);
 // после входа: если на устройстве есть кошелёк, а к аккаунту он не привязан — тихо привязываем (раз за запуск)
 (function bootSync(n) {
-  if (window.state && state.me && state.started) { try { if (vault()) loadSrv(true).then(syncAddr).catch(() => {}); } catch (e) {} return; }
+  if (typeof state !== "undefined" && state.me && state.started) { try { if (vault()) loadSrv(true).then(syncAddr).catch(() => {}); } catch (e) {} return; }
   if (n < 30) setTimeout(() => bootSync(n + 1), 4000);
 })(0);
 window.MW = { open, openSend, claim, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
