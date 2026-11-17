@@ -14312,7 +14312,7 @@ function paintTonWallet() {
 // ===== Страница заказа: что оплачиваем (tpMode) и чем (tpMethod) =====
 // Способы: TON через кошелёк (TON Connect), TON переводом (адрес, QR, комментарий), USDT TRC-20 (точная сумма),
 // Mest с баланса (премиум и лоты с ценой в Mest). Сервер (ton-check) находит перевод и выполняет заказ.
-let tpMode = null, tpMethod = "tonc", tpArmed = false, tpTimerT = 0, payInfo = null, payInfoLoad = null;
+let tpMode = null, tpMethod = "tonc", tpArmed = false, tpTimerT = 0, tpRateT = 0, payInfo = null, payInfoLoad = null;
 const QR_SRC = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js";
 let qrLoad = null;
 function qrReady() {
@@ -14337,9 +14337,12 @@ async function paintQr(text) {
   } catch (e) { box.replaceChildren(); }
 }
 // настройки оплаты с сервера: включён ли USDT, адрес и курс
-function loadPayInfo() {
+// курсы живые: TON → $ и TON → MST меняются, поэтому старше 30 секунд — спрашиваем заново
+let payInfoAt = 0;
+function loadPayInfo(force) {
+  if (payInfoLoad && (force || Date.now() - payInfoAt > 30000)) payInfoLoad = null;
   return payInfoLoad || (payInfoLoad = sb.rpc("pay_info").then(({ data }) => {
-    payInfo = data || {};
+    payInfo = data || {}; payInfoAt = Date.now();
     if (Number(payInfo.nano_per_mest) > 0) TON_NANO = Number(payInfo.nano_per_mest);
   }, () => { payInfo = {}; payInfoLoad = null; }));
 }
@@ -14464,7 +14467,11 @@ function tpAltLine() {
   const usd = Number(payInfo && payInfo.ton_usd) || 0;
   if (tpMethod === "tonc" || tpMethod === "tonm") { const n = tpMode.nano(); return n && usd ? "≈ $" + (n / 1e9 * usd).toFixed(2) : ""; }
   if (tpMethod === "usdt") { const n = tpMode.nano(); return n ? "≈ " + tonStr(n) + " TON" : ""; }
-  if (tpMethod === "mst") { const u = tpMode.units && tpMode.units(); return u && mstDisc() > 1 ? h("span", { class: "pr-disc" }, h("s", {}, mstStr(mstFull(u)) + " MST"), " " + mstDiscTxt()) : ""; }
+  if (tpMethod === "mst") {
+    const u = tpMode.units && tpMode.units(), usd = Number(payInfo && payInfo.ton_usd) || 0;
+    const inUsd = u && usd ? " · ≈ $" + (u * TON_NANO / 1e9 / mstDisc() * usd).toFixed(2) : "";
+    return u && mstDisc() > 1 ? h("span", { class: "pr-disc" }, h("s", {}, mstStr(mstFull(u)) + " MST"), " " + mstDiscTxt() + inUsd) : inUsd.slice(3);
+  }
   if (tpMethod === "mest") { const left = (Number(state.balance) || 0) - (Number(tpMode.mestPrice && tpMode.mestPrice()) || 0); return left >= 0 ? T("Останется: ") + coins(left) : T("Не хватает: ") + coins(-left); }
   return "";
 }
@@ -14514,7 +14521,14 @@ function openTonPay(mode, method) {
     prPlace($("tpPacks")); prPlace($("tpMethods"));
   }
   tonUIReady().then(paintTonWallet).catch(() => {});
-  loadPayInfo().then(() => { if (tpMode === mode) paintTopup(); });
+  loadPayInfo(true).then(() => { if (tpMode === mode) paintTopup(); });
+  // пока окно оплаты открыто — цены в $ и MST подтягиваются к текущему курсу
+  clearInterval(tpRateT);
+  tpRateT = setInterval(() => {
+    if (!$("dlgTopup").open) { clearInterval(tpRateT); return; }
+    if (tpWatchCode) return;   // заказ уже создан — его сумма зафиксирована
+    loadPayInfo(true).then(() => { if (tpMode === mode && $("dlgTopup").open) paintTopup(); });
+  }, 30000);
   if (mode.methods.includes("mest")) sb.from("wallets").select("balance").eq("user_id", state.me.id).maybeSingle().then(({ data }) => { if (data) state.balance = Number(data.balance); if (tpMode === mode) paintTopup(); });
 }
 function tpAmount() {
