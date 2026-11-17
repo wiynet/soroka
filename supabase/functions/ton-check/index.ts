@@ -1,4 +1,4 @@
-// Mestario: проверка оплат в TON и USDT TRC-20 (пополнение Mest, премиум, NFT-лоты). Смотрит последние входящие переводы
+// Mestario: проверка оплат в TON, USDT TRC-20 и MestCoin (MST) (пополнение Mest, премиум, NFT-лоты). Смотрит последние входящие переводы
 // на кошелёк Mestario и на кошельки продавцов (публичный API toncenter), находит комментарий с кодом заказа «MST-XXXXXX» и зачисляет Mest
 // через public.ton_settle — один раз на заказ и один раз на транзакцию.
 // Вызывают: экран оплаты (с токеном пользователя, body {code}) и расписание раз в минуту (без body).
@@ -88,11 +88,65 @@ async function scanUsdt(): Promise<number> {
   }
   return paid;
 }
+// MestCoin (MST): токен в сети TON. Оплата — перевод MST на кошелёк Mestario с кодом заказа в комментарии;
+// цена — из пула DeDust MST/TON. Данные берём у tonapi.io (без ключа — запрос в секунду, нам хватает).
+const TONAPI = "https://tonapi.io/v2";
+const MST_POOL = "0:490896988f3188f0e08e62362d5542272fe43f8d7d661744985260424e5b6332";
+// адрес в виде 0:hex (из EQ…/UQ… или уже raw)
+function rawOf(a: string): string {
+  a = String(a || "").trim();
+  if (/^-?[0-9]+:[0-9a-fA-F]{64}$/.test(a)) return a.toLowerCase();
+  try {
+    const b = Uint8Array.from(atob(a.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    if (b.length !== 36) return "";
+    return (b[1] === 0xff ? "-1" : String(b[1])) + ":" + Array.from(b.slice(2, 34), (x) => x.toString(16).padStart(2, "0")).join("");
+  } catch { return ""; }
+}
+async function mstRate(): Promise<unknown> {
+  const p = await rpc("mst_pending");
+  const r = await fetch(`${TONAPI}/blockchain/accounts/${MST_POOL}/methods/get_pool_data`);
+  if (!r.ok) throw new Error("tonapi pool " + r.status);
+  const d = await r.json(), x = d?.decoded || {};
+  if (!d?.success || Number(x.status) !== 2) throw new Error("pool not ready");
+  // в пуле должны быть именно TON и наш MST
+  const nativeX = !x.asset_x, other = rawOf(nativeX ? x.asset_y : x.asset_x);
+  if ((nativeX ? false : !!x.asset_y) || other !== rawOf(p.master)) throw new Error("pool assets");
+  const rt = Number(nativeX ? x.reserve_x : x.reserve_y), rm = Number(nativeX ? x.reserve_y : x.reserve_x);
+  if (!(rt > 0 && rm > 0)) throw new Error("pool empty");
+  const nanoPerMst = rt * 1e9 / rm;   // у TON и MST по 9 знаков
+  return { nano_per_mst: nanoPerMst, units_per_mest: await rpc("mst_set_price", { p_nano_per_mst: nanoPerMst }) };
+}
+async function scanMst(): Promise<number> {
+  let p: any;
+  try { p = await rpc("mst_pending"); } catch { return 0; }   // MST ещё не настроен
+  const orders: any[] = p && p.address && p.master ? (p.orders || []) : [];
+  if (!orders.length) return 0;
+  const want = new Set(orders.map((o) => String(o.code)));
+  const me = rawOf(p.address), master = rawOf(p.master);
+  const r = await fetch(`${TONAPI}/accounts/${encodeURIComponent(p.address)}/events?limit=50`);
+  if (!r.ok) throw new Error("tonapi " + r.status);
+  const j = await r.json();
+  let paid = 0;
+  for (const ev of j.events || []) {
+    if (ev.in_progress) continue;
+    for (const a of ev.actions || []) {
+      if (a.type !== "JettonTransfer" || a.status !== "ok") continue;
+      const t = a.JettonTransfer || {};
+      // только настоящий MST (поддельный токен с тем же тикером отличается адресом) и только на кошелёк Mestario
+      if (rawOf(t.jetton?.address) !== master || rawOf(t.recipient?.address) !== me) continue;
+      const code = String(t.comment || "").toUpperCase().match(CODE)?.[0];
+      if (!code || !want.has(code) || !/^[0-9]{1,20}$/.test(String(t.amount || ""))) continue;
+      const res = await rpc("mst_settle", { p_code: code, p_tx: "ton-ev:" + ev.event_id, p_units: String(t.amount), p_from: String(t.sender?.address || ""), p_to: p.address });
+      if (res === "paid" || res === "short") { paid++; want.delete(code); }
+    }
+  }
+  return paid;
+}
 function scanThrottled(): Promise<number> {
   if (running) return running;
   if (Date.now() - lastScan < 2500) return Promise.resolve(0);
   lastScan = Date.now();
-  running = Promise.allSettled([scan(), scanUsdt()]).then((rs) => {
+  running = Promise.allSettled([scan(), scanUsdt(), scanMst()]).then((rs) => {
     for (const x of rs) if (x.status === "rejected") console.error(x.reason);
     return rs.reduce((n, x) => n + (x.status === "fulfilled" ? x.value : 0), 0);
   }).finally(() => { running = null; });
@@ -109,6 +163,13 @@ Deno.serve(async (req) => {
       const usd = r.ok ? Number((await r.json())?.["the-open-network"]?.usd) : NaN;
       if (!(usd > 0)) return reply({ error: "rate source" }, 502);
       return reply({ ton_usd: usd, micro_per_mest: await rpc("usdt_set_rate", { p_ton_usd: usd }) });
+    }
+    // раз в 5 минут: цена MST из пула DeDust (по ней — цена Mest в MST)
+    if (input.action === "mst_rate") {
+      let rate: unknown = null, err = "";
+      try { rate = await mstRate(); } catch (e) { err = String(e).slice(0, 160); console.error(e); }
+      try { await scanThrottled(); } catch (e) { console.error(e); }
+      return reply(err ? { error: err } : rate, err ? 502 : 200);
     }
     let scanErr = "";
     try { await scanThrottled(); } catch (e) { scanErr = String(e).slice(0, 120); console.error(e); }

@@ -3423,7 +3423,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=9fe935e561"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=15cda2c9e2"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4972,6 +4972,7 @@ void main() {
               <div class="tp-row" id="tpCmtRow"><div><small>Комментарий — обязательно</small><code id="tpCmt"></code></div><button class="btn ghost" type="button" data-copy="tpCmt">Копировать</button></div>
             </div>
             <a class="btn wide ton-btn" id="tpDeep" href="#" hidden>Открыть в кошельке</a>
+            <button class="btn wide" type="button" id="tpMw" hidden>Оплатить из кошелька Mestario</button>
             <div class="co-warn" id="tpWarn"></div>
           </div>
         </section>
@@ -14156,9 +14157,10 @@ async function paintPremiumPage() {
   if (w.data && w.data.balance != null) state.balance = Number(w.data.balance);
 }
 const PREMIUM_TON = {
-  kind: "premium", icon: "★", methods: ["tonc", "tonm", "usdt", "mest"],
+  kind: "premium", icon: "★", methods: ["tonc", "tonm", "usdt", "mst", "mest"],
   nano: () => 150 * TON_NANO, units: () => 150, mestPrice: () => 150,
   createUsdt: () => sb.rpc("usdt_order", { p_kind: "premium", p_mest: null }),
+  createMst: () => sb.rpc("mst_order", { p_kind: "premium", p_mest: null }),
   payMest: () => sb.rpc("buy_premium"),
   title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, баннер профиля и другое"),
   kick: () => T("Больше возможностей"),
@@ -14305,6 +14307,10 @@ const usdtOn = () => !!(payInfo && payInfo.usdt_on && payInfo.usdt_address);
 const usdtMicro = (units) => Math.ceil(units * Number(payInfo && payInfo.usdt_micro_per_mest || 0) / 10000) * 10000;
 const usdtStr = (micro) => (Number(micro) / 1e6).toFixed(2).replace(/\.00$/, "") ;
 const usdtExact = (micro) => (Number(micro) / 1e6).toFixed(2);
+// MestCoin (MST): цену в MST сервер считает по пулу DeDust (по самой низкой цене MST за последние часы — так её нельзя «накрутить»)
+const mstOn = () => !!(payInfo && payInfo.mst_on && Number(payInfo.mst_units_per_mest) > 0);
+const mstUnits = (mest) => Math.ceil(mest * Number(payInfo && payInfo.mst_units_per_mest || 0) / 1e7) * 1e7;   // до 0,01 MST вверх
+const mstStr = (u) => (Number(u) / 1e9).toFixed(2).replace(/\.?0+$/, "");
 function tonErr(error) {
   const m = String(error && error.message || "");
   return /too many/.test(m) ? T("Слишком много заказов подряд — подождите несколько минут.")
@@ -14314,6 +14320,7 @@ function tonErr(error) {
     : /own listing/.test(m) ? T("Это ваш собственный лот.")
     : /no ton price|bad address/.test(m) ? T("Этот лот нельзя купить за TON.")
     : /usdt off/.test(m) ? T("Оплата в USDT пока не подключена.")
+    : /mst off/.test(m) ? T("Оплата в MST пока не подключена.")
     : /busy/.test(m) ? T("Сейчас слишком много заказов на эту сумму — попробуйте через несколько минут.")
     : /insufficient/.test(m) ? T("Не хватает Mest на счёте.")
     : T("Не удалось создать заказ. Попробуйте ещё раз.");
@@ -14322,18 +14329,21 @@ const PAY_METHODS = {
   tonc: { ico: "💎", short: () => T("Кошелёк"), name: () => T("TON через кошелёк"), note: () => T("Tonkeeper, Telegram Wallet, MyTonWallet — подтвердить в одно касание") },
   tonm: { ico: "⇄", short: () => T("По адресу"), name: () => T("TON переводом"), note: () => T("По адресу или QR-коду — из любого кошелька или с биржи") },
   usdt: { ico: "₮", short: () => "USDT", name: () => T("USDT · TRC-20"), note: () => (usdtOn() ? T("Сеть TRON. Перевести нужно точную сумму") : T("Скоро")) },
+  mst: { ico: "M", short: () => "MST", name: () => T("MestCoin (MST)"), note: () => (mstOn() ? T("Из кошелька Mestario или Tonkeeper — по курсу пула") : T("Скоро")) },
   mest: { ico: "", short: () => "Mest", name: () => T("Mest с баланса"), note: () => T("На счёте: ") + coins(Number(state.balance) || 0) },
 };
 function tpPrice(m, mode) {
   mode = mode || tpMode;
   if (m === "tonc" || m === "tonm") { const n = mode.nano(); return n ? tonStr(n) + " TON" : "—"; }
   if (m === "usdt") { const u = mode.units && mode.units(); return u && usdtOn() ? usdtStr(usdtMicro(u)) + " USDT" : "—"; }
+  if (m === "mst") { const u = mode.units && mode.units(); return u && mstOn() ? mstStr(mstUnits(u)) + " MST" : "—"; }
   if (m === "mest") { const p = mode.mestPrice && mode.mestPrice(); return p ? coins(p) : "—"; }
   return "—";
 }
 function tpAvail(m) {
   if (!tpMode.methods.includes(m)) return false;
   if (m === "usdt") return usdtOn() && !!(tpMode.units && tpMode.units());
+  if (m === "mst") return mstOn() && !!(tpMode.units && tpMode.units());
   if (m === "mest") return !!(tpMode.mestPrice && tpMode.mestPrice());
   return true;
 }
@@ -14413,17 +14423,18 @@ function tpAltLine() {
   return "";
 }
 const TOPUP_MODE = {
-  kind: "mest", pick: true, methods: ["tonc", "tonm", "usdt"],
+  kind: "mest", pick: true, methods: ["tonc", "tonm", "usdt", "mst"],
   title: () => T("Пополнить Mest"), kick: () => T("Время пополнить"),
   lead: () => T("Подарки, премиум, юзернеймы и номера на маркете — всё покупается за Mest."),
   feats: () => [T("Подарки друзьям и коллекционные NFT"), T("Премиум на 30 дней за 150 Mest"), T("Улучшение подарков до уникальных"),
-    T("Юзернеймы и номера на маркете"), T("Ставки на аукционах"), T("Зачисление за 10–30 секунд"), T("Оплата в TON или USDT")],
+    T("Юзернеймы и номера на маркете"), T("Ставки на аукционах"), T("Зачисление за 10–30 секунд"), T("Оплата в TON, USDT или MST")],
   rate: () => "1 Mest = " + tonStr(TON_NANO) + " TON" + (usdtOn() && payInfo.ton_usd ? " ≈ $" + (TON_NANO / 1e9 * Number(payInfo.ton_usd)).toFixed(5).replace(/0+$/, "") : ""),
   hint: () => T("Mest зачисляются сами, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть — зачисление всё равно пройдёт."),
   nano: () => { const m = tpAmount(); return m >= 10 && m <= 100000 ? m * TON_NANO : 0; },
   units: () => { const m = tpAmount(); return m >= 10 && m <= 100000 ? m : 0; },
   create: () => sb.rpc("ton_order_create", { p_mest: tpAmount() }),
   createUsdt: () => sb.rpc("usdt_order", { p_kind: "mest", p_mest: tpAmount() }),
+  createMst: () => sb.rpc("mst_order", { p_kind: "mest", p_mest: tpAmount() }),
   result: (st) => { const got = Number(st.credited) || 0; return { ok: true, text: T("Готово! Зачислено") + " " + nf.format(got) + " Mest", toast: T("Зачислено") + " " + nf.format(got) + " Mest" }; },
   done: async () => { try { await loadCoinsPage(); } catch (e) {} },
 };
@@ -14505,6 +14516,26 @@ function tpOrderShow(o, net) {
   $("tpOrder").hidden = false;
   $("tpCode").textContent = o.code;
   tpSteps(1);
+  $("tpMw").hidden = true;
+  if (net === "mst") {
+    const cmt = "Mestario " + o.code, amt = mstStr(o.units);
+    $("tpNet").textContent = T("TON · токен MestCoin (MST)");
+    $("tpAddr").textContent = o.address;
+    $("tpAmtL").textContent = T("Сумма, MST");
+    $("tpAmt").textContent = amt;
+    $("tpCmtRow").hidden = false;
+    $("tpCmt").textContent = cmt;
+    // Tonkeeper понимает ссылку на перевод токена
+    const jm = window.MW && MW.toFriendly ? MW.toFriendly(o.master, true) : o.master;
+    const deep = "ton://transfer/" + o.address + "?jetton=" + encodeURIComponent(jm) + "&amount=" + o.units + "&text=" + encodeURIComponent(cmt);
+    $("tpDeep").href = deep; $("tpDeep").hidden = false;
+    // или — из встроенного кошелька Mestario
+    if (window.MW) { $("tpMw").hidden = false; $("tpMw").onclick = () => MW.open("send", { cur: "MST", to: o.address, amt, cmt }); }
+    $("tpWarn").textContent = T("Только токен MestCoin (MST) в сети TON. Обязательно укажите комментарий — без него платёж не найдётся. Сумма — не меньше указанной.");
+    clearInterval(tpTimerT); $("tpTimer").textContent = "";
+    paintQr(deep);
+    return;
+  }
   if (net === "usdt") {
     $("tpNet").textContent = "TRON (TRC-20)";
     $("tpAddr").textContent = o.address;
@@ -14591,9 +14622,15 @@ $("tpPay").addEventListener("click", async () => {
   }
   $("tpPay").disabled = true;
   tpState("wait", T("Создаём заказ…"));
-  const { data: o, error } = method === "usdt" ? await mode.createUsdt() : await mode.create();
+  const { data: o, error } = method === "usdt" ? await mode.createUsdt() : method === "mst" ? await mode.createMst() : await mode.create();
   $("tpPay").disabled = false;
   if (error || !o) { tpState("err", tonErr(error)); return; }
+  if (method === "mst") {
+    tpShowManual(o, "mst");
+    tpState("wait", T("Ждём перевод MST. Как только сеть его подтвердит, заказ выполнится сам."));
+    tpWatch(o.code, mode, false, mode.window || 60);
+    return;
+  }
   if (method === "usdt") {
     tpShowManual(o, "usdt");
     tpState("wait", T("Ждём перевод USDT. Как только сеть его подтвердит, заказ выполнится сам."));
@@ -21065,7 +21102,7 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=eb5b61762e"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=2334ae7909"; document.body.append(s); })();
 </script>
 </body>
 </html>

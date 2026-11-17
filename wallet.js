@@ -11,6 +11,16 @@ const WORDS = "abandon ability able about above absent absorb abstract absurd ab
 // путь к библиотеке — рядом с этим файлом (в приложении он грузится с сайта)
 const TONWEB_SRC = (() => { try { return new URL("vendor/tonweb-0.0.66.js", document.currentScript && document.currentScript.src || location.href).href; } catch (e) { return "vendor/tonweb-0.0.66.js"; } })();
 const USDT_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs";
+// MestCoin (MST) — токен Mestario; цену и обмен даёт пул DeDust CPMM v2 MST/TON
+const MST_MASTER = "EQBR5pt9DLLspVwfzENbg6vFgWipJJMkFBeQBURjM-CfUYdT";
+const MST_POOL = "0:490896988f3188f0e08e62362d5542272fe43f8d7d661744985260424e5b6332";
+const MST_ICON = (() => { try { return new URL("mst.png", document.currentScript && document.currentScript.src || location.href).href; } catch (e) { return "mst.png"; } })();
+// жетоны кошелька: адрес, знаки после запятой, как показывать
+const JETS = {
+  USDT: { master: USDT_MASTER, dec: 6, name: "Tether USD", cls: "usdt", glyph: "₮", show: 2 },
+  MST: { master: MST_MASTER, dec: 9, name: "MestCoin", cls: "mst", glyph: "M", show: 2 },
+};
+const CURS = ["TON", "USDT", "MST"];
 const TONAPI = "https://tonapi.io/v2", TONCENTER = "https://toncenter.com/api";
 const TON_FEE_RESERVE = 6000000n;           // 0,01 TON остаётся на комиссию (и развёртывание кошелька при первом переводе)
 const JETTON_GAS = 50000000n;
@@ -51,7 +61,12 @@ const sameAddr = (a, b) => !!a && !!b && toRaw(a) === toRaw(b);
 const short = (a) => (a ? a.slice(0, 4) + "…" + a.slice(-4) : "");
 
 /* ---------- суммы ---------- */
-const DEC = { TON: 9, USDT: 6 };
+const DEC = { TON: 9, USDT: 6, MST: 9 };
+const curName = (c) => (c === "TON" ? "Toncoin" : JETS[c] ? JETS[c].name : c);
+const showDig = (c) => (c === "TON" ? 4 : JETS[c] ? JETS[c].show : 4);
+// баланс и адрес жетон-кошелька из ответа loadAccount (старые снимки знали только USDT)
+const balOf = (x, c) => (!x ? "0" : c === "TON" ? x.ton || "0" : (x.jet && x.jet[c] && x.jet[c].bal) || (c === "USDT" && x.usdt) || "0");
+const jwOf = (x, c) => (x && ((x.jet && x.jet[c] && x.jet[c].wallet) || (c === "USDT" && x.usdtWallet))) || null;
 function parseUnits(s, dec) {
   s = String(s || "").trim().replace(",", ".");
   if (!/^[0-9]{1,12}(\.[0-9]*)?$/.test(s)) return null;
@@ -219,12 +234,14 @@ async function loadAccount(addr) {
     net("toncenter", TONCENTER + "/v3/walletInformation?use_v2=false&address=" + encodeURIComponent(addr)).then(j).catch(() => null),
     tonapi("/accounts/" + encodeURIComponent(addr) + "/jettons").then(j).catch((e) => (e.status === 404 ? { balances: [] } : null))]);
   const out = { at: Date.now(), ton: info ? String(info.balance || "0") : null, seqno: info && info.seqno != null ? Number(info.seqno) : 0,
-    status: info ? info.status : null, usdt: null, usdtWallet: null };
+    status: info ? info.status : null, usdt: null, usdtWallet: null, jet: null };
   if (jet) {
-    out.usdt = "0";
-    for (const b of jet.balances || []) if (sameAddr(b.jetton && b.jetton.address, USDT_MASTER)) {
-      out.usdt = String(b.balance || "0"); out.usdtWallet = b.wallet_address && b.wallet_address.address;
+    out.usdt = "0"; out.jet = {};
+    for (const c of Object.keys(JETS)) out.jet[c] = { bal: "0", wallet: null };
+    for (const b of jet.balances || []) for (const c of Object.keys(JETS)) if (sameAddr(b.jetton && b.jetton.address, JETS[c].master)) {
+      out.jet[c] = { bal: String(b.balance || "0"), wallet: b.wallet_address && b.wallet_address.address };
     }
+    out.usdt = out.jet.USDT.bal; out.usdtWallet = out.jet.USDT.wallet;
   }
   return out;
 }
@@ -238,7 +255,8 @@ function money(n, dig, f) {
   const s = Math.abs(n).toLocaleString(F.loc, { minimumFractionDigits: dig, maximumFractionDigits: dig });
   return (n < 0 ? "−" : "") + (F.pre ? F.sym + s : s + "\u00a0" + F.sym);
 }
-const priceDig = (p) => (p > 0 && p < 10 ? (fiat() === "usd" ? 3 : 2) : 2);
+// знаков после запятой у цены: у дешёвых монет (MST) их нужно больше
+const priceDig = (p) => (p > 0 && p < 0.01 ? 6 : p > 0 && p < 1 ? 4 : p > 0 && p < 10 ? (fiat() === "usd" ? 3 : 2) : 2);
 const pct = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toLocaleString(fiat() === "rub" ? "ru-RU" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\u00a0%";
 let rates = null, ratesBusy = null;
 function cachedRates() { try { const r = JSON.parse(localStorage.getItem(rateKey) || "null"); return r && r.TON ? r : null; } catch (e) { return null; } }
@@ -255,7 +273,7 @@ function loadRates(force) {
       const uk = Object.keys(r.rates).find((k) => k !== "TON");
       const usdt = pick(r.rates[uk]) || { usd: 1, rub: ton.rub / ton.usd, d24: { usd: 0, rub: 0 } };
       if (!usdt.rub) usdt.rub = usdt.usd * ton.rub / ton.usd;
-      rates = { at: Date.now(), TON: ton, USDT: usdt };
+      rates = { at: Date.now(), TON: ton, USDT: usdt, MST: mstRate(await loadPool(true), ton) || (rates && rates.MST) || null };
       try { localStorage.setItem(rateKey, JSON.stringify(rates)); } catch (e) {}
     } catch (e) { console.warn("rates", e); }
     finally { setTimeout(() => { ratesBusy = null; }, 0); }
@@ -265,6 +283,48 @@ function loadRates(force) {
 }
 const rateOf = (cur) => { const r = rates && rates[cur]; return r ? r[fiat()] || 0 : cur === "USDT" && fiat() === "usd" ? 1 : 0; };
 const diffOf = (cur) => { const r = rates && rates[cur]; return r && r.d24 ? r.d24[fiat()] : null; };
+/* ---------- пул MST/TON на DeDust: запасы, цена, расчёт обмена ---------- */
+let poolSt = null, poolBusy = null;
+function loadPool(force) {
+  if (!force && poolSt && Date.now() - poolSt.at < 30000) return Promise.resolve(poolSt);
+  if (poolBusy) return poolBusy;
+  poolBusy = (async () => {
+    try {
+      const d = await tonapi("/blockchain/accounts/" + MST_POOL + "/methods/get_pool_data").then(j);
+      const x = d.decoded || {};
+      if (!d.success || Number(x.status) !== 2) throw new Error("pool");
+      const nativeX = !x.asset_x;   // X — TON (нативная монета, пустой адрес), Y — MST
+      poolSt = { at: Date.now(), ton: BigInt(nativeX ? x.reserve_x : x.reserve_y), mst: BigInt(nativeX ? x.reserve_y : x.reserve_x),
+        fee: Number(x.base_fee_bps || 0), swap: x.swap_active !== false };
+    } catch (e) { console.warn("pool", e); }
+    finally { setTimeout(() => { poolBusy = null; }, 0); }
+    return poolSt;
+  })();
+  return poolBusy;
+}
+// сколько выйдет: x·y = k, комиссия пула берётся со входа (так считает DeDust CPMM v2 — сверено эмуляцией в сети)
+function quote(p, fromTon, amountIn) {
+  if (!p || !amountIn || amountIn <= 0n) return 0n;
+  const rin = fromTon ? p.ton : p.mst, rout = fromTon ? p.mst : p.ton, inF = amountIn * BigInt(10000 - p.fee);
+  return rin > 0n ? (rout * inF) / (rin * 10000n + inF) : 0n;
+}
+const mstInTon = (p) => (p && p.mst > 0n ? Number(p.ton) / Number(p.mst) : 0);   // у TON и MST по 9 знаков
+// история цены MST (в TON) копится на устройстве: биржевых графиков у нового токена ещё нет
+const mstHistKey = "mestario.tonw.msthist";
+function mstHist() { try { const a = JSON.parse(localStorage.getItem(mstHistKey) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function mstRate(p, ton) {
+  const pt = mstInTon(p);
+  if (!pt || !ton || !ton.usd) return null;
+  let hst = mstHist();
+  const now = Date.now();
+  if (!hst.length || now - hst[hst.length - 1][0] > 4 * 60000) hst.push([now, pt]); else hst[hst.length - 1] = [hst[hst.length - 1][0], pt];
+  hst = hst.filter((x) => now - x[0] < 366 * 86400000).slice(-3000);
+  try { localStorage.setItem(mstHistKey, JSON.stringify(hst)); } catch (e) {}
+  // изменение за сутки в $ и ₽: своё изменение к TON × изменение самого TON
+  const old = hst.find((x) => now - x[0] <= 26 * 3600000 && now - x[0] >= 20 * 3600000) || null;
+  const d = (f) => { const tq = ton.d24 && ton.d24[f]; if (!old || tq == null) return null; return ((pt / old[1]) * (1 + tq / 100) - 1) * 100; };
+  return { usd: pt * ton.usd, rub: pt * (ton.rub || 0), ton: pt, d24: { usd: d("usd"), rub: d("rub") } };
+}
 // пока окно открыто — каждые 5 минут свежий курс; экраны подписываются и обновляют цифры на месте
 let rateSubs = [], rateTimer = null;
 const onRates = (fn) => rateSubs.push(fn);
@@ -284,8 +344,19 @@ async function loadChart(cur, per) {
   if (c && Date.now() - c.at < RATE_TTL) return c.pts;
   const now = Math.floor(Date.now() / 1000);
   try {
-    const r = await tonapi("/rates/chart?token=" + (cur === "TON" ? "ton" : USDT_MASTER) + "&currency=" + f + "&start_date=" + (now - P[2]) + "&end_date=" + now + "&points_count=" + (per === "H" ? 60 : 200)).then(j);
-    const pts = (r.points || []).map((p) => [p[0] * 1000, Number(p[1])]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
+    let pts = [];
+    try {
+      const r = await tonapi("/rates/chart?token=" + (cur === "TON" ? "ton" : JETS[cur].master) + "&currency=" + f + "&start_date=" + (now - P[2]) + "&end_date=" + now + "&points_count=" + (per === "H" ? 60 : 200)).then(j);
+      pts = (r.points || []).map((p) => [p[0] * 1000, Number(p[1])]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
+    } catch (e) { if (cur !== "MST") throw e; }
+    // MST: пока у бирж нет истории, строим по ценам пула, накопленным на устройстве (в TON → по нынешнему курсу TON)
+    if (cur === "MST" && pts.length < 2) {
+      const tp = rateOf("TON"), from = Date.now() - P[2] * 1000;
+      pts = mstHist().filter((x) => x[0] >= from).map((x) => [x[0], x[1] * tp]);
+      const cur0 = rates && rates.MST ? rates.MST[f] : 0;
+      if (cur0) pts.push([Date.now(), cur0]);
+      if (pts.length === 1) pts.unshift([from, pts[0][1]]);
+    }
     if (pts.length > 1) chartCache[key] = { at: Date.now(), pts };
     return pts;
   } catch (e) { return c ? c.pts : null; }
@@ -302,6 +373,7 @@ async function sendBoc(boc) {
   if (!r.ok) throw new Error("send " + r.status);
   return true;
 }
+const isCur = (x, c) => (c === "TON" ? x.cur === "TON" : x.ours === c);
 async function loadEvents(addr, limit) {
   const d = await tonapi("/accounts/" + encodeURIComponent(addr) + "/events?limit=" + (limit || 40) + "&i18n=" + (window.SOROKA_LANG === "en" ? "en" : "ru")).then(j);
   const me = toRaw(addr), out = [];
@@ -310,7 +382,10 @@ async function loadEvents(addr, limit) {
     if (a.type === "TonTransfer" && a.TonTransfer) { const t = a.TonTransfer; it = { cur: "TON", dec: 9, amt: String(t.amount), from: t.sender && t.sender.address, to: t.recipient && t.recipient.address, cmt: t.comment || "", fromName: t.sender && t.sender.name, toName: t.recipient && t.recipient.name }; }
     else if (a.type === "JettonTransfer" && a.JettonTransfer) {
       const t = a.JettonTransfer, jt = t.jetton || {};
-      it = { cur: jt.symbol || "?", dec: Number(jt.decimals ?? 9), amt: String(t.amount), from: t.sender && t.sender.address, to: t.recipient && t.recipient.address, cmt: t.comment || "", usdt: sameAddr(jt.address, USDT_MASTER), fromName: t.sender && t.sender.name, toName: t.recipient && t.recipient.name };
+      it = { cur: jt.symbol || "?", dec: Number(jt.decimals ?? 9), amt: String(t.amount), from: t.sender && t.sender.address, to: t.recipient && t.recipient.address, cmt: t.comment || "", usdt: sameAddr(jt.address, USDT_MASTER), jm: jt.address, fromName: t.sender && t.sender.name, toName: t.recipient && t.recipient.name };
+      // наш жетон — показываем под нашим тикером (поддельные с тем же тикером отличаются адресом)
+      for (const c of Object.keys(JETS)) if (sameAddr(jt.address, JETS[c].master)) { it.cur = c; it.ours = c; }
+      if (!it.ours && Object.keys(JETS).includes(it.cur)) it.cur = it.cur + "?";
       if (jt.verification === "blacklist") it = null;
     } else if (a.simple_preview) it = { other: a.simple_preview.description || a.type };
     if (!it) continue;
@@ -359,7 +434,7 @@ const CSS = `
 .tw-per button.on { background: color-mix(in srgb, var(--ink) 10%, transparent); }
 .tw-bal { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 22px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .tw-bal .tx { display: grid; gap: 2px; min-width: 0; } .tw-bal .tx b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .tw-bal .tx span { color: color-mix(in srgb, var(--ink) 55%, transparent); font-variant-numeric: tabular-nums; }
-.tw-acts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tw-acts2 { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; }
 .tw-act2 { border: 0; border-radius: 20px; padding: 16px 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: inherit; font: inherit; font-size: 16px; font-weight: 600; display: grid; justify-items: center; gap: 6px; cursor: pointer; }
 .tw-act2:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); } .tw-act2 svg { width: 24px; height: 24px; }
 .tw-link { white-space: nowrap; border: 0; background: none; color: #3d8bff; font: inherit; font-size: 16px; cursor: pointer; padding: 4px; }
@@ -408,7 +483,8 @@ button.tw-row { cursor: pointer; } button.tw-row:hover { background: color-mix(i
 .tw-row .rt b.in { color: #34c759; }
 .tw-coin { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
 /* значки монет: TON и USDT (web3icons, MIT) */
-.tw-coin.ton, .tw-coin.usdt { background: center / 100% 100% no-repeat; font-size: 0 !important; color: transparent; }
+.tw-coin.ton, .tw-coin.usdt, .tw-coin.mst { background: center / 100% 100% no-repeat; font-size: 0 !important; color: transparent; }
+.tw-coin.mst { background-image: url("${MST_ICON}"); border-radius: 50%; }
 .tw-coin.ton i { display: none; }
 .tw-coin.ton { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2212%22 fill=%22%230098EA%22/%3E%3Cpath fill=%22%23fff%22 transform=%22translate%2812 12.4%29 scale%28.62%29 translate%28-12 -12%29%22 d=%22m20.661 7.22-7.846 12.494a1.058 1.058 0 0 1-1.794-.006L3.328 7.214A2.2 2.2 0 0 1 3 6.05a2.29 2.29 0 0 1 2.324-2.255h13.362C19.963 3.794 21 4.8 21 6.044c0 .413-.116.82-.339 1.175M5.218 6.8l5.723 8.826V5.912H5.816c-.592 0-.857.392-.598.89m7.84 8.826L18.783 6.8c.265-.497-.006-.89-.599-.89H13.06z%22/%3E%3C/svg%3E"); }
 .tw-coin.usdt { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2212%22 fill=%22%23009393%22/%3E%3Cpath fill=%22%23fff%22 transform=%22translate%2812 12.2%29 scale%28.68%29 translate%28-12 -12%29%22 d=%22m12 19.2-9-8.88L6.433 4.8h11.134L21 10.32zm.9-8.1v-1.098c1.62.08 3.132.396 3.6.805-.544.477-2.493.824-4.5.824s-3.956-.347-4.5-.824c.463-.41 1.98-.72 3.6-.81V11.1zm-5.4-.297v.661c.463.41 1.975.72 3.6.81V14.7h1.8v-2.43c1.62-.081 3.136-.396 3.6-.806v-1.318c-.464-.41-1.98-.725-3.6-.81V8.4h2.7V7.05H8.4V8.4h2.7v.936c-1.625.085-3.137.4-3.6.81z%22/%3E%3C/svg%3E"); }
@@ -423,7 +499,7 @@ button.tw-row { cursor: pointer; } button.tw-row:hover { background: color-mix(i
 .tw-in:focus { outline: none; border-color: #4f8dff; }
 textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-amt { display: flex; gap: 8px; } .tw-amt .tw-in { flex: 1; font-size: 22px; font-weight: 700; }
-.tw-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.tw-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .tw-seg button { border: 0; border-radius: 11px; padding: 10px; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .tw-seg button.on { background: var(--bg); box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
 .tw-btn { border: 0; border-radius: 16px; padding: 15px 16px; background: #3d78e6; color: #fff; font: inherit; font-size: 17px; font-weight: 650; cursor: pointer; width: 100%; }
@@ -442,8 +518,24 @@ textarea.tw-in { min-height: 120px; resize: vertical; line-height: 1.5; }
 .tw-qr { align-self: center; padding: 14px; border-radius: 22px; background: #fff; line-height: 0; }
 .tw-qr img, .tw-qr canvas { width: 220px; height: 220px; image-rendering: pixelated; }
 .tw-addr { word-break: break-all; font-family: ui-monospace, Menlo, monospace; font-size: 15px; text-align: center; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+/* обмен */
+.tw-swap { display: grid; gap: 0; position: relative; }
+.tw-swbox { display: grid; gap: 8px; padding: 14px 16px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.tw-swbox + .tw-swflip + .tw-swbox { margin-top: -6px; }
+.tw-swbox > .tw-btn.sm { justify-self: start; }
+.tw-swtop { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.tw-swrow { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.tw-swin { flex: 1; min-width: 0; border: 0 !important; background: none !important; padding: 0 !important; font-size: 28px !important; font-weight: 700; box-shadow: none !important; }
+.tw-swout { flex: 1; min-width: 0; font-size: 28px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-swcur { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--bg); font-size: 15px; }
+.tw-swcur .tw-coin { width: 26px; height: 26px; font-size: 13px; }
+.tw-swflip { justify-self: center; z-index: 1; width: 40px; height: 40px; margin: -6px 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid var(--bg); background: color-mix(in srgb, var(--ink) 10%, var(--bg)); color: inherit; cursor: pointer; transition: transform .25s ease; }
+.tw-swflip:hover { transform: rotate(180deg); }
+.tw-swflip svg { width: 18px; height: 18px; }
+.tw-seg.sm button { padding: 7px; }
+.tw-warnt { color: #ff9f0a; }
 .tw-sum { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.tw-sum div { display: flex; justify-content: space-between; gap: 12px; } .tw-sum div span { color: color-mix(in srgb, var(--ink) 55%, transparent); } .tw-sum div b { text-align: right; word-break: break-all; }
+.tw-sum div { display: flex; justify-content: space-between; gap: 12px; } .tw-sum div span { color: color-mix(in srgb, var(--ink) 55%, transparent); } .tw-sum div b { text-align: right; overflow-wrap: anywhere; }
 .tw-done { text-align: center; display: grid; gap: 10px; justify-items: center; padding: 20px 0; }
 .tw-done .ok { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: rgb(52 199 89 / .15); color: #34c759; }
 .tw-done .ok svg { width: 40px; height: 40px; }
@@ -605,21 +697,21 @@ function setHead(title, back) {
   $("twPill").onclick = m === "watch" ? () => show("recover", { then: { v: view } }) : null;
   $("twPill").title = m === "watch" ? T("Войти паролем кошелька и кодом из почты") : "";
   const nav = $("twNav"), has = !!myAddr();
-  const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1],
+  const tabs = has ? [["overview", T("Обзор"), "wallet"], ["assets", T("Активы"), "coins"], ["send", T("Отправить"), "out", 1], ["receive", T("Получить"), "qr", 1], ["swap", T("Обмен"), "swap", 1],
     ["activity", T("История"), "hist"], ["security", T("Безопасность"), "shield", 1], ["settings", T("Настройки"), "gear"]] : [];
   const cur = SECT[view] || view;
   nav.hidden = !tabs.length;
   dlg.querySelector(".tw-wrap").classList.toggle("nonav", !tabs.length);
   const addr = myAddr();
   nav.replaceChildren(...[
-    h("div", { class: "tw-brand dsk" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Кошелёк")), h("small", {}, "TON · USDT")),
-    ...tabs.map(([k, l, ic, d]) => h("button", { type: "button", class: (k === cur ? "on" : "") + (d ? " dsk" : ""), onclick: () => (k === "send" || k === "security" ? need(k) : show(k)) }, sv(ic), h("span", {}, l))),
+    h("div", { class: "tw-brand dsk" }, h("span", { class: "logo" }, sv("wallet")), h("b", {}, T("Кошелёк")), h("small", {}, "TON · USDT · MST")),
+    ...tabs.map(([k, l, ic, d]) => h("button", { type: "button", class: (k === cur ? "on" : "") + (d ? " dsk" : ""), onclick: () => (k === "send" || k === "security" || k === "swap" ? need(k) : show(k)) }, sv(ic), h("span", {}, l))),
     m === "watch" ? h("button", { type: "button", class: "tw-login dsk", onclick: () => show("recover", { then: { v: "overview" } }) }, h("span", {}, T("Войти в кошелёк"))) : null,
     addr ? h("button", { type: "button", class: "tw-chip dsk", title: T("Скопировать адрес"), onclick: () => copyText(addr, T("Адрес скопирован")) }, h("span", {}, short(addr)), sv("copy")) : null].filter(Boolean));
 }
 const TABS = ["overview", "assets", "activity", "settings", "start"];
 // к какому пункту бокового меню относится экран
-const SECT = { asset: "assets", confirm: "send", done: "send", wsettings: "settings", recover: "overview", cloud: "overview", import: "overview", email: "overview", pass: "overview", seed: "overview", check: "overview", secure: "overview" };
+const SECT = { asset: "assets", confirm: "send", done: "send", swapok: "swap", wsettings: "settings", recover: "overview", cloud: "overview", import: "overview", email: "overview", pass: "overview", seed: "overview", check: "overview", secure: "overview" };
 const WIDE = ["overview", "assets", "asset", "activity", "settings"];
 const isDesk = () => matchMedia("(min-width: 900px) and (min-height: 600px)").matches;
 let navDir = "tab";
@@ -682,25 +774,26 @@ async function refresh(force) {
   } catch (e) { if (!acc) acc = cached(); }
   return acc;
 }
+const amtNum = (a, c) => Number(BigInt(balOf(a, c))) / 10 ** DEC[c];
 function totals(a) {
   if (!a) return null;
-  const ton = Number(BigInt(a.ton || 0)) / 1e9, us = Number(BigInt(a.usdt || 0)) / 1e6;
-  return { ton, us, val: ton * rateOf("TON") + us * rateOf("USDT"), ok: !!rates };
+  const ton = amtNum(a, "TON"), us = amtNum(a, "USDT"), mst = amtNum(a, "MST");
+  return { ton, us, mst, val: CURS.reduce((s, c) => s + amtNum(a, c) * rateOf(c), 0), ok: !!rates };
 }
+// значок монеты
+const coinEl = (c, big) => h("span", { class: "tw-coin " + (big ? "big " : "") + (c === "TON" ? "ton" : JETS[c].cls) }, c === "TON" ? h("i") : JETS[c].glyph);
 function assetRows(a) {
-  const t = totals(a), skel = !a;
+  const skel = !a;
   const sub = (cur) => {
     const p = rateOf(cur), d = diffOf(cur);
-    if (!p) return h("span", {}, cur === "TON" ? "TON" : "USDT · TON");
-    return h("span", {}, money(p, priceDig(p)), d != null && cur === "TON" ? h("i", { class: "tw-chg " + (d < 0 ? "dn" : "up") }, " " + pct(d)) : null);
+    if (!p) return h("span", {}, cur === "TON" ? "TON" : cur + " · TON");
+    return h("span", {}, money(p, priceDig(p)), d != null && cur !== "USDT" ? h("i", { class: "tw-chg " + (d < 0 ? "dn" : "up") }, " " + pct(d)) : null);
   };
-  const row = (cls, inner, name, cur, amt, val) => h("button", { class: "tw-row", type: "button", onclick: () => show("asset", cur) },
-    h("span", { class: "tw-coin " + cls }, inner), h("span", { class: "tx" }, h("b", {}, name), sub(cur)),
-    h("span", { class: "rt" }, h("b", { class: skel ? "tw-skel" : "" }, amt), h("span", { class: skel ? "tw-skel" : "" }, val)));
-  const v = (n, cur) => (rateOf(cur) ? money(n * rateOf(cur)) : "—");
-  return h("div", { class: "tw-list" },
-    row("ton", h("i"), "Toncoin", "TON", skel ? "0 TON" : fmtUnits(a.ton || 0, 9, 4) + " TON", skel ? money(0) : v(t.ton, "TON")),
-    row("usdt", "₮", "Tether USD", "USDT", skel ? "0 USDT" : fmtUnits(a.usdt || 0, 6, 2) + " USDT", skel ? money(0) : v(t.us, "USDT")));
+  const row = (cur) => h("button", { class: "tw-row", type: "button", onclick: () => show("asset", cur) },
+    coinEl(cur), h("span", { class: "tx" }, h("b", {}, curName(cur)), sub(cur)),
+    h("span", { class: "rt" }, h("b", { class: skel ? "tw-skel" : "" }, (skel ? "0" : fmtUnits(balOf(a, cur), DEC[cur], showDig(cur))) + " " + cur),
+      h("span", { class: skel ? "tw-skel" : "" }, skel ? money(0) : rateOf(cur) ? money(amtNum(a, cur) * rateOf(cur)) : "—")));
+  return h("div", { class: "tw-list" }, ...CURS.map(row));
 }
 // маленькая линия цены за сутки
 function spark(pts, w, hh) {
@@ -722,7 +815,8 @@ VIEWS.overview = () => {
   if (a && rates) countTo(big, t.val, fm);
   const act = (ic, l, fn) => h("button", { class: "tw-act", type: "button", onclick: fn }, sv(ic), h("span", {}, l));
   const card = h("div", { class: "tw-card" }, h("small", {}, T("Общий баланс")), big, h("span", { class: "sub" }, T("Ваш криптопортфель")),
-    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive"))));
+    h("div", { class: "tw-acts", style: "grid-template-columns:1fr 1fr 1fr" }, act("out", T("Отправить"), () => need("send")), act("in", T("Получить"), () => show("receive")),
+      act("swap", T("Обмен"), () => need("swap", { from: "TON" }))));
   const list = assetRows(a), m = mode();
   const banner = m === "soft" ? h("button", { class: "tw-row tw-warn", type: "button", onclick: () => show("secure", { then: { v: "overview" } }) },
       h("span", { class: "tw-ico" }, sv("shield")), h("span", { class: "tx" }, h("b", {}, T("Защитите кошелёк")), h("span", {}, T("Почта, пароль и сид-фраза — нужно, чтобы отправлять"))), h("span", { class: "chev" }, "›"))
@@ -748,15 +842,15 @@ VIEWS.overview = () => {
 VIEWS.assets = () => {
   setHead(T("Активы"));
   const a = acc || cached(), list = assetRows(a);
-  put(list, h("p", { class: "tw-foot" }, T("Поддерживаются TON и USDT в сети TON. Курс — tonapi.io, обновляется каждые 5 минут.")));
+  put(list, h("p", { class: "tw-foot" }, T("Поддерживаются TON, USDT и MestCoin (MST) в сети TON. Курс TON и USDT — tonapi.io, цена MST — из пула DeDust; обновляется каждые 5 минут.")));
   Promise.all([refresh(false), loadRates(false)]).then(([n]) => { if (view === "assets" && n) list.replaceChildren(...assetRows(n).children); });
   onRates(() => { const n = acc || cached(); if (n) list.replaceChildren(...assetRows(n).children); });
 };
 let assetPer = "D";
 VIEWS.asset = (cur) => {
-  cur = cur === "USDT" ? "USDT" : "TON";
-  setHead(cur === "TON" ? "Toncoin" : "Tether USD", "assets");
-  const a = acc || cached(), dec = DEC[cur], bal = () => { const x = acc || a; return x ? (cur === "TON" ? x.ton : x.usdt) || "0" : "0"; };
+  cur = CURS.includes(cur) ? cur : "TON";
+  setHead(curName(cur), "assets");
+  const a = acc || cached(), dec = DEC[cur], bal = () => balOf(acc || a, cur);
   const price = h("b", { class: "tw-price" }), chg = h("div", { class: "tw-pchg" }), hi = h("span", { class: "hi" }), lo = h("span", { class: "lo" });
   const svgBox = h("div", { class: "tw-chart" }), tl = h("div", { class: "tw-tl" });
   let pts = null, scrub = false;
@@ -772,7 +866,7 @@ VIEWS.asset = (cur) => {
     assetPer === "H" || assetPer === "D" ? { hour: "2-digit", minute: "2-digit" } : assetPer === "Y" || assetPer === "6M" ? { day: "numeric", month: "short", year: "2-digit" } : { day: "numeric", month: "short" });
   const draw = () => {
     svgBox.replaceChildren(); tl.replaceChildren();
-    if (!pts || pts.length < 2) { svgBox.append(h("div", { class: "tw-chart-empty" }, pts == null ? T("Не удалось загрузить график") : T("Загружаем график…"))); hi.textContent = lo.textContent = ""; return; }
+    if (!pts || pts.length < 2) { svgBox.append(h("div", { class: "tw-chart-empty" }, pts == null ? T("Не удалось загрузить график") : pts.length < 2 && pts !== undefined && cur === "MST" ? T("График появится, когда накопится история цены") : T("Загружаем график…"))); hi.textContent = lo.textContent = ""; return; }
     const W = 600, H = 240, ys = pts.map((p) => p[1]), mn = Math.min(...ys), mx = Math.max(...ys), sp = mx - mn || mx * 0.01 || 1, t0 = pts[0][0], tw = pts[pts.length - 1][0] - t0 || 1;
     const X = (t) => (t - t0) / tw * W, Y = (v) => 14 + (1 - (v - mn) / sp) * (H - 28);
     const line = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
@@ -810,27 +904,32 @@ VIEWS.asset = (cur) => {
   const load = () => { const per = assetPer; pts = undefined; draw(); paintHead();
     loadChart(cur, per).then((p) => { if (view !== "asset" || per !== assetPer) return; pts = p; draw(); paintHead(); }); };
   const valEl = h("span", {}), amtEl = h("b", {});
-  const paintBal = () => { const b = bal(), n = Number(BigInt(b)) / 10 ** dec, r = rateOf(cur); amtEl.textContent = fmtUnits(b, dec, cur === "TON" ? 9 : 6) + " " + (cur === "TON" ? "TON" : "USDT"); valEl.textContent = r ? money(n * r) : ""; };
+  const paintBal = () => { const b = bal(), n = Number(BigInt(b)) / 10 ** dec, r = rateOf(cur); amtEl.textContent = fmtUnits(b, dec, cur === "USDT" ? 6 : 9) + " " + cur; valEl.textContent = r ? money(n * r) : ""; };
   paintBal();
-  const coin = () => h("span", { class: "tw-coin " + (cur === "TON" ? "ton" : "usdt") }, cur === "TON" ? h("i") : "₮");
+  const coin = () => coinEl(cur);
+  // MST: курс к TON и обмен через пул
+  const mstLine = cur === "MST" ? h("p", { class: "tw-foot", style: "margin:6px 0 0" }) : null;
+  const paintMst = () => { if (!mstLine) return; const r = rates && rates.MST; mstLine.textContent = r && r.ton ? "1 MST = " + r.ton.toLocaleString(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU", { maximumSignificantDigits: 4 }) + " TON · " + T("цена из пула DeDust") : ""; };
+  paintMst();
   const box = h("div", { class: "tw-list" }, h("div", { class: "tw-row" }, h("span", { class: "tx" }, h("span", {}, T("Загружаем историю…")))));
   put(h("div", { class: "tw-asset" },
     h("div", { class: "l" },
-      h("div", { class: "tw-ahead" }, h("span", { class: "tw-coin big " + (cur === "TON" ? "ton" : "usdt") }, cur === "TON" ? h("i") : "₮"), h("div", {}, price, chg)),
-      h("div", { class: "tw-chartw" }, svgBox, hi, lo, tl), seg),
+      h("div", { class: "tw-ahead" }, coinEl(cur, true), h("div", {}, price, chg)),
+      h("div", { class: "tw-chartw" }, svgBox, hi, lo, tl), seg, mstLine),
     h("div", { class: "r" },
       h("h3", { class: "tw-h" }, T("Ваш баланс")),
       h("div", { class: "tw-bal" }, coin(), h("span", { class: "tx" }, amtEl, valEl)),
       h("div", { class: "tw-acts2" },
         h("button", { class: "tw-act2", type: "button", onclick: () => need("send", { cur }) }, sv("out"), h("span", {}, T("Отправить"))),
-        h("button", { class: "tw-act2", type: "button", onclick: () => show("receive") }, sv("qr"), h("span", {}, T("Получить")))),
+        h("button", { class: "tw-act2", type: "button", onclick: () => show("receive") }, sv("qr"), h("span", {}, T("Получить"))),
+        cur !== "USDT" ? h("button", { class: "tw-act2", type: "button", onclick: () => need("swap", { from: cur === "MST" ? "MST" : "TON" }) }, sv("swap"), h("span", {}, T("Обменять"))) : null),
       h("div", { class: "tw-hrow" }, h("h3", { class: "tw-h" }, T("История транзакций")), h("button", { class: "tw-link", type: "button", onclick: () => show("activity") }, T("Смотреть все"))),
       box)));
   load();
-  loadRates(false).then(() => { if (view === "asset") { paintHead(); paintBal(); } });
-  onRates(() => { paintHead(); paintBal(); delete chartCache[cur + fiat() + assetPer]; if (!scrub) load(); });
+  loadRates(false).then(() => { if (view === "asset") { paintHead(); paintBal(); paintMst(); } });
+  onRates(() => { paintHead(); paintBal(); paintMst(); delete chartCache[cur + fiat() + assetPer]; if (!scrub) load(); });
   refresh(false).then(() => { if (view === "asset") paintBal(); });
-  history(false).then((list) => { if (view === "asset") box.replaceWith(histList((list || []).filter((x) => !x.other && (cur === "TON" ? x.cur === "TON" : x.usdt)).slice(0, 8))); });
+  history(false).then((list) => { if (view === "asset") box.replaceWith(histList(list == null ? null : list.filter((x) => !x.other && isCur(x, cur)).slice(0, 8))); });
 };
 
 /* ---------- история ---------- */
@@ -866,7 +965,7 @@ VIEWS.activity = () => {
 VIEWS.receive = () => {
   setHead(T("Получить"), "overview");
   const v = { addr: myAddr() }, qr = h("div", { class: "tw-qr" });
-  put(h("p", { class: "tw-p", style: "text-align:center" }, T("Отправляйте на этот адрес только TON и USDT в сети TON.")), qr,
+  put(h("p", { class: "tw-p", style: "text-align:center" }, T("Отправляйте на этот адрес только TON, USDT и MST в сети TON.")), qr,
     h("div", { class: "tw-addr" }, v.addr),
     h("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:10px" },
       h("button", { class: "tw-btn", type: "button", onclick: () => copyText(v.addr, T("Адрес скопирован")) }, T("Скопировать")),
@@ -908,7 +1007,7 @@ VIEWS.send = (arg) => {
   arg = arg || {};
   if (arg.ctx) sendCtx = arg.ctx;
   setHead(T("Отправить"), "overview");
-  let cur = arg.cur || (sendCtx && sendCtx.cur) || "TON";
+  let cur = CURS.includes(arg.cur) ? arg.cur : (sendCtx && sendCtx.cur) || "TON";
   const a = acc || cached();
   const seg = h("div", { class: "tw-seg" });
   const to = h("input", { class: "tw-in", placeholder: T("Адрес или @юзернейм"), autocomplete: "off", spellcheck: "false", value: arg.to || (sendCtx && sendCtx.toLabel) || "" });
@@ -919,12 +1018,12 @@ VIEWS.send = (arg) => {
   const maxOf = () => {
     const x = acc || a; if (!x) return 0n;
     if (cur === "TON") { const b = BigInt(x.ton || 0) - TON_FEE_RESERVE; return b > 0n ? b : 0n; }
-    return BigInt(x.usdt || 0);
+    return BigInt(balOf(x, cur));
   };
   const paint = () => {
-    seg.replaceChildren(...["TON", "USDT"].map((c) => h("button", { type: "button", class: c === cur ? "on" : "", onclick: () => { cur = c; paint(); } }, c)));
+    seg.replaceChildren(...CURS.map((c) => h("button", { type: "button", class: c === cur ? "on" : "", onclick: () => { cur = c; paint(); } }, c)));
     const x = acc || a;
-    avail.textContent = T("Доступно: ") + (x ? fmtUnits(cur === "TON" ? x.ton || 0 : x.usdt || 0, DEC[cur], cur === "TON" ? 4 : 2) : "…") + " " + cur;
+    avail.textContent = T("Доступно: ") + (x ? fmtUnits(balOf(x, cur), DEC[cur], showDig(cur)) : "…") + " " + cur;
   };
   paint();
   refresh(false).then(() => { if (view === "send") paint(); });
@@ -940,11 +1039,13 @@ VIEWS.send = (arg) => {
       if (!r.cheque && sameAddr(r.addr, myAddr())) { err.textContent = T("Это ваш собственный адрес"); return; }
       const x = await refresh(true);
       if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
+      // человеку без кошелька («чеком») пока можно перевести только TON и USDT
+      if (r.cheque && cur === "MST") { err.textContent = T("MST можно перевести только тому, у кого уже есть кошелёк. Переведите TON или USDT — или попросите друга открыть кошелёк в Mestario."); return; }
       const extra = r.cheque ? (cur === "TON" ? CHQ_TON_EXTRA : CHQ_USDT_GAS) : 0n;
       if (cur === "TON" && units + extra > maxOf()) { err.textContent = r.cheque ? T("Недостаточно TON: нужно ещё ≈ 0,011 TON на комиссии") : T("Недостаточно TON: ≈ 0,006 TON остаётся на комиссию"); return; }
-      if (cur === "USDT") {
-        if (units > BigInt(x.usdt || 0)) { err.textContent = T("Недостаточно USDT"); return; }
-        if (BigInt(x.ton || 0) < JETTON_GAS + extra + 5000000n) { err.textContent = r.cheque ? T("Для перевода USDT без кошелька у получателя нужно ≥ 0,115 TON (большая часть вернётся)") : T("Для перевода USDT нужно ≥ 0,055 TON на комиссию сети"); return; }
+      if (cur !== "TON") {
+        if (units > BigInt(balOf(x, cur))) { err.textContent = T("Недостаточно ") + cur; return; }
+        if (BigInt(x.ton || 0) < JETTON_GAS + extra + 5000000n) { err.textContent = r.cheque ? T("Для перевода USDT без кошелька у получателя нужно ≥ 0,115 TON (большая часть вернётся)") : T("Для перевода ") + cur + T(" нужно ≥ 0,055 TON на комиссию сети"); return; }
       }
       show("confirm", { cur, units, to: r.addr, name: r.name, user: r.user, cheque: !!r.cheque, chat: r.chat, cmt: cmt.value.trim(), back: { cur, to: to.value, amt: amt.value, cmt: cmt.value } });
     } finally { go.disabled = false; }
@@ -956,7 +1057,7 @@ VIEWS.send = (arg) => {
     h("label", { class: "tw-f" }, h("span", {}, T("Сумма")), h("div", { class: "tw-amt" }, amt,
       h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => { amt.value = plainUnits(maxOf(), DEC[cur]); } }, T("Макс")))),
     avail, h("label", { class: "tw-f" }, h("span", {}, T("Комментарий")), cmt), err, go,
-    h("p", { class: "tw-foot" }, T("Комиссия сети ≈ 0,003 TON (за USDT ≈ 0,02 TON). Переводы в блокчейне нельзя отменить — проверьте адрес.")));
+    h("p", { class: "tw-foot" }, T("Комиссия сети ≈ 0,003 TON (за USDT и MST ≈ 0,02 TON). Переводы в блокчейне нельзя отменить — проверьте адрес.")));
   setTimeout(() => (to.value ? amt : to).focus(), 50);
 };
 function pwField(ph) { return h("input", { class: "tw-in", type: "password", placeholder: ph || T("Пароль кошелька"), autocomplete: "current-password" }); }
@@ -980,7 +1081,7 @@ VIEWS.confirm = (o) => {
     h("div", {}, h("span", {}, T("Кому")), h("b", {}, o.cheque ? o.name + T(" · заберёт в чате") : o.name ? o.name + " · " + short(o.to) : o.to)),
     o.cmt ? h("div", {}, h("span", {}, T("Комментарий")), h("b", {}, o.cmt)) : null,
     h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, o.cur === "TON" ? (o.cheque ? "≈ 0,006 TON" : "≈ 0,003 TON") : (o.cheque ? "≈ 0,04 TON" : "≈ 0,02 TON"))),
-    o.cheque || o.cur === "USDT" ? h("div", {}, h("span", {}, T("Запас на газ")), h("b", {}, o.cheque && o.cur === "TON" ? T("+0,005 TON — остаток получит получатель") : o.cheque ? T("+0,11 TON — остаток вернётся вам и получателю") : T("+0,05 TON — излишек вернётся"))) : null),
+    o.cheque || o.cur !== "TON" ? h("div", {}, h("span", {}, T("Запас на газ")), h("b", {}, o.cheque && o.cur === "TON" ? T("+0,005 TON — остаток получит получатель") : o.cheque ? T("+0,11 TON — остаток вернётся вам и получателю") : T("+0,05 TON — излишек вернётся"))) : null),
     isUnlocked() ? null : h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw), err, btn);
   if (!isUnlocked()) setTimeout(() => pw.focus(), 50);
   pw.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
@@ -1019,13 +1120,14 @@ VIEWS.confirm = (o) => {
         q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: o.to, amount: new BN(o.units.toString()), seqno, payload: o.cmt || undefined, sendMode: 3 });
       } else {
         const x = await refresh(true);
-        if (!x || !x.usdtWallet) { err.textContent = T("Не нашли ваш USDT-кошелёк. Попробуйте позже."); return; }
-        const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(x.usdtWallet, true) });
+        const jwa = jwOf(x, o.cur);
+        if (!x || !jwa) { err.textContent = T("Не нашли ваш кошелёк ") + o.cur + T(". Попробуйте позже."); return; }
+        const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(jwa, true) });
         let fwd = null;
         if (o.cmt) { fwd = new TW.boc.Cell(); fwd.bits.writeUint(0, 32); fwd.bits.writeBytes(te.encode(o.cmt)); }
         const payload = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(o.units.toString()), toAddress: new TW.utils.Address(o.to),
           responseAddress: new TW.utils.Address(me.addr), forwardAmount: new BN(1), forwardPayload: fwd || undefined });
-        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(x.usdtWallet, true), amount: new BN(JETTON_GAS.toString()), seqno, payload, sendMode: 3 });
+        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(jwa, true), amount: new BN(JETTON_GAS.toString()), seqno, payload, sendMode: 3 });
       }
       const cell = await q.getQuery();
       const boc = TW.utils.bytesToBase64(await cell.toBoc(false));
@@ -1058,6 +1160,145 @@ VIEWS.done = (o) => {
     h("button", { class: "tw-btn", type: "button", onclick: () => { if (fromChat) closeDlg(); else show("overview"); } }, fromChat ? T("Вернуться в чат") : T("Готово")),
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("activity") }, T("Открыть историю")));
   sendCtx = fromChat ? sendCtx : null;
+};
+
+/* ---------- обмен TON ↔ MST через пул DeDust CPMM v2 ----------
+   TON → MST: сообщение PayNative прямо в пул; MST → TON: обычный перевод жетона в пул с PayJetton внутри.
+   Пул присылает результат на этот же кошелёк, излишек газа возвращается. Формат сверен эмуляцией в сети TON. */
+const SWAP_GAS = 250000000n;        // 0,25 TON идёт с обменом на газ, почти всё возвращается
+const SWAP_FWD = 150000000n;        // 0,15 TON уходит пулу вместе с MST (как у самого DeDust)
+let swapSlip = 100;                 // проскальзывание, сотые доли процента
+function swapCells(TW, minOut) {
+  const BN = TW.utils.BN;
+  const sw = new TW.boc.Cell();
+  sw.bits.writeUint(0xc442500f, 32); sw.bits.writeCoins(new BN(minOut.toString())); sw.bits.writeUint(Math.floor(Date.now() / 1000) + 600, 40);
+  sw.bits.writeBit(0); sw.bits.writeBit(0); sw.bits.writeBit(0);      // без следующего шага, партнёра и реферера
+  const pay = new TW.boc.Cell(); for (let i = 0; i < 18; i++) pay.bits.writeBit(0);   // выплата и возврат — отправителю
+  return { sw, pay };
+}
+VIEWS.swap = (arg) => {
+  arg = arg || {};
+  setHead(T("Обмен"), "overview");
+  let from = arg.from === "MST" ? "MST" : "TON";
+  const to = () => (from === "TON" ? "MST" : "TON");
+  const a = acc || cached();
+  const amt = h("input", { class: "tw-in tw-swin", inputmode: "decimal", placeholder: "0", autocomplete: "off", value: arg.amt || "" });
+  const outEl = h("b", { class: "tw-swout" }, "0"), fromLbl = h("span", { class: "tw-swcur" }), toLbl = h("span", { class: "tw-swcur" });
+  const balFrom = h("span", {}), balTo = h("span", {}), info = h("div", { class: "tw-sum" }), err = h("div", { class: "tw-err" });
+  const pw = pwField(), pwBox = h("label", { class: "tw-f" }, h("span", {}, T("Пароль кошелька")), pw);
+  const btn = h("button", { class: "tw-btn", type: "button" }, T("Обменять"));
+  const slip = h("div", { class: "tw-seg sm" });
+  let pool = poolSt, units = 0n, out = 0n;
+  const fmtA = (v, c) => fmtUnits(v, DEC[c], c === "TON" ? 4 : 2) + " " + c;
+  const maxIn = () => {
+    const x = acc || a; if (!x) return 0n;
+    if (from === "TON") { const b = BigInt(x.ton || 0) - SWAP_GAS - 10000000n; return b > 0n ? b : 0n; }
+    return BigInt(balOf(x, "MST"));
+  };
+  const paint = () => {
+    const x = acc || a;
+    fromLbl.replaceChildren(coinEl(from), h("b", {}, from)); toLbl.replaceChildren(coinEl(to()), h("b", {}, to()));
+    balFrom.textContent = T("Баланс: ") + (x ? fmtA(balOf(x, from), from) : "…");
+    balTo.textContent = T("Баланс: ") + (x ? fmtA(balOf(x, to()), to()) : "…");
+    slip.replaceChildren(...[50, 100, 300].map((s) => h("button", { type: "button", class: s === swapSlip ? "on" : "", onclick: () => { swapSlip = s; paint(); } }, (s / 100).toLocaleString(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU") + "%")));
+    units = parseUnits(amt.value, DEC[from]) || 0n;
+    out = quote(pool, from === "TON", units);
+    outEl.textContent = units ? fmtUnits(out, DEC[to()], to() === "TON" ? 6 : 4) : "0";
+    if (!pool) { info.replaceChildren(h("div", {}, h("span", {}, T("Курс")), h("b", {}, T("загружаем…")))); return; }
+    const pTon = mstInTon(pool), fiatP = rateOf("MST");
+    const minOut = out * BigInt(10000 - swapSlip) / 10000n;
+    // насколько сделка сдвинет цену: сравниваем с ценой без неё
+    const spot = from === "TON" ? Number(units) / pTon : Number(units) * pTon, impact = units && spot ? Math.max(0, (1 - Number(out) / (spot * (1 - pool.fee / 10000))) * 100) : 0;
+    info.replaceChildren(
+      h("div", {}, h("span", {}, T("Курс")), h("b", {}, "1 MST = " + pTon.toLocaleString(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU", { maximumSignificantDigits: 4 }) + " TON" + (fiatP ? " ≈ " + money(fiatP, priceDig(fiatP)) : ""))),
+      units ? h("div", {}, h("span", {}, T("Влияние на цену")), h("b", { class: impact > 5 ? "tw-warnt" : "" }, impact < 0.01 ? "< 0,01%" : impact.toFixed(2).replace(".", window.SOROKA_LANG === "en" ? "." : ",") + "%")) : null,
+      units ? h("div", {}, h("span", {}, T("Получите минимум")), h("b", {}, fmtA(minOut, to()))) : null,
+      h("div", {}, h("span", {}, T("Комиссия пула")), h("b", {}, (pool.fee / 100).toLocaleString(window.SOROKA_LANG === "en" ? "en-US" : "ru-RU") + "%")),
+      h("div", {}, h("span", {}, T("Комиссия сети")), h("b", {}, T("≈ 0,01 TON (с обменом уходит 0,25 TON, излишек вернётся)"))));
+    pwBox.hidden = isUnlocked();
+  };
+  amt.addEventListener("input", () => { err.textContent = ""; paint(); });
+  const flip = h("button", { class: "tw-swflip", type: "button", title: T("Поменять местами"), onclick: () => { from = to(); amt.value = ""; paint(); amt.focus(); } }, sv("swap"));
+  put(h("div", { class: "tw-swap" },
+      h("div", { class: "tw-swbox" }, h("div", { class: "tw-swtop" }, h("span", {}, T("Отдаёте")), balFrom),
+        h("div", { class: "tw-swrow" }, amt, fromLbl),
+        h("button", { class: "tw-btn ghost sm", type: "button", onclick: () => { amt.value = plainUnits(maxIn(), DEC[from]); paint(); } }, T("Макс"))),
+      flip,
+      h("div", { class: "tw-swbox" }, h("div", { class: "tw-swtop" }, h("span", {}, T("Получаете")), balTo),
+        h("div", { class: "tw-swrow" }, outEl, toLbl))),
+    info, h("div", { class: "tw-f" }, h("span", {}, T("Допустимое проскальзывание")), slip),
+    pwBox, err, btn,
+    h("p", { class: "tw-foot" }, T("Обмен идёт через пул MST/TON на бирже DeDust прямо из вашего кошелька — Mestario не держит ваши деньги. Если цена уйдёт сильнее проскальзывания, обмен отменится и деньги вернутся.")));
+  paint();
+  loadPool(true).then((p) => { pool = p; if (view === "swap") paint(); });
+  refresh(false).then(() => { if (view === "swap") paint(); });
+  loadRates(false).then(() => { if (view === "swap") paint(); });
+  pw.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
+  btn.onclick = async () => {
+    if (busy) return;
+    err.textContent = "";
+    if (!units || units <= 0n) { err.textContent = T("Введите сумму"); return; }
+    busy = true; btn.disabled = true; btn.classList.add("busy");
+    try {
+      const [x, p] = await Promise.all([refresh(true), loadPool(true)]);
+      pool = p; paint();
+      if (!p || !p.swap) { err.textContent = T("Пул сейчас недоступен. Попробуйте позже."); return; }
+      if (!x || x.ton == null) { err.textContent = T("Не удалось проверить баланс. Проверьте интернет."); return; }
+      if (from === "TON" && units > maxIn()) { err.textContent = T("Недостаточно TON: с обменом уходит ещё 0,25 TON на газ (излишек вернётся)"); return; }
+      if (from === "MST") {
+        if (units > BigInt(balOf(x, "MST"))) { err.textContent = T("Недостаточно MST"); return; }
+        if (BigInt(x.ton || 0) < SWAP_GAS + 10000000n) { err.textContent = T("Для обмена нужно ≥ 0,26 TON на газ (излишек вернётся)"); return; }
+      }
+      if (out <= 0n) { err.textContent = T("Слишком маленькая сумма"); return; }
+      const minOut = out * BigInt(10000 - swapSlip) / 10000n;
+      const words = await unlock(pw.value);
+      if (!words) { err.textContent = T("Неверный пароль"); return; }
+      const W = await walletOf(words), me = vault();
+      if (!sameAddr(W.addr, me.addr)) { err.textContent = T("Сид-фраза не подходит к этому кошельку"); return; }
+      const TW = W.TW, BN = TW.utils.BN, seqno = await freshSeqno(me.addr), { sw, pay } = swapCells(TW, minOut);
+      let q;
+      if (from === "TON") {
+        const body = new TW.boc.Cell();
+        body.bits.writeUint(0xa5a7cbf8, 32); body.bits.writeUint(new BN(Date.now()), 64); body.bits.writeCoins(new BN(units.toString()));
+        body.refs.push(sw, pay);
+        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(MST_POOL, true), amount: new BN((units + SWAP_GAS).toString()), seqno, payload: body, sendMode: 3 });
+      } else {
+        const jwa = jwOf(x, "MST");
+        if (!jwa) { err.textContent = T("Не нашли ваш кошелёк MST. Попробуйте позже."); return; }
+        const pj = new TW.boc.Cell(); pj.bits.writeUint(0xcbc33949, 32); pj.refs.push(sw, pay);
+        const jw = new TW.token.jetton.JettonWallet(NOPROV, { address: toFriendly(jwa, true) });
+        const tb = await jw.createTransferBody({ queryId: Date.now(), jettonAmount: new BN(units.toString()), toAddress: new TW.utils.Address(toFriendly(MST_POOL, true)),
+          responseAddress: new TW.utils.Address(me.addr), forwardAmount: new BN(SWAP_FWD.toString()), forwardPayload: pj });
+        q = W.w.methods.transfer({ secretKey: W.kp.secretKey, toAddress: toFriendly(jwa, true), amount: new BN(SWAP_GAS.toString()), seqno, payload: tb, sendMode: 3 });
+      }
+      await sendBoc(TW.utils.bytesToBase64(await (await q.getQuery()).toBoc(false)));
+      acc = null; hist = null; poolSt = null;
+      show("swapok", { from, to: to(), units, out, minOut });
+    } catch (e) {
+      console.warn(e);
+      err.textContent = /send|rate|fetch|network/i.test(String(e && e.message)) ? T("Сеть не приняла обмен. Проверьте интернет и попробуйте ещё раз.") : T("Не удалось обменять: ") + ((e && e.message) || e);
+    } finally { busy = false; btn.disabled = false; btn.classList.remove("busy"); }
+  };
+  setTimeout(() => amt.focus(), 50);
+};
+VIEWS.swapok = (o) => {
+  setHead(T("Обмен отправлен"));
+  const fmtA = (v, c) => fmtUnits(v, DEC[c], c === "TON" ? 4 : 2) + " " + c;
+  const st = h("span", { class: "tw-p" }, T("Пул обычно отвечает за 10–30 секунд. Ждём результат…"));
+  put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("swap")),
+      h("b", { style: "font-size:22px" }, "−" + fmtA(o.units, o.from)), h("b", { style: "font-size:22px;color:#34c759" }, "+ ≈ " + fmtA(o.out, o.to)), st),
+    h("button", { class: "tw-btn", type: "button", onclick: () => show("asset", "MST") }, T("Открыть MST")),
+    h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("activity") }, T("Открыть историю")));
+  // смотрим, пришёл ли результат обмена
+  const before = acc || cached(), was = BigInt(balOf(before, o.to));
+  let n = 0;
+  const tick = async () => {
+    if (view !== "swapok" || ++n > 15) { if (view === "swapok" && n > 15) st.textContent = T("Подтверждение задерживается — загляните в историю через минуту."); return; }
+    const x = await refresh(true);
+    if (x && BigInt(balOf(x, o.to)) > was) { st.textContent = T("Готово! Обмен выполнен, монеты на вашем кошельке."); return; }
+    setTimeout(tick, 4000);
+  };
+  setTimeout(tick, 6000);
 };
 
 /* ---------- настройки и безопасность (разделы как на макете) ---------- */
@@ -1456,7 +1697,7 @@ async function checkPay(m) {
   let s = "wait";
   if (list) {
     const want = parseUnits(p.amt, DEC[p.cur]), to = toRaw(p.to);
-    const hit = list.find((x) => !x.other && x.out && toRaw(x.to) === to && BigInt(x.amt) === want && (p.cur === "TON" ? x.cur === "TON" : x.usdt) && x.ts >= p.at - 180000 && x.ts <= p.at + 3600000);
+    const hit = list.find((x) => !x.other && x.out && toRaw(x.to) === to && BigInt(x.amt) === want && isCur(x, p.cur) && x.ts >= p.at - 180000 && x.ts <= p.at + 3600000);
     if (hit) s = hit.pending ? "wait" : hit.ok ? "ok" : "bad";
     else if (Date.now() - p.at > 15 * 60000) s = "lost";
   }
