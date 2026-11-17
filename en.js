@@ -1,5 +1,6 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Деньги ушли, но карточку в чат добавить не удалось — получатель увидит перевод в своём кошельке.": "The money was sent, but the transfer card couldn't be added to the chat — the recipient will see the transfer in their wallet.",
   "Недостаточно TON: ≈ 0,09 TON нужно на комиссию сети (почти всё вернётся)": "Not enough TON: ≈ 0.09 TON is needed for the network fee (almost all of it comes back)",
   "Для обмена нужно ≥ 0,11 TON на комиссию сети (почти всё вернётся)": "A swap needs ≥ 0.11 TON for the network fee (almost all of it comes back)",
   " нужно ≥ 0,055 TON на комиссию сети": " you need ≥ 0.055 TON for the network fee",

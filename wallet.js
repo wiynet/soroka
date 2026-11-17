@@ -329,11 +329,24 @@ function mstRate(p, ton) {
 let rateSubs = [], rateTimer = null;
 const onRates = (fn) => rateSubs.push(fn);
 function ratesTick() { loadRates(true).then(() => { for (const fn of rateSubs) try { fn(); } catch (e) {} }); }
+// цена MST живёт в пуле и меняется с каждым обменом: пока кошелёк открыт, сверяемся с пулом каждые 20 секунд
+let poolTimer = null;
+async function poolTick() {
+  const p = await loadPool(true);
+  if (!p || !rates || !rates.TON) return;
+  const m = mstRate(p, rates.TON);
+  if (!m) return;
+  const old = rates.MST && rates.MST.ton;
+  rates.MST = m;
+  try { localStorage.setItem(rateKey, JSON.stringify(rates)); } catch (e) {}
+  if (old !== m.ton) { for (const k of Object.keys(chartCache)) if (k.startsWith("MST")) delete chartCache[k]; for (const fn of rateSubs) try { fn(); } catch (e) {} }
+}
 function startRates() {
+  if (!poolTimer) { poolTimer = setInterval(poolTick, 20000); setTimeout(poolTick, 1500); }
   if (!rateTimer) rateTimer = setInterval(ratesTick, RATE_TTL);
   if (!rates || Date.now() - rates.at >= RATE_TTL) ratesTick(); else loadRates(false);
 }
-function stopRates() { clearInterval(rateTimer); rateTimer = null; }
+function stopRates() { clearInterval(rateTimer); rateTimer = null; clearInterval(poolTimer); poolTimer = null; }
 
 // график цены: точки [время, цена]
 const PERIODS = [["H", "Ч", 3600, "Последний час"], ["D", "Д", 86400, "Последний день"], ["W", "Н", 7 * 86400, "Последняя неделя"],
@@ -1139,9 +1152,10 @@ VIEWS.confirm = (o) => {
       // перевод из чата — карточка в этот чат
       else if (sendCtx && sendCtx.chat) {
         const amtS = plainUnits(o.units, dec);
-        const { data, error } = await sb.from("messages").insert({ chat_id: sendCtx.chat, sender_id: state.me.id,
-          body: "💎 " + amtS + " " + o.cur, pay: { cur: o.cur, amt: amtS, to: o.to, cmt: o.cmt || "" } }).select().single();
+        const { data, error } = await dbq(sb.from("messages").insert({ chat_id: sendCtx.chat, sender_id: state.me.id,
+          body: "💎 " + amtS + " " + o.cur, pay: { cur: o.cur, amt: amtS, to: o.to, cmt: o.cmt || "" } }).select().single());
         if (!error && data) { posted = true; try { touchChat(data); if (state.activeId === sendCtx.chat) addMsg(data); } catch (e) {} }
+        else o.cardFail = true;
       }
       show("done", { ...o, posted });
     } catch (e) {
@@ -1156,7 +1170,8 @@ VIEWS.done = (o) => {
   put(h("div", { class: "tw-done" }, h("span", { class: "ok" }, sv("check")),
     h("b", { style: "font-size:24px" }, "−" + fmtUnits(o.units, DEC[o.cur]) + " " + o.cur),
     h("span", { class: "tw-p" }, T("Перевод отправлен в сеть TON. Подтверждение обычно занимает 5–15 секунд.")),
-    o.posted ? h("span", { class: "tw-p" }, T("Карточка перевода добавлена в чат.")) : null),
+    o.posted ? h("span", { class: "tw-p" }, T("Карточка перевода добавлена в чат.")) : null,
+    o.cardFail ? h("span", { class: "tw-p" }, T("Деньги ушли, но карточку в чат добавить не удалось — получатель увидит перевод в своём кошельке.")) : null),
     h("button", { class: "tw-btn", type: "button", onclick: () => { if (fromChat) closeDlg(); else show("overview"); } }, fromChat ? T("Вернуться в чат") : T("Готово")),
     h("button", { class: "tw-btn ghost", type: "button", onclick: () => show("activity") }, T("Открыть историю")));
   sendCtx = fromChat ? sendCtx : null;
@@ -1234,6 +1249,7 @@ VIEWS.swap = (arg) => {
     h("p", { class: "tw-foot" }, T("Обмен идёт через пул MST/TON на бирже DeDust прямо из вашего кошелька — Mestario не держит ваши деньги. Если цена уйдёт сильнее проскальзывания, обмен отменится и деньги вернутся.")));
   paint();
   loadPool(true).then((p) => { pool = p; if (view === "swap") paint(); });
+  onRates(() => { if (poolSt) { pool = poolSt; paint(); } });   // пул сдвинулся — пересчитываем на лету
   refresh(false).then(() => { if (view === "swap") paint(); });
   loadRates(false).then(() => { if (view === "swap") paint(); });
   pw.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
@@ -1298,7 +1314,7 @@ VIEWS.swapok = (o) => {
   const tick = async () => {
     if (view !== "swapok" || ++n > 15) { if (view === "swapok" && n > 15) st.textContent = T("Подтверждение задерживается — загляните в историю через минуту."); return; }
     const x = await refresh(true);
-    if (x && BigInt(balOf(x, o.to)) > was) { st.textContent = T("Готово! Обмен выполнен, монеты на вашем кошельке."); return; }
+    if (x && BigInt(balOf(x, o.to)) > was) { st.textContent = T("Готово! Обмен выполнен, монеты на вашем кошельке."); poolTick(); return; }
     setTimeout(tick, 4000);
   };
   setTimeout(tick, 6000);
