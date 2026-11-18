@@ -1,0 +1,25 @@
+
+// Mestario: «Динамик» в звонках. Из интерфейса: webkit.messageHandlers.mestarioAudio.postMessage(true/false/"reset")
+// true — громкая связь, false — динамик у уха, "reset" — после звонка звук снова обычный.
+import AVFoundation
+import WebKit
+
+final class MestarioAudio: NSObject, WKScriptMessageHandler {
+    static let shared = MestarioAudio()
+    static func attach(_ window: UIWindow?, tries: Int = 20) {
+        if let vc = window?.rootViewController as? CAPBridgeViewController, let wv = vc.webView {
+            wv.configuration.userContentController.removeScriptMessageHandler(forName: "mestarioAudio")
+            wv.configuration.userContentController.add(MestarioAudio.shared, name: "mestarioAudio")
+            return
+        }
+        if tries > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { attach(window, tries: tries - 1) } }
+    }
+    func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
+        let s = AVAudioSession.sharedInstance()
+        if let on = m.body as? Bool {
+            try? s.overrideOutputAudioPort(on ? .speaker : .none)
+        } else {
+            try? s.overrideOutputAudioPort(.none)
+        }
+    }
+}

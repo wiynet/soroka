@@ -1,5 +1,8 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Динамик": "Speaker",
+  "Динамик у уха": "Earpiece",
+  "Громкая связь": "Speakerphone",
   "Выведен в кошелёк Mestario": "Added to the Mestario wallet",
   "Выведите его в кошелёк Mestario (меню «⋯»), и здесь будет виден адрес вашего кошелька.": "Add it to your Mestario wallet (the “⋯” menu), and your wallet address will show here.",
   "Выведенные NFT видны здесь, а в карточке юзернейма или номера — адрес вашего кошелька Mestario. ": "NFTs you add show up here, and the username or number card shows your Mestario wallet address. ",

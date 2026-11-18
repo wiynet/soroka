@@ -3431,7 +3431,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=f46a582fa7"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4d5c2b9305"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -5097,6 +5097,7 @@ void main() {
   <div class="call-qpick" id="callQPick" hidden></div>
   <div class="call-btns">
     <div class="call-act"><button class="call-b" id="callMute" type="button"></button><span id="callMuteLbl">Микрофон</span></div>
+    <div class="call-act" id="callSpkWrap" hidden><button class="call-b" id="callSpk" type="button"></button><span>Динамик</span></div>
     <div class="call-act" id="callCamWrap"><button class="call-b" id="callCam" type="button"></button><span>Камера</span></div>
     <div class="call-act" id="callFlipWrap" hidden><button class="call-b" id="callFlip" type="button" title="Другая камера" aria-label="Другая камера"></button><span>Повернуть</span></div>
     <div class="call-act" id="callShareWrap"><button class="call-b" id="callShare" type="button"></button><span>Экран</span></div>
@@ -5137,6 +5138,7 @@ void main() {
   <div class="vc-note" id="vcNote"></div>
   <div class="call-btns">
     <div class="call-act"><button class="call-b" id="vcMute" type="button"></button><span id="vcMuteLbl">Микрофон</span></div>
+    <div class="call-act" id="vcSpkWrap" hidden><button class="call-b" id="vcSpk" type="button"></button><span>Динамик</span></div>
     <div class="call-act"><button class="call-b" id="vcCam" type="button"></button><span>Камера</span></div>
     <div class="call-act"><button class="call-b" id="vcInv" type="button" title="Пригласить в звонок" aria-label="Пригласить в звонок"></button><span>Пригласить</span></div>
     <div class="call-act"><button class="call-b red" id="vcLeave" type="button" title="Выйти" aria-label="Выйти из голосового чата"></button><span>Выйти</span></div>
@@ -6174,6 +6176,8 @@ const ICONS = {
   shop: '<path d="M5 8h14l-1.200 11.500H6.200z" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/><path d="M8.500 8V7a3.500 3.500 0 017 0v1" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>',
   help: '<g fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.500"/><path d="M5.700 5.700l3.800 3.800M14.500 14.500l3.800 3.800M18.300 5.700l-3.800 3.800M9.500 14.500l-3.800 3.800"/></g>',
   reply: '<path d="M10 7L4 12l6 5v-3.5c4.500 0 7.500 1.500 9.500 4.500-.500-5.500-3.500-9-9.500-9.500z" fill="currentColor"/>',
+  speaker: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.500h3.500L12 5.500v13l-4.500-4H4z"/><path d="M15.500 9a4 4 0 010 6M18 6.500a7.500 7.500 0 010 11"/></g>',
+  earpiece: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.500h3.500L12 5.500v13l-4.500-4H4z"/><path d="M15.500 10.200a2.500 2.500 0 010 3.600"/></g>',
   mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
   chats: '<path d="M3 10.200C3 6.800 6.100 4 10 4s7 2.800 7 6.200-3.100 6.200-7 6.200c-.700 0-1.400-.100-2-.200L4.500 18l.900-3.100C3.900 13.700 3 12 3 10.200z" fill="currentColor"/><path d="M18.500 9.300c1.600 1 2.500 2.500 2.500 4.200 0 1.400-.700 2.700-1.800 3.600l.700 2.400-2.700-1.400c-.500.100-1 .200-1.600.200-2 0-3.700-.800-4.700-2.100 3.900-.300 7.100-3 7.600-6.900z" fill="currentColor" opacity=".75"/>',
   link: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 005.700 0l3-3a4 4 0 00-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 00-5.700 0l-3 3a4 4 0 005.700 5.700l1-1"/></g>',
@@ -17996,6 +18000,10 @@ function callPaint() {
   $("callCamWrap").hidden = !window.navigator.mediaDevices || (call.role === "in" && call.status === "ringing") || !!call.ended;
   $("callFlipWrap").hidden = !call.cam || !matchMedia("(pointer: coarse)").matches;
   $("callMine").hidden = !call.screen;
+  $("callSpkWrap").hidden = !spkCan() || call.status !== "active" || !!call.ended;
+  $("callSpk").classList.toggle("on", !!call.speaker);
+  setIco($("callSpk"), call.speaker ? "speaker" : "earpiece");
+  $("callSpk").title = call.speaker ? T("Динамик у уха") : T("Громкая связь");
   $("callMute").classList.toggle("on", !!call.muted);
   setIco($("callMute"), call.muted ? "micoff" : "mic");
   $("callMute").title = !call.mic ? T("Микрофона нет — нажмите, чтобы подключить") : call.muted ? T("Включить микрофон") : T("Выключить микрофон");
@@ -18067,6 +18075,9 @@ function callPc() {
       clearTimeout(call.dropT); clearTimeout(call.connT);
       if (call.status !== "active") {
         call.status = "active"; call.started = Date.now(); callStopTones();
+        // видеозвонок — сразу громкая связь, голосовой — динамик у уха (как в телефоне); кнопкой можно сменить
+        if (!call.spkSet) call.speaker = !!(call.cam || call.remoteCam);
+        spkProbe().then(() => { if (call && call.pc === pc) { spkApply(call.speaker); callPaint(); } });
         if (!call.mic || call.muted) callSend({ t: "mute", on: true });
         if (call.cam) callSend({ t: "cam", on: true });
         call.tick = setInterval(callPaint, 1000);
@@ -18207,11 +18218,50 @@ function callFinish(note) {
   try { if (c.pc) c.pc.close(); } catch (e) {}
   if (c.ch) sb.removeChannel(c.ch);
   $("callAudio").srcObject = null; $("callVideo").srcObject = null;
+  spkReset();
   c.pc = null; c.ch = null; c.ended = true; c.remoteScreen = false; c.remoteCam = false; c.cam = null; c.screen = null; c.min = false;
   c.note = note || T("Звонок завершён"); c.status = "ended";
   callPaint();
   $("callUi").classList.add("ended");
   setTimeout(() => { if (call === c) { call = null; $("callUi").classList.remove("ended"); callPaint(); } }, 1600);
+}
+// ---------- динамик: громкая связь или разговорный динамик (у уха) ----------
+// В приложении для Android и iPhone переключает сам телефон (MestarioAudio / mestarioAudio — мост в приложении);
+// в браузере — через выбор устройства вывода, если браузер его умеет и у телефона есть оба динамика.
+let spkSinks = null, spkSinksAt = 0;
+const spkNativeA = () => !!(window.MestarioAudio && typeof window.MestarioAudio.setSpeaker === "function");
+const spkNativeI = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mestarioAudio);
+async function spkProbe() {
+  if (spkNativeA() || spkNativeI()) return true;
+  if (!("setSinkId" in HTMLMediaElement.prototype) || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return false;
+  if (Date.now() - spkSinksAt > 15000) {
+    spkSinksAt = Date.now();
+    try {
+      const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audiooutput" && d.label);
+      const spk = outs.find((d) => /speaker|динамик|громк/i.test(d.label)), ear = outs.find((d) => /earpiece|handset|receiver|разговор|у уха/i.test(d.label));
+      spkSinks = spk && ear ? { spk: spk.deviceId, ear: ear.deviceId } : null;
+    } catch (e) { spkSinks = null; }
+  }
+  return !!spkSinks;
+}
+const spkCan = () => spkNativeA() || spkNativeI() || !!spkSinks;
+async function spkApply(on) {
+  try {
+    if (spkNativeA()) { window.MestarioAudio.setSpeaker(!!on); return; }
+    if (spkNativeI()) { window.webkit.messageHandlers.mestarioAudio.postMessage(!!on); return; }
+    if (spkSinks) for (const a of document.querySelectorAll("audio[data-call-audio], #callAudio")) await a.setSinkId(on ? spkSinks.spk : spkSinks.ear).catch(() => {});
+  } catch (e) {}
+}
+function spkReset() {
+  try {
+    if (spkNativeA() && window.MestarioAudio.reset) window.MestarioAudio.reset();
+    else if (spkNativeI()) window.webkit.messageHandlers.mestarioAudio.postMessage("reset");
+  } catch (e) {}
+}
+function callToggleSpk() {
+  if (!call) return;
+  call.speaker = !call.speaker; call.spkSet = true;
+  spkApply(call.speaker); callPaint();
 }
 function callHQ() { return !!(state.profile && (isPremium(state.profile) || state.isAdmin)); }
 function callToggleMute() {
@@ -18427,6 +18477,7 @@ $("callDecline").addEventListener("click", () => hangUp());
 $("callHang").append(icon("phone"));
 $("callHang").addEventListener("click", () => hangUp());
 $("callMute").addEventListener("click", callToggleMute);
+$("callSpk").addEventListener("click", callToggleSpk);
 $("callShare").append(icon("screen"));
 $("callShare").addEventListener("click", callToggleShare);
 $("callStopMine").addEventListener("click", callStopShare);
@@ -18461,7 +18512,8 @@ async function vcJoin(chatId, inv, live) {
   if (vc) { if (vc.chat === chatId) { vc.min = false; vcPaint(); return; } toast(T("Сначала выйдите из другого голосового чата")); return; }
   if (typeof call !== "undefined" && call) { toast(T("Сначала завершите звонок")); return; }
   if (!window.RTCPeerConnection) { toast(T("Этот браузер не поддерживает голосовые чаты")); return; }
-  vc = { chat: chatId, peers: new Map(), joining: true, muted: false, people: new Map(), vids: new Map(),
+  spkProbe().then(() => { if (vc) { spkApply(vc.speaker !== false); vcPaint(); } });
+  vc = { chat: chatId, peers: new Map(), joining: true, muted: false, speaker: true, people: new Map(), vids: new Map(),
     title: c ? chatTitle(c) : inv && (inv.title || (inv.from && inv.from.display_name)) || T("Звонок") };
   vcPaint();
   const { data, error } = await sb.rpc("vc_join", { p_chat: chatId, p_dev: VC_DEV });
@@ -18531,7 +18583,10 @@ function vcPc(dev, offerer) {
   pc.ontrack = (e) => {
     if (e.track.kind === "video") { p.vstream = new MediaStream([e.track]); vcPaint(); return; }
     const stream = e.streams[0] || new MediaStream([e.track]);
-    if (!p.audio) { p.audio = h("audio", { autoplay: true }); p.audio.hidden = true; document.body.append(p.audio); }
+    if (!p.audio) {
+      p.audio = h("audio", { autoplay: true, "data-call-audio": "1" }); p.audio.hidden = true; document.body.append(p.audio);
+      if (spkSinks && !spkNativeA() && !spkNativeI() && p.audio.setSinkId) p.audio.setSinkId(vc.speaker === false ? spkSinks.ear : spkSinks.spk).catch(() => {});
+    }
     p.audio.srcObject = stream; p.audio.play().catch(() => {});
     try {
       vc.ac = vc.ac || new (window.AudioContext || window.webkitAudioContext)();
@@ -18625,6 +18680,9 @@ function vcPaint() {
       h("small", {}, x.state && x.state !== "connected" && !x.me ? T("соединяемся…") : x.muted ? T("микрофон выключен") : x.talk ? T("говорит") : T("слушает")));
   }));
   $("vcNote").textContent = !vc.speak ? T("В канале говорят только админы — вы слушаете") : !vc.mic ? T("Микрофона нет — вы только слушаете") : "";
+  $("vcSpkWrap").hidden = !spkCan();
+  $("vcSpk").replaceChildren(icon(vc.speaker === false ? "earpiece" : "speaker"));
+  $("vcSpk").classList.toggle("on", vc.speaker !== false);
   $("vcMute").replaceChildren(icon(vc.muted || !vc.mic ? "micoff" : "mic"));
   $("vcMute").classList.toggle("on", !!vc.mic && !vc.muted);
   $("vcMute").disabled = !vc.speak;
@@ -18645,6 +18703,7 @@ async function vcLeave() {
   if (v.cam) v.cam.getTracks().forEach((t) => t.stop());
   if (v.ch) { try { await v.ch.untrack(); } catch (e) {} sb.removeChannel(v.ch); }
   if (v.ac) v.ac.close().catch(() => {});
+  spkReset();
   if (v.id) sb.rpc("vc_leave", { p_vc: v.id, p_dev: VC_DEV }).then(() => vcRefresh());
   vcPaint();
 }
@@ -18783,6 +18842,11 @@ $("vcMin").addEventListener("click", () => { if (vc) { vc.min = true; vcPaint();
 $("vcBar").addEventListener("click", () => { if (vc) { vc.min = false; vcPaint(); } });
 $("vcLeave").append(icon("phone"));
 $("vcLeave").addEventListener("click", vcLeave);
+$("vcSpk").addEventListener("click", () => {
+  if (!vc) return;
+  vc.speaker = vc.speaker === false;
+  spkApply(vc.speaker); vcPaint();
+});
 $("vcMute").addEventListener("click", async () => {
   if (!vc || !vc.speak) return;
   if (!vc.mic) {
