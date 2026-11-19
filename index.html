@@ -3431,7 +3431,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=4d5c2b9305"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=28ac1f93bc"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -18000,10 +18000,11 @@ function callPaint() {
   $("callCamWrap").hidden = !window.navigator.mediaDevices || (call.role === "in" && call.status === "ringing") || !!call.ended;
   $("callFlipWrap").hidden = !call.cam || !matchMedia("(pointer: coarse)").matches;
   $("callMine").hidden = !call.screen;
-  $("callSpkWrap").hidden = !spkCan() || call.status !== "active" || !!call.ended;
+  $("callSpkWrap").hidden = !!call.ended;   // кнопка «Динамик» видна всегда, пока идёт звонок
   $("callSpk").classList.toggle("on", !!call.speaker);
-  setIco($("callSpk"), call.speaker ? "speaker" : "earpiece");
-  $("callSpk").title = call.speaker ? T("Динамик у уха") : T("Громкая связь");
+  setIco($("callSpk"), call.speaker || !spkPhone() ? "speaker" : "earpiece");
+  $("callSpk").classList.toggle("on", spkPhone() && !!call.speaker);
+  $("callSpk").title = !spkPhone() ? T("Куда выводить звук") : call.speaker ? T("Динамик у уха") : T("Громкая связь");
   $("callMute").classList.toggle("on", !!call.muted);
   setIco($("callMute"), call.muted ? "micoff" : "mic");
   $("callMute").title = !call.mic ? T("Микрофона нет — нажмите, чтобы подключить") : call.muted ? T("Включить микрофон") : T("Выключить микрофон");
@@ -18244,7 +18245,41 @@ async function spkProbe() {
   }
   return !!spkSinks;
 }
-const spkCan = () => spkNativeA() || spkNativeI() || !!spkSinks;
+const spkPhone = () => spkNativeA() || spkNativeI() || !!spkSinks;   // громкая связь ↔ у уха
+const spkCan = () => true;                                            // кнопка есть всегда: на компьютере — выбор устройства вывода
+// компьютер: выбранное устройство вывода (колонки, наушники…)
+let spkSink = "";
+async function spkSetSink(id) {
+  spkSink = id || "";
+  for (const a of document.querySelectorAll("audio[data-call-audio], #callAudio")) if (a.setSinkId) await a.setSinkId(spkSink).catch(() => {});
+}
+async function spkPick(btn) {
+  // Firefox: выбор через окно браузера
+  if (navigator.mediaDevices && navigator.mediaDevices.selectAudioOutput) {
+    try {
+      const d = await navigator.mediaDevices.selectAudioOutput(spkSink ? { deviceId: spkSink } : {});
+      await spkSetSink(d.deviceId);
+      toast(T("Звук: ") + (d.label || T("выбранное устройство")));
+    } catch (e) { if (e && e.name !== "NotAllowedError" && e.name !== "AbortError") toast(T("Не удалось выбрать устройство звука")); }
+    return;
+  }
+  let outs = [];
+  if ("setSinkId" in HTMLMediaElement.prototype && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    try { outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audiooutput" && d.deviceId); } catch (e) {}
+  }
+  if (outs.length < 2) {
+    toast(IN_APP ? T("Обновите приложение Mestario — в новой версии кнопка переключает громкую связь")
+      : /Android|iPhone|iPad/i.test(navigator.userAgent) ? T("Браузер телефона не даёт переключать динамик. В приложении Mestario кнопка работает: громкая связь или динамик у уха")
+      : T("Других устройств для звука не найдено — подключите колонки или наушники"));
+    return;
+  }
+  const cur = spkSink || "default", r = btn.getBoundingClientRect();
+  const name = (d) => d.deviceId === "default" ? T("Как в системе") + (d.label ? " — " + d.label.replace(/^(Default|По умолчанию)\s*-\s*/i, "") : "")
+    : d.deviceId === "communications" ? T("Для звонков (система)") : d.label || T("Устройство");
+  placeCtx(h("div", { class: "ctx", role: "menu", "aria-label": T("Куда выводить звук") }, h("div", { class: "ctx-title" }, T("Куда выводить звук")),
+    ...outs.map((d) => ctxItem(d.deviceId === cur ? "check1" : "speaker", name(d), () => { spkSetSink(d.deviceId); toast(T("Звук: ") + name(d)); }))),
+    r.left, Math.max(8, r.top - 12 - (outs.length + 1) * 46));
+}
 async function spkApply(on) {
   try {
     if (spkNativeA()) { window.MestarioAudio.setSpeaker(!!on); return; }
@@ -18260,6 +18295,7 @@ function spkReset() {
 }
 function callToggleSpk() {
   if (!call) return;
+  if (!spkPhone()) { spkPick($("callSpk")); return; }
   call.speaker = !call.speaker; call.spkSet = true;
   spkApply(call.speaker); callPaint();
 }
@@ -18585,7 +18621,7 @@ function vcPc(dev, offerer) {
     const stream = e.streams[0] || new MediaStream([e.track]);
     if (!p.audio) {
       p.audio = h("audio", { autoplay: true, "data-call-audio": "1" }); p.audio.hidden = true; document.body.append(p.audio);
-      if (spkSinks && !spkNativeA() && !spkNativeI() && p.audio.setSinkId) p.audio.setSinkId(vc.speaker === false ? spkSinks.ear : spkSinks.spk).catch(() => {});
+      if (!spkNativeA() && !spkNativeI() && p.audio.setSinkId && (spkSinks || spkSink)) p.audio.setSinkId(spkSinks ? (vc.speaker === false ? spkSinks.ear : spkSinks.spk) : spkSink).catch(() => {});
     }
     p.audio.srcObject = stream; p.audio.play().catch(() => {});
     try {
@@ -18682,7 +18718,7 @@ function vcPaint() {
   $("vcNote").textContent = !vc.speak ? T("В канале говорят только админы — вы слушаете") : !vc.mic ? T("Микрофона нет — вы только слушаете") : "";
   $("vcSpkWrap").hidden = !spkCan();
   $("vcSpk").replaceChildren(icon(vc.speaker === false ? "earpiece" : "speaker"));
-  $("vcSpk").classList.toggle("on", vc.speaker !== false);
+  $("vcSpk").classList.toggle("on", spkPhone() && vc.speaker !== false);
   $("vcMute").replaceChildren(icon(vc.muted || !vc.mic ? "micoff" : "mic"));
   $("vcMute").classList.toggle("on", !!vc.mic && !vc.muted);
   $("vcMute").disabled = !vc.speak;
@@ -18844,6 +18880,7 @@ $("vcLeave").append(icon("phone"));
 $("vcLeave").addEventListener("click", vcLeave);
 $("vcSpk").addEventListener("click", () => {
   if (!vc) return;
+  if (!spkPhone()) { spkPick($("vcSpk")); return; }
   vc.speaker = vc.speaker === false;
   spkApply(vc.speaker); vcPaint();
 });

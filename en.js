@@ -1,5 +1,14 @@
 /* Mestario: английский перевод интерфейса. Загружается только тем, кто выбрал English. */
 window.SOROKA_EN = {
+  "Звук: ": "Audio: ",
+  "выбранное устройство": "selected device",
+  "Не удалось выбрать устройство звука": "Couldn't choose the audio device",
+  "Обновите приложение Mestario — в новой версии кнопка переключает громкую связь": "Update the Mestario app — in the new version this button switches the speakerphone",
+  "Браузер телефона не даёт переключать динамик. В приложении Mestario кнопка работает: громкая связь или динамик у уха": "Phone browsers can't switch the speaker. In the Mestario app this button works: speakerphone or earpiece",
+  "Других устройств для звука не найдено — подключите колонки или наушники": "No other audio devices found — connect speakers or headphones",
+  "Для звонков (система)": "For calls (system)",
+  "Устройство": "Device",
+  "Куда выводить звук": "Audio output",
   "Динамик": "Speaker",
   "Динамик у уха": "Earpiece",
   "Громкая связь": "Speakerphone",
