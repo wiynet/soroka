@@ -62,6 +62,40 @@ button.nz-card:active { transform: scale(.985); }
 .nz-pick .it .bar { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .2s; }
 .nz-pick .add { aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 4px; font-size: 12px; font-weight: 600; }
 .nz-pick .add svg { width: 22px; height: 22px; }
+div.nz-card { cursor: pointer; }
+.nz-poll { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; cursor: default; }
+.nz-poll .q { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.nz-opt { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; border-radius: 12px; padding: 8px 12px; min-height: 42px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); font-size: 14.5px; overflow: hidden; }
+.nz-opt .fill { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 24%, transparent); transition: width .5s cubic-bezier(.2,.8,.3,1); }
+.nz-opt > *:not(.fill) { position: relative; }
+.nz-opt .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.nz-opt .pc { font-weight: 700; font-variant-numeric: tabular-nums; }
+.nz-opt.me { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.nz-opt .ck { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); flex: none; display: grid; place-items: center; }
+.nz-opt.multi .ck { border-radius: 5px; }
+.nz-opt[aria-pressed="true"] .ck { background: var(--accent); border-color: var(--accent); }
+.nz-opt[aria-pressed="true"] .ck svg, .nz-opt.me .ck svg { width: 12px; height: 12px; color: #fff; }
+.nz-opt.me .ck { background: var(--accent); border-color: var(--accent); }
+.nz-opt img.oi { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; flex: none; cursor: zoom-in; }
+.nz-poll .f { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); }
+.nz-poll .f button { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 0; font-size: 13px; }
+.nz-rate { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 10px; padding: 10px 12px; border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent); border: 0; width: 100%; text-align: left; color: var(--ink); cursor: pointer; }
+.nz-rate .co { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; object-fit: cover; }
+.nz-rate b { display: block; font-size: 15px; } .nz-rate small { font-size: 12.5px; color: var(--muted); }
+.nz-rate .pr { text-align: right; font-weight: 800; font-size: 16px; white-space: nowrap; } .nz-rate .pr small { display: block; font-weight: 700; }
+.nz-rate .ch { grid-column: 1 / -1; height: 64px; } .nz-rate .ch svg { width: 100%; height: 64px; }
+.nz-opts { display: flex; flex-direction: column; gap: 8px; }
+.nz-orow { display: grid; grid-template-columns: minmax(0, 1fr) 44px 32px; gap: 6px; align-items: center; }
+.nz-orow .ph { width: 44px; height: 44px; border-radius: 10px; border: 1.5px dashed var(--line); background: none; color: var(--muted); display: grid; place-items: center; padding: 0; overflow: hidden; position: relative; }
+.nz-orow .ph img { width: 100%; height: 100%; object-fit: cover; }
+.nz-orow .ph svg { width: 20px; height: 20px; }
+.nz-orow .rm { border: 0; background: none; color: var(--muted); font-size: 20px; padding: 0; }
+.nz-assets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.nz-assets button { border: 0; border-radius: 14px; padding: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); font-weight: 700; display: grid; justify-items: center; gap: 4px; }
+.nz-assets button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.nz-assets img, .nz-assets .co { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; }
 .nz-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .nz-mkt .hd { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .nz-tick { display: grid; grid-template-columns: 34px minmax(0, 1fr) 84px auto; gap: 10px; align-items: center; padding: 9px 0; border: 0; border-bottom: 1px solid var(--line); width: 100%; background: none; color: var(--ink); text-align: left; }
@@ -181,6 +215,7 @@ button.nz-card:active { transform: scale(.985); }
     if (/limit/.test(m)) return T("Слишком часто — попробуйте позже");
     if (/not verified/.test(m)) return T("Публиковать в Новостях могут только верифицированные авторы");
     if (/bad url/.test(m)) return T("Ссылка должна начинаться с https://");
+    if (/bad poll/.test(m)) return T("Проверьте варианты ответа: от 2 до 10, до 100 символов");
     if (/bad title/.test(m)) return T("Заголовок — от 3 до 160 символов");
     if (/not channel admin/.test(m)) return T("Заявку за канал подаёт его администратор, канал должен быть публичным");
     return T("Не получилось. Попробуйте ещё раз");
@@ -242,7 +277,7 @@ button.nz-card:active { transform: scale(.985); }
   let status = null;   // моя верификация
   function paintHead() {
     const kids = [h("h2", {}, T("Новости"))];
-    if (status && status.me && status.me.autopost) kids.push(h("button", { class: "icon-btn", type: "button", title: T("Написать в Новости"), "aria-label": T("Написать в Новости"), onclick: openCompose }, ico("plus")));
+    if (status && status.me && status.me.autopost) kids.push(h("button", { class: "icon-btn", type: "button", title: T("Написать в Новости"), "aria-label": T("Написать в Новости"), onclick: () => openCompose() }, ico("plus")));
     if (state.isAdmin) kids.push(h("button", { class: "icon-btn", type: "button", title: T("Верификация"), "aria-label": T("Верификация"), onclick: () => openAdmin() }, ico("shield")));
     kids.push(h("button", { class: "icon-btn", type: "button", title: T("Источники"), "aria-label": T("Источники"), onclick: openSources }, ico("grid")));
     head.replaceChildren(...kids);
@@ -339,7 +374,7 @@ button.nz-card:active { transform: scale(.985); }
   }
   function thumb(it) {
     const ms = mediaOf(it), m = ms[0];
-    const img = h("img", { class: "nz-th", alt: "", loading: "lazy", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } });
+    const img = h("img", { class: "nz-th", alt: "", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } });
     if (!m) return img;
     const wrap = h("span", { class: "nz-thw" });
     if (m.kind === "video") {
@@ -372,14 +407,86 @@ button.nz-card:active { transform: scale(.985); }
     }
     return box;
   }
+  /* опрос: голос сразу по нажатию (несколько ответов — галочки и «Голосовать»), после — результаты */
+  function pollBlock(it) {
+    const box = h("div", { class: "nz-poll", onclick: (e) => e.stopPropagation() });
+    let pl = it.poll, sel = new Set(), busy = false;
+    const zoom = (e) => { e.stopPropagation(); if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } };
+    const optImg = (o) => {
+      if (!o.image) return null;
+      const im = h("img", { class: "oi", alt: "", onclick: zoom });
+      im.src = sb.storage.from("news").getPublicUrl(o.image).data.publicUrl;
+      return im;
+    };
+    async function vote(ids) {
+      if (busy) return;
+      busy = true;
+      const { data, error } = await sb.rpc("news_vote", { p_item: it.id, p_options: ids });
+      busy = false;
+      if (error) { toast(/closed/.test(error.message || "") ? T("Опрос уже закрыт") : T("Не получилось. Попробуйте ещё раз")); return; }
+      it.poll = pl = data; sel = new Set(); paint();
+    }
+    function paint() {
+      if (!pl) { box.replaceChildren(); return; }
+      const voted = (pl.mine || []).length > 0, show = voted || pl.closed;
+      const tot = Math.max(1, (pl.options || []).reduce((a, o) => a + Number(o.votes || 0), 0));
+      const kids = [h("div", { class: "q" }, h("span", {}, pl.multi ? T("Опрос · несколько ответов") : T("Опрос")),
+        pl.closed ? h("span", {}, T("закрыт")) : pl.closes_at ? h("span", {}, T("до ") + new Date(pl.closes_at).toLocaleDateString(en() ? "en-US" : "ru-RU", { day: "numeric", month: "short" })) : null)];
+      for (const o of pl.options || []) {
+        const mine = (pl.mine || []).includes(o.id), pc = Math.round((Number(o.votes || 0) / tot) * 100);
+        if (show) {
+          kids.push(h("div", { class: "nz-opt" + (mine ? " me" : "") }, h("span", { class: "fill", style: "width:" + pc + "%" }),
+            mine ? h("span", { class: "ck" }, ico("check1")) : null, optImg(o), h("span", { class: "t" }, o.text), h("span", { class: "pc" }, pc + "%")));
+        } else {
+          const b = h("button", { class: "nz-opt" + (pl.multi ? " multi" : ""), type: "button", "aria-pressed": String(sel.has(o.id)), onclick: () => {
+            if (!pl.multi) { vote([o.id]); return; }
+            if (sel.has(o.id)) sel.delete(o.id); else sel.add(o.id);
+            paint();
+          } }, h("span", { class: "ck" }, sel.has(o.id) ? ico("check1") : null), optImg(o), h("span", { class: "t" }, o.text));
+          kids.push(b);
+        }
+      }
+      const foot = h("div", { class: "f" }, h("span", {}, T("Проголосовали: ") + (pl.voters || 0)));
+      if (!show && pl.multi) foot.append(h("button", { type: "button", disabled: !sel.size, onclick: () => sel.size && vote([...sel]) }, T("Голосовать")));
+      if (voted && !pl.closed) foot.append(h("button", { type: "button", onclick: () => vote([]) }, T("Отменить голос")));
+      kids.push(foot);
+      box.replaceChildren(...kids);
+    }
+    paint();
+    return box;
+  }
+  /* курс: живая цена и график за неделю — как в кошельке */
+  const ASSETS = { MST: { name: "MestCoin", img: "mst.png" }, TON: { name: "Toncoin", color: "#0098ea", letter: "T" }, USDT: { name: "Tether USD", color: "#26a17b", letter: "₮" } };
+  function assetIcon(cur, cls) {
+    const a = ASSETS[cur] || {};
+    return a.img ? h("img", { class: cls || "co", src: a.img, alt: "" }) : h("span", { class: cls || "co", style: "background:" + a.color }, a.letter);
+  }
+  function rateBlock(cur) {
+    const m = M();
+    const pr = h("div", { class: "pr" }, "—"), ch = h("div", { class: "ch" });
+    const b = h("button", { class: "nz-rate", type: "button", onclick: (e) => { e.stopPropagation(); if (window.MW) MW.open("asset", cur); } },
+      assetIcon(cur), h("div", {}, h("b", {}, (ASSETS[cur] || {}).name || cur), h("small", {}, cur + T(" · за неделю"))), pr, ch);
+    if (!m) return b;
+    const paint = (pts) => {
+      const p = m.rateOf(cur);
+      const c = pts && pts.length > 1 ? (pts[pts.length - 1][1] / pts[0][1] - 1) * 100 : m.diffOf(cur);
+      pr.replaceChildren(p ? m.money(p, m.priceDig(p)) : "—", c == null || !Number.isFinite(c) ? "" : h("small", { class: c >= 0 ? "nz-up" : "nz-dn" }, m.pct(c)));
+      if (pts && pts.length > 1) ch.replaceChildren(spark(pts, 320, 64, true));
+    };
+    paint(m.chartPeek(cur, "W"));
+    m.loadRates(false).then(() => m.loadChart(cur, "W")).then(paint).catch(() => {});
+    return b;
+  }
   function itemCard(it) {
     const ttl = showRu(it) ? it.title_ru : it.title, sum = showRu(it) ? it.summary_ru : it.summary;
     const img = thumb(it);
     const src = h("div", { class: "nz-src" }, ...srcBadge(it), h("span", {}, "· " + ago(it.published_at)),
       showRu(it) ? h("span", { class: "nz-tr" }, ico("globe"), T("Переведено")) : null,
       it.kind !== "rss" ? h("span", { class: "nz-tag" }, it.kind === "channel" ? T("Канал") : T("Автор")) : null);
-    return h("button", { class: "nz-card" + (it.kind !== "rss" ? " vf" : ""), type: "button", onclick: () => openArticle(it) },
-      src, h("div", { class: "nz-row" }, h("div", {}, h("h4", {}, ttl), sum ? h("p", {}, sum) : null), img));
+    return h("div", { class: "nz-card" + (it.kind !== "rss" ? " vf" : ""), role: "button", tabindex: "0", onclick: () => openArticle(it),
+      onkeydown: (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); openArticle(it); } } },
+      src, h("div", { class: "nz-row" }, h("div", {}, h("h4", {}, ttl), sum ? h("p", {}, sum) : null), img),
+      it.post_type === "poll" && it.poll ? pollBlock(it) : null, it.post_type === "rate" && it.rate_asset ? rateBlock(it.rate_asset) : null);
   }
 
   let feed = [], feedBusy = false, feedSeq = 0, feedDirty = false;
@@ -450,6 +557,8 @@ button.nz-card:active { transform: scale(.985); }
         kids.push(h("div", { class: "nz-trbox" }, lab, tb));
       }
       kids.push(sum);
+      if (it.post_type === "poll" && it.poll) kids.push(pollBlock(it));
+      if (it.post_type === "rate" && it.rate_asset) kids.push(rateBlock(it.rate_asset));
       const acts = h("div", { class: "nz-acts" });
       if (it.url) {
         const s = srcMap.get(it.source_id);
@@ -551,37 +660,33 @@ button.nz-card:active { transform: scale(.985); }
   }
 
   /* ---------- публикация от верифицированного человека ---------- */
-  function openCompose() {
+  // загрузка файла в бакет news (фото сжимаются в webp, видео — как есть, до 100 МБ)
+  async function uploadNews(file, kind) {
+    let body = file, ext, type;
+    if (kind === "image" && !/gif$/i.test(file.type)) { body = await toWebp(file, 2000); ext = "webp"; type = "image/webp"; }
+    else { type = file.type || (kind === "video" ? "video/mp4" : "image/jpeg"); ext = ((/\.([a-z0-9]{2,5})$/i.exec(file.name) || [])[1] || type.split("/")[1] || "bin").toLowerCase(); }
+    if (ext === "quicktime") ext = "mov";
+    const path = state.me.id + "/" + randomId() + "." + ext;
+    const up = await sb.storage.from("news").upload(path, body, { contentType: type, cacheControl: "31536000" });
+    if (up.error) throw up.error;
+    return path;
+  }
+  const upErr = (e) => toast(/size|large|exceed/i.test(String(e && e.message)) ? T("Файл больше 100 МБ") : T("Не удалось загрузить файл"));
+
+  let composeKind = "post";
+  function openCompose(kind) {
+    if (kind) composeKind = kind;
     go("compose", (v) => {
-      const t = h("input", { class: "input", maxlength: "160", placeholder: T("Заголовок") });
-      const x = h("textarea", { class: "input", maxlength: "2000", placeholder: T("Текст новости") });
+      const t = h("input", { class: "input", maxlength: "160" });
+      const x = h("textarea", { class: "input", maxlength: "2000" });
       const u = h("input", { class: "input", type: "url", maxlength: "500", placeholder: T("Ссылка (необязательно)") });
       const me = (status && status.me) || {};
-      // фото и видео: до 10 штук, фото сжимаются, видео — до 100 МБ; загружаются сразу после выбора
+      // фото и видео: до 10 штук; загружаются сразу после выбора
       const items = [];   // { file, kind, url, path, done, fail, el }
       const pick = h("div", { class: "nz-pick" });
       const inp = h("input", { type: "file", accept: "image/*,video/*", multiple: true, hidden: true });
       const add = h("button", { class: "add", type: "button", onclick: () => inp.click() }, ico("cam"), T("Фото / видео"));
-      const paintPick = () => {
-        pick.replaceChildren(...items.map((m) => m.el), ...(items.length < 10 ? [add] : []));
-      };
-      async function upload(m) {
-        try {
-          let body = m.file, ext, type;
-          if (m.kind === "image" && !/gif$/i.test(m.file.type)) { body = await toWebp(m.file, 2000); ext = "webp"; type = "image/webp"; }
-          else { type = m.file.type || (m.kind === "video" ? "video/mp4" : "image/jpeg"); ext = ((/\.([a-z0-9]{2,5})$/i.exec(m.file.name) || [])[1] || type.split("/")[1] || "bin").toLowerCase(); }
-          if (ext === "quicktime") ext = "mov";
-          const path = state.me.id + "/" + randomId() + "." + ext;
-          m.bar.style.width = "35%";
-          const up = await sb.storage.from("news").upload(path, body, { contentType: type, cacheControl: "31536000" });
-          if (up.error) throw up.error;
-          m.path = path; m.done = true; m.bar.style.width = "100%";
-          setTimeout(() => { m.bar.hidden = true; }, 400);
-        } catch (e) {
-          m.fail = true; m.bar.style.width = "100%"; m.bar.style.background = "#e5484d";
-          toast(/size|large|exceed/i.test(String(e && e.message)) ? T("Файл больше 100 МБ") : T("Не удалось загрузить файл"));
-        }
-      }
+      const paintPick = () => { pick.replaceChildren(...items.map((m) => m.el), ...(items.length < 10 ? [add] : [])); };
       inp.addEventListener("change", () => {
         const files = [...inp.files]; inp.value = "";
         for (const f of files) {
@@ -590,7 +695,7 @@ button.nz-card:active { transform: scale(.985); }
           if (!kind) { toast(T("Можно только фото и видео")); continue; }
           if (f.size > 104857600) { toast(T("Файл больше 100 МБ")); continue; }
           const url = URL.createObjectURL(f);
-          const m = { file: f, kind, url, bar: h("span", { class: "bar", style: "width:8%" }) };
+          const m = { file: f, kind, url, bar: h("span", { class: "bar", style: "width:35%" }) };
           const prev = kind === "video" ? h("video", { src: url + "#t=0.3", muted: true, playsinline: true, preload: "metadata" }) : h("img", { src: url, alt: "" });
           m.el = h("div", { class: "it" }, prev, kind === "video" ? h("span", { class: "nz-play" }, h("span", {}, ico("play"))) : null, m.bar,
             h("button", { class: "x", type: "button", "aria-label": T("Убрать"), onclick: () => {
@@ -599,19 +704,84 @@ button.nz-card:active { transform: scale(.985); }
               paintPick();
             } }, "×"));
           items.push(m);
-          m.up = upload(m);
+          m.up = uploadNews(f, kind).then((pth) => { m.path = pth; m.done = true; m.bar.style.width = "100%"; setTimeout(() => { m.bar.hidden = true; }, 400); })
+            .catch((e) => { m.fail = true; m.bar.style.width = "100%"; m.bar.style.background = "#e5484d"; upErr(e); });
         }
         paintPick();
       });
       paintPick();
+
+      // опрос: варианты ответа (2–10), у каждого может быть фото
+      const opts = [];   // { inp, path, up, el }
+      const optsBox = h("div", { class: "nz-opts" });
+      const addOpt = h("button", { class: "btn ghost", type: "button", onclick: () => { newOpt(); paintOpts(); opts[opts.length - 1].inp.focus(); } }, ico("plus"), T("Добавить вариант"));
+      function newOpt() {
+        const o = { inp: h("input", { class: "input", maxlength: "100", placeholder: T("Вариант ответа") }) };
+        const fi = h("input", { type: "file", accept: "image/*", hidden: true });
+        const ph = h("button", { class: "ph", type: "button", title: T("Фото к варианту"), "aria-label": T("Фото к варианту"), onclick: () => fi.click() }, ico("cam"));
+        fi.addEventListener("change", () => {
+          const f = fi.files[0]; fi.value = "";
+          if (!f || !/^image\//.test(f.type)) return;
+          const url = URL.createObjectURL(f);
+          ph.replaceChildren(h("img", { src: url, alt: "" }));
+          o.path = null; o.fail = false;
+          o.up = uploadNews(f, "image").then((pth) => { o.path = pth; }).catch((e) => { o.fail = true; ph.replaceChildren(ico("cam")); upErr(e); });
+        });
+        o.el = h("div", { class: "nz-orow" }, o.inp, ph, fi, h("button", { class: "rm", type: "button", "aria-label": T("Убрать"), onclick: () => {
+          if (opts.length <= 2) { toast(T("В опросе минимум 2 варианта")); return; }
+          opts.splice(opts.indexOf(o), 1);
+          if (o.path) sb.storage.from("news").remove([o.path]).catch(() => {});
+          paintOpts();
+        } }, "×"));
+        opts.push(o);
+      }
+      const paintOpts = () => { optsBox.replaceChildren(...opts.map((o) => o.el)); addOpt.hidden = opts.length >= 10; };
+      newOpt(); newOpt(); paintOpts();
+      const multi = h("input", { type: "checkbox" });
+      const days = h("select", { class: "input" }, ...[[0, "Без срока"], [1, "1 день"], [3, "3 дня"], [7, "7 дней"], [30, "30 дней"]].map(([d, n]) => h("option", { value: String(d) }, T(n))));
+      const pollBox = h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Варианты ответа")), optsBox, addOpt,
+        h("label", { class: "toggle" }, multi, h("span", {}, T("Можно выбрать несколько ответов"))),
+        h("div", { class: "lbl" }, T("Сколько длится опрос")), days);
+
+      // курс: какой график показать
+      let asset = "MST";
+      const assets = h("div", { class: "nz-assets" });
+      const rateBox = h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Курс")), assets, h("div", {}));
+      const paintAssets = () => {
+        assets.replaceChildren(...Object.keys(ASSETS).map((c) => h("button", { type: "button", "aria-pressed": String(asset === c), onclick: () => { asset = c; paintAssets(); } }, assetIcon(c), c)));
+        rateBox.lastChild.replaceChildren(rateBlock(asset));
+      };
+      paintAssets();
+
+      const kindSeg = h("div", { class: "seg", role: "tablist" });
+      const paintKind = () => {
+        kindSeg.replaceChildren(...[["post", "Пост"], ["poll", "Опрос"], ["rate", "Курс"]].map(([k, n]) =>
+          h("button", { type: "button", role: "tab", "aria-checked": String(composeKind === k), onclick: () => { composeKind = k; paintKind(); } }, T(n))));
+        pollBox.hidden = composeKind !== "poll";
+        rateBox.hidden = composeKind !== "rate";
+        t.placeholder = composeKind === "poll" ? T("Вопрос") : T("Заголовок");
+        x.placeholder = composeKind === "poll" ? T("Пояснение (необязательно)") : composeKind === "rate" ? T("Ваш комментарий к курсу") : T("Текст новости");
+      };
+      paintKind();
+
       const pub = btn(T("Опубликовать"), "", async () => {
-        if (t.value.trim().length < 3) { toast(T("Заголовок — от 3 до 160 символов")); return; }
+        if (t.value.trim().length < 3) { toast(composeKind === "poll" ? T("Вопрос — от 3 до 160 символов") : T("Заголовок — от 3 до 160 символов")); return; }
+        let poll = null;
+        if (composeKind === "poll") {
+          const filled = opts.filter((o) => o.inp.value.trim());
+          if (filled.length < 2) { toast(T("В опросе минимум 2 варианта")); return; }
+          poll = { filled };
+        }
         pub.disabled = true;
         try {
-          if (items.some((m) => !m.done && !m.fail)) { toast(T("Дожидаемся загрузки фото и видео…")); await Promise.all(items.map((m) => m.up)); }
-          if (items.some((m) => m.fail)) { toast(T("Уберите файлы, которые не загрузились")); return; }
+          const waits = items.map((m) => m.up).concat(poll ? poll.filled.map((o) => o.up).filter(Boolean) : []);
+          if (items.some((m) => !m.done && !m.fail) || (poll && poll.filled.some((o) => o.up && !o.path && !o.fail))) { toast(T("Дожидаемся загрузки фото и видео…")); await Promise.all(waits); }
+          if (items.some((m) => m.fail) || (poll && poll.filled.some((o) => o.fail))) { toast(T("Уберите файлы, которые не загрузились")); return; }
           const media = items.map((m) => ({ path: m.path, kind: m.kind }));
-          const { error } = await sb.rpc("news_publish", { p_title: t.value.trim(), p_text: x.value.trim(), p_url: u.value.trim() || null, p_media: media.length ? media : null });
+          const args = { p_title: t.value.trim(), p_text: x.value.trim(), p_url: u.value.trim() || null, p_media: media.length ? media : null, p_kind: composeKind };
+          if (poll) args.p_poll = { multi: multi.checked, days: Number(days.value) || 0, options: poll.filled.map((o) => ({ text: o.inp.value.trim(), image: o.path || null })) };
+          if (composeKind === "rate") args.p_rate = asset;
+          const { error } = await sb.rpc("news_publish", args);
           if (error) { toast(rpcErr(error)); return; }
           toast(T("Опубликовано в Новостях"));
           items.forEach((m) => URL.revokeObjectURL(m.url));
@@ -620,7 +790,7 @@ button.nz-card:active { transform: scale(.985); }
       });
       v.replaceChildren(subHead(T("Написать в Новости")),
         h("div", { class: "nz-card nz-status" }, tick(), " ", T("Вы верифицированы — публикация сразу появится в ленте. Раздел: ") + T(CAT[me.category] || "") + " · " + (me.region === "ru" ? T("Россия") : T("Мир"))),
-        h("div", { class: "nz-form" }, t, x, pick, inp, u, pub));
+        kindSeg, h("div", { class: "nz-form" }, t, x), pollBox, rateBox, h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Фото и видео")), pick, inp, u, pub));
       setTimeout(() => t.focus(), 50);
     });
   }
