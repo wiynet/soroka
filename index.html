@@ -3431,7 +3431,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=28ac1f93bc"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=8f5d485824"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4365,6 +4365,10 @@ void main() {
       <button class="tab" id="tabChats" type="button" aria-current="true">
         <span class="ti" id="tabChatsIco"><span class="tbadge" id="tabChatsBadge" hidden></span></span>
         <span class="tl">Чаты</span>
+      </button>
+      <button class="tab" id="tabNews" type="button" aria-current="false">
+        <span class="ti" id="tabNewsIco"></span>
+        <span class="tl">Новости</span>
       </button>
       <button class="tab" id="btnSettings" type="button" aria-current="false">
         <span class="ti" id="tabSetIco"></span>
@@ -6179,6 +6183,7 @@ const ICONS = {
   speaker: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.500h3.500L12 5.500v13l-4.500-4H4z"/><path d="M15.500 9a4 4 0 010 6M18 6.500a7.500 7.500 0 010 11"/></g>',
   earpiece: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.500h3.500L12 5.500v13l-4.500-4H4z"/><path d="M15.500 10.200a2.500 2.500 0 010 3.600"/></g>',
   mic: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.500 6.500 0 0013 0M12 17.500V21"/></g>',
+  news: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.500 19.500H6A2.500 2.500 0 013.500 17V5.500a1 1 0 011-1h11a1 1 0 011 1v13a1 1 0 002 0V9h1a1 1 0 011 1v8a1.500 1.500 0 01-1.500 1.500"/><path d="M7 8.500h6M7 12h6M7 15.500h4"/></g>',
   chats: '<path d="M3 10.200C3 6.800 6.100 4 10 4s7 2.800 7 6.200-3.100 6.200-7 6.200c-.700 0-1.400-.100-2-.200L4.500 18l.900-3.100C3.900 13.700 3 12 3 10.200z" fill="currentColor"/><path d="M18.500 9.300c1.600 1 2.500 2.500 2.500 4.200 0 1.400-.700 2.700-1.800 3.600l.700 2.400-2.700-1.400c-.500.100-1 .200-1.600.200-2 0-3.700-.800-4.700-2.100 3.900-.300 7.100-3 7.600-6.900z" fill="currentColor" opacity=".75"/>',
   link: '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 005.700 0l3-3a4 4 0 00-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 00-5.700 0l-3 3a4 4 0 005.700 5.700l1-1"/></g>',
   bookmark: '<path d="M7 4h10v16l-5-3.500L7 20z" fill="currentColor"/>',
@@ -6284,6 +6289,11 @@ function marks(p) {
   const self = state.me && p && p.id === state.me.id;
   if (p && isPremium(p) && !worn && (!p.hide_crown || self)) out.push(premBadge(p));
   return out;
+}
+// та же галочка у каналов, которым админ выдал верификацию (их посты попадают в Новости)
+function chanTick(c) {
+  if (!c || !c.verified) return null;
+  return h("img", { class: "pbdg gem vtick", src: GEMS["gem-tick"], alt: "", role: "img", title: T("Верифицированный канал"), "aria-label": T("Верифицированный канал") });
 }
 // кристальная галочка перед ником: админы сайта и те, кому админ выдал подтверждение
 function preTick(p) {
@@ -7257,7 +7267,7 @@ async function watchStories(p) {
 async function loadChats() {
   loadStoryUsers();
   const { data, error } = await sb.from("chats")
-    .select("id,is_group,is_channel,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,msg_ttl,slow_seconds,links_new_block,theme,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
+    .select("id,is_group,is_channel,verified,description,created_by,avatar_path,pinned_message,username,is_private,comments_off,msg_ttl,slow_seconds,links_new_block,theme,title,last_message_at,last_message_text,last_message_sender,chat_members(user_id,last_read_id,is_admin,muted,profiles(" + PF + "))")
     .order("last_message_at", { ascending: false });
   if (error) { toast(T("Не удалось загрузить чаты")); return; }
   const [counts, fl, th] = await Promise.all([sb.rpc("unread_counts"), sb.rpc("my_chat_flags"), sb.rpc("my_chat_themes")]);
@@ -7269,7 +7279,7 @@ async function loadChats() {
   }
   if (!state.started) return;
   state.chats = new Map(data.map((c) => [c.id, {
-    id: c.id, is_group: c.is_group, is_channel: c.is_channel, description: c.description || "", created_by: c.created_by, title: c.title,
+    id: c.id, is_group: c.is_group, is_channel: c.is_channel, verified: !!c.verified, description: c.description || "", created_by: c.created_by, title: c.title,
     last_at: c.last_message_at, last_text: c.last_message_text, last_sender: c.last_message_sender,
     members: c.chat_members.map((m) => m.profiles).filter(Boolean),
     reads: new Map(c.chat_members.map((m) => [m.user_id, Number(m.last_read_id) || 0])),
@@ -7411,7 +7421,7 @@ function chatRow(c) {
   const row = h("button", { class: "row" + (c.id === state.activeId ? " active" : "") + (c.pinAt ? " pinrow" : ""), type: "button", "data-cid": c.id, onclick: (e) => { if (row._held) { row._held = false; e.preventDefault(); return; } openChat(c.id); } },
     av,
     h("span", { class: "txt" },
-      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), !c.is_group && preTick(other(c)), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
+      h("span", { class: "top" }, tint(h("span", { class: "name" }, c.is_channel && kindIcon("horn"), !c.is_group && preTick(other(c)), c.is_group && chanTick(c), chatTitle(c), !c.is_group && marks(other(c)), c.muted && muteMark()), c.is_group ? null : other(c)), h("span", { class: "time" }, c.last_text ? listTime(c.last_at) : "")),
       h("span", { class: "sub" }, h("span", {}, preview), mentionChats.has(c.id) && h("span", { class: "count at", title: T("Вас упомянули") }, "@"), state.unread.has(c.id) && h("span", { class: "count" + (c.muted ? " quiet" : ""), title: T("Непрочитанные сообщения") }, state.unread.get(c.id) > 99 ? "99+" : String(state.unread.get(c.id))), c.pinAt && !state.unread.has(c.id) && pinMark())));
   // список часто перерисовывается: строка под курсором не должна заново «разгораться»
   if (hoverChat === c.id) { row.classList.add("hv-now"); setTimeout(() => row.classList.remove("hv-now"), 80); }
@@ -7428,7 +7438,7 @@ function rowSig(c) {
   const o = !c.is_group ? other(c) : null;
   const who = o ? [o.id, o.display_name, o.avatar_path, o.verified, o.premium_until, o.name_hue, o.worn_type, o.worn_number, o.is_admin, o.is_chief, o.hide_crown, o.hide_tick, o.badge_style, o.badge_path, o.banned_at].join("|") : "";
   return [c.id, chatTitle(c), c.avatar_path, c.last_text, c.last_sender, c.last_text ? listTime(c.last_at) : "", state.unread.get(c.id) || 0,
-    mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.is_channel ? 1 : 0,
+    mentionChats.has(c.id) ? 1 : 0, c.muted ? 1 : 0, c.pinAt || "", c.is_channel ? 1 : 0, c.verified ? 1 : 0,
     o && storyUsers.has(o.id) ? ((storyFeed.get(o.id) || {}).seen ? "s" : "S") : "", who,
     c.is_group && c.last_sender ? memberName(c, c.last_sender) : "", window.SOROKA_LANG, contactsVer, o ? avOf(o) : ""].join("¦");
 }
@@ -7804,7 +7814,7 @@ function renderHead() {
   applyChatTheme();
   const o = other(c);
   $("convAvatar").replaceChildren(avatar(chatTitle(c), c.is_group ? c.id : (o || state.profile).id, true, c.is_group ? c.avatar_path : avOf(o || state.profile)));
-  $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.is_group || !preTick(o) ? [] : [preTick(o)]), chatTitle(c), ...(c.is_group ? [] : marks(o)));
+  $("convName").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.is_group || !preTick(o) ? [] : [preTick(o)]), ...(c.is_group && c.verified ? [chanTick(c)] : []), chatTitle(c), ...(c.is_group ? [] : marks(o)));
   if (!c.is_group && o && c.ttl) $("convName").append(ttlMark(c));
   tint($("convName"), c.is_group ? null : o);
   const n = c.members.length;
@@ -10809,13 +10819,30 @@ $("fwSearch").addEventListener("input", debounce(paintForward, 150));
 $("maFwd").addEventListener("click", () => {
   $("dlgMsg").close();
   if (!actMsg) return;
-  fwdMsgs = actGroup ? actGroup.slice() : [actMsg];
+  fwdMsgs = actGroup ? actGroup.slice() : [actMsg]; fwdText = null;
   $("fwSearch").value = "";
   paintForward();
   $("dlgForward").showModal();
 });
-let forwarding = false;
+let forwarding = false, fwdText = null;
+function shareTextToChat(text) {
+  fwdMsgs = []; fwdText = String(text || "").slice(0, 4000);
+  $("fwSearch").value = "";
+  paintForward();
+  $("dlgForward").showModal();
+}
 async function forwardTo(c) {
+  if (fwdText && !forwarding) {
+    forwarding = true;
+    try {
+      const { error } = await sb.from("messages").insert({ chat_id: c.id, sender_id: state.me.id, body: fwdText });
+      if (error) { toast(T("Не удалось отправить")); return; }
+      $("dlgForward").close();
+      toast(T("Отправлено: ") + chatTitle(c));
+      fwdText = null;
+    } finally { forwarding = false; }
+    return;
+  }
   if (forwarding || !fwdMsgs.length) return;
   forwarding = true;
   let ok = 0;
@@ -14778,13 +14805,23 @@ async function loadWalletValue() {
   if (w.data && w.data.balance != null) $("sv_coins").textContent = nf.format(Number(w.data.balance));
 }
 function paintTabs() {
-  const set = $("dlgSettings").open;
+  const set = $("dlgSettings").open, news = !!(window.MNews && MNews.isOpen());
   $("btnSettings").setAttribute("aria-current", String(set));
-  $("tabChats").setAttribute("aria-current", String(!set));
+  $("tabNews").setAttribute("aria-current", String(news && !set));
+  $("tabChats").setAttribute("aria-current", String(!set && !news));
 }
+// «Новости» в центре панели: страница на месте списка чатов, как Настройки (news.js)
+$("tabNews").addEventListener("click", () => {
+  if (!window.MNews) { toast(T("Новости ещё загружаются — попробуйте через секунду")); return; }
+  for (const d of document.querySelectorAll("dialog[open]")) d.close();
+  $("dlgSettings").close();
+  MNews.open();
+  paintTabs();
+});
 $("tabChats").addEventListener("click", () => {
   for (const d of document.querySelectorAll("dialog[open]")) d.close();
   $("dlgSettings").close();
+  if (window.MNews) MNews.close();
   if ($("search").value) { $("search").value = ""; renderList(); }
   $("chatList").scrollTo({ top: 0, behavior: "smooth" });
   paintTabs();
@@ -14802,6 +14839,7 @@ $("setHideSeen").addEventListener("change", async (e) => {
 
 $("btnSettings").addEventListener("click", () => {
   if ($("dlgSettings").open) { showSetPage("menu"); return; }
+  if (window.MNews) MNews.close();
   $("setHideSeen").checked = !!state.profile.hide_seen && isPremium(state.profile);
   renderSettings();
   paintNotify();
@@ -14975,7 +15013,7 @@ function paintInfo() {
     av.addEventListener("click", () => { $("viewerImg").src = avatarUrl(c.avatar_path); $("viewer").showModal(); });
   }
   $("infoAvatar").replaceChildren(av);
-  $("infoTitle").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), c.title);
+  $("infoTitle").replaceChildren(...(c.is_channel ? [kindIcon("horn")] : []), ...(c.verified ? [chanTick(c)] : []), c.title);
   const n = c.members.length;
   $("infoCount").textContent = (c.is_channel ? subsText(n) : n + " " + plural(n, T("участник"), T("участника"), T("участников"))) +
     (role === "owner" ? T(" · вы владелец") : role === "admin" ? T(" · вы администратор") : "");
@@ -19538,6 +19576,7 @@ $("uAddStory").append(icon("plus"));
 for (const b of document.querySelectorAll(".side-head .icon-btn")) b.removeAttribute("title");
 $("tabSetIco").append(icon("gear"));
 $("tabChatsIco").prepend(icon("chats"));
+$("tabNewsIco").append(icon("news"));
 $("btnMic").append(icon("mic"));
 $("btnCam").append(icon("cam"));
 $("btnGive").append(icon("giftf"));
@@ -21089,7 +21128,7 @@ window.addEventListener("hashchange", () => handleLink());
    адреса отдаёт 404.html, а он перекладывает путь в #… — дальше его разбирает handleLink.
    /support и /terms не используем: это настоящие страницы support.html и terms.html. */
 const ROUTER_ON = /^(www\.)?(mestario\.lol|mestario\.top|soroka\.lol)$|^127\.0\.0\.1$/.test(location.hostname) && !window.Capacitor;
-const ROUTE_APP = /^(settings(-[a-z]+)?|market|admin|help|profile)$/;
+const ROUTE_APP = /^(settings(-[a-z]+)?|news|market|admin|help|profile)$/;
 const routeStack = [location.pathname];
 let routeBusy = false, routeSelfBack = false, routeT = 0;
 function routeNow() {
@@ -21102,6 +21141,7 @@ function routeNow() {
   if ($("dlgAdmin").open) return "/admin";
   if ($("dlgSupport").open) return "/help";
   if ($("dlgSettings").open) return "/settings" + (setPageNow && setPageNow !== "menu" ? "-" + setPageNow : "");
+  if (window.MNews && MNews.isOpen()) return "/news";
   if (state.activeId) { const c = state.chats.get(state.activeId); return c && c.username ? "/@" + c.username : "/c-" + state.activeId; }
   return "/";
 }
@@ -21123,6 +21163,7 @@ function closeRouted(keep) {
   const shut = (d) => instantNav && window.__dlgCloseNow && d instanceof HTMLDialogElement ? window.__dlgCloseNow(d) : d.close();
   for (const id of ROUTED) if (id !== keep && $(id).open) shut($(id));
   if (keep !== "dlgSettings" && $("dlgSettings").open) shut($("dlgSettings"));
+  if (keep !== "news" && window.MNews) MNews.close();
 }
 // открыть экран по адресу: кнопки браузера «назад/вперёд» и ссылки вида mestario.lol/settings
 async function applyRoute(path) {
@@ -21139,6 +21180,7 @@ async function applyRoute(path) {
       const pg = m[1] && document.querySelector('#dlgSettings [data-page="' + m[1] + '"]') ? m[1] : "menu";
       if (setPageNow !== pg) showSetPage(pg);
     }
+    else if (seg === "news") { closeRouted("news"); if (window.MNews && !MNews.isOpen()) $("tabNews").click(); }
     else if (seg === "market") { closeRouted("dlgMarket"); if (!$("dlgMarket").open) $("btnMarket").click(); }
     else if (seg === "admin") { closeRouted("dlgAdmin"); if (state.isAdmin && !$("dlgAdmin").open) $("btnAdmin").click(); }
     else if (seg === "help") { closeRouted("dlgSupport"); if (!$("dlgSupport").open) openSupport(); }
@@ -21264,7 +21306,8 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 </script>
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=8ad5d7d523"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=c674ea3199"; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "news.js?v=b068551370"; s.onload = function () { if (window.MNews && ROUTER_ON) { var mo = new MutationObserver(function () { routeSync(); }); mo.observe(MNews.page, { attributes: true, attributeFilter: ["hidden"] }); } }; document.body.append(s); })();
 </script>
 </body>
 </html>

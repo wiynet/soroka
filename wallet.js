@@ -2132,5 +2132,7 @@ setTimeout(() => dispatchEvent(new Event("mw-ready")), 0);
   if (typeof state !== "undefined" && state.me && state.started) { try { if (vault()) loadSrv(true).then(syncAddr).catch(() => {}); } catch (e) {} return; }
   if (n < 30) setTimeout(() => bootSync(n + 1), 4000);
 })(0);
-window.MW = { open, openSend, claim, nftLink, payCard, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
+// курсы и графики для карточки «Курсы» в Новостях
+const market = { loadRates, loadChart, chartPeek, rateOf, diffOf, money, pct, priceDig };
+window.MW = { open, openSend, claim, nftLink, payCard, market, hasVault: () => !!vault(), toRaw, toFriendly, _t: { show, genMnemonic, validMnemonic, seedOf, walletOf, parseUnits, fmtUnits, plainUnits, seal, unseal } };
 })();
