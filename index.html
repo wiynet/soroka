@@ -637,11 +637,11 @@ a.mention.me { background: color-mix(in srgb, var(--accent) 18%, transparent); b
 .sidebar .list { padding-bottom: 4px; }
 /* нижняя панель разделов: «Чаты» и «Настройки» */
 /* нижняя панель: парящий «док» со значками, подпись всплывает подсказкой */
-.tabbar { align-self: center; display: flex; align-items: flex-end; gap: 16px; margin: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); padding: 10px 18px 8px; border-radius: 24px; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel-2) 72%, transparent); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 10px 28px rgb(0 0 0 / .22), inset 0 1px 0 rgb(255 255 255 / .06); transform: perspective(600px) rotateX(10deg); }
-.tab { position: relative; display: grid; justify-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--ink); }
-.tab .ti { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 16px; border: 1px solid transparent; }
-.tab .ti svg { width: 26px; height: 26px; }
-.tab::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0; transform: scale(0); }
+.tabbar { align-self: center; display: flex; align-items: flex-end; gap: 10px; margin: 6px 12px calc(8px + env(safe-area-inset-bottom, 0px)); padding: 6px 12px 4px; border-radius: 20px; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel-2) 72%, transparent); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 10px 28px rgb(0 0 0 / .22), inset 0 1px 0 rgb(255 255 255 / .06); transform: perspective(600px) rotateX(10deg); }
+.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 0; border: 0; background: transparent; color: var(--ink); }
+.tab .ti { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: 12px; border: 1px solid transparent; }
+.tab .ti svg { width: 22px; height: 22px; }
+.tab::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: 0; transform: scale(0); }
 .tab[aria-current="true"] { color: var(--accent); }
 .tab[aria-current="true"]::after { opacity: 1; transform: none; }
 .tab .tl { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translate(-50%, 4px); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 12px; font-weight: 500; white-space: nowrap; box-shadow: 0 6px 16px rgb(0 0 0 / .2); opacity: 0; pointer-events: none; }
@@ -3178,7 +3178,7 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
 }
 :root[data-glass="liquid"] .day { background: var(--lg-shine), var(--lg-tint-strong) !important; border-color: transparent !important; }
 :root[data-glass="liquid"] #toast { color: var(--ink); border-radius: 20px; }
-:root[data-glass="liquid"] .tabbar { border-radius: 30px; transform: none; background: var(--lg-shine), var(--lg-tint-strong) !important; }
+:root[data-glass="liquid"] .tabbar { border-radius: 22px; transform: none; background: var(--lg-shine), var(--lg-tint-strong) !important; }
 :root[data-glass="liquid"] .ctx { border-radius: 22px; background: var(--lg-shine), var(--lg-tint-strong) !important; }
 :root[data-glass="liquid"] .ga.me, :root[data-glass="liquid"] #folderBar button.on {
   background: var(--lg-shine), color-mix(in srgb, var(--accent) 72%, transparent) !important; color: #fff;
