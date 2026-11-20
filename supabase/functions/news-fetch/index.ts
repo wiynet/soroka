@@ -163,14 +163,14 @@ async function ask(sys: string, text: string): Promise<string> {
     const r = await tfetch("https://text.pollinations.ai/openai", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: text }] }),
-    }, 30000);
+    }, 55000);
     const j = await r.json().catch(() => ({}));
     return String(j?.choices?.[0]?.message?.content || "").trim();
   } catch (_) { return ""; }
 }
 async function translatePending() {
   const { data: rows } = await sb.from("news_items").select("id,title,summary").neq("lang", "ru").is("title_ru", null)
-    .gte("created_at", new Date(Date.now() - 2 * 86400_000).toISOString()).order("published_at", { ascending: false }).limit(20);
+    .gte("created_at", new Date(Date.now() - 2 * 86400_000).toISOString()).order("published_at", { ascending: false }).limit(8);
   if (!rows || !rows.length) return 0;
   const sys = "Ты переводчик новостей. Переведи на русский заголовки (t) и анонсы (s) новостей. Сохрани смысл, имена и числа, " +
     "пиши естественно, как в русских новостях, без эмодзи и без своих комментариев. Ответь только JSON-массивом объектов {\"id\":число,\"t\":\"...\",\"s\":\"...\"} в том же порядке.";
@@ -216,7 +216,7 @@ async function runOnce(only?: string[]) {
     }
   }));
   let translated = 0;
-  for (let i = 0; i < 4 && Date.now() - t0 < 80_000; i++) {   // по 20 новостей за запрос, пока есть время
+  for (let i = 0; i < 6 && Date.now() - t0 < 70_000; i++) {   // по 8 новостей за запрос, пока есть время
     let n = 0;
     try { n = await translatePending(); } catch (_) { break; }   // переведём в следующий раз
     translated += n;
