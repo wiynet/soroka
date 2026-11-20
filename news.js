@@ -63,6 +63,67 @@ button.nz-card:active { transform: scale(.985); }
 .nz-pick .add { aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 4px; font-size: 12px; font-weight: 600; }
 .nz-pick .add svg { width: 22px; height: 22px; }
 div.nz-card { cursor: pointer; }
+/* большие фото и видео в ленте */
+.nz-big-m { position: relative; margin: 10px -14px 0; background: #000; overflow: hidden; }
+.nz-big-m img, .nz-big-m video { display: block; width: 100%; max-height: 420px; object-fit: cover; }
+.nz-big-m .nz-cnt { right: 10px; bottom: 10px; font-size: 12px; }
+.nz-big-m .nz-play span { width: 52px; height: 52px; } .nz-big-m .nz-play svg { width: 24px; height: 24px; }
+/* реакции и комментарии */
+.nz-rx { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; cursor: default; }
+.nz-rx button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 99px; padding: 6px 10px; font-size: 13.5px; font-weight: 600;
+  background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--muted); transition: transform .15s; }
+.nz-rx button:active { transform: scale(.92); }
+.nz-rx button svg { width: 16px; height: 16px; }
+.nz-rx button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.nz-rx .cm { margin-left: auto; }
+.nz-cmts { display: flex; flex-direction: column; gap: 10px; }
+.nz-cmt { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
+.nz-cmt .avatar { width: 34px; height: 34px; }
+.nz-cmt .bb { background: var(--panel-2); border-radius: 4px 16px 16px 16px; padding: 8px 12px; min-width: 0; }
+.nz-cmt .hd { display: flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 700; min-width: 0; }
+.nz-cmt .hd .vtick { width: 14px; height: 14px; }
+.nz-cmt .hd small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.nz-cmt .hd .del { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 12.5px; padding: 0; }
+.nz-cmt .tx { font-size: 14.5px; line-height: 1.4; margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nz-cbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; position: sticky; bottom: 92px; background: var(--panel); padding: 6px 0; z-index: 2; }
+.nz-cbar textarea { resize: none; min-height: 42px; max-height: 120px; font: inherit; color: var(--ink); }
+.nz-cbar .btn { padding: 10px 14px; }
+/* матч */
+.nz-match { margin-top: 10px; border-radius: 16px; padding: 12px; background: color-mix(in srgb, var(--ink) 5%, transparent); cursor: default; }
+.nz-match .top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); font-weight: 700; gap: 8px; }
+.nz-match .st { padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 8%, transparent); white-space: nowrap; }
+.nz-match .st.live { color: #e5484d; background: color-mix(in srgb, #e5484d 14%, transparent); display: inline-flex; align-items: center; gap: 5px; }
+.nz-match .st.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #e5484d; animation: nz-blink 1.2s infinite; }
+@keyframes nz-blink { 50% { opacity: .3; } }
+.nz-match .sb { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 10px; text-align: center; }
+.nz-match .tm { display: grid; justify-items: center; gap: 6px; font-size: 14px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.nz-match .lg { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 18px; cursor: zoom-in; }
+.nz-match .sc { font-size: 34px; font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nz-match .sc small { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--muted); }
+.nz-stat { margin-top: 10px; display: grid; gap: 8px; }
+.nz-stat .r { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 8px; align-items: center; font-size: 13px; }
+.nz-stat .r b { font-variant-numeric: tabular-nums; } .nz-stat .r b:last-child { text-align: right; }
+.nz-stat .r .mid { display: grid; gap: 3px; text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+.nz-stat .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; height: 5px; }
+.nz-stat .bars span { border-radius: 9px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; display: flex; }
+.nz-stat .bars span:first-child { justify-content: flex-end; }
+.nz-stat .bars i { display: block; height: 100%; background: var(--accent); border-radius: 9px; }
+.nz-stat .bars span:last-child i { background: #8a7cf6; }
+.nz-odds { margin-top: 12px; }
+.nz-odds .lb { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.nz-odds .bar { display: flex; height: 30px; border-radius: 10px; overflow: hidden; font-size: 12.5px; font-weight: 700; color: #fff; }
+.nz-odds .bar span { display: grid; place-items: center; min-width: 46px; white-space: nowrap; }
+.nz-me { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px minmax(0, 1fr); gap: 6px; align-items: center; }
+.nz-me .input { text-align: center; padding-left: 4px; padding-right: 4px; }
+.nz-me .lab { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.nz-me .lab:last-child { text-align: right; }
+.nz-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nz-team { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 6px; align-items: center; }
+.nz-team .ph { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--line); background: none; color: var(--muted); display: grid; place-items: center; padding: 0; overflow: hidden; }
+.nz-team .ph img { width: 100%; height: 100%; object-fit: cover; } .nz-team .ph svg { width: 20px; height: 20px; }
+.nz-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nz-chips button { border: 0; border-radius: 99px; padding: 7px 12px; font-size: 13.5px; font-weight: 600; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.nz-chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink, #fff); }
 .nz-poll { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; cursor: default; }
 .nz-poll .q { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .nz-opt { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; border-radius: 12px; padding: 8px 12px; min-height: 42px;
@@ -216,6 +277,8 @@ div.nz-card { cursor: pointer; }
     if (/not verified/.test(m)) return T("Публиковать в Новостях могут только верифицированные авторы");
     if (/bad url/.test(m)) return T("Ссылка должна начинаться с https://");
     if (/bad poll/.test(m)) return T("Проверьте варианты ответа: от 2 до 10, до 100 символов");
+    if (/bad match/.test(m)) return T("Проверьте матч: названия команд до 40 символов, числа без минусов");
+    if (/bad category|bad region/.test(m)) return T("Этот раздел вам недоступен");
     if (/bad title/.test(m)) return T("Заголовок — от 3 до 160 символов");
     if (/not channel admin/.test(m)) return T("Заявку за канал подаёт его администратор, канал должен быть публичным");
     return T("Не получилось. Попробуйте ещё раз");
@@ -407,6 +470,93 @@ div.nz-card { cursor: pointer; }
     }
     return box;
   }
+  /* реакции без эмодзи: нравится, огонь, поддерживаю, звезда */
+  const RX = [["heart", "Нравится"], ["fire", "Огонь"], ["up", "Поддерживаю"], ["star", "Звезда"]];
+  const RX_SVG = {
+    fire: '<path d="M12 21c-3.9 0-7-2.8-7-6.6 0-2.7 1.6-4.6 3.2-6.3.4 1.6 1.3 2.7 2.4 3.1C10.200 7.600 12.200 4.800 14.600 3c.3 3.200 4.400 5.400 4.400 10.800C19 17.900 16 21 12 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    up: '<path d="M7 11v9H4v-9zM7 11l4-8c1.700 0 2.600 1.200 2.300 2.800L12.700 9H19a2 2 0 012 2.300l-1.200 7A2 2 0 0117.800 20H7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' };
+  function rxIco(k) {
+    if (!RX_SVG[k]) return ico(k);
+    const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); s.innerHTML = RX_SVG[k]; return s;
+  }
+  function reactBar(it, onComments) {
+    const box = h("div", { class: "nz-rx", onclick: (e) => e.stopPropagation() });
+    let busy = false;
+    const paint = () => {
+      const r = it.reactions || { counts: {} }, c = r.counts || {};
+      box.replaceChildren(...RX.map(([k, n]) => h("button", { type: "button", title: T(n), "aria-label": T(n), "aria-pressed": String(r.mine === k), onclick: async () => {
+        if (busy) return;
+        busy = true;
+        // сразу показываем результат, потом сверяем с сервером
+        const old = JSON.parse(JSON.stringify(r)), was = r.mine;
+        if (was) c[was] = Math.max(0, (c[was] || 1) - 1);
+        if (was === k) r.mine = null; else { r.mine = k; c[k] = (c[k] || 0) + 1; }
+        it.reactions = { counts: c, mine: r.mine }; paint();
+        const { data, error } = await sb.rpc("news_react", { p_item: it.id, p_kind: k });
+        busy = false;
+        it.reactions = error ? old : data; paint();
+      } }, rxIco(k), c[k] ? String(c[k]) : null)),
+      h("button", { class: "cm", type: "button", title: T("Комментарии"), onclick: () => (onComments ? onComments() : openArticle(it, true)) }, ico("bubble"), it.comments ? String(it.comments) : T("Обсудить")));
+    };
+    paint();
+    return box;
+  }
+  /* большое фото или видео в ленте — у публикаций авторов и каналов */
+  function bigMedia(it) {
+    const ms = mediaOf(it), m = ms[0];
+    if (!m) return null;
+    const box = h("div", { class: "nz-big-m" });
+    if (m.kind === "video") {
+      const vid = h("video", { muted: true, playsinline: true, preload: "metadata" });
+      vid.muted = true;
+      mediaUrl(m).then((u) => { if (u) vid.src = u + "#t=0.5"; });
+      box.append(vid, h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
+    } else {
+      const img = h("img", { alt: "", referrerpolicy: "no-referrer", onerror: () => box.remove() });
+      mediaUrl(m).then((u) => { if (u) img.src = u; });
+      box.append(img);
+    }
+    if (ms.length > 1) box.append(h("span", { class: "nz-cnt" }, "1/" + ms.length));
+    return box;
+  }
+  /* матч: счёт, статистика и шансы — всё вводит автор */
+  const MSTAT = [["possession", "Владение, %"], ["shots", "Удары"], ["on_target", "Удары в створ"], ["corners", "Угловые"], ["fouls", "Фолы"], ["yellow", "Жёлтые карточки"], ["red", "Красные карточки"]];
+  function teamLogo(t) {
+    const nm = (t && t.name) || "?";
+    if (t && t.image) {
+      const im = h("img", { class: "lg", alt: "", onclick: (e) => { e.stopPropagation(); if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } });
+      im.src = sb.storage.from("news").getPublicUrl(t.image).data.publicUrl;
+      return im;
+    }
+    let hsh = 0; for (const ch of nm) hsh = (hsh * 31 + ch.codePointAt(0)) | 0;
+    return h("span", { class: "lg", style: "background:hsl(" + (Math.abs(hsh) % 360) + " 55% 42%)" }, [...nm][0].toUpperCase());
+  }
+  function matchBlock(mt, full) {
+    if (!mt || !mt.home || !mt.away) return null;
+    const st = mt.status === "live" ? h("span", { class: "st live" }, T("Идёт") + (mt.minute ? " · " + mt.minute + "'" : ""))
+      : mt.status === "ht" ? h("span", { class: "st" }, T("Перерыв"))
+      : mt.status === "ft" ? h("span", { class: "st" }, T("Завершён"))
+      : h("span", { class: "st" }, mt.starts_at ? new Date(mt.starts_at).toLocaleString(en() ? "en-US" : "ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : T("Скоро"));
+    const sc = mt.status === "soon" ? h("div", { class: "sc" }, "– : –") : h("div", { class: "sc" }, (mt.score || [0, 0])[0] + " : " + (mt.score || [0, 0])[1]);
+    const box = h("div", { class: "nz-match", onclick: (e) => { if (!full) return; e.stopPropagation(); } },
+      h("div", { class: "top" }, h("span", {}, mt.league || T("Матч")), st),
+      h("div", { class: "sb" }, h("div", { class: "tm" }, teamLogo(mt.home), mt.home.name), sc, h("div", { class: "tm" }, teamLogo(mt.away), mt.away.name)));
+    const stats = mt.stats || {};
+    const rows = MSTAT.filter(([k]) => Array.isArray(stats[k])).slice(0, full ? 9 : 2);
+    if (rows.length) box.append(h("div", { class: "nz-stat" }, ...rows.map(([k, n]) => {
+      const [a, b] = stats[k], tot = Math.max(1, a + b);
+      return h("div", { class: "r" }, h("b", {}, k === "possession" ? a + "%" : String(a)),
+        h("div", { class: "mid" }, T(n).replace(/, %$/, ""), h("div", { class: "bars" }, h("span", {}, h("i", { style: "width:" + Math.round((a / tot) * 100) + "%" })), h("span", {}, h("i", { style: "width:" + Math.round((b / tot) * 100) + "%" })))),
+        h("b", {}, k === "possession" ? b + "%" : String(b)));
+    })));
+    if (Array.isArray(mt.odds) && mt.odds.some((x) => x > 0)) {
+      const tot = Math.max(1, mt.odds[0] + mt.odds[1] + mt.odds[2]);
+      const seg = (v, lab, col) => v > 0 ? h("span", { style: "flex:" + v + ";background:" + col, title: lab }, lab + " " + Math.round((v / tot) * 100) + "%") : null;
+      box.append(h("div", { class: "nz-odds" }, h("div", { class: "lb" }, T("Шансы")),
+        h("div", { class: "bar" }, seg(mt.odds[0], T("П1"), "var(--accent)"), seg(mt.odds[1], T("Ничья"), "#7c8a94"), seg(mt.odds[2], T("П2"), "#8a7cf6"))));
+    }
+    return box;
+  }
   /* опрос: голос сразу по нажатию (несколько ответов — галочки и «Голосовать»), после — результаты */
   function pollBlock(it) {
     const box = h("div", { class: "nz-poll", onclick: (e) => e.stopPropagation() });
@@ -483,10 +633,14 @@ div.nz-card { cursor: pointer; }
     const src = h("div", { class: "nz-src" }, ...srcBadge(it), h("span", {}, "· " + ago(it.published_at)),
       showRu(it) ? h("span", { class: "nz-tr" }, ico("globe"), T("Переведено")) : null,
       it.kind !== "rss" ? h("span", { class: "nz-tag" }, it.kind === "channel" ? T("Канал") : T("Автор")) : null);
+    const big = it.kind !== "rss" && mediaOf(it).length;
     return h("div", { class: "nz-card" + (it.kind !== "rss" ? " vf" : ""), role: "button", tabindex: "0", onclick: () => openArticle(it),
       onkeydown: (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); openArticle(it); } } },
-      src, h("div", { class: "nz-row" }, h("div", {}, h("h4", {}, ttl), sum ? h("p", {}, sum) : null), img),
-      it.post_type === "poll" && it.poll ? pollBlock(it) : null, it.post_type === "rate" && it.rate_asset ? rateBlock(it.rate_asset) : null);
+      src, h("div", { class: "nz-row", style: big ? "grid-template-columns:minmax(0,1fr)" : null }, h("div", {}, h("h4", {}, ttl), sum ? h("p", {}, sum) : null), big ? null : img),
+      big ? bigMedia(it) : null,
+      it.post_type === "match" && it.match ? matchBlock(it.match, false) : null,
+      it.post_type === "poll" && it.poll ? pollBlock(it) : null, it.post_type === "rate" && it.rate_asset ? rateBlock(it.rate_asset) : null,
+      reactBar(it));
   }
 
   let feed = [], feedBusy = false, feedSeq = 0, feedDirty = false;
@@ -540,7 +694,7 @@ div.nz-card { cursor: pointer; }
   }
 
   /* ---------- статья ---------- */
-  function openArticle(it) {
+  function openArticle(it, toComments) {
     go("article", (v) => {
       let ru = showRu(it);
       const ttl = h("h3", {}), sum = h("p", {});
@@ -559,6 +713,12 @@ div.nz-card { cursor: pointer; }
       kids.push(sum);
       if (it.post_type === "poll" && it.poll) kids.push(pollBlock(it));
       if (it.post_type === "rate" && it.rate_asset) kids.push(rateBlock(it.rate_asset));
+      if (it.post_type === "match" && it.match) {
+        kids.push(matchBlock(it.match, true));
+        if (it.kind === "user" && state.me && it.pub_id === state.me.id) kids.push(btn(T("Обновить счёт и статистику"), "", () => openCompose("match", it), "refresh"));
+      }
+      const cmBox = h("div", { class: "nz-cmts" });
+      kids.push(reactBar(it, () => cmInput.focus()));
       const acts = h("div", { class: "nz-acts" });
       if (it.url) {
         const s = srcMap.get(it.source_id);
@@ -574,7 +734,45 @@ div.nz-card { cursor: pointer; }
       if (state.isAdmin || mine) acts.append(btn(T("Убрать из Новостей"), "ghost", () => removeItem(it), "trash"));
       kids.push(acts);
       if (it.kind === "rss") kids.push(h("div", { class: "nz-orig" }, T("Источник: ") + ((srcMap.get(it.source_id) || {}).site || "") + T(" · материал принадлежит автору")));
+      // комментарии
+      const cmHead = h("div", { class: "set-label", style: "margin:4px 2px 0" }, T("Комментарии"));
+      const cmInput = h("textarea", { class: "input", rows: "1", maxlength: "1000", placeholder: T("Написать комментарий…") });
+      cmInput.addEventListener("input", () => { cmInput.style.height = "auto"; cmInput.style.height = Math.min(120, cmInput.scrollHeight) + "px"; });
+      const send = h("button", { class: "btn", type: "button", "aria-label": T("Отправить") }, ico("send"));
+      const cmtEl = (c) => {
+        const u = c.user || {};
+        const el = h("div", { class: "nz-cmt" }, avatar(u.display_name || "", u.id, true, u.avatar_path),
+          h("div", { class: "bb" }, h("div", { class: "hd" }, h("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, u.display_name || ""),
+            u.verified || u.is_admin ? tick() : null, h("small", {}, ago(c.created_at)),
+            c.can_delete ? h("button", { class: "del", type: "button", onclick: async () => {
+              const { error } = await sb.rpc("news_comment_delete", { p_id: c.id });
+              if (error) { toast(T("Не удалось")); return; }
+              el.remove(); it.comments = Math.max(0, (it.comments || 1) - 1);
+            } }, T("Удалить")) : null),
+            h("div", { class: "tx" }, c.body)));
+        return el;
+      };
+      send.onclick = async () => {
+        const b = cmInput.value.trim();
+        if (!b) return;
+        send.disabled = true;
+        const { data, error } = await sb.rpc("news_comment_add", { p_item: it.id, p_body: b });
+        send.disabled = false;
+        if (error) { toast(/limit/.test(error.message || "") ? T("Слишком часто — попробуйте позже") : T("Не удалось отправить")); return; }
+        cmInput.value = ""; cmInput.style.height = "";
+        cmBox.querySelector(".nz-empty")?.remove();
+        cmBox.append(cmtEl(data));
+        it.comments = (it.comments || 0) + 1;
+      };
+      cmInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && window.matchMedia && matchMedia("(pointer:fine)").matches) { e.preventDefault(); send.onclick(); } });
+      cmBox.replaceChildren(h("div", { class: "nz-skel", style: "height:48px" }));
+      kids.push(cmHead, cmBox, h("div", { class: "nz-cbar" }, cmInput, send));
       v.replaceChildren(h("div", { class: "nz-art", style: "display:flex;flex-direction:column;gap:12px" }, ...kids));
+      sb.rpc("news_comments_list", { p_item: it.id }).then(({ data }) => {
+        const rows = Array.isArray(data) ? data : [];
+        cmBox.replaceChildren(...(rows.length ? rows.map(cmtEl) : [h("div", { class: "nz-empty", style: "padding:10px" }, T("Комментариев пока нет — будьте первым."))]));
+        if (toComments) setTimeout(() => { cmHead.scrollIntoView({ block: "start", behavior: motionOK() ? "smooth" : "auto" }); }, 80);
+      });
     });
   }
   async function openPost(it) {
@@ -636,7 +834,7 @@ div.nz-card { cursor: pointer; }
       const kids = [subHead(T("Верификация"))];
       kids.push(h("div", { class: "nz-status" }, T("Галочку выдают администраторы Mestario. Верифицированный канал попадает в Новости автоматически: каждый новый пост появляется в ленте. Верифицированный человек публикует прямо из Новостей.")));
       const rowFor = (title, st) => h("div", { class: "nz-card nz-cta", style: "grid-template-columns:minmax(0,1fr) auto" }, h("b", {}, title), h("span", { class: st.ok ? "nz-ok" : "nz-status" }, st.text));
-      const stOf = (news, pending, verified) => news ? { ok: true, text: T("в Новостях · ") + T(CAT[news.category] || "") } : pending ? { text: T("заявка на проверке") } : verified ? { ok: true, text: T("галочка есть") } : { text: T("нет") };
+      const stOf = (news, pending, verified) => news ? { ok: true, text: T("в Новостях · ") + catsLabel(news) } : pending ? { text: T("заявка на проверке") } : verified ? { ok: true, text: T("галочка есть") } : { text: T("нет") };
       kids.push(h("div", { class: "lbl set-label" }, T("Статус")), rowFor(T("Я"), stOf(status.me, status.pending, state.profile && state.profile.verified)));
       for (const c of chans) kids.push(rowFor(c.title, stOf(c.news, c.pending, c.verified)));
       const opts = (status.me || status.pending ? [] : [h("option", { value: "" }, T("Себя (") + "@" + (state.profile ? state.profile.username : "") + ")")])
@@ -674,7 +872,7 @@ div.nz-card { cursor: pointer; }
   const upErr = (e) => toast(/size|large|exceed/i.test(String(e && e.message)) ? T("Файл больше 100 МБ") : T("Не удалось загрузить файл"));
 
   let composeKind = "post";
-  function openCompose(kind) {
+  function openCompose(kind, editItem) {
     if (kind) composeKind = kind;
     go("compose", (v) => {
       const t = h("input", { class: "input", maxlength: "160" });
@@ -753,19 +951,113 @@ div.nz-card { cursor: pointer; }
       };
       paintAssets();
 
+      // матч: команды с фото, счёт, статус, статистика и шансы
+      const mt0 = (editItem && editItem.match) || {};
+      const num = (val, ph) => { const i = h("input", { class: "input", type: "number", inputmode: "numeric", min: "0", max: "999", placeholder: ph || "0" }); if (val != null && val !== "") i.value = String(val); return i; };
+      const team = (side) => {
+        const t0 = mt0[side] || {};
+        const o = { path: t0.image || null, name: h("input", { class: "input", maxlength: "40", placeholder: side === "home" ? T("Хозяева") : T("Гости") }) };
+        o.name.value = t0.name || "";
+        const fi = h("input", { type: "file", accept: "image/*", hidden: true });
+        const ph = h("button", { class: "ph", type: "button", title: T("Логотип или фото"), "aria-label": T("Логотип или фото"), onclick: () => fi.click() },
+          t0.image ? h("img", { src: sb.storage.from("news").getPublicUrl(t0.image).data.publicUrl, alt: "" }) : ico("cam"));
+        fi.addEventListener("change", () => {
+          const f = fi.files[0]; fi.value = "";
+          if (!f || !/^image\//.test(f.type)) return;
+          ph.replaceChildren(h("img", { src: URL.createObjectURL(f), alt: "" }));
+          o.path = null; o.fail = false;
+          o.up = uploadNews(f, "image").then((pth) => { o.path = pth; }).catch((e) => { o.fail = true; ph.replaceChildren(ico("cam")); upErr(e); });
+        });
+        o.el = h("div", { class: "nz-team" }, ph, fi, o.name);
+        return o;
+      };
+      const mHome = team("home"), mAway = team("away");
+      const league = h("input", { class: "input", maxlength: "60", placeholder: T("Турнир, например: Кубок, полуфинал") });
+      league.value = mt0.league || "";
+      let mStatus = mt0.status || "soon";
+      const statusSeg = h("div", { class: "seg", role: "tablist" });
+      const minute = num(mt0.minute || "", T("Минута"));
+      const starts = h("input", { class: "input", type: "datetime-local" });
+      if (mt0.starts_at) try { const d = new Date(mt0.starts_at); starts.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); } catch (e) {}
+      const sh = num((mt0.score || [])[0]), sa = num((mt0.score || [])[1]);
+      const scoreRow = h("div", { class: "nz-me" }, h("span", { class: "lab" }, T("Счёт")), sh, sa, h("span", {}));
+      const paintStatus = () => {
+        statusSeg.replaceChildren(...[["soon", "Скоро"], ["live", "Идёт"], ["ht", "Перерыв"], ["ft", "Завершён"]].map(([k, n]) =>
+          h("button", { type: "button", role: "tab", "aria-checked": String(mStatus === k), onclick: () => { mStatus = k; paintStatus(); } }, T(n))));
+        minute.hidden = mStatus !== "live"; starts.hidden = mStatus !== "soon"; scoreRow.hidden = mStatus === "soon";
+      };
+      paintStatus();
+      const st0 = mt0.stats || {};
+      const statIn = MSTAT.map(([k, n]) => { const a = num((st0[k] || [])[0], "—"), b = num((st0[k] || [])[1], "—"); return { k, a, b, el: h("div", { class: "nz-me" }, h("span", { class: "lab" }, T(n)), a, b, h("span", {})) }; });
+      const od0 = mt0.odds || [];
+      const o1 = num(od0[0], "%"), ox = num(od0[1], "%"), o2 = num(od0[2], "%");
+      const matchBox = h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Матч")), league, h("div", { class: "nz-teams" }, mHome.el, mAway.el),
+        h("div", { class: "lbl" }, T("Статус")), statusSeg, minute, starts, scoreRow,
+        h("div", { class: "lbl" }, T("Статистика (необязательно)")), h("div", { class: "nz-me" }, h("span", {}), h("span", { class: "lab", style: "text-align:center" }, T("Хоз.")), h("span", { class: "lab", style: "text-align:center" }, T("Гости")), h("span", {})),
+        ...statIn.map((r) => r.el),
+        h("div", { class: "lbl" }, T("Шансы, % (необязательно)")), h("div", { class: "nz-me", style: "grid-template-columns:repeat(3,minmax(0,1fr))" },
+          h("label", { class: "lab", style: "display:grid;gap:4px;text-align:center" }, T("П1"), o1), h("label", { class: "lab", style: "display:grid;gap:4px;text-align:center" }, T("Ничья"), ox), h("label", { class: "lab", style: "display:grid;gap:4px;text-align:center" }, T("П2"), o2)));
+      const matchData = () => {
+        const nv = (i) => (i.value === "" ? null : String(Math.max(0, Math.round(Number(i.value) || 0))));
+        const stats = {};
+        for (const r of statIn) if (r.a.value !== "" && r.b.value !== "") stats[r.k] = [nv(r.a), nv(r.b)];
+        const m = { league: league.value.trim(), status: mStatus, minute: nv(minute) || "0", score: [nv(sh) || "0", nv(sa) || "0"], stats,
+          home: { name: mHome.name.value.trim(), image: mHome.path || null }, away: { name: mAway.name.value.trim(), image: mAway.path || null } };
+        if (mStatus === "soon" && starts.value) m.starts_at = new Date(starts.value).toISOString();
+        if (o1.value !== "" || ox.value !== "" || o2.value !== "") m.odds = [nv(o1) || "0", nv(ox) || "0", nv(o2) || "0"];
+        return m;
+      };
+      const teamWait = async () => {
+        const ups = [mHome, mAway].filter((o) => o.up && !o.path && !o.fail).map((o) => o.up);
+        if (ups.length) { toast(T("Дожидаемся загрузки фото и видео…")); await Promise.all(ups); }
+        return ![mHome, mAway].some((o) => o.fail);
+      };
+
+      // раздел и регион — если админ разрешил несколько
+      const cats = (me.categories && me.categories.length ? me.categories : [me.category]).filter(Boolean);
+      const regs = (me.regions && me.regions.length ? me.regions : [me.region]).filter(Boolean);
+      let pCat = cats[0], pReg = regs[0];
+      const catChips = h("div", { class: "nz-chips" }), regChips = h("div", { class: "nz-chips" });
+      const paintWhere = () => {
+        catChips.replaceChildren(...cats.map((c) => h("button", { type: "button", "aria-pressed": String(pCat === c), onclick: () => { pCat = c; paintWhere(); } }, T(CAT[c] || c))));
+        regChips.replaceChildren(...regs.map((r) => h("button", { type: "button", "aria-pressed": String(pReg === r), onclick: () => { pReg = r; paintWhere(); } }, r === "ru" ? T("Россия") : T("Мир"))));
+      };
+      paintWhere();
+      const whereBox = h("div", { class: "nz-form", hidden: cats.length < 2 && regs.length < 2 },
+        cats.length > 1 ? h("div", { class: "lbl" }, T("Раздел")) : null, cats.length > 1 ? catChips : null,
+        regs.length > 1 ? h("div", { class: "lbl" }, T("Регион")) : null, regs.length > 1 ? regChips : null);
+
       const kindSeg = h("div", { class: "seg", role: "tablist" });
       const paintKind = () => {
-        kindSeg.replaceChildren(...[["post", "Пост"], ["poll", "Опрос"], ["rate", "Курс"]].map(([k, n]) =>
+        kindSeg.replaceChildren(...[["post", "Пост"], ["poll", "Опрос"], ["rate", "Курс"], ["match", "Матч"]].map(([k, n]) =>
           h("button", { type: "button", role: "tab", "aria-checked": String(composeKind === k), onclick: () => { composeKind = k; paintKind(); } }, T(n))));
         pollBox.hidden = composeKind !== "poll";
         rateBox.hidden = composeKind !== "rate";
-        t.placeholder = composeKind === "poll" ? T("Вопрос") : T("Заголовок");
-        x.placeholder = composeKind === "poll" ? T("Пояснение (необязательно)") : composeKind === "rate" ? T("Ваш комментарий к курсу") : T("Текст новости");
+        matchBox.hidden = composeKind !== "match";
+        t.placeholder = composeKind === "poll" ? T("Вопрос") : composeKind === "match" ? T("Заголовок (необязательно)") : T("Заголовок");
+        x.placeholder = composeKind === "poll" ? T("Пояснение (необязательно)") : composeKind === "rate" ? T("Ваш комментарий к курсу") : composeKind === "match" ? T("Комментарий к матчу (необязательно)") : T("Текст новости");
       };
       paintKind();
 
+      if (editItem) {   // обновление матча по ходу игры
+        const save = btn(T("Сохранить"), "", async () => {
+          if (!mHome.name.value.trim() || !mAway.name.value.trim()) { toast(T("Укажите обе команды")); return; }
+          save.disabled = true;
+          try {
+            if (!(await teamWait())) { toast(T("Уберите файлы, которые не загрузились")); return; }
+            const { data, error } = await sb.rpc("news_match_update", { p_item: editItem.id, p_match: matchData() });
+            if (error) { toast(T("Не получилось. Попробуйте ещё раз")); return; }
+            editItem.match = data; toast(T("Сохранено"));
+            back(); feedDirty = true; openArticle(editItem);
+          } finally { save.disabled = false; }
+        }, "check1");
+        v.replaceChildren(subHead(T("Обновить матч")), matchBox, save);
+        return;
+      }
+
       const pub = btn(T("Опубликовать"), "", async () => {
-        if (t.value.trim().length < 3) { toast(composeKind === "poll" ? T("Вопрос — от 3 до 160 символов") : T("Заголовок — от 3 до 160 символов")); return; }
+        if (composeKind === "match" && (!mHome.name.value.trim() || !mAway.name.value.trim())) { toast(T("Укажите обе команды")); return; }
+        if (t.value.trim().length < 3 && !(composeKind === "match" && !t.value.trim())) { toast(composeKind === "poll" ? T("Вопрос — от 3 до 160 символов") : T("Заголовок — от 3 до 160 символов")); return; }
         let poll = null;
         if (composeKind === "poll") {
           const filled = opts.filter((o) => o.inp.value.trim());
@@ -781,6 +1073,8 @@ div.nz-card { cursor: pointer; }
           const args = { p_title: t.value.trim(), p_text: x.value.trim(), p_url: u.value.trim() || null, p_media: media.length ? media : null, p_kind: composeKind };
           if (poll) args.p_poll = { multi: multi.checked, days: Number(days.value) || 0, options: poll.filled.map((o) => ({ text: o.inp.value.trim(), image: o.path || null })) };
           if (composeKind === "rate") args.p_rate = asset;
+          if (composeKind === "match") { if (!(await teamWait())) { toast(T("Уберите файлы, которые не загрузились")); return; } args.p_match = matchData(); }
+          args.p_category = pCat; args.p_region = pReg;
           const { error } = await sb.rpc("news_publish", args);
           if (error) { toast(rpcErr(error)); return; }
           toast(T("Опубликовано в Новостях"));
@@ -789,8 +1083,8 @@ div.nz-card { cursor: pointer; }
         } finally { pub.disabled = false; }
       });
       v.replaceChildren(subHead(T("Написать в Новости")),
-        h("div", { class: "nz-card nz-status" }, tick(), " ", T("Вы верифицированы — публикация сразу появится в ленте. Раздел: ") + T(CAT[me.category] || "") + " · " + (me.region === "ru" ? T("Россия") : T("Мир"))),
-        kindSeg, h("div", { class: "nz-form" }, t, x), pollBox, rateBox, h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Фото и видео")), pick, inp, u, pub));
+        h("div", { class: "nz-card nz-status" }, tick(), " ", T("Вы верифицированы — публикация сразу появится в ленте.")),
+        kindSeg, whereBox, matchBox, h("div", { class: "nz-form" }, t, x), pollBox, rateBox, h("div", { class: "nz-form" }, h("div", { class: "lbl" }, T("Фото и видео")), pick, inp, u, pub));
       setTimeout(() => t.focus(), 50);
     });
   }
@@ -817,7 +1111,7 @@ div.nz-card { cursor: pointer; }
       const { data } = await sb.rpc("news_admin_lookup", { p_q: s });
       const rows = Array.isArray(data) ? data : [];
       found.replaceChildren(...(rows.length ? rows.map((o) => h("button", { class: "nz-card nz-req", type: "button", onclick: () => openGrant(o) }, admRow(o),
-        o.news ? h("div", { class: "meta" }, h("span", { class: "nz-ok" }, T("В Новостях · ") + T(CAT[o.news.category] || ""))) : null)) : [h("div", { class: "hint" }, T("Никого не нашли. Канал должен быть публичным."))]));
+        o.news ? h("div", { class: "meta" }, h("span", { class: "nz-ok" }, T("В Новостях · ") + catsLabel(o.news))) : null)) : [h("div", { class: "hint" }, T("Никого не нашли. Канал должен быть публичным."))]));
     }, 300));
     const box = h("div", { style: "display:flex;flex-direction:column;gap:10px" }, h("div", { class: "nz-skel" }));
     v.replaceChildren(subHead(T("Верификация")), tabs, q, found, box);
@@ -841,24 +1135,43 @@ div.nz-card { cursor: pointer; }
       const rows = error ? [] : data || [];
       box.replaceChildren(...(rows.length ? rows.map((o) => h("button", { class: "nz-card nz-req", type: "button", onclick: () => openGrant({ ...o, verified: admTab === "on", news: admTab === "on" ? o : null }) },
         admRow({ ...o, verified: admTab === "on" }),
-        h("div", { class: "meta" }, h("span", {}, T(CAT[o.category] || "") + " · " + (o.region === "ru" ? T("Россия") : T("Мир"))), h("span", {}, o.autopost ? T("автопостинг") : T("без автопостинга")),
+        h("div", { class: "meta" }, h("span", {}, catsLabel(o) + " · " + regsLabel(o)), h("span", {}, o.autopost ? T("автопостинг") : T("без автопостинга")),
           h("span", {}, T("публикаций: ") + o.items), h("span", {}, ago(o.at))))) : [h("div", { class: "nz-empty" }, admTab === "on" ? T("Пока никому не выдано.") : T("Отозванных нет."))]));
     }
   }
+  const catsLabel = (o) => { const c = o.categories || [o.category]; return c.length >= 9 ? T("все разделы") : c.map((k) => T(CAT[k] || k)).join(", "); };
+  const regsLabel = (o) => { const r = o.regions || [o.region]; return r.length === 2 ? T("Россия и Мир") : r[0] === "ru" ? T("Россия") : T("Мир"); };
   function openGrant(o) {
     go("grant", (v) => {
       const cur = o.news || {};
-      let kind = o.kind, cat = cur.category || "news", reg = cur.region || "ru", auto = cur.autopost !== false;
-      const sel = h("select", { class: "input" }, ...CATS.filter(([k]) => k !== "top").map(([k, n]) => h("option", { value: k, selected: k === cat }, T(n))));
-      sel.onchange = () => { cat = sel.value; };
-      const regSeg = h("div", { class: "seg", role: "tablist" });
-      const paintReg = () => regSeg.replaceChildren(...[["ru", "Россия"], ["world", "Мир"]].map(([k, n]) => h("button", { type: "button", role: "tab", "aria-checked": String(reg === k), onclick: () => { reg = k; paintReg(); } }, T(n))));
-      paintReg();
+      const ALL = CATS.filter(([k]) => k !== "top").map(([k]) => k);
+      let kind = o.kind, auto = cur.autopost !== false;
+      // порядок важен: первый выбранный раздел — основной (в него идут посты канала)
+      let cats = (cur.categories && cur.categories.length ? cur.categories : [cur.category || "news"]).slice();
+      let regs = (cur.regions && cur.regions.length ? cur.regions : [cur.region || "ru"]).slice();
+      const sel = h("div", { class: "nz-chips" }), regSeg = h("div", { class: "nz-chips" });
+      const paintCats = () => {
+        const all = ALL.every((k) => cats.includes(k));
+        sel.replaceChildren(h("button", { type: "button", "aria-pressed": String(all), onclick: () => { cats = all ? [cats[0]] : [cats[0]].concat(ALL.filter((k) => k !== cats[0])); paintCats(); } }, T("Все разделы")),
+          ...CATS.filter(([k]) => k !== "top").map(([k, n]) => h("button", { type: "button", "aria-pressed": String(cats.includes(k)), onclick: () => {
+            if (cats.includes(k)) { if (cats.length > 1) cats = cats.filter((x) => x !== k); } else cats.push(k);
+            paintCats();
+          } }, T(n) + (cats[0] === k && cats.length > 1 ? " · " + T("основной") : ""))));
+      };
+      const paintReg = () => {
+        const both = regs.length === 2;
+        regSeg.replaceChildren(h("button", { type: "button", "aria-pressed": String(both), onclick: () => { regs = both ? [regs[0]] : ["ru", "world"]; paintReg(); } }, T("Оба региона")),
+          ...[["ru", "Россия"], ["world", "Мир"]].map(([k, n]) => h("button", { type: "button", "aria-pressed": String(regs.includes(k)), onclick: () => {
+            if (regs.includes(k)) { if (regs.length > 1) regs = regs.filter((x) => x !== k); } else regs.push(k);
+            paintReg();
+          } }, T(n))));
+      };
+      paintCats(); paintReg();
       const sw = h("input", { type: "checkbox" });
       sw.checked = auto; sw.onchange = () => { auto = sw.checked; };
       const give = btn(o.news ? T("Сохранить") : T("Выдать верификацию"), "", async () => {
         give.disabled = true;
-        const { error } = await sb.rpc("news_admin_grant", { p_kind: kind, p_target: o.target, p_category: cat, p_region: reg, p_autopost: auto });
+        const { error } = await sb.rpc("news_admin_grant", { p_kind: kind, p_target: o.target, p_categories: cats, p_regions: regs, p_autopost: auto });
         give.disabled = false;
         if (error) { toast(T("Не удалось выдать: ") + (error.message || "")); return; }
         toast(o.news ? T("Сохранено") : T("Верификация выдана"));
@@ -867,7 +1180,8 @@ div.nz-card { cursor: pointer; }
       }, "check1");
       const kids = [subHead(o.news ? T("Верификация") : T("Выдать верификацию")), h("div", { class: "nz-card nz-req" }, admRow(o)),
         h("div", { class: "nz-form" },
-          h("div", { class: "lbl" }, T("Раздел в Новостях")), sel,
+          h("div", { class: "lbl" }, T("Разделы в Новостях")), sel,
+          h("div", { class: "hint" }, kind === "channel" ? T("Посты канала идут в основной раздел — он выбран первым.") : T("Автор сам выбирает раздел из разрешённых при публикации.")),
           h("div", { class: "lbl" }, T("Регион")), regSeg,
           h("label", { class: "toggle" }, sw, h("span", {}, T("Автопостинг в Новости"), h("br"), h("span", { class: "muted small" },
             kind === "channel" ? T("Новые посты канала сразу появляются в ленте") : T("Человек может публиковать прямо из Новостей")))),
