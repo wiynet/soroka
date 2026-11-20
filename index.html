@@ -3431,7 +3431,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=8f5d485824"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=e9664dd926"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -21307,7 +21307,7 @@ try { if (goneAcc) goneBoot(); else fastBoot(); } catch (e) { console.warn("boot
 <script>
 /* кошелёк — отдельным файлом; в приложении (встроенный интерфейс) берём его с сайта */
 (function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "wallet.js?v=c674ea3199"; document.body.append(s); })();
-(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "news.js?v=b068551370"; s.onload = function () { if (window.MNews && ROUTER_ON) { var mo = new MutationObserver(function () { routeSync(); }); mo.observe(MNews.page, { attributes: true, attributeFilter: ["hidden"] }); } }; document.body.append(s); })();
+(function () { var s = document.createElement("script"); s.src = (window.Capacitor || location.hostname === "localhost" && !/^https?:$/.test(location.protocol) || location.hostname === "localhost" && /Android/i.test(navigator.userAgent) ? "https://mestario.lol/" : "") + "news.js?v=2e7200c05c"; s.onload = function () { if (window.MNews && ROUTER_ON) { var mo = new MutationObserver(function () { routeSync(); }); mo.observe(MNews.page, { attributes: true, attributeFilter: ["hidden"] }); } }; document.body.append(s); })();
 </script>
 </body>
 </html>

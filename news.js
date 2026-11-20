@@ -45,6 +45,23 @@ button.nz-card:active { transform: scale(.985); }
 .nz-row p { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .nz-th { width: 92px; height: 70px; border-radius: 12px; object-fit: cover; background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .nz-th[hidden] { display: none; }
+.nz-thw { position: relative; flex: none; }
+.nz-thw .nz-th { display: block; }
+.nz-play { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.nz-play span { width: 30px; height: 30px; border-radius: 50%; background: rgb(0 0 0 / .55); display: grid; place-items: center; }
+.nz-play svg { width: 16px; height: 16px; color: #fff; margin-left: 2px; }
+.nz-cnt { position: absolute; right: 5px; bottom: 5px; font-size: 11px; font-weight: 700; color: #fff; background: rgb(0 0 0 / .55); border-radius: 7px; padding: 1px 6px; }
+.nz-gal { display: flex; flex-direction: column; gap: 8px; margin: 0 -12px; }
+.nz-gal img, .nz-gal video { width: 100%; max-height: 70vh; object-fit: contain; background: #000; display: block; }
+.nz-gal img { cursor: zoom-in; }
+.nz-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.nz-pick .it { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.nz-pick .it img, .nz-pick .it video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nz-pick .it .x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .6); color: #fff; display: grid; place-items: center; padding: 0; font-size: 17px; line-height: 1; }
+.nz-pick .it .x svg { width: 14px; height: 14px; }
+.nz-pick .it .bar { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .2s; }
+.nz-pick .add { aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 4px; font-size: 12px; font-weight: 600; }
+.nz-pick .add svg { width: 22px; height: 22px; }
 .nz-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .nz-mkt .hd { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .nz-tick { display: grid; grid-template-columns: 34px minmax(0, 1fr) 84px auto; gap: 10px; align-items: center; padding: 9px 0; border: 0; border-bottom: 1px solid var(--line); width: 100%; background: none; color: var(--ink); text-align: left; }
@@ -308,11 +325,56 @@ button.nz-card:active { transform: scale(.985); }
     return [avatar(it.pub_name || "", it.pub_id, true, it.pub_avatar), h("span", { class: "nm" }, it.kind === "channel" ? kindIcon("horn") : null, it.pub_name || "", tick())];
   }
   const showRu = (it) => it.lang !== "ru" && it.title_ru && !en();
+  /* фото и видео: публикации людей лежат в открытом бакете news, посты каналов — во вложениях канала */
+  function mediaOf(it) {
+    if (Array.isArray(it.media) && it.media.length) return it.media;
+    if (it.image) return [{ url: it.image, kind: "image" }];
+    if (it.image_path) return [{ bucket: "attachments", path: it.image_path, kind: "image" }];
+    return [];
+  }
+  async function mediaUrl(m) {
+    if (m.url) return m.url;
+    if (m.bucket === "news") return sb.storage.from("news").getPublicUrl(m.path).data.publicUrl;
+    return typeof signedUrl === "function" ? signedUrl(m.path) : null;
+  }
+  function thumb(it) {
+    const ms = mediaOf(it), m = ms[0];
+    const img = h("img", { class: "nz-th", alt: "", loading: "lazy", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } });
+    if (!m) return img;
+    const wrap = h("span", { class: "nz-thw" });
+    if (m.kind === "video") {
+      const vid = h("video", { class: "nz-th", muted: true, playsinline: true, preload: "metadata" });
+      vid.muted = true;
+      mediaUrl(m).then((u) => { if (u) vid.src = u + "#t=0.5"; });
+      wrap.append(vid, h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
+    } else {
+      mediaUrl(m).then((u) => { if (u) img.src = u; });
+      wrap.append(img);
+    }
+    if (ms.length > 1) wrap.append(h("span", { class: "nz-cnt" }, "1/" + ms.length));
+    return wrap;
+  }
+  function gallery(it) {
+    const ms = mediaOf(it);
+    if (!ms.length) return null;
+    const box = h("div", { class: "nz-gal" });
+    for (const m of ms) {
+      if (m.kind === "video") {
+        const vid = h("video", { controls: true, playsinline: true, preload: "metadata" });
+        mediaUrl(m).then((u) => { if (u) vid.src = u; });
+        box.append(vid);
+      } else {
+        const img = h("img", { alt: "", referrerpolicy: "no-referrer", loading: "lazy", onerror: (e) => { e.currentTarget.remove(); },
+          onclick: (e) => { if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } });
+        mediaUrl(m).then((u) => { if (u) img.src = u; });
+        box.append(img);
+      }
+    }
+    return box;
+  }
   function itemCard(it) {
     const ttl = showRu(it) ? it.title_ru : it.title, sum = showRu(it) ? it.summary_ru : it.summary;
-    const img = h("img", { class: "nz-th", alt: "", loading: "lazy", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } });
-    if (it.image) img.src = it.image;
-    else if (it.image_path && typeof signedUrl === "function") signedUrl(it.image_path).then((u) => { if (u) img.src = u; });
+    const img = thumb(it);
     const src = h("div", { class: "nz-src" }, ...srcBadge(it), h("span", {}, "· " + ago(it.published_at)),
       showRu(it) ? h("span", { class: "nz-tr" }, ico("globe"), T("Переведено")) : null,
       it.kind !== "rss" ? h("span", { class: "nz-tag" }, it.kind === "channel" ? T("Канал") : T("Автор")) : null);
@@ -378,9 +440,7 @@ button.nz-card:active { transform: scale(.985); }
       const paint = () => { ttl.textContent = ru ? it.title_ru : it.title; sum.textContent = (ru ? it.summary_ru : it.summary) || ""; sum.hidden = !sum.textContent; };
       paint();
       const kids = [subHead(it.kind === "rss" ? ((srcMap.get(it.source_id) || {}).name || T("Новость")) : it.pub_name || T("Новость"))];
-      const img = h("img", { class: "nz-art-img", alt: "", referrerpolicy: "no-referrer", hidden: true, onload: (e) => { e.currentTarget.hidden = false; }, onerror: (e) => { e.currentTarget.hidden = true; } });
-      if (it.image) img.src = it.image; else if (it.image_path) signedUrl(it.image_path).then((u) => { if (u) img.src = u; });
-      kids.push(img, h("div", { class: "nz-src" }, ...srcBadge(it), h("span", {}, "· " + ago(it.published_at) + " · " + T(CAT[it.category] || ""))), ttl);
+      kids.push(gallery(it), h("div", { class: "nz-src" }, ...srcBadge(it), h("span", {}, "· " + ago(it.published_at) + " · " + T(CAT[it.category] || ""))), ttl);
       if (it.lang !== "ru" && it.title_ru) {
         const tb = h("button", { type: "button" });
         const lab = h("span", {});
@@ -497,18 +557,70 @@ button.nz-card:active { transform: scale(.985); }
       const x = h("textarea", { class: "input", maxlength: "2000", placeholder: T("Текст новости") });
       const u = h("input", { class: "input", type: "url", maxlength: "500", placeholder: T("Ссылка (необязательно)") });
       const me = (status && status.me) || {};
+      // фото и видео: до 10 штук, фото сжимаются, видео — до 100 МБ; загружаются сразу после выбора
+      const items = [];   // { file, kind, url, path, done, fail, el }
+      const pick = h("div", { class: "nz-pick" });
+      const inp = h("input", { type: "file", accept: "image/*,video/*", multiple: true, hidden: true });
+      const add = h("button", { class: "add", type: "button", onclick: () => inp.click() }, ico("cam"), T("Фото / видео"));
+      const paintPick = () => {
+        pick.replaceChildren(...items.map((m) => m.el), ...(items.length < 10 ? [add] : []));
+      };
+      async function upload(m) {
+        try {
+          let body = m.file, ext, type;
+          if (m.kind === "image" && !/gif$/i.test(m.file.type)) { body = await toWebp(m.file, 2000); ext = "webp"; type = "image/webp"; }
+          else { type = m.file.type || (m.kind === "video" ? "video/mp4" : "image/jpeg"); ext = ((/\.([a-z0-9]{2,5})$/i.exec(m.file.name) || [])[1] || type.split("/")[1] || "bin").toLowerCase(); }
+          if (ext === "quicktime") ext = "mov";
+          const path = state.me.id + "/" + randomId() + "." + ext;
+          m.bar.style.width = "35%";
+          const up = await sb.storage.from("news").upload(path, body, { contentType: type, cacheControl: "31536000" });
+          if (up.error) throw up.error;
+          m.path = path; m.done = true; m.bar.style.width = "100%";
+          setTimeout(() => { m.bar.hidden = true; }, 400);
+        } catch (e) {
+          m.fail = true; m.bar.style.width = "100%"; m.bar.style.background = "#e5484d";
+          toast(/size|large|exceed/i.test(String(e && e.message)) ? T("Файл больше 100 МБ") : T("Не удалось загрузить файл"));
+        }
+      }
+      inp.addEventListener("change", () => {
+        const files = [...inp.files]; inp.value = "";
+        for (const f of files) {
+          if (items.length >= 10) { toast(T("Не больше 10 фото и видео")); break; }
+          const kind = /^video\//.test(f.type) ? "video" : /^image\//.test(f.type) ? "image" : null;
+          if (!kind) { toast(T("Можно только фото и видео")); continue; }
+          if (f.size > 104857600) { toast(T("Файл больше 100 МБ")); continue; }
+          const url = URL.createObjectURL(f);
+          const m = { file: f, kind, url, bar: h("span", { class: "bar", style: "width:8%" }) };
+          const prev = kind === "video" ? h("video", { src: url + "#t=0.3", muted: true, playsinline: true, preload: "metadata" }) : h("img", { src: url, alt: "" });
+          m.el = h("div", { class: "it" }, prev, kind === "video" ? h("span", { class: "nz-play" }, h("span", {}, ico("play"))) : null, m.bar,
+            h("button", { class: "x", type: "button", "aria-label": T("Убрать"), onclick: () => {
+              items.splice(items.indexOf(m), 1); URL.revokeObjectURL(url);
+              if (m.path) sb.storage.from("news").remove([m.path]).catch(() => {});
+              paintPick();
+            } }, "×"));
+          items.push(m);
+          m.up = upload(m);
+        }
+        paintPick();
+      });
+      paintPick();
       const pub = btn(T("Опубликовать"), "", async () => {
         if (t.value.trim().length < 3) { toast(T("Заголовок — от 3 до 160 символов")); return; }
         pub.disabled = true;
-        const { error } = await sb.rpc("news_publish", { p_title: t.value.trim(), p_text: x.value.trim(), p_url: u.value.trim() || null });
-        pub.disabled = false;
-        if (error) { toast(rpcErr(error)); return; }
-        toast(T("Опубликовано в Новостях"));
-        feedDirty = true; back();
+        try {
+          if (items.some((m) => !m.done && !m.fail)) { toast(T("Дожидаемся загрузки фото и видео…")); await Promise.all(items.map((m) => m.up)); }
+          if (items.some((m) => m.fail)) { toast(T("Уберите файлы, которые не загрузились")); return; }
+          const media = items.map((m) => ({ path: m.path, kind: m.kind }));
+          const { error } = await sb.rpc("news_publish", { p_title: t.value.trim(), p_text: x.value.trim(), p_url: u.value.trim() || null, p_media: media.length ? media : null });
+          if (error) { toast(rpcErr(error)); return; }
+          toast(T("Опубликовано в Новостях"));
+          items.forEach((m) => URL.revokeObjectURL(m.url));
+          feedDirty = true; back();
+        } finally { pub.disabled = false; }
       });
       v.replaceChildren(subHead(T("Написать в Новости")),
         h("div", { class: "nz-card nz-status" }, tick(), " ", T("Вы верифицированы — публикация сразу появится в ленте. Раздел: ") + T(CAT[me.category] || "") + " · " + (me.region === "ru" ? T("Россия") : T("Мир"))),
-        h("div", { class: "nz-form" }, t, x, u, pub));
+        h("div", { class: "nz-form" }, t, x, pick, inp, u, pub));
       setTimeout(() => t.focus(), 50);
     });
   }
