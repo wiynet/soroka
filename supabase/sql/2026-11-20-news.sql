@@ -418,3 +418,16 @@ end $$;
 select cron.unschedule('news-fetch') where exists (select 1 from cron.job where jobname = 'news-fetch');
 select cron.schedule('news-fetch', '2,17,32,47 * * * *', 'select private.news_fetch_poll()');
 commit;
+
+-- ---------- доступ: только вошедшим (не anon), функции разбора — со своим search_path ----------
+alter function private.news_split(text) set search_path = '';
+do $$ declare f record; begin
+  for f in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname like 'news\_%' loop
+    execute format('revoke execute on function %s from public, anon', f.sig);
+  end loop;
+end $$;
+grant execute on function public.news_feed(text, text, text[], boolean, timestamptz, int), public.news_whats_new(), public.news_publish(text, text, text),
+  public.news_delete(bigint), public.news_my_status(), public.news_request(uuid, text), public.news_admin_requests(), public.news_admin_list(boolean),
+  public.news_admin_lookup(text), public.news_admin_grant(text, uuid, text, text, boolean), public.news_admin_revoke(text, uuid), public.news_admin_reject(bigint) to authenticated;
+grant execute on function public.news_server_sources() to service_role;
