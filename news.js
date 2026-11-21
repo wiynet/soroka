@@ -85,7 +85,7 @@ div.nz-card { cursor: pointer; }
 .nz-cmt .hd small { color: var(--muted); font-weight: 500; margin-left: 4px; }
 .nz-cmt .hd .del { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 12.5px; padding: 0; }
 .nz-cmt .tx { font-size: 14.5px; line-height: 1.4; margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.nz-cbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; position: sticky; bottom: 92px; background: var(--panel); padding: 6px 0; z-index: 2; }
+.nz-cbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 2px 0 6px; }
 .nz-cbar textarea { resize: none; min-height: 42px; max-height: 120px; font: inherit; color: var(--ink); }
 .nz-cbar .btn { padding: 10px 14px; }
 /* матч */
@@ -718,7 +718,7 @@ div.nz-card { cursor: pointer; }
         if (it.kind === "user" && state.me && it.pub_id === state.me.id) kids.push(btn(T("Обновить счёт и статистику"), "", () => openCompose("match", it), "refresh"));
       }
       const cmBox = h("div", { class: "nz-cmts" });
-      kids.push(reactBar(it, () => cmInput.focus()));
+      kids.push(reactBar(it, () => { cmInput.scrollIntoView({ block: "center", behavior: motionOK() ? "smooth" : "auto" }); cmInput.focus({ preventScroll: true }); }));
       const acts = h("div", { class: "nz-acts" });
       if (it.url) {
         const s = srcMap.get(it.source_id);
