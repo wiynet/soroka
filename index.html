@@ -213,7 +213,13 @@ button.wordmark.spin { opacity: .55; }
    прямо под пальцем, вместе с поиском */
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .side-scroll > * { flex: none; }
-.side-scroll > #chatList { flex: 1 0 auto; overflow: visible; min-height: auto; }
+.side-scroll { position: relative; scroll-snap-type: y proximity; }
+/* список чатов всегда хотя бы на весь экран: тогда поиск и истории можно спрятать над ним, даже если чатов мало */
+.side-scroll > #chatList { flex: 1 0 auto; overflow: visible; min-height: 100%; }
+/* точки «прилипания» при прокрутке: истории, поиск и начало чатов — без остановки на полпути */
+.side-scroll > .get-apps:not([hidden]), .side-scroll > .stories-bar, .side-scroll > .search,
+.side-scroll > .folders:not([hidden]), .side-scroll > .folders[hidden] ~ #chatList { scroll-snap-align: start; }
+.sidebar.searching .side-scroll { scroll-snap-type: none; }
 
 /* Настройки и Новости открыты — список чатов не выключаем (display: none заставлял телефон заново
    рисовать и декодировать все аватарки при возврате: это и было «перезагрузкой»), а просто прячем */
@@ -7839,6 +7845,7 @@ function setSearchMode(on) {
   const before = moving.map((el) => el.getBoundingClientRect().top);
   if (on) $("sideScroll").scrollTop = 0;
   side.classList.toggle("searching", on);
+  if (!on) parkList(false);
   $("searchClose").hidden = !on;
   if (!on) { $("search").value = ""; $("search").blur(); }
   renderList();
@@ -7886,7 +7893,7 @@ function renderList() {
     const go = () => {
       const a = document.getElementById("app");
       if (a && a.classList.contains("enter") && a.querySelector("#chatList .row:not(.skel)")) { setTimeout(go, 200); return; }
-      requestAnimationFrame(() => { listWait = null; renderListNow().then(res, res); });
+      requestAnimationFrame(() => { listWait = null; renderListNow().then(() => { if (!listParked && state.chats.size && !searchMode) parkList(false); res(); }, res); });
     };
     go();
   });
@@ -14475,6 +14482,31 @@ function openProfileEdit() {
     if (!now) sc.scrollTop = saved;
   }).observe(side, { attributes: true, attributeFilter: ["class"] });
 })();
+// при входе чаты сразу наверху: поиск и истории спрятаны над ними. Потянул чуть вниз — виден поиск, дальше — истории.
+// Истории и прочее над чатами могут догрузиться позже: тогда сдвигаем прокрутку на ту же величину, чтобы чаты не прыгали
+function chatStart() {
+  const f = $("folderBar");
+  return (f && !f.hidden ? f : $("chatList")).offsetTop;
+}
+let listParked = false;
+function parkList(smooth) {
+  const sc = $("sideScroll");
+  if (searchMode || !state.chats.size) return;
+  const y = chatStart();
+  if (smooth && motionOK()) sc.scrollTo({ top: y, behavior: "smooth" }); else sc.scrollTop = y;
+  listParked = true;
+}
+(function () {
+  const sc = $("sideScroll");
+  let hdr = 0;
+  const watch = () => {
+    const now = chatStart(), d = now - hdr;
+    // список стоит у начала чатов (или ниже) — высота над ним поменялась: сдвигаем на столько же
+    if (d && hdr && !searchMode && sc.scrollTop >= hdr - 4) sc.scrollTop += d;
+    hdr = now;
+  };
+  if (window.ResizeObserver) { const ro = new ResizeObserver(watch); for (const id of ["getApps", "storyBar", "folderBar"]) ro.observe($(id)); ro.observe(sc.querySelector(".search")); }
+})();
 // настройки показываются отдельной страницей на месте списка чатов; интерфейс оставлен как у окна
 (function () {
   const pg = $("dlgSettings"), side = document.querySelector(".sidebar");
@@ -15236,7 +15268,7 @@ $("tabChats").addEventListener("click", (e) => {
     paintTabs();
   });
   // повторное нажатие на «Чаты», когда уже в чатах, — наверх; возврат из Настроек и Новостей — туда, где были
-  if (e.isTrusted && was === 0) $("sideScroll").scrollTo({ top: 0, behavior: "smooth" });
+  if (e.isTrusted && was === 0) parkList(true);
 });
 $("setHideSeen").addEventListener("change", async (e) => {
   const on = e.target.checked;
