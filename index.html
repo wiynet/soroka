@@ -10149,12 +10149,33 @@ function pickFiles(files) {
 // микрофон виден, пока нечего отправлять; иначе на его месте кнопка отправки
 function syncComposer() {
   const typing = !!$("text").value.trim() || state.pendingFiles.length > 0 || !!state.editing || !!recorder;
-  $("btnMic").hidden = typing || !micSupported;
-  $("btnCam").hidden = typing || !micSupported;
   const gc = state.chats.get(state.activeId);
-  $("btnGive").hidden = typing || !gc || !gc.is_group;
-  $("btnStk").hidden = typing || !!recorder;   // розыгрыши только в группах и каналах
-  $("btnSend").hidden = !typing && micSupported;
+  cmpShow($("btnMic"), !(typing || !micSupported));
+  cmpShow($("btnCam"), !(typing || !micSupported));
+  cmpShow($("btnGive"), !(typing || !gc || !gc.is_group));
+  cmpShow($("btnStk"), !(typing || !!recorder));   // розыгрыши только в группах и каналах
+  cmpShow($("btnSend"), !(!typing && micSupported));
+}
+// кнопки у поля ввода появляются и уходят плавно: сужаются до нуля, а поле так же плавно растягивается
+function cmpShow(el, show) {
+  const vis = el._want != null ? el._want : !el.hidden;
+  if (vis === show) return;
+  el._want = show;
+  const box = $("composer");
+  const live = motionOK() && box && box.offsetParent !== null && !document.hidden;
+  if (el._anim) { el._anim.cancel(); el._anim = null; }
+  if (!live) { el.hidden = !show; return; }
+  const W = 40, ease = "cubic-bezier(.2,.8,.2,1)";
+  const shut = { width: "0px", minWidth: "0px", marginLeft: "-6px", opacity: 0, transform: "scale(.4)" };
+  const open = { width: W + "px", minWidth: W + "px", marginLeft: "0px", opacity: 1, transform: "none" };
+  if (show) {
+    el.hidden = false;
+    el._anim = el.animate([shut, open], { duration: 260, easing: ease });
+    el._anim.onfinish = () => { el._anim = null; };
+  } else {
+    el._anim = el.animate([open, shut], { duration: 220, easing: ease, fill: "forwards" });
+    el._anim.onfinish = () => { el._anim.cancel(); el._anim = null; if (el._want === false) el.hidden = true; };
+  }
 }
 $("btnAttach").addEventListener("click", (e) => {
   const c = state.chats.get(state.activeId);
