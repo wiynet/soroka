@@ -2480,6 +2480,18 @@ html.kb .sv-foot { padding-bottom: 10px; }
 .composer textarea { flex: 1; min-width: 0; resize: none; max-height: 160px; padding: 9px 14px; border: 1px solid transparent; border-radius: 20px; background: var(--panel-2); }
 .composer textarea:focus { outline: none; border-color: var(--accent); }
 .composer .send { background: var(--accent); color: var(--accent-ink); }
+/* поле ввода не меняет ширину: значки внутри поля и микрофон на месте «Отправить» просто гаснут и появляются */
+.composer { position: relative; }
+.composer > #btnStk, .composer > #btnCam, .composer > #btnGive, .composer > #btnMic { position: absolute; z-index: 2; margin: 0; }
+.composer > #btnStk, .composer > #btnCam, .composer > #btnGive { width: 36px; height: 40px; background: transparent; }
+.composer textarea { padding-right: calc(14px + var(--cmp-in, 0) * 36px); }
+.composer.typing textarea { padding-right: 14px; }
+.composer > #btnStk, .composer > #btnCam, .composer > #btnGive, .composer > #btnMic, .composer > #btnSend {
+  transition: opacity .2s ease, transform .28s cubic-bezier(.2,.8,.2,1), background-color .18s, color .18s, filter .2s; will-change: transform, opacity; }
+.composer.typing > #btnStk, .composer.typing > #btnCam, .composer.typing > #btnGive, .composer.typing > #btnMic { opacity: 0; transform: scale(.4); pointer-events: none; }
+.composer:not(.typing):not(.nomic) > #btnSend { opacity: 0; transform: scale(.4) rotate(-30deg); pointer-events: none; }
+.composer.typing > #btnMic { transform: scale(.4) rotate(30deg); }
+@media (prefers-reduced-motion: reduce) { .composer > #btnStk, .composer > #btnCam, .composer > #btnGive, .composer > #btnMic, .composer > #btnSend { transition: opacity .1s; } }
 .composer .send:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.08); }
 .attach-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--panel); border-top: 1px solid var(--line); font-size: 14px; }
 .att-thumbs { display: flex; gap: 6px; flex: none; max-width: 60%; overflow-x: auto; }
@@ -2658,7 +2670,7 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .list.fresh .row { animation: rise .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 35ms); }
   .dot { animation: dot-in .35s var(--ease) both; }
   #conv:not([hidden]) .conv-head { animation: fade-in .2s both; }
-  #msgs.fresh > :nth-last-child(-n+8) { animation: rise .25s var(--ease) both; }
+
   .msg.new { animation: msg-in-l .35s cubic-bezier(.22, 1, .36, 1) both; }
   .msg.mine.new { animation: msg-in-r .35s cubic-bezier(.22, 1, .36, 1) both, mine-flow 2.4s ease-in-out .35s 1 alternate; }
   @keyframes msg-in-l { from { opacity: 0; transform: translate(-20px, 12px) scale(.96); } }
@@ -2741,7 +2753,7 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .fwd, .msg .views { animation: fade-in .3s both; }
   #convSub.typing { animation: typing-fade 1.2s ease-in-out infinite; }
   @keyframes typing-fade { 50% { opacity: .5; } }
-  #btnMic, #btnSend { animation: pop-in .2s var(--ease) both; }
+
   dialog.full[open] { animation: from-right .26s var(--ease) both; }
   dialog.story-view[open] { animation: pop-in .22s var(--ease) both; }
   .cal-body { animation: cal-in .18s cubic-bezier(.23, 1, .32, 1) both; }
@@ -2797,7 +2809,7 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   #toast:not([hidden]) { animation: toast-in .25s var(--ease) both; }
   .placeholder:not([hidden]) { animation: fade-in .3s both; }
   .chip { animation: pop-in .18s var(--ease) both; }
-  .avatar img { animation: fade-in .35s both; }
+
   .avatar { transition: box-shadow .3s; }
   .pick { transition: background-color .18s, transform .12s var(--ease); animation: rise .28s var(--ease) both; }
   .pick:nth-child(3) { animation-delay: 50ms; }
@@ -7201,7 +7213,7 @@ async function startApp() {
   handleLink();
   checkIncomingCall();
   askLoginCodeOnce();
-  if (!fastStart) flash($("chatList"), 900);
+  /* список показывается сразу целиком, без поочерёдного появления строк */
   fastStart = false;
   subscribeInbox();
   if (IN_APP || IN_ELECTRON) setTimeout(appNotifyInit, 3000);
@@ -10140,34 +10152,31 @@ function pickFiles(files) {
 // микрофон виден, пока нечего отправлять; иначе на его месте кнопка отправки
 function syncComposer() {
   const typing = !!$("text").value.trim() || state.pendingFiles.length > 0 || !!state.editing || !!recorder;
-  const gc = state.chats.get(state.activeId);
-  cmpShow($("btnMic"), !(typing || !micSupported));
-  cmpShow($("btnCam"), !(typing || !micSupported));
-  cmpShow($("btnGive"), !(typing || !gc || !gc.is_group));
-  cmpShow($("btnStk"), !(typing || !!recorder));   // розыгрыши только в группах и каналах
-  cmpShow($("btnSend"), !(!typing && micSupported));
+  const gc = state.chats.get(state.activeId), box = $("composer");
+  // постоянные условия — через hidden; «печатаю / не печатаю» — только классом: кнопки гаснут и появляются
+  // одной прозрачностью и масштабом, поле при этом не меняет ширину, поэтому ничего не дёргается
+  $("btnMic").hidden = !micSupported;
+  $("btnCam").hidden = !micSupported;
+  $("btnGive").hidden = !gc || !gc.is_group;
+  box.classList.toggle("typing", typing);
+  box.classList.toggle("nomic", !micSupported);
+  for (const id of ["btnMic", "btnCam", "btnGive", "btnStk"]) { const el = $(id); el.tabIndex = typing ? -1 : 0; el.setAttribute("aria-hidden", String(typing)); }
+  $("btnSend").tabIndex = typing || !micSupported ? 0 : -1;
+  cmpPlace();
 }
-// кнопки у поля ввода появляются и уходят плавно: сужаются до нуля, а поле так же плавно растягивается
-function cmpShow(el, show) {
-  const vis = el._want != null ? el._want : !el.hidden;
-  if (vis === show) return;
-  el._want = show;
-  const box = $("composer");
-  const live = motionOK() && box && box.offsetParent !== null && !document.hidden;
-  if (el._anim) { el._anim.cancel(); el._anim = null; }
-  if (!live) { el.hidden = !show; return; }
-  const W = 40, ease = "cubic-bezier(.2,.8,.2,1)";
-  const shut = { width: "0px", minWidth: "0px", marginLeft: "-6px", opacity: 0, transform: "scale(.4)" };
-  const open = { width: W + "px", minWidth: W + "px", marginLeft: "0px", opacity: 1, transform: "none" };
-  if (show) {
-    el.hidden = false;
-    el._anim = el.animate([shut, open], { duration: 260, easing: ease });
-    el._anim.onfinish = () => { el._anim = null; };
-  } else {
-    el._anim = el.animate([open, shut], { duration: 220, easing: ease, fill: "forwards" });
-    el._anim.onfinish = () => { el._anim.cancel(); el._anim = null; if (el._want === false) el.hidden = true; };
-  }
+// значки стикеров, камеры и розыгрыша стоят внутри поля справа, микрофон — на месте кнопки отправки
+function cmpPlace() {
+  const box = $("composer"), ta = $("text");
+  if (!box || box.offsetParent === null || !ta.offsetWidth) return;
+  const inner = [$("btnCam"), $("btnGive"), $("btnStk")].filter((el) => !el.hidden);
+  const right = ta.offsetLeft + ta.offsetWidth, bottom = ta.offsetTop + ta.offsetHeight;
+  inner.forEach((el, k) => { el.style.left = right - 2 - (k + 1) * 36 + "px"; el.style.top = bottom - 40 - Math.max(0, Math.round((Math.min(ta.offsetHeight, 46) - 40) / 2)) + "px"; });
+  box.style.setProperty("--cmp-in", String(inner.length));
+  const send = $("btnSend"), mic = $("btnMic");
+  mic.style.left = send.offsetLeft + "px"; mic.style.top = send.offsetTop + "px";
 }
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => cmpPlace()); ro.observe($("composer")); ro.observe($("text")); }
+addEventListener("resize", () => cmpPlace());
 $("btnAttach").addEventListener("click", (e) => {
   const c = state.chats.get(state.activeId);
   if (!c) return;
@@ -14439,7 +14448,7 @@ function openProfileEdit() {
 (function () {
   const pg = $("dlgSettings"), side = document.querySelector(".sidebar");
   pg.showModal = () => { pg.hidden = false; side.classList.add("in-settings"); flash(pg, 400, "enter"); };
-  pg.close = () => { if (pg.hidden) return; pg.hidden = true; side.classList.remove("in-settings"); paintTabs(); flash($("chatList"), 500); };
+  pg.close = () => { if (pg.hidden) return; pg.hidden = true; side.classList.remove("in-settings"); paintTabs(); };
   Object.defineProperty(pg, "open", { get: () => !pg.hidden });
 })();
 $("setEdit").addEventListener("click", () => $("btnProfile").click());
