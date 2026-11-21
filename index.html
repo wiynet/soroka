@@ -2507,8 +2507,9 @@ html.kb .sv-foot { padding-bottom: 10px; }
 .composer.typing textarea { padding-right: 14px; }
 .composer > #btnStk, .composer > #btnCam, .composer > #btnGive, .composer > #btnMic, .composer > #btnSend {
   transition: opacity .2s ease, transform .28s cubic-bezier(.2,.8,.2,1), background-color .18s, color .18s, filter .2s; will-change: transform, opacity; }
-.composer.typing > #btnStk, .composer.typing > #btnCam, .composer.typing > #btnGive, .composer.typing > #btnMic { opacity: 0; transform: scale(.4); pointer-events: none; }
-.composer:not(.typing):not(.nomic) > #btnSend { opacity: 0; transform: scale(.4) rotate(-30deg); pointer-events: none; }
+/* спрятанные кнопки не «выключаются» до нуля (почти 0): телефон держит их нарисованными, и появление начинается сразу */
+.composer.typing > #btnStk, .composer.typing > #btnCam, .composer.typing > #btnGive, .composer.typing > #btnMic { opacity: .001; transform: scale(.4); pointer-events: none; }
+.composer:not(.typing):not(.nomic) > #btnSend { opacity: .001; transform: scale(.4) rotate(-30deg); pointer-events: none; }
 .composer.typing > #btnMic { transform: scale(.4) rotate(30deg); }
 @media (prefers-reduced-motion: reduce) { .composer > #btnStk, .composer > #btnCam, .composer > #btnGive, .composer > #btnMic, .composer > #btnSend { transition: opacity .1s; } }
 .composer .send:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.08); }
@@ -8183,7 +8184,8 @@ async function openChat(id) {
 }
 function closeChat(quiet) {
   if (recorder) stopRecording(false);
-  cacheActive();
+  if (cachedOnBack !== state.activeId) cacheActive();
+  cachedOnBack = null;
   leaveTyping();
   closeFind();
   if (selMode) selEnd();
@@ -8194,6 +8196,7 @@ function closeChat(quiet) {
   if (quiet !== true) flash($("app"), 300, "back");
   // после анимации выхода список обновляем, когда телефон свободен, — чтобы конец анимации не споткнулся
   if (quiet === true && window.requestIdleCallback) requestIdleCallback(() => renderList(), { timeout: 500 });
+  else if (quiet === true) setTimeout(() => renderList(), 120);   // iPhone: сначала показываем последний кадр выхода, потом обновляем список
   else renderList();
 }
 $("back").addEventListener("click", () => { if (phoneLayout()) chatBack(0); else closeChat(); });
@@ -17196,9 +17199,15 @@ function sndTone(t0, freq, dur, vol, type, glide) {
   o.connect(g); g.connect(sndBus);
   o.start(t0); o.stop(t0 + dur + 0.05);
 }
+const sndNoise = new Map();   // шум для «вжуха» готовим один раз, а не при каждой отправке
 function sndWhoosh(t0, dur, vol) {
-  const n = Math.floor(sndCtx.sampleRate * dur), buf = sndCtx.createBuffer(1, n, sndCtx.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  let buf = sndNoise.get(dur);
+  if (!buf) {
+    const n = Math.floor(sndCtx.sampleRate * dur); buf = sndCtx.createBuffer(1, n, sndCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    sndNoise.set(dur, buf);
+  }
   const src = sndCtx.createBufferSource(), bp = sndCtx.createBiquadFilter(), g = sndCtx.createGain();
   src.buffer = buf; bp.type = "bandpass"; bp.Q.value = 1.4;
   bp.frequency.setValueAtTime(700, t0); bp.frequency.exponentialRampToValueAtTime(3200, t0 + dur);
@@ -17309,7 +17318,11 @@ function chatBack(dx) {
   const k = kNow(dx);
   paneStop();
   paneRun(mix(k), PANE_SHUT, Math.max(150, 300 * (1 - k)), k ? "cubic-bezier(.2,.75,.3,1)" : "cubic-bezier(.32,.72,0,1)", () => { closeChat(true); paneStop(); });
+  // тяжёлое (сохранить переписку на устройство) — пока экран едет: движение идёт отдельно от этой работы и не тормозит
+  const id = state.activeId;
+  setTimeout(() => { if (state.activeId === id) { cacheActive(); cachedOnBack = id; } }, 0);
 }
+var cachedOnBack = null;
 function chatStay(dx) {
   const k = kNow(dx);
   paneStop();
@@ -19885,9 +19898,7 @@ function flyIn(node, from, elapsed) {
     ], { duration: FLY_MS, easing: "cubic-bezier(.22,1,.36,1)" });
     if (elapsed) a.currentTime = Math.min(elapsed, aMs(FLY_MS));
   };
-  if (elapsed && from.dx != null) { run(); return; }   // продолжение полёта после перерисовки — сразу, с того же места
-  node.style.opacity = "0";
-  requestAnimationFrame(() => { node.style.opacity = ""; run(); });
+  run();   // раскладка уже готова — полёт начинается в том же кадре, без пустого кадра и ожидания
 }
 // удалённое сообщение не исчезает мгновенно, а сжимается и растворяется
 let lastMsgsChat = null;
@@ -20054,6 +20065,27 @@ document.addEventListener("visibilitychange", () => {
   if (Date.now() - appUpdAt > 60000) { appUpdAt = Date.now(); appUpdates(); }   // вернулись в приложение — проверяем обновление
 });
 setTimeout(() => { appUpdAt = Date.now(); appUpdates(); }, 4000);
+// разогрев: один раз незаметно прогоняем все движения (полёт сообщения, выход из чата, кнопки у поля),
+// чтобы в первый настоящий раз телефону не пришлось их готовить — анимация начинается сразу
+function prewarm() {
+  if (!motionOK()) return;
+  try {
+    const box = h("div", { "aria-hidden": "true", style: "position:fixed;left:-2000px;top:0;width:320px;height:200px;overflow:hidden;contain:strict;pointer-events:none" });
+    const bub = h("div", { class: "msg mine" }, "·"), row = h("div", {}, "·");
+    box.append(bub, row);
+    document.body.append(box);
+    const o = { duration: 30, easing: "cubic-bezier(.22,1,.36,1)" };
+    bub.animate([{ transform: "translate3d(-40px,200px,0) scale(.92)", opacity: 0.5 }, { transform: "none", opacity: 1 }], o);
+    row.animate([{ transform: "translate3d(0,40px,0)" }, { transform: "none" }], o);
+    const f = paneFrames(PANE_OPEN, PANE_SHUT);
+    row.animate(f.pane, o); bub.animate(f.side, o); box.animate(f.dim, o);
+    setTimeout(() => box.remove(), 200);
+    if (typeof fitText === "function") fitText();
+    if (typeof cmpPlace === "function") cmpPlace();
+    if (sndCtx && sndCtx.state === "running") { for (const d of [0.16, 0.05]) if (!sndNoise.has(d)) { const n = Math.floor(sndCtx.sampleRate * d), b = sndCtx.createBuffer(1, n, sndCtx.sampleRate), x = b.getChannelData(0); for (let i = 0; i < n; i++) x[i] = (Math.random() * 2 - 1) * (1 - i / n); sndNoise.set(d, b); } }
+  } catch (e) {}
+}
+setTimeout(() => (window.requestIdleCallback || setTimeout)(prewarm, { timeout: 2000 }), 1500);
 // кнопки над историями: скачать Mestario для Android, Windows и iPhone (в самих приложениях не показываем)
 const DL_KINDS = [
   { id: "apk", label: "Android", ext: "APK", prefix: "android-", file: "Mestario.apk" },
