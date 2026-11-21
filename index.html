@@ -1456,25 +1456,36 @@ label.toggle + label.toggle { box-shadow: inset 0 1px 0 var(--line); }
 @media (prefers-reduced-motion: reduce) { label.toggle > input[type="checkbox"], label.toggle > input[type="checkbox"]::after { transition: none; } }
 @media (pointer: coarse) { label.toggle { min-height: 62px; padding: 14px 16px; } label.toggle > input[type="checkbox"] { width: 51px; height: 31px; } label.toggle > input[type="checkbox"]::after { width: 25px; height: 25px; } label.toggle > input[type="checkbox"]:checked::after { transform: translateX(20px); } }
 
-/* ---------- на компьютере Новости и Настройки — на весь экран ---------- */
+/* ---------- компьютер: список чатов уже; Новости, Настройки и поиск плавно раскрываются на весь экран ---------- */
 @media (min-width: 761px) {
-  #app:has(> .sidebar.in-news), #app:has(> .sidebar.in-settings) { grid-template-columns: minmax(0, 1fr); }
-  #app:has(> .sidebar.in-news) > .pane, #app:has(> .sidebar.in-settings) > .pane { display: none; }
-  #app:has(> .sidebar.in-news) > .sidebar, #app:has(> .sidebar.in-settings) > .sidebar { border-right: 0; }
+  #app { grid-template-columns: 300px minmax(0, 1fr); transition: grid-template-columns .38s cubic-bezier(.2,.8,.2,1); }
+  #app:has(> .sidebar.in-news), #app:has(> .sidebar.in-settings), #app:has(> .sidebar.searching) { grid-template-columns: 100% minmax(0, 0fr); }
+  #app > .pane { min-width: 0; overflow: hidden; }
+  #app:has(> .sidebar.in-news) > .pane, #app:has(> .sidebar.in-settings) > .pane, #app:has(> .sidebar.searching) > .pane { visibility: hidden; transition: visibility 0s .38s; }
+  #app:has(> .sidebar.in-news) > .sidebar, #app:has(> .sidebar.in-settings) > .sidebar, #app:has(> .sidebar.searching) > .sidebar { border-right-color: transparent; }
+  /* поиск на весь экран: поле и результаты — колонкой по центру */
+  .sidebar.searching > .search, .sidebar.searching > #chatList { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 }
-/* Настройки на широком экране: слева список разделов, справа открытый раздел (как панель настроек) */
+@media (min-width: 761px) and (prefers-reduced-motion: reduce) { #app { transition: none; } }
+/* Настройки на широком экране: сначала список разделов по центру; при выборе раздела список уезжает влево, раздел выезжает справа */
 @media (min-width: 900px) {
-  #dlgSettings > .dlg { display: grid; grid-template-columns: 360px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 0;
-    overflow: hidden; padding: 0; width: 100%; max-width: 1180px; margin: 0 auto; }
-  #dlgSettings .set-head { grid-column: 2; grid-row: 1; padding: 22px 40px 6px; justify-content: flex-start; }
-  #dlgSettings .set-head h2 { text-align: left; font-size: 24px; }
-  #dlgSettings #setBack, #dlgSettings #setEdit { display: none !important; }
-  #dlgSettings [data-page="menu"] { display: block !important; grid-column: 1; grid-row: 1 / span 2; overflow-y: auto; padding: 22px 18px 110px; border-right: 1px solid var(--line); animation: none !important; }
-  #dlgSettings [data-page]:not([data-page="menu"]) { grid-column: 2; grid-row: 2; overflow-y: auto; padding: 8px 40px 120px; max-width: 760px; width: 100%; box-sizing: border-box; }
+  #dlgSettings > .dlg { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: 0; }
+  #dlgSettings .set-head { grid-column: 1; grid-row: 1; width: 100%; max-width: 560px; justify-self: center; box-sizing: border-box; padding: 18px 16px 6px; }
+  #dlgSettings [data-page="menu"] { display: block !important; grid-column: 1; grid-row: 2; width: 100%; max-width: 560px; justify-self: center; box-sizing: border-box; overflow-y: auto; padding: 4px 16px 110px; animation: none !important; }
+  #dlgSettings > .dlg.split { grid-template-columns: 360px minmax(0, 1fr); }
+  #dlgSettings > .dlg.split [data-page="menu"] { grid-row: 1 / span 2; max-width: none; justify-self: stretch; padding: 18px 18px 110px; border-right: 1px solid var(--line); }
+  #dlgSettings > .dlg.split .set-head { grid-column: 2; max-width: 760px; justify-self: start; padding: 18px 40px 6px; }
+  #dlgSettings > .dlg.split [data-page]:not([data-page="menu"]) { grid-column: 2; grid-row: 2; overflow-y: auto; padding: 8px 40px 120px; max-width: 760px; width: 100%; box-sizing: border-box; }
   #dlgSettings [data-page="menu"] .srow.on, #dlgSettings [data-page="menu"] .set-tile.on { background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
   #dlgSettings [data-page="menu"] .srow.on .st { color: var(--accent); font-weight: 650; }
   #dlgSettings [data-page="menu"] .srow { transition: background-color .15s; }
   #dlgSettings [data-page="menu"] .srow:hover { background: color-mix(in srgb, var(--ink) 5%, var(--panel-2)); }
+}
+/* ---------- нижняя панель парит поверх содержимого — без пустой полосы под списком ---------- */
+.sidebar { position: relative; }
+.tabbar { position: absolute; left: 0; right: 0; bottom: calc(6px + env(safe-area-inset-bottom, 0px) * .6); width: max-content; margin: 0 auto; z-index: 30; }
+.sidebar .list { padding-bottom: 100px; }
+.set-page > .dlg { padding-bottom: 100px; }
 }
 
 /* лента историй над поиском: «Моя история» и те, с кем есть личный чат */
@@ -14357,28 +14368,29 @@ const SET_ICONS = { star: "starf", coin: "coinf", gift: "giftf" };
 for (const el of document.querySelectorAll("#dlgSettings [data-ico]")) el.append(icon(SET_ICONS[el.dataset.ico] || el.dataset.ico));
 $("setBack").append(icon("back"));
 let setPageNow = "menu";
-// на широком экране список разделов всегда слева, а справа всегда открыт какой-нибудь раздел
+// на широком экране: сначала список разделов по центру; выбрали раздел — список плавно уезжает влево, раздел выезжает справа
 const setWide = () => window.matchMedia && matchMedia("(min-width: 900px)").matches;
-let setLastPage = "chat";
 function showSetPage(name) {
-  if (name === "menu" && setWide()) {
-    // открываем последний раздел так же, как по нажатию в списке, — чтобы он подгрузил свои данные
-    const btn = document.querySelector('#dlgSettings .set-menu [data-go="' + setLastPage + '"]');
-    if (btn && setLastPage !== setPageNow) return btn.click();
-    name = setLastPage;
-  }
-  if (name !== "menu") setLastPage = name;
+  const wide = setWide(), dlg = $("dlgSettings").querySelector(".dlg"), menu = dlg.querySelector('[data-page="menu"]');
+  const wasSplit = dlg.classList.contains("split"), split = wide && name !== "menu";
+  const r0 = wide && wasSplit !== split && !$("dlgSettings").hidden ? menu.getBoundingClientRect() : null;
   const back = name === "menu" && setPageNow !== "menu";
   setPageNow = name;
   routeSync();
+  dlg.classList.toggle("split", split);
   for (const pg of document.querySelectorAll("#dlgSettings [data-page]")) {
     pg.hidden = pg.dataset.page !== name;
-    if (!pg.hidden) { pg.scrollTop = 0; flash(pg, 400, back ? "from-left" : "from-right"); }
+    if (!pg.hidden && !(wide && pg === menu)) { pg.scrollTop = 0; flash(pg, 400, back ? "from-left" : "from-right"); }
+  }
+  // список разделов переезжает из центра влево (и обратно) — плавно, а не скачком
+  if (r0 && motionOK()) {
+    const r1 = menu.getBoundingClientRect(), dx = r0.left - r1.left;
+    if (Math.abs(dx) > 2) menu.animate([{ transform: "translateX(" + dx + "px)" }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" });
   }
   $("setTitle").textContent = name === "menu" ? state.profile.display_name : SET_TITLES[name] || SET_TITLES.menu;
   $("setEdit").hidden = name !== "menu";
   $("setBack").hidden = name === "menu";
-  $("dlgSettings").querySelector(".dlg").scrollTop = 0;
+  dlg.scrollTop = 0;
   for (const b of document.querySelectorAll("#dlgSettings [data-page=\"menu\"] [data-go]")) b.classList.toggle("on", b.dataset.go === name);
 }
 $("setBack").addEventListener("click", () => {
