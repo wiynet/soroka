@@ -3179,6 +3179,19 @@ dialog.pv-dlg .dlg { display: flex; flex-direction: column; gap: 12px; padding: 
 dialog.pv-dlg h2 { margin: 0; font-size: 19px; }
 dialog.pv-dlg p { margin: 0; color: var(--muted); line-height: 1.45; }
 dialog.pv-dlg .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* покупки App Store */
+.iap-dlg .dlg { display: flex; flex-direction: column; gap: 12px; }
+.iap-dlg h2 { margin: 0; }
+.iap-dlg p { margin: 0; }
+.iap-list { display: grid; gap: 8px; }
+.iap-pack { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 12px 16px; border-radius: 16px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--ink); font: inherit; font-weight: 650; cursor: pointer; transition: transform .12s, background-color .15s; }
+.iap-pack:active { transform: scale(.98); }
+.iap-pack:disabled { opacity: .55; }
+.iap-pack.busy { opacity: 1; background: color-mix(in srgb, var(--accent) 14%, var(--panel-2)); }
+.iap-m { display: inline-flex; align-items: center; gap: 8px; }
+.iap-p { color: var(--accent); }
+.iap-load { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 12px 4px; }
 /* голосовой чат в группе: пилюля с волной и аватарками, по нажатию — карточка с участниками */
 .vcw { padding: 8px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--online) 6%, var(--panel)); }
 .vcw[hidden] { display: none; }
@@ -3628,7 +3641,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=9ca794dda5"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6d6a10b299"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -7223,6 +7236,7 @@ async function startApp() {
   refreshMe();
   checkAdmin();
   resumePush();
+  iapResume();
   offerHomeScreen();
   loadBlocked();
   giftTypes().then(() => { renderList(); if (state.activeId) { renderHead(); if (state.msgs.some((m) => m.gift_type)) renderMsgs(); } });
@@ -14971,6 +14985,15 @@ const TOPUP_MODE = {
   done: async () => { try { await loadCoinsPage(); } catch (e) {} },
 };
 function openTonPay(mode, method) {
+  // приложение для iPhone: Mest покупаются только через Apple, остальное — за Mest (правила App Store).
+  // Если в App Store товаров нет (сборка не из App Store) — работает обычная оплата, как раньше
+  if (iapOn() && iapAvail !== false) {
+    if (iapAvail === null) { iapProbe().then(() => openTonPay(mode, method)); return; }
+    if (mode === TOPUP_MODE) return openAppleTopup();
+    const ms = mode.methods.filter((m) => m === "mest");
+    if (!ms.length) { toast(T("В приложении для iPhone это покупается за Mest")); return openAppleTopup(); }
+    mode = { ...mode, methods: ms }; method = "mest";
+  }
   const fresh = !$("dlgTopup").open;
   tpMode = mode; tpArmed = false;
   tpMethod = method || mode.methods[0];
@@ -15041,6 +15064,117 @@ function tpState(kind, text) {
   el.replaceChildren(...(kind === "wait" ? [h("span", { class: "tp-spin", "aria-hidden": "true" })] : []), h("span", {}, text));
 }
 function openTopup() { openTonPay(TOPUP_MODE); }
+
+/* ---------- встроенные покупки Apple (приложение для iPhone) ----------
+   Телефон покупает через StoreKit и присылает подписанную Apple покупку; сервер (функция iap-apple) проверяет подпись
+   и зачисляет Mest один раз. Покупка закрывается в App Store только после зачисления — если связь пропала,
+   при следующем запуске она придёт снова и зачислится. */
+const iapOn = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mestarioIap);
+const iapWait = new Map(), iapBusy = new Set(), iapLater = [];
+let iapSeq = 0, iapList = [], iapAvail = null, iapPrices = new Map();
+// есть ли в App Store наши товары: спрашиваем один раз, запоминаем цены
+async function iapProbe() {
+  try {
+    const { data } = await sb.rpc("iap_products");
+    iapList = Array.isArray(data) ? data : [];
+    const r = iapList.length ? await iapCall("products", { ids: iapList.map((p) => p.id) }, 15000) : { ok: false };
+    iapPrices = new Map(((r && r.products) || []).map((p) => [p.id, p.price]));
+    iapAvail = iapList.some((p) => iapPrices.has(p.id));
+  } catch (e) { iapAvail = false; }
+  return iapAvail;
+}
+window.__mestIap = (m) => {
+  if (!m) return;
+  if (m.cb && iapWait.has(m.cb)) { const r = iapWait.get(m.cb); iapWait.delete(m.cb); r(m); return; }
+  if (m.event === "tx") iapDeliver(m.jws, m.tx);
+};
+function iapCall(cmd, data, ms) {
+  return new Promise((res) => {
+    const cb = "c" + ++iapSeq;
+    const t = setTimeout(() => { iapWait.delete(cb); res({ ok: false, error: "timeout" }); }, ms || 180000);
+    iapWait.set(cb, (m) => { clearTimeout(t); res(m); });
+    try { window.webkit.messageHandlers.mestarioIap.postMessage({ cmd, cb, ...(data || {}) }); }
+    catch (e) { clearTimeout(t); iapWait.delete(cb); res({ ok: false, error: String(e) }); }
+  });
+}
+function iapResume() {
+  if (!iapOn()) return;
+  for (const [j, t] of iapLater.splice(0)) iapDeliver(j, t);
+  try { window.webkit.messageHandlers.mestarioIap.postMessage({ cmd: "unfinished" }); } catch (e) {}
+}
+async function iapDeliver(jws, tx) {
+  if (!jws || !tx) return false;
+  if (!state.started || !state.me) { iapLater.push([jws, tx]); return false; }
+  if (iapBusy.has(tx)) return false;
+  iapBusy.add(tx);
+  try {
+    const { data } = await sb.auth.getSession();
+    const tok = data && data.session && data.session.access_token;
+    const r = await fetch(SUPABASE_URL + "/functions/v1/iap-apple", { method: "POST",
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: "Bearer " + (tok || SUPABASE_KEY) }, body: JSON.stringify({ jws }) });
+    const j = await r.json().catch(() => ({}));
+    const fin = () => { try { window.webkit.messageHandlers.mestarioIap.postMessage({ cmd: "finish", tx }); } catch (e) {} };
+    if (r.ok && j.ok) {
+      fin();
+      if (j.credited > 0) toast(T("Зачислено") + " " + nf.format(j.credited) + " Mest");
+      if (j.balance != null) state.balance = Number(j.balance);
+      try { await loadCoinsPage(); } catch (e) {}
+      return true;
+    }
+    // покупка точно не наша (другое приложение, тип, возврат) — закрываем, чтобы не приходила снова.
+    // Куплена с другого аккаунта Mestario — не закрываем: зачислится, когда войдут в тот аккаунт.
+    if (["bundle", "type", "revoked"].includes(j.error)) fin();
+    if (j.error === "account") toast(T("Эта покупка сделана в другом аккаунте Mestario — Mest зачислятся, когда войдёте в него"));
+    return false;
+  } catch (e) { return false; }
+  finally { iapBusy.delete(tx); }
+}
+function iapDlg() {
+  let d = $("dlgIap");
+  if (d) return d;
+  d = h("dialog", { id: "dlgIap", class: "iap-dlg" },
+    h("div", { class: "dlg" },
+      h("h2", {}, T("Пополнить Mest")),
+      h("p", { class: "small muted" }, T("Оплата через App Store. Mest зачисляются сразу после покупки.")),
+      h("div", { class: "iap-list", id: "iapList" }),
+      h("p", { class: "small muted", id: "iapNote" }),
+      h("div", { class: "actions" }, h("button", { class: "btn ghost", type: "button", "data-close": "" }, T("Закрыть")))));
+  document.body.append(d);
+  d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+  d.querySelector("[data-close]").addEventListener("click", () => d.close());
+  return d;
+}
+async function openAppleTopup() {
+  const d = iapDlg(), box = $("iapList");
+  $("iapNote").textContent = "";
+  box.replaceChildren(h("div", { class: "iap-load" }, h("span", { class: "tp-spin", "aria-hidden": "true" }), T("Загружаем цены App Store…")));
+  if (!d.open) d.showModal();
+  if (!iapPrices.size) await iapProbe();
+  const prices = iapPrices;
+  const items = iapList.filter((p) => prices.has(p.id));
+  if (!items.length) {
+    box.replaceChildren();
+    $("iapNote").textContent = T("Покупки App Store сейчас недоступны. Попробуйте позже.");
+    return;
+  }
+  box.replaceChildren(...items.map((p) => h("button", { class: "iap-pack", type: "button", onclick: (e) => iapBuy(p, e.currentTarget) },
+    h("span", { class: "iap-m" }, nf.format(p.mest) + " Mest"), h("span", { class: "iap-p" }, prices.get(p.id)))));
+}
+async function iapBuy(p, btn) {
+  const all = [...$("iapList").querySelectorAll("button")];
+  all.forEach((b) => (b.disabled = true));
+  btn.classList.add("busy");
+  const r = await iapCall("buy", { id: p.id, account: state.me.id });
+  btn.classList.remove("busy");
+  all.forEach((b) => (b.disabled = false));
+  if (r.ok) {
+    $("iapNote").textContent = T("Зачисляем…");
+    const ok = await iapDeliver(r.jws, r.tx);
+    $("iapNote").textContent = ok ? "" : T("Покупка прошла. Mest зачислятся автоматически, как только будет связь.");
+    if (ok) $("dlgIap").close();
+  } else if (r.pending) $("iapNote").textContent = T("Покупка ждёт подтверждения (например, родителя). Mest придут сами, когда её одобрят.");
+  else if (!r.cancel) $("iapNote").textContent = T("Не удалось купить. Попробуйте ещё раз.");
+}
 if (prRO) { prRO.observe($("tpPacks")); prRO.observe($("tpMethods")); }
 $("tpOwn").addEventListener("input", paintTopup);
 $("dlgTopup").addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) copyText($(b.dataset.copy).textContent); });

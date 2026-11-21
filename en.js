@@ -545,4 +545,13 @@ window.SOROKA_EN = {
 "Вы вышли из аккаунта. Открыт ":"You signed out. Opened ",
 " — из него можно выйти так же":" — you can sign out of it the same way",
 "другой аккаунт":"another account",
+"В приложении для iPhone это покупается за Mest":"In the iPhone app this is paid with Mest",
+"Эта покупка сделана в другом аккаунте Mestario — Mest зачислятся, когда войдёте в него":"This purchase was made in another Mestario account — the Mest will be credited when you sign in to it",
+"Оплата через App Store. Mest зачисляются сразу после покупки.":"Payment via the App Store. Mest are credited right after purchase.",
+"Загружаем цены App Store…":"Loading App Store prices…",
+"Покупки App Store сейчас недоступны. Попробуйте позже.":"App Store purchases are unavailable right now. Try again later.",
+"Зачисляем…":"Crediting…",
+"Покупка прошла. Mest зачислятся автоматически, как только будет связь.":"Purchase complete. Mest will be credited automatically once you are online.",
+"Покупка ждёт подтверждения (например, родителя). Mest придут сами, когда её одобрят.":"The purchase is awaiting approval (for example, by a parent). Mest will arrive once it is approved.",
+"Не удалось купить. Попробуйте ещё раз.":"Could not complete the purchase. Please try again.",
 };

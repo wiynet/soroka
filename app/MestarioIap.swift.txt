@@ -1,0 +1,96 @@
+
+// Mestario: встроенные покупки Apple (StoreKit 2). Мост для интерфейса:
+//   webkit.messageHandlers.mestarioIap.postMessage({ cmd, cb, ... })
+//   cmd "products" { ids }            → { cb, ok, products: [{ id, price, name }] } — цены в валюте App Store
+//   cmd "buy"      { id, account }    → { cb, ok, jws, tx } | { cb, ok: false, cancel | pending | error }
+//   cmd "finish"   { tx }             → покупка зачислена сервером, закрываем её в App Store
+//   cmd "unfinished"                  → по одному событию { event: "tx", jws, tx } на каждую незакрытую покупку
+// Ответы приходят в window.__mestIap(obj). Покупки, завершившиеся вне приложения (одобрение родителя, сбой сети),
+// приходят событием { event: "tx" } из Transaction.updates. Сервер проверяет подпись Apple (jws) и зачисляет Mest.
+import StoreKit
+
+@available(iOS 15.0, *)
+@MainActor
+final class MestarioIap: NSObject, WKScriptMessageHandler {
+    static let shared = MestarioIap()
+    weak var web: WKWebView?
+    private var open: [String: Transaction] = [:]
+    private var listening = false
+
+    static func attach(_ window: UIWindow?, tries: Int = 20) {
+        if let vc = window?.rootViewController as? CAPBridgeViewController, let wv = vc.webView {
+            wv.configuration.userContentController.removeScriptMessageHandler(forName: "mestarioIap")
+            wv.configuration.userContentController.add(MestarioIap.shared, name: "mestarioIap")
+            MestarioIap.shared.web = wv
+            MestarioIap.shared.listen()
+            return
+        }
+        if tries > 0 { Task { @MainActor in try? await Task.sleep(nanoseconds: 500_000_000); attach(window, tries: tries - 1) } }
+    }
+
+    private func send(_ obj: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: obj), let s = String(data: data, encoding: .utf8) else { return }
+        web?.evaluateJavaScript("window.__mestIap && window.__mestIap(" + s + ")", completionHandler: nil)
+    }
+
+    private func listen() {
+        if listening { return }
+        listening = true
+        Task.detached {
+            for await r in Transaction.updates { await MestarioIap.shared.deliver(r) }
+        }
+    }
+
+    private func deliver(_ r: VerificationResult<Transaction>) {
+        guard case .verified(let t) = r else { return }
+        if t.revocationDate != nil { Task { await t.finish() }; return }
+        open[String(t.id)] = t
+        send(["event": "tx", "jws": r.jwsRepresentation, "tx": String(t.id)])
+    }
+
+    nonisolated func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
+        guard let b = m.body as? [String: Any], let cmd = b["cmd"] as? String else { return }
+        let cb = b["cb"] as? String ?? ""
+        let ids = b["ids"] as? [String] ?? []
+        let id = b["id"] as? String ?? ""
+        let account = b["account"] as? String ?? ""
+        let tx = b["tx"] as? String ?? ""
+        Task { @MainActor in await MestarioIap.shared.handle(cmd, cb: cb, ids: ids, id: id, account: account, tx: tx) }
+    }
+
+    private func handle(_ cmd: String, cb: String, ids: [String], id: String, account: String, tx: String) async {
+        switch cmd {
+        case "products":
+            do {
+                let ps = try await Product.products(for: ids)
+                send(["cb": cb, "ok": true, "products": ps.map { ["id": $0.id, "price": $0.displayPrice, "name": $0.displayName] }])
+            } catch { send(["cb": cb, "ok": false, "error": String(describing: error)]) }
+        case "buy":
+            do {
+                guard let p = try await Product.products(for: [id]).first else { send(["cb": cb, "ok": false, "error": "no product"]); return }
+                var opts: Set<Product.PurchaseOption> = []
+                if let u = UUID(uuidString: account) { opts.insert(.appAccountToken(u)) }
+                let r = try await p.purchase(options: opts)
+                switch r {
+                case .success(let v):
+                    if case .verified(let t) = v {
+                        open[String(t.id)] = t
+                        send(["cb": cb, "ok": true, "jws": v.jwsRepresentation, "tx": String(t.id)])
+                    } else { send(["cb": cb, "ok": false, "error": "unverified"]) }
+                case .userCancelled: send(["cb": cb, "ok": false, "cancel": true])
+                case .pending: send(["cb": cb, "ok": false, "pending": true])
+                @unknown default: send(["cb": cb, "ok": false, "error": "unknown"])
+                }
+            } catch { send(["cb": cb, "ok": false, "error": String(describing: error)]) }
+        case "finish":
+            if let t = open.removeValue(forKey: tx) { await t.finish(); return }
+            for await r in Transaction.unfinished {
+                if case .verified(let t) = r, String(t.id) == tx { await t.finish() }
+            }
+        case "unfinished":
+            for await r in Transaction.unfinished { deliver(r) }
+        default:
+            break
+        }
+    }
+}

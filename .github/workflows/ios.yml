@@ -34,12 +34,13 @@ jobs:
           npm install --no-audit --no-fund --no-save @capacitor/ios@6.1.2
           npx cap add ios
           npx cap sync ios
-      - name: Динамик в звонках (мост для интерфейса)
+      - name: Динамик в звонках и покупки Apple (мосты для интерфейса)
         working-directory: app/ios/App
         run: |
           D=App/AppDelegate.swift
           cat ../../MestarioAudio.swift.txt >> $D
-          perl -0pi -e 's#(didFinishLaunchingWithOptions[^{]*\{)#$1\n        MestarioAudio.attach(self.window)#' $D
+          cat ../../MestarioIap.swift.txt >> $D
+          perl -0pi -e 's|(didFinishLaunchingWithOptions[^{]*\{)|$1\n        MestarioAudio.attach(self.window)\n        if #available(iOS 15.0, *) { MestarioIap.attach(self.window) }|' $D
           grep -n "MestarioAudio" $D | head
       - name: Разрешения, версия, иконка
         working-directory: app/ios/App
