@@ -209,7 +209,16 @@ button.wordmark.spin { opacity: .55; }
 .search { padding: 4px 12px 10px; display: flex; align-items: center; gap: 8px; }
 .search .sbar { flex: 1; min-width: 0; }
 .search-x { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); font-size: 16px; display: grid; place-items: center; }
-.sidebar.searching > .stories-bar { display: none; }
+.sidebar.searching > .stories-bar, .sidebar.searching > .get-apps { display: none; }
+@media (max-width: 760px) {
+  /* поиск на телефоне: шапка уходит, поле поднимается к самому верху */
+  .sidebar.searching > .side-head { display: none; }
+  .sidebar.searching > .search { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+}
+/* список прокрутили вниз — истории и «Скачать приложение» плавно сворачиваются, чатам больше места */
+.sidebar > .stories-bar, .sidebar > .get-apps { max-height: 140px; transition: max-height .28s cubic-bezier(.2,.8,.2,1), opacity .2s, padding .28s cubic-bezier(.2,.8,.2,1); }
+.sidebar.list-down > .stories-bar, .sidebar.list-down > .get-apps { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .sidebar > .stories-bar, .sidebar > .get-apps { transition: none; } }
 /* экран поиска: сверху те, с кем общались последними, ниже — кого искали */
 .dev { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
 .dev .di { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-size: 18px; }
@@ -1481,6 +1490,31 @@ label.toggle + label.toggle { box-shadow: inset 0 1px 0 var(--line); }
   #dlgSettings [data-page="menu"] .srow { transition: background-color .15s; }
   #dlgSettings [data-page="menu"] .srow:hover { background: color-mix(in srgb, var(--ink) 5%, var(--panel-2)); }
 }
+/* ---------- переходы: новый экран наезжает поверх старого, старый виден под ним ---------- */
+#dlgSettings > .dlg { position: relative; }
+#dlgSettings [data-page].under { position: absolute !important; z-index: 0; margin: 0 !important; pointer-events: none; }
+#dlgSettings [data-page].over { position: relative; z-index: 1; background: var(--panel); margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; min-height: 100vh; box-shadow: -14px 0 30px rgb(0 0 0 / .28); }
+#dlgSettings [data-page].leaving { position: absolute !important; z-index: 2; margin: 0 !important; background: var(--panel); pointer-events: none; box-shadow: -14px 0 30px rgb(0 0 0 / .28); }
+/* смена вкладок «Чаты · Новости · Настройки» на телефоне: экран едет, нижняя панель стоит на месте */
+@media (max-width: 760px) {
+  #app > .sidebar { view-transition-name: side; }
+  .tabbar { view-transition-name: tabbar; }
+}
+:root[data-tabdir]::view-transition-old(root), :root[data-tabdir]::view-transition-new(root) { animation: none; }
+:root[data-tabdir]::view-transition-group(side) { animation-duration: .34s; }
+:root[data-tabdir]::view-transition-old(side), :root[data-tabdir]::view-transition-new(side) { animation-duration: .34s; animation-timing-function: cubic-bezier(.2,.8,.2,1); mix-blend-mode: normal; height: 100%; object-fit: none; object-position: top; }
+:root[data-tabdir="fwd"]::view-transition-old(side) { animation-name: vt-under-left; }
+:root[data-tabdir="fwd"]::view-transition-new(side) { animation-name: vt-in-right; box-shadow: -14px 0 30px rgb(0 0 0 / .28); }
+:root[data-tabdir="back"]::view-transition-old(side) { animation-name: vt-out-right; z-index: 1; box-shadow: -14px 0 30px rgb(0 0 0 / .28); }
+:root[data-tabdir="back"]::view-transition-new(side) { animation-name: vt-under-in; }
+:root[data-tabdir] ::view-transition-group(tabbar) { animation: none; z-index: 5; }
+:root[data-tabdir] ::view-transition-old(tabbar) { display: none; }
+:root[data-tabdir] ::view-transition-new(tabbar) { animation: none; }
+:root[data-tabdir] .set-page.enter, :root[data-tabdir] #chatList.fresh { animation: none !important; }
+@keyframes vt-in-right { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes vt-under-left { from { transform: none; opacity: 1; } to { transform: translateX(-25%); opacity: .55; } }
+@keyframes vt-out-right { from { transform: none; } to { transform: translateX(100%); } }
+@keyframes vt-under-in { from { transform: translateX(-25%); opacity: .55; } to { transform: none; opacity: 1; } }
 /* ---------- нижняя панель парит поверх содержимого — без пустой полосы под списком ---------- */
 .sidebar { position: relative; }
 .tabbar { position: absolute; left: 0; right: 0; bottom: calc(6px + env(safe-area-inset-bottom, 0px) * .6); width: max-content; margin: 0 auto; z-index: 30; }
@@ -7750,11 +7784,35 @@ function litePerson(p) { return { id: p.id, username: p.username, display_name: 
 function setSearchMode(on) {
   if (searchMode === on) return;
   searchMode = on;
-  document.querySelector(".sidebar").classList.toggle("searching", on);
+  const side = document.querySelector(".sidebar"), box = side.querySelector(":scope > .search");
+  // поле поиска и список плавно переезжают на новое место, а не прыгают
+  const moving = motionOK() ? [box, $("chatList")].filter(Boolean) : [];
+  const before = moving.map((el) => el.getBoundingClientRect().top);
+  side.classList.toggle("searching", on);
+  if (on) side.classList.remove("list-down");
   $("searchClose").hidden = !on;
   if (!on) { $("search").value = ""; $("search").blur(); }
   renderList();
+  moving.forEach((el, i) => {
+    const dy = before[i] - el.getBoundingClientRect().top;
+    if (Math.abs(dy) > 1) el.animate([{ transform: "translateY(" + dy + "px)" }, { transform: "none" }], { duration: 340, easing: "cubic-bezier(.2,.8,.2,1)" });
+  });
 }
+// список прокрутили вниз — истории сворачиваются, чаты поднимаются выше; вернулись наверх — разворачиваются
+(function () {
+  const list = $("chatList"), side = document.querySelector(".sidebar");
+  let raf = 0;
+  list.addEventListener("scroll", () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (searchMode) return;
+      const y = list.scrollTop, room = list.scrollHeight - list.clientHeight;
+      if (!side.classList.contains("list-down") && y > 40 && room > 220) side.classList.add("list-down");
+      else if (side.classList.contains("list-down") && y < 4) side.classList.remove("list-down");
+    });
+  }, { passive: true });
+})();
 function searchHome(chats) {
   const kids = [];
   const people = chats.filter((c) => !c.is_group && other(c) && c.last_text).slice(0, 15);
@@ -14374,12 +14432,39 @@ function showSetPage(name) {
   const wasSplit = dlg.classList.contains("split"), split = wide && name !== "menu";
   const r0 = wide && wasSplit !== split && !$("dlgSettings").hidden ? menu.getBoundingClientRect() : null;
   const back = name === "menu" && setPageNow !== "menu";
+  // на телефоне прошлый экран остаётся виден: новый наезжает поверх, а при «Назад» уезжает вправо, открывая прошлый
+  const oldPg = dlg.querySelector("[data-page]:not([hidden])");
+  const stack = !wide && motionOK() && !$("dlgSettings").hidden && oldPg && oldPg.dataset.page !== name;
+  let pin = null;
+  if (stack) {
+    for (const el of dlg.querySelectorAll(".under, .over, .leaving")) setUnstack(el);
+    pin = { top: oldPg.offsetTop - dlg.scrollTop, left: oldPg.offsetLeft, width: oldPg.offsetWidth, from: setSwipeDx };
+  }
+  setSwipeDx = 0;
   setPageNow = name;
   routeSync();
   dlg.classList.toggle("split", split);
   for (const pg of document.querySelectorAll("#dlgSettings [data-page]")) {
     pg.hidden = pg.dataset.page !== name;
-    if (!pg.hidden && !(wide && pg === menu)) { pg.scrollTop = 0; flash(pg, 400, back ? "from-left" : "from-right"); }
+    if (!pg.hidden && !(wide && pg === menu)) { pg.scrollTop = 0; if (!stack) flash(pg, 400, back ? "from-left" : "from-right"); }
+  }
+  if (stack) {
+    const nw = dlg.querySelector('[data-page="' + name + '"]');
+    oldPg.hidden = false;
+    Object.assign(oldPg.style, { top: pin.top + "px", left: pin.left + "px", width: pin.width + "px" });
+    const ease = "cubic-bezier(.2,.8,.2,1)";
+    if (back) {
+      // уходящий раздел едет вправо поверх меню, меню выходит из-под него
+      oldPg.classList.add("leaving");
+      oldPg.animate([{ transform: "translateX(" + pin.from + "px)" }, { transform: "translateX(100%)" }], { duration: 300, easing: ease, fill: "forwards" });
+      nw.animate([{ transform: "translateX(-25%)", opacity: 0.55 }, { transform: "none", opacity: 1 }], { duration: 300, easing: ease });
+    } else {
+      oldPg.classList.add("under");
+      nw.classList.add("over");
+      oldPg.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-25%)", opacity: 0.55 }], { duration: 320, easing: ease, fill: "forwards" });
+      nw.animate([{ transform: "translateX(100%)" }, { transform: "none" }], { duration: 320, easing: ease });
+    }
+    setTimeout(() => { setUnstack(oldPg); setUnstack(nw); if (oldPg.dataset.page !== setPageNow) oldPg.hidden = true; }, 340);
   }
   // список разделов переезжает из центра влево (и обратно) — плавно, а не скачком
   if (r0 && motionOK()) {
@@ -14392,12 +14477,14 @@ function showSetPage(name) {
   dlg.scrollTop = 0;
   for (const b of document.querySelectorAll("#dlgSettings [data-page=\"menu\"] [data-go]")) b.classList.toggle("on", b.dataset.go === name);
 }
-$("setBack").addEventListener("click", () => {
-  const pg = $("dlgSettings").querySelector("[data-page]:not([hidden])");
-  if (!pg || !motionOK() || setPageNow === "menu") return showSetPage("menu");
-  pg.animate([{ transform: "none" }, { transform: "translate3d(100%,0,0)" }], { duration: 240, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" })
-    .onfinish = () => { pg.getAnimations().forEach((a) => a.cancel()); showSetPage("menu"); };
-});
+let setSwipeDx = 0;
+function setUnstack(el) {
+  if (!el) return;
+  el.classList.remove("under", "over", "leaving");
+  el.getAnimations().forEach((a) => a.cancel());
+  el.style.top = el.style.left = el.style.width = el.style.transform = el.style.opacity = "";
+}
+$("setBack").addEventListener("click", () => showSetPage("menu"));
 for (const b of $("setLang").children) b.setAttribute("aria-checked", String(b.dataset.l === window.SOROKA_LANG));
 $("sv_lang").textContent = window.SOROKA_LANG === "en" ? "English" : "Русский";
 $("setLang").addEventListener("click", (e) => {
@@ -15050,20 +15137,35 @@ function paintTabs() {
   $("tabChats").setAttribute("aria-current", String(!set && !news));
 }
 // «Новости» в центре панели: страница на месте списка чатов, как Настройки (news.js)
-$("tabNews").addEventListener("click", () => {
+// вкладки на телефоне: новый экран наезжает справа (или уезжает вправо), прошлый виден под ним; панель снизу стоит
+function tabNow() { return $("dlgSettings").open ? 2 : window.MNews && MNews.isOpen() ? 1 : 0; }
+function tabSwap(to, fn) {
+  const from = tabNow();
+  if (from === to || !document.startViewTransition || !motionOK() || !phoneLayout() || document.hidden || $("app").classList.contains("chat-open")) return fn();
+  const root = document.documentElement;
+  root.dataset.tabdir = to > from ? "fwd" : "back";
+  let vt;
+  try { vt = document.startViewTransition(() => fn()); } catch (e) { delete root.dataset.tabdir; return fn(); }
+  vt.finished.finally(() => { delete root.dataset.tabdir; });
+}
+$("tabNews").addEventListener("click", (e) => {
   if (!window.MNews) { toast(T("Новости ещё загружаются — попробуйте через секунду")); return; }
-  for (const d of document.querySelectorAll("dialog[open]")) d.close();
-  $("dlgSettings").close();
-  MNews.open();
-  paintTabs();
+  (e.isTrusted ? tabSwap : (n, f) => f())(1, () => {
+    for (const d of document.querySelectorAll("dialog[open]")) d.close();
+    $("dlgSettings").close();
+    MNews.open();
+    paintTabs();
+  });
 });
-$("tabChats").addEventListener("click", () => {
-  for (const d of document.querySelectorAll("dialog[open]")) d.close();
-  $("dlgSettings").close();
-  if (window.MNews) MNews.close();
-  if ($("search").value) { $("search").value = ""; renderList(); }
+$("tabChats").addEventListener("click", (e) => {
+  (e.isTrusted ? tabSwap : (n, f) => f())(0, () => {
+    for (const d of document.querySelectorAll("dialog[open]")) d.close();
+    $("dlgSettings").close();
+    if (window.MNews) MNews.close();
+    if ($("search").value) { $("search").value = ""; renderList(); }
+    paintTabs();
+  });
   $("chatList").scrollTo({ top: 0, behavior: "smooth" });
-  paintTabs();
 });
 $("setHideSeen").addEventListener("change", async (e) => {
   const on = e.target.checked;
@@ -15076,8 +15178,11 @@ $("setHideSeen").addEventListener("change", async (e) => {
   toast(on ? T("Время в сети скрыто: другие видят «был(а) недавно»") : T("Время в сети снова видно"));
 });
 
-$("btnSettings").addEventListener("click", () => {
+$("btnSettings").addEventListener("click", (e) => {
   if ($("dlgSettings").open) { showSetPage("menu"); return; }
+  if (e && e.isTrusted) tabSwap(2, openSettingsNow); else openSettingsNow();
+});
+function openSettingsNow() {
   if (window.MNews) MNews.close();
   $("setHideSeen").checked = !!state.profile.hide_seen && isPremium(state.profile);
   renderSettings();
@@ -15097,7 +15202,7 @@ $("btnSettings").addEventListener("click", () => {
   paintNotify().then(() => { $("sv_notify").textContent = $("setNotify").checked ? T("Вкл.") : T("Выкл."); });
   loadWalletValue();
   paintTabs();
-});
+}
 watchUsername($("pfUser"), $("pfUserHint"), () => state.profile && state.profile.username);
 $("profileForm").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -17136,21 +17241,32 @@ swipeBack(document.querySelector("#app > .pane"), {
 });
 // страницы настроек: смахивание возвращает в главное меню настроек
 swipeBack($("dlgSettings"), {
-  can: (e) => setPageNow !== "menu" && motionOK() && !e.target.closest(NO_SWIPE),
-  start: () => {},
-  move: (dx) => { const pg = $("dlgSettings").querySelector("[data-page]:not([hidden])"); if (pg) { pg.style.transform = "translateX(" + dx + "px)"; pg.style.opacity = String(1 - Math.min(0.6, dx / innerWidth)); } },
+  can: (e) => setPageNow !== "menu" && motionOK() && !setWide() && !e.target.closest(NO_SWIPE),
+  start: () => {
+    // под смахиваемым разделом сразу видно меню настроек
+    const dlg = $("dlgSettings").querySelector(".dlg"), pg = dlg.querySelector("[data-page]:not([hidden]):not(.set-menu)"), menu = dlg.querySelector(".set-menu");
+    if (!pg) return;
+    menu.hidden = false; menu.classList.add("under");
+    Object.assign(menu.style, { top: Math.max(pg.offsetTop, dlg.scrollTop) + "px", left: pg.offsetLeft + "px", width: pg.offsetWidth + "px", transform: "translateX(-25%)", opacity: ".55" });
+    pg.classList.add("over");
+  },
+  move: (dx) => {
+    const dlg = $("dlgSettings").querySelector(".dlg"), pg = dlg.querySelector("[data-page].over"), menu = dlg.querySelector(".set-menu.under");
+    const k = Math.max(0, Math.min(1, dx / innerWidth));
+    if (pg) pg.style.transform = "translateX(" + dx + "px)";
+    if (menu) { menu.style.transform = "translateX(" + (-25 * (1 - k)) + "%)"; menu.style.opacity = String(0.55 + 0.45 * k); }
+  },
   commit: (dx) => {
-    const pg = $("dlgSettings").querySelector("[data-page]:not([hidden])");
-    if (!pg) return showSetPage("menu");
-    pg.animate([{ transform: "translateX(" + dx + "px)", opacity: pg.style.opacity || 1 }, { transform: "translateX(100%)", opacity: 0 }], { duration: 180, easing: SWIPE_EASE, fill: "forwards" })
-      .onfinish = () => { pg.getAnimations().forEach((a) => a.cancel()); pg.style.transform = ""; pg.style.opacity = ""; showSetPage("menu"); };
+    const dlg = $("dlgSettings").querySelector(".dlg"), menu = dlg.querySelector(".set-menu"), pg = dlg.querySelector("[data-page].over");
+    setUnstack(menu); menu.hidden = true;
+    if (pg) { setUnstack(pg); pg.style.transform = "translateX(" + dx + "px)"; }
+    setSwipeDx = dx;
+    showSetPage("menu");
   },
   cancel: (dx) => {
-    const pg = $("dlgSettings").querySelector("[data-page]:not([hidden])");
-    if (!pg) return;
-    pg.animate([{ transform: "translateX(" + dx + "px)", opacity: pg.style.opacity || 1 }, { transform: "none", opacity: 1 }], { duration: 200, easing: SWIPE_EASE })
-      .onfinish = () => { pg.style.transform = ""; pg.style.opacity = ""; };
-    pg.style.transform = ""; pg.style.opacity = "";
+    const dlg = $("dlgSettings").querySelector(".dlg"), menu = dlg.querySelector(".set-menu"), pg = dlg.querySelector("[data-page].over");
+    if (pg) pg.animate([{ transform: "translateX(" + dx + "px)" }, { transform: "none" }], { duration: 200, easing: SWIPE_EASE }).onfinish = () => { setUnstack(pg); setUnstack(menu); menu.hidden = setPageNow !== "menu"; };
+    else { setUnstack(menu); menu.hidden = setPageNow !== "menu"; }
   },
 });
 // окна на весь экран (профиль, обсуждение поста): смахивание вправо закрывает
