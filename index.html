@@ -209,12 +209,12 @@ button.wordmark.spin { opacity: .55; }
 .search { padding: 4px 12px 10px; display: flex; align-items: center; gap: 8px; }
 .search .sbar { flex: 1; min-width: 0; }
 .search-x { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); font-size: 16px; display: grid; place-items: center; }
-/* истории, «Скачать приложение», поиск и чаты прокручиваются вместе одним списком — истории уезжают вверх
-   прямо под пальцем, а поиск прилипает к верху */
+/* истории, «Скачать приложение», поиск и чаты прокручиваются вместе одним списком — всё уезжает вверх
+   прямо под пальцем, вместе с поиском */
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .side-scroll > * { flex: none; }
 .side-scroll > #chatList { flex: 1 0 auto; overflow: visible; min-height: auto; }
-.side-scroll > .search { position: sticky; top: 0; z-index: 6; background: var(--panel); }
+
 .sidebar.in-settings > .side-scroll, .sidebar.in-news > .side-scroll { display: none !important; }
 .sidebar.searching .side-scroll > .stories-bar, .sidebar.searching .side-scroll > .get-apps { display: none; }
 @media (max-width: 760px) {
@@ -1723,6 +1723,16 @@ label.toggle + label.toggle { box-shadow: inset 0 1px 0 var(--line); }
 .mk-tabs::-webkit-scrollbar { display: none; }
 .mk-tabs button { flex: none; padding: 8px 15px; border: 0; border-radius: 999px; background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background-color .18s, color .18s; }
 .mk-tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); }
+/* вкладки Маркета остаются наверху, пока листаешь; на телефоне все пять помещаются в строку */
+#dlgMarket > .dlg.mk { position: relative; }
+.mk-tabs { position: sticky; top: -16px; z-index: 5; background: var(--panel); padding-top: 6px; padding-bottom: 8px; margin-top: -6px; margin-bottom: -8px; }
+@media (max-width: 640px) {
+  .mk-tabs { gap: 4px; margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; top: calc(-14px - env(safe-area-inset-top, 0px)); }
+  .mk-tabs button { flex: 1 1 auto; padding: 8px 7px; font-size: 13px; }
+  #dlgMarket > .dlg.mk { padding-left: 12px; padding-right: 12px; }
+  .mk-filters { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+}
+.mk-people { display: grid; gap: 2px; }
 .mk-pane { display: grid; gap: 12px; align-content: start; }
 .mk-pane[hidden] { display: none; }
 .mk-kinds { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: 12px; background: var(--panel-2); }
@@ -5069,7 +5079,7 @@ void main() {
     <div data-mkpane="gifts" class="mk-pane" hidden>
       <div class="hint">Выберите, кому подарить. Подарок появится у человека в профиле и в вашем личном чате.</div>
       <input class="input" id="mkGiftSearch" type="search" placeholder="Имя или @юзернейм" autocomplete="off">
-      <div class="scroll" id="mkGiftPeople" style="max-height:320px"></div>
+      <div id="mkGiftPeople" class="mk-people"></div>
     </div>
   </div>
 </dialog>
@@ -7642,7 +7652,14 @@ function chatRowCached(c) {
   const sig = rowSig(c), hit = rowCache.get(c.id);
   if (hit && hit.sig === sig) return rowActive(hit.el, c);
   const el = chatRow(c);
-  rowCache.set(c.id, { sig, el });
+  // аватарка не поменялась — переносим ту же картинку, чтобы она не загружалась и не мигала заново
+  const o = !c.is_group ? other(c) : null;
+  const avKey = [c.is_group ? c.avatar_path : o ? avOf(o) : "", o && storyUsers.has(o.id) ? ((storyFeed.get(o.id) || {}).seen ? "s" : "S") : "", chatTitle(c)].join("|");
+  if (hit && hit.avKey === avKey) {
+    const oldAv = hit.el.querySelector(":scope > .avatar"), newAv = el.querySelector(":scope > .avatar");
+    if (oldAv && newAv) newAv.replaceWith(oldAv);
+  }
+  rowCache.set(c.id, { sig, el, avKey });
   if (rowCache.size > 600) rowCache.delete(rowCache.keys().next().value);
   return el;
 }
