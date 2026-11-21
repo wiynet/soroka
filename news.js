@@ -20,6 +20,21 @@
 #newsPage .dlg { display: flex; flex-direction: column; gap: 12px; padding-bottom: 96px; }
 #newsPage [data-nv] { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 #newsPage [data-nv][hidden] { display: none; }
+@media (min-width: 761px) {
+  #newsPage .dlg { padding-left: 28px; padding-right: 28px; }
+  #newsPage [data-nv] { width: 100%; max-width: 1240px; margin: 0 auto; }
+  #newsPage [data-nv]:not([data-nv="feed"]):not([data-nv="search"]) { max-width: 760px; }
+  #newsPage .nz-gal.nz-car { margin: 0; border-radius: 16px; }
+}
+/* лента: на телефоне одна колонка; на широком экране справа колонка с курсами и «Что нового» */
+.nz-fcols { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.nz-fmain, .nz-aside, .nz-top, .nz-ctab { display: contents; }
+.nz-top > * { order: 0; } .nz-list { order: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; } .nz-more { order: 2; } .nz-ctab > * { order: 3; }
+@media (min-width: 1100px) {
+  .nz-fcols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+  .nz-fmain, .nz-aside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .nz-aside { position: sticky; top: 0; }
+}
 .nz-head { display: flex; align-items: center; gap: 6px; min-height: 40px; }
 .nz-head h2 { margin: 0; flex: 1; font-size: 22px; font-weight: 750; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nz-head.sub h2 { font-size: 18px; text-align: center; }
@@ -68,6 +83,30 @@ div.nz-card { cursor: pointer; }
 .nz-big-m img, .nz-big-m video { display: block; width: 100%; max-height: 420px; object-fit: cover; }
 .nz-big-m .nz-cnt { right: 10px; bottom: 10px; font-size: 12px; }
 .nz-big-m .nz-play span { width: 52px; height: 52px; } .nz-big-m .nz-play svg { width: 24px; height: 24px; }
+/* листалка фото и видео: свайп пальцем, точки, стрелки на компьютере */
+.nz-car { position: relative; background: #000; overflow: hidden; }
+.nz-car .nz-trk { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.nz-car .nz-trk::-webkit-scrollbar { display: none; }
+.nz-car .nz-sl { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; position: relative; display: grid; place-items: center; min-width: 0; }
+.nz-car.multi .nz-sl { height: clamp(240px, 62vw, 440px); }
+.nz-car.multi.full .nz-sl { height: min(72vh, 620px); }
+.nz-car .nz-sl img, .nz-car .nz-sl video { display: block; width: 100%; max-height: 440px; object-fit: cover; }
+.nz-car.multi .nz-sl img, .nz-car.multi .nz-sl video { height: 100%; max-height: none; }
+.nz-car.full .nz-sl img, .nz-car.full .nz-sl video { object-fit: contain; max-height: min(72vh, 620px); }
+.nz-car.full .nz-sl img { cursor: zoom-in; }
+.nz-car .nz-cnt { right: 10px; top: 10px; bottom: auto; font-size: 12px; z-index: 2; }
+.nz-car .nz-dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 6px; pointer-events: none; z-index: 2; }
+.nz-car .nz-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgb(255 255 255 / .5); box-shadow: 0 0 3px rgb(0 0 0 / .4); transition: width .25s cubic-bezier(.2,.8,.3,1), background-color .25s; }
+.nz-car .nz-dots i.on { width: 18px; background: #fff; }
+.nz-car .nz-arr { position: absolute; top: 50%; translate: 0 -50%; z-index: 3; width: 38px; height: 38px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center;
+  background: rgb(0 0 0 / .5); color: #fff; opacity: 0; transition: opacity .2s; cursor: pointer; backdrop-filter: blur(6px); }
+.nz-car .nz-arr svg { width: 20px; height: 20px; }
+.nz-car .nz-arr.prev { left: 10px; } .nz-car .nz-arr.next { right: 10px; } .nz-car .nz-arr.next svg { transform: scaleX(-1); }
+.nz-car .nz-arr[disabled] { visibility: hidden; }
+@media (hover: hover) { .nz-car:hover .nz-arr { opacity: 1; } }
+.nz-car .nz-arr:focus-visible { opacity: 1; outline: 2px solid #fff; }
+.nz-big-m.nz-car { margin: 10px -14px 0; }
+.nz-gal.nz-car { display: block; margin: 0 -12px; }
 /* реакции и комментарии */
 .nz-rx { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; cursor: default; }
 .nz-rx button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 99px; padding: 6px 10px; font-size: 13.5px; font-weight: 600;
@@ -395,11 +434,11 @@ div.nz-card { cursor: pointer; }
   const head = h("div", { class: "nz-head" });
   const catsBox = h("div", { class: "nz-cats", role: "tablist" });
   const geoBox = h("div", { class: "seg nz-seg", role: "tablist" });
-  const topBox = h("div", { style: "display:contents" });
-  const list = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const topBox = h("div", { class: "nz-top" });
+  const list = h("div", { class: "nz-list" });
   const moreBtn = h("button", { class: "btn ghost nz-more", type: "button", hidden: true, onclick: () => loadFeed(false) }, T("Показать ещё"));
-  const ctaBox = h("div", { style: "display:contents" });
-  fv.append(head, catsBox, geoBox, topBox, list, moreBtn, ctaBox);
+  const ctaBox = h("div", { class: "nz-ctab" });
+  fv.append(head, catsBox, geoBox, h("div", { class: "nz-fcols" }, h("div", { class: "nz-fmain" }, list, moreBtn), h("div", { class: "nz-aside" }, topBox, ctaBox)));
 
   let status = null;   // моя верификация
   function paintHead() {
@@ -516,23 +555,69 @@ div.nz-card { cursor: pointer; }
     if (ms.length > 1) wrap.append(h("span", { class: "nz-cnt" }, "1/" + ms.length));
     return wrap;
   }
-  function gallery(it) {
-    const ms = mediaOf(it);
-    if (!ms.length) return null;
-    const box = h("div", { class: "nz-gal" });
-    for (const m of ms) {
+  /* фото и видео листаются свайпом; full — в статье (целиком, с кнопками видео), иначе — превью в ленте */
+  function carousel(ms, full) {
+    const box = h("div", { class: "nz-car" + (ms.length > 1 ? " multi" : "") + (full ? " full nz-gal" : " nz-big-m") });
+    const trk = h("div", { class: "nz-trk" });
+    const loaded = new Set();
+    const slides = ms.map((m) => h("div", { class: "nz-sl" }));
+    const load = (i) => {
+      if (i < 0 || i >= ms.length || loaded.has(i)) return;
+      loaded.add(i);
+      const m = ms[i], sl = slides[i];
       if (m.kind === "video") {
-        const vid = fadeIn(h("video", { controls: true, playsinline: true, preload: "metadata" }));
-        mediaUrl(m).then((u) => { if (u) vid.src = u; });
-        box.append(vid);
+        const vid = fadeIn(h("video", full ? { controls: true, playsinline: true, preload: "metadata" } : { muted: true, playsinline: true, preload: "metadata" }));
+        vid.muted = !full;
+        mediaUrl(m).then((u) => { if (u) vid.src = full ? u : u + "#t=0.5"; });
+        sl.append(vid);
+        if (!full) sl.append(h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
       } else {
-        const img = fadeIn(h("img", { alt: "", referrerpolicy: "no-referrer", loading: "lazy", onerror: (e) => { e.currentTarget.remove(); },
-          onclick: (e) => { if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } }));
+        const img = fadeIn(h("img", { alt: "", referrerpolicy: "no-referrer", draggable: "false",
+          onerror: () => { if (ms.length === 1) box.remove(); },
+          onclick: full ? (e) => { if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } : null }));
         mediaUrl(m).then((u) => { if (u) img.src = u; });
-        box.append(img);
+        sl.append(img);
       }
+    };
+    trk.append(...slides);
+    box.append(trk);
+    let idx = 0;
+    load(0); load(1);
+    if (ms.length > 1) {
+      const cnt = h("span", { class: "nz-cnt" }, "1/" + ms.length);
+      const dots = h("div", { class: "nz-dots", "aria-hidden": "true" }, ...ms.map((_, i) => h("i", { class: i ? null : "on" })));
+      const go = (i) => trk.scrollTo({ left: i * trk.clientWidth, behavior: motionOK() ? "smooth" : "auto" });
+      const prev = h("button", { type: "button", class: "nz-arr prev", "aria-label": T("Назад"), disabled: true, onclick: (e) => { e.stopPropagation(); go(idx - 1); } }, ico("back"));
+      const next = h("button", { type: "button", class: "nz-arr next", "aria-label": T("Дальше"), onclick: (e) => { e.stopPropagation(); go(idx + 1); } }, ico("back"));
+      box.append(cnt, dots, prev, next);
+      let raf = 0;
+      trk.addEventListener("scroll", () => {
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          const w = trk.clientWidth || 1, i = Math.max(0, Math.min(ms.length - 1, Math.round(trk.scrollLeft / w)));
+          load(i - 1); load(i); load(i + 1);
+          if (i === idx) return;
+          idx = i;
+          cnt.textContent = i + 1 + "/" + ms.length;
+          [...dots.children].forEach((d, k) => d.classList.toggle("on", k === i));
+          prev.disabled = i === 0; next.disabled = i === ms.length - 1;
+          // ушли со слайда — видео на нём останавливаем
+          for (const v of trk.querySelectorAll("video")) if (!slides[i].contains(v) && !v.paused) v.pause();
+        });
+      }, { passive: true });
+      // стрелки клавиатуры, когда листалка в фокусе
+      box.tabIndex = 0;
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") { e.preventDefault(); go(Math.min(ms.length - 1, idx + 1)); }
+        else if (e.key === "ArrowLeft") { e.preventDefault(); go(Math.max(0, idx - 1)); }
+      });
     }
     return box;
+  }
+  function gallery(it) {
+    const ms = mediaOf(it);
+    return ms.length ? carousel(ms, true) : null;
   }
   /* реакции без эмодзи: нравится, огонь, поддерживаю, звезда */
   const RX = [["heart", "Нравится"], ["fire", "Огонь"], ["up", "Поддерживаю"], ["star", "Звезда"]];
@@ -570,21 +655,8 @@ div.nz-card { cursor: pointer; }
   }
   /* большое фото или видео в ленте — у публикаций авторов и каналов */
   function bigMedia(it) {
-    const ms = mediaOf(it), m = ms[0];
-    if (!m) return null;
-    const box = h("div", { class: "nz-big-m" });
-    if (m.kind === "video") {
-      const vid = fadeIn(h("video", { muted: true, playsinline: true, preload: "metadata" }));
-      vid.muted = true;
-      mediaUrl(m).then((u) => { if (u) vid.src = u + "#t=0.5"; });
-      box.append(vid, h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
-    } else {
-      const img = fadeIn(h("img", { alt: "", referrerpolicy: "no-referrer", onerror: () => box.remove() }));
-      mediaUrl(m).then((u) => { if (u) img.src = u; });
-      box.append(img);
-    }
-    if (ms.length > 1) box.append(h("span", { class: "nz-cnt" }, "1/" + ms.length));
-    return box;
+    const ms = mediaOf(it);
+    return ms.length ? carousel(ms, false) : null;
   }
   /* матч: счёт, статистика и шансы — всё вводит автор */
   const MSTAT = [["possession", "Владение, %"], ["shots", "Удары"], ["on_target", "Удары в створ"], ["corners", "Угловые"], ["fouls", "Фолы"], ["yellow", "Жёлтые карточки"], ["red", "Красные карточки"]];
