@@ -541,4 +541,8 @@ window.SOROKA_EN = {
 "человек":"person",
 "человека":"people",
 " не добавлены: они разрешают добавлять себя только контактам":" not added: they only allow contacts to add them to groups",
+"Выходим…":"Signing out…",
+"Вы вышли из аккаунта. Открыт ":"You signed out. Opened ",
+" — из него можно выйти так же":" — you can sign out of it the same way",
+"другой аккаунт":"another account",
 };

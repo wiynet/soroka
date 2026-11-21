@@ -3628,7 +3628,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=5d9271c462"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=9ca794dda5"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -7080,7 +7080,11 @@ function onAuth(event, session) {
     state.me = null; state.profile = null; state.recovering = false;
     stopApp();
     const next = accounts()[0];
-    if (next) { switchTo(next); return; }
+    if (next) {
+      // вышли из одного аккаунта, а на устройстве сохранён ещё один — открываем его и говорим об этом
+      switchTo(next).then((ok) => { if (ok) toast(T("Вы вышли из аккаунта. Открыт ") + (next.username ? "@" + next.username : next.name || T("другой аккаунт")) + T(" — из него можно выйти так же")); });
+      return;
+    }
     showAuth("login");
     // пришли по ссылке «Войти через браузер», а в этом браузере вход не выполнен — без интро, сразу с подсказкой
     const ap = /^#(g?)approve-([0-9a-f-]{36})$/.exec(location.hash);
@@ -21599,18 +21603,36 @@ async function checkSessionAlive() {
   toast(T("Вход на этом устройстве завершён с другого устройства"));
   setTimeout(() => { kickedOnce = false; logout(); }, 1200);
 }
+let loggingOut = false;
 async function logout() {
+  if (loggingOut) return;
+  loggingOut = true;
+  const meId = state.me && state.me.id;
+  const btn = $("btnLogout");
+  if (btn) { btn.disabled = true; btn.textContent = T("Выходим…"); }
+  // ни один шаг не может зависнуть навсегда (сеть, уведомления, блокировка входа) — у каждого свой предел
+  const limit = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
   // уведомления для этого аккаунта на этом устройстве прекращаются; разрешение браузера остаётся
-  const sub = await pushSub().catch(() => null);
-  if (sub) await savePush(sub, false).catch(() => {});
+  await limit((async () => { const sub = await pushSub(); if (sub) await savePush(sub, false); })(), 2500);
   state.adding = false; $("authBack").hidden = true;
   try { localStorage.removeItem(chatsKey()); localStorage.removeItem(snapKey()); } catch (e) {}   // снимок списка чатов и профиля не оставляем на устройстве
   idbClear();   // и сохранённую переписку тоже
   mediaClear();   // и сохранённые фото и голосовые
   // сеанс закрываем на сервере по-настоящему: иначе в «Устройствах» висит вышедшее устройство.
   // Ключ доступа мог истечь, пока приложение спало, — сначала обновляем его.
-  try { await sb.auth.getSession(); await sb.rpc("end_my_session"); } catch (e) {}
-  sb.auth.signOut({ scope: "local" }).catch(() => {});   // выходим только на этом устройстве
+  await limit((async () => { await sb.auth.getSession(); await sb.rpc("end_my_session"); })(), 4000);
+  await limit(sb.auth.signOut({ scope: "local" }), 2500);   // выходим только на этом устройстве
+  // если вход так и не сменился (событие о выходе не пришло) — выходим сами: стираем вход с устройства и начинаем заново
+  setTimeout(() => {
+    loggingOut = false;
+    if (btn) { btn.disabled = false; btn.textContent = T("Выйти из аккаунта"); }
+    if (!meId || !state.me || state.me.id !== meId) return;
+    try {
+      for (const k of Object.keys(localStorage)) if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k);
+      dropAccount(meId);
+    } catch (e) {}
+    location.replace("/");
+  }, 800);
 }
 $("btnMute").addEventListener("click", async () => {
   const c = state.chats.get(state.activeId);
