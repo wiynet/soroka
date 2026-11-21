@@ -215,7 +215,9 @@ button.wordmark.spin { opacity: .55; }
 .side-scroll > * { flex: none; }
 .side-scroll > #chatList { flex: 1 0 auto; overflow: visible; min-height: auto; }
 
-.sidebar.in-settings > .side-scroll, .sidebar.in-news > .side-scroll { display: none !important; }
+/* Настройки и Новости открыты — список чатов не выключаем (display: none заставлял телефон заново
+   рисовать и декодировать все аватарки при возврате: это и было «перезагрузкой»), а просто прячем */
+.sidebar.in-settings > .side-scroll, .sidebar.in-news > .side-scroll { position: absolute !important; left: 0; right: 0; top: 0; height: 100%; visibility: hidden !important; pointer-events: none !important; z-index: -1; }
 .sidebar.searching .side-scroll > .stories-bar, .sidebar.searching .side-scroll > .get-apps { display: none; }
 @media (max-width: 760px) {
   /* поиск на телефоне: шапка уходит, поле поднимается к самому верху */
@@ -2648,7 +2650,7 @@ dialog.full { width: 100%; height: 100vh; height: 100dvh; max-width: none; max-h
   .sb-item .avatar { transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
   .sb-item:hover .avatar { transform: scale(1.06); }
   .sb-item:active .avatar { transform: scale(.94); }
-  .sb-item { animation: rise .3s var(--ease) both; }
+  .sb-item.sb-new { animation: rise .3s var(--ease) both; }
   .side-head .icon-btn { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), border-color .2s, box-shadow .25s, color .2s; }
   .side-head .icon-btn:active { transform: scale(.92); }
   .side-head .icon-btn::after { transition: opacity .15s, transform .2s var(--ease); }
@@ -3435,6 +3437,14 @@ dialog.pv-dlg .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   dialog.shut { animation: dlg-out .17s var(--ease) both !important; pointer-events: none; }
   dialog.shut::backdrop { animation: fade-out .17s both !important; }
   dialog.full.shut { animation-name: to-right !important; }
+  @media (max-width: 760px) {
+    dialog.full.shut:not(.story-view) { animation: tg-out-right .26s cubic-bezier(.32,.72,0,1) both !important; }
+    dialog.full.shut:not(.story-view)::backdrop { animation: fade-out .26s both !important; }
+    dialog.full:not(.story-view)::backdrop { background: rgb(0 0 0 / .3); }
+    /* под открытым окном экран чуть уезжает влево, при закрытии возвращается — как в разделах настроек */
+    #app { transition: transform .32s cubic-bezier(.22,.9,.28,1); }
+    body:has(dialog.full[open]:not(.shut):not(.story-view):not(#dlgAi)) #app { transform: translate3d(-25%, 0, 0); }
+  }
   dialog.story-view.shut, #viewer.shut { animation-name: fade-out !important; }
   @keyframes dlg-out { to { opacity: 0; transform: translateY(10px) scale(.95); } }
   @keyframes to-right { to { opacity: 0; transform: translateX(30px); } }
@@ -7450,8 +7460,12 @@ function paintStoryBar() {
     h("span", { class: "sb-plus", role: "button", title: T("Добавить историю"), "aria-label": T("Добавить историю"), onclick: (e) => { e.stopPropagation(); pickStory(); } }, icon("plus")));
   const others = [...storyFeed].filter(([id]) => id !== state.me.id).map(([id, f]) => ({ p: chatPerson(id), f })).filter((x) => x.p)
     .sort((a, b) => (a.f.seen - b.f.seen) || (a.f.at < b.f.at ? 1 : -1));
+  // появляются с анимацией только новые истории; уже показанные при перерисовке стоят на месте
+  const seenIds = bar._ids || null;
+  bar._ids = new Set(others.map(({ p }) => p.id));
+  if (!seenIds) my.classList.add("sb-new");
   bar.replaceChildren(my, ...appBarItem(), ...others.map(({ p, f }, i) => {
-    const el = h("button", { class: "sb-item" + (f.seen ? " seen" : ""), type: "button", title: p.display_name, onclick: () => watchStories(p) },
+    const el = h("button", { class: "sb-item" + (f.seen ? " seen" : "") + (!seenIds || !seenIds.has(p.id) ? " sb-new" : ""), type: "button", title: p.display_name, onclick: () => watchStories(p) },
       avatar(p.display_name, p.id, false, p.avatar_path), h("span", { class: "nm" }, p.display_name.split(/\s+/)[0]));
     el.style.animationDelay = Math.min(i + 1, 8) * 35 + "ms";
     return el;
@@ -15190,14 +15204,18 @@ function paintTabs() {
 // «Новости» в центре панели: страница на месте списка чатов, как Настройки (news.js)
 // вкладки на телефоне: новый экран наезжает справа (или уезжает вправо), прошлый виден под ним; панель снизу стоит
 function tabNow() { return $("dlgSettings").open ? 2 : window.MNews && MNews.isOpen() ? 1 : 0; }
+let tabVT = null;
 function tabSwap(to, fn) {
-  const from = tabNow();
+  const from = tabNow(), root = document.documentElement;
+  // быстрое переключение: прошлый переход сразу доводим до конца, а новый показываем без второго перехода —
+  // два перехода подряд давали кадр с пустым (чёрным) экраном
+  if (tabVT) { try { tabVT.skipTransition(); } catch (e) {} tabVT = null; delete root.dataset.tabdir; return fn(); }
   if (from === to || !document.startViewTransition || !motionOK() || !phoneLayout() || document.hidden || $("app").classList.contains("chat-open")) return fn();
-  const root = document.documentElement;
   root.dataset.tabdir = to > from ? "fwd" : "back";
   let vt;
   try { vt = document.startViewTransition(() => fn()); } catch (e) { delete root.dataset.tabdir; return fn(); }
-  vt.finished.finally(() => { delete root.dataset.tabdir; });
+  tabVT = vt;
+  vt.finished.finally(() => { if (tabVT === vt) { tabVT = null; delete root.dataset.tabdir; } });
 }
 $("tabNews").addEventListener("click", (e) => {
   if (!window.MNews) { toast(T("Новости ещё загружаются — попробуйте через секунду")); return; }
@@ -19728,7 +19746,8 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
       return;
     }
     this.classList.add("shut");
-    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, aMs(170));
+    const slow = this.classList.contains("full") && !this.classList.contains("story-view") && innerWidth <= 760;   // окно на весь экран уезжает вправо целиком
+    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, aMs(slow ? 250 : 170));
   };
   window.__dlgCloseNow = (d) => { if (d._shut) { clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); } close.call(d); };
   const revive = (d) => { if (!d._shut) return false; clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); return true; };
@@ -21244,7 +21263,17 @@ $("schedForm").addEventListener("submit", (e) => {
   b.addEventListener("contextmenu", (e) => { e.preventDefault(); menu(); });
   let t = 0, held = false;
   b.addEventListener("touchstart", () => { held = false; clearTimeout(t); t = setTimeout(() => { held = true; menu(); }, 450); }, { passive: true });
-  b.addEventListener("touchend", (e) => { clearTimeout(t); if (held) e.preventDefault(); });
+  b.addEventListener("touchend", (e) => {
+    clearTimeout(t);
+    if (held) { e.preventDefault(); return; }
+    // нажатие на «Отправить» не забирает фокус у поля — клавиатура остаётся на месте
+    if (e.cancelable && document.activeElement === $("text")) {
+      e.preventDefault();
+      const f = $("composer");
+      if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event("submit", { cancelable: true }));
+    }
+  }, { passive: false });
+  b.addEventListener("mousedown", (e) => { if (document.activeElement === $("text")) e.preventDefault(); });
   b.addEventListener("touchmove", () => clearTimeout(t), { passive: true });
   b.addEventListener("click", (e) => { if (held) { held = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 })();
