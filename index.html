@@ -209,16 +209,20 @@ button.wordmark.spin { opacity: .55; }
 .search { padding: 4px 12px 10px; display: flex; align-items: center; gap: 8px; }
 .search .sbar { flex: 1; min-width: 0; }
 .search-x { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); font-size: 16px; display: grid; place-items: center; }
-.sidebar.searching > .stories-bar, .sidebar.searching > .get-apps { display: none; }
+/* истории, «Скачать приложение», поиск и чаты прокручиваются вместе одним списком — истории уезжают вверх
+   прямо под пальцем, а поиск прилипает к верху */
+.side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.side-scroll > * { flex: none; }
+.side-scroll > #chatList { flex: 1 0 auto; overflow: visible; min-height: auto; }
+.side-scroll > .search { position: sticky; top: 0; z-index: 6; background: var(--panel); }
+.sidebar.in-settings > .side-scroll, .sidebar.in-news > .side-scroll { display: none !important; }
+.sidebar.searching .side-scroll > .stories-bar, .sidebar.searching .side-scroll > .get-apps { display: none; }
 @media (max-width: 760px) {
   /* поиск на телефоне: шапка уходит, поле поднимается к самому верху */
   .sidebar.searching > .side-head { display: none; }
-  .sidebar.searching > .search { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .sidebar.searching .side-scroll > .search { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
 }
-/* список прокрутили вниз — истории и «Скачать приложение» плавно сворачиваются, чатам больше места */
-.sidebar > .stories-bar, .sidebar > .get-apps { max-height: 140px; transition: max-height .28s cubic-bezier(.2,.8,.2,1), opacity .2s, padding .28s cubic-bezier(.2,.8,.2,1); }
-.sidebar.list-down > .stories-bar, .sidebar.list-down > .get-apps { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .sidebar > .stories-bar, .sidebar > .get-apps { transition: none; } }
+
 /* экран поиска: сверху те, с кем общались последними, ниже — кого искали */
 .dev { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
 .dev .di { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-size: 18px; }
@@ -1473,7 +1477,7 @@ label.toggle + label.toggle { box-shadow: inset 0 1px 0 var(--line); }
   #app:has(> .sidebar.in-news) > .pane, #app:has(> .sidebar.in-settings) > .pane, #app:has(> .sidebar.searching) > .pane { visibility: hidden; transition: visibility 0s .38s; }
   #app:has(> .sidebar.in-news) > .sidebar, #app:has(> .sidebar.in-settings) > .sidebar, #app:has(> .sidebar.searching) > .sidebar { border-right-color: transparent; }
   /* поиск на весь экран: поле и результаты — колонкой по центру */
-  .sidebar.searching > .search, .sidebar.searching > #chatList { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+  .sidebar.searching .side-scroll > .search, .sidebar.searching .side-scroll > #chatList { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 }
 @media (min-width: 761px) and (prefers-reduced-motion: reduce) { #app { transition: none; } }
 /* Настройки на широком экране: сначала список разделов по центру; при выборе раздела список уезжает влево, раздел выезжает справа */
@@ -4186,6 +4190,7 @@ void main() {
       <button class="icon-btn" id="btnNewGroup" type="button" title="Создать группу или канал" aria-label="Создать группу или канал"></button>
       <button class="icon-btn" id="btnProfile" type="button" title="Мой профиль" aria-label="Мой профиль"></button>
     </div>
+    <div class="side-scroll" id="sideScroll">
     <div class="get-apps" id="getApps" aria-label="Скачать приложение" hidden></div>
     <div class="stories-bar" id="storyBar" aria-label="Истории"></div>
     <div class="search"><label class="sbar">
@@ -4199,6 +4204,7 @@ void main() {
     </div>
     <div class="folders" id="folderBar" role="tablist" aria-label="Папки" hidden></div>
     <div class="list" id="chatList"></div>
+    </div>
     <section id="dlgSettings" class="set-page" hidden>
       <div class="dlg">
         <div class="set-head">
@@ -7784,12 +7790,12 @@ function litePerson(p) { return { id: p.id, username: p.username, display_name: 
 function setSearchMode(on) {
   if (searchMode === on) return;
   searchMode = on;
-  const side = document.querySelector(".sidebar"), box = side.querySelector(":scope > .search");
+  const side = document.querySelector(".sidebar"), box = side.querySelector(".side-scroll > .search");
   // поле поиска и список плавно переезжают на новое место, а не прыгают
   const moving = motionOK() ? [box, $("chatList")].filter(Boolean) : [];
   const before = moving.map((el) => el.getBoundingClientRect().top);
+  if (on) $("sideScroll").scrollTop = 0;
   side.classList.toggle("searching", on);
-  if (on) side.classList.remove("list-down");
   $("searchClose").hidden = !on;
   if (!on) { $("search").value = ""; $("search").blur(); }
   renderList();
@@ -7798,21 +7804,6 @@ function setSearchMode(on) {
     if (Math.abs(dy) > 1) el.animate([{ transform: "translateY(" + dy + "px)" }, { transform: "none" }], { duration: 340, easing: "cubic-bezier(.2,.8,.2,1)" });
   });
 }
-// список прокрутили вниз — истории сворачиваются, чаты поднимаются выше; вернулись наверх — разворачиваются
-(function () {
-  const list = $("chatList"), side = document.querySelector(".sidebar");
-  let raf = 0;
-  list.addEventListener("scroll", () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = 0;
-      if (searchMode) return;
-      const y = list.scrollTop, room = list.scrollHeight - list.clientHeight;
-      if (!side.classList.contains("list-down") && y > 40 && room > 220) side.classList.add("list-down");
-      else if (side.classList.contains("list-down") && y < 4) side.classList.remove("list-down");
-    });
-  }, { passive: true });
-})();
 function searchHome(chats) {
   const kids = [];
   const people = chats.filter((c) => !c.is_group && other(c) && c.last_text).slice(0, 15);
@@ -14431,6 +14422,19 @@ function openProfileEdit() {
   paintMyMusic();
   drawBadge();
 }
+// список чатов прячется на время Настроек и Новостей — запоминаем, где он был, и возвращаем туда же
+(function () {
+  const side = document.querySelector(".sidebar"), sc = $("sideScroll");
+  let saved = 0, away = false;
+  const isAway = () => side.classList.contains("in-settings") || side.classList.contains("in-news");
+  sc.addEventListener("scroll", () => { if (!isAway()) saved = sc.scrollTop; }, { passive: true });
+  new MutationObserver(() => {
+    const now = isAway();
+    if (now === away) return;
+    away = now;
+    if (!now) sc.scrollTop = saved;
+  }).observe(side, { attributes: true, attributeFilter: ["class"] });
+})();
 // настройки показываются отдельной страницей на месте списка чатов; интерфейс оставлен как у окна
 (function () {
   const pg = $("dlgSettings"), side = document.querySelector(".sidebar");
@@ -15179,6 +15183,7 @@ $("tabNews").addEventListener("click", (e) => {
   });
 });
 $("tabChats").addEventListener("click", (e) => {
+  const was = tabNow();
   (e.isTrusted ? tabSwap : (n, f) => f())(0, () => {
     for (const d of document.querySelectorAll("dialog[open]")) d.close();
     $("dlgSettings").close();
@@ -15186,7 +15191,8 @@ $("tabChats").addEventListener("click", (e) => {
     if ($("search").value) { $("search").value = ""; renderList(); }
     paintTabs();
   });
-  $("chatList").scrollTo({ top: 0, behavior: "smooth" });
+  // повторное нажатие на «Чаты», когда уже в чатах, — наверх; возврат из Настроек и Новостей — туда, где были
+  if (e.isTrusted && was === 0) $("sideScroll").scrollTo({ top: 0, behavior: "smooth" });
 });
 $("setHideSeen").addEventListener("change", async (e) => {
   const on = e.target.checked;
@@ -15764,7 +15770,7 @@ function setFolderTab(t) {
   folderTab = t;
   try { localStorage.setItem("mestario.folder", t); } catch (e) {}
   renderList();
-  $("chatList").scrollTop = 0;
+  $("sideScroll").scrollTop = 0;
 }
 let folderSig = "";
 function paintFolders(chats) {
