@@ -2935,7 +2935,7 @@ button, a, .row, .srow, label.toggle { touch-action: manipulation; }
   @keyframes sk-wave { from { background-position: 100% 0; } to { background-position: 0 0; } }
   #msgs { scroll-behavior: auto; }
   .msg, .row, .btn, .icon-btn { -webkit-font-smoothing: antialiased; }
-  .composer textarea { transition: height .15s var(--ease), border-color .18s, background-color .25s, box-shadow .2s; }
+  .composer textarea { transition: height .24s cubic-bezier(.22,1,.36,1), border-color .18s, background-color .25s, box-shadow .2s; }
 }
 
 /* ---------- переходы как в iOS: чат выезжает справа поверх списка, назад — смахиванием ---------- */
@@ -10550,10 +10550,26 @@ function vnoteNode(m, src) {
   return box;
 }
 $("recCancel").addEventListener("click", () => stopRecording(false));
+let fitPin = 0;
 function fitText() {
   const t = $("text");
+  // меряем нужную высоту без перехода, затем плавно растим или уменьшаем поле от прежней высоты
+  const prev = t.offsetHeight;
+  t.style.transition = "none";
   t.style.height = "auto";
-  t.style.height = Math.min(t.scrollHeight + 2, 160) + "px";
+  const want = Math.min(t.scrollHeight + 2, 160);
+  t.style.height = prev + "px";
+  void t.offsetHeight;
+  t.style.transition = "";
+  t.style.height = want + "px";
+  if (!prev || Math.abs(want - prev) < 1 || !motionOK()) return;
+  // пока поле растёт, переписка остаётся прижатой к низу — последние сообщения не уходят под поле
+  const box = $("msgs"), stick = box && nearBottom();
+  if (!stick) return;
+  cancelAnimationFrame(fitPin);
+  const t0 = performance.now();
+  const pin = () => { box.scrollTop = box.scrollHeight; if (performance.now() - t0 < 320) fitPin = requestAnimationFrame(pin); };
+  fitPin = requestAnimationFrame(pin);
 }
 $("text").addEventListener("input", () => { fitText(); syncComposer(); sayTyping(); });
 // панель форматирования над полем ввода: появляется, когда выделен текст
