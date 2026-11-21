@@ -1146,7 +1146,8 @@ dialog.vn-rec[open] { display: grid; place-items: center; }
 .vn-b.go { background: var(--accent); color: var(--accent-ink); }
 .vn-b svg { width: 26px; height: 26px; }
 .ticks.bad { color: var(--danger); opacity: 1; }
-.msg.pending { opacity: .82; }
+/* отправляемое сообщение выглядит так же, как отправленное (о статусе говорят часики): иначе после полёта оно мигало */
+.msg.pending { opacity: 1; }
 .msg.failed { outline: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); }
 .msg .resend { display: flex; gap: 14px; justify-content: flex-end; margin-top: 4px; font-size: 13px; }
 .msg .resend .danger { color: var(--danger); }
@@ -8629,7 +8630,8 @@ function msgNode(m, group) {
   if (m.markup && Array.isArray(m.markup.inline) && !temp) el.append(botInline(m));
   if (m.call_id && !temp && canCall(c)) el.append(h("button", { class: "link call-again", type: "button", onclick: () => startCall(c) }, mine ? T("Позвонить ещё раз") : T("Перезвонить")));
   el.append(h("span", { class: "meta" },
-    !temp && h("button", { class: "dots", type: "button", title: T("Действия с сообщением"), "aria-label": T("Действия с сообщением"), onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
+    temp ? h("span", { class: "dots", "aria-hidden": "true", style: "visibility:hidden" }, "⋯")   // место под «⋯» — чтобы пузырёк не менял ширину, когда сервер ответит
+      : h("button", { class: "dots", type: "button", title: T("Действия с сообщением"), "aria-label": T("Действия с сообщением"), onclick: () => openMsgMenu(group ? group[group.length - 1] : m, group) }, "⋯"),
     st && st.views != null && h("span", { class: "views", title: T("Сколько подписчиков прочитали пост") }, icon("eye"), String(st.views)),
     (m.edited_at ? T("изменено ") : "") + tFmt.format(new Date(m.created_at)), ticks));
   if (!temp) msgMenuBind(el, group ? group[group.length - 1] : m, group);
@@ -8885,12 +8887,14 @@ async function loadEarlier() {
   // всё ещё у самого верха (быстро листают) — догружаем следующую порцию
   requestAnimationFrame(() => { if (state.activeId === id && box.scrollTop < 900) autoEarlier(); });
 }
+var quietSwap = null;   // своё сообщение, пришедшее с сервера на место черновика: уже «прилетело», второй раз не анимируем
 function addMsg(m) {
   if (state.msgs.some((x) => x.id === m.id)) return;
   const wasGhost = takeGhost(m);
+  if (quietSwap != null && m.id === quietSwap) { quietSwap = null; var wasTemp = true; }
   if (m.sender_id === state.me.id && !isTemp(m)) {
     const twin = outbox.find((t) => t.pending && !t.done && t.chat_id === m.chat_id && (t._row.body || "") === (m.body || "") && !!t._file === !!m.file_path && (!t._path || t._path === m.file_path));
-    if (twin) { dropTemp(twin); var wasTemp = true; }
+    if (twin) { dropTemp(twin); wasTemp = true; }
   }
   const stick = nearBottom() || m.sender_id === state.me.id;
   state.msgs.push(m);
@@ -10782,11 +10786,13 @@ async function deliverOne(t, someSent) {
         : denied ? T("Этот человек ограничил круг тех, кто может ему писать.") : someSent ? T("Часть сообщений не отправилась.") : T("Сообщение не отправлено. Проверьте связь и попробуйте ещё раз."));
       return false;
     }
+    // сервер ответил, пока сообщение ещё летит, — дожидаемся конца полёта, чтобы не перерисовывать его на лету
+    if (flying && state.activeId === chatId) { const left = aMs(FLY_MS) - (performance.now() - flying.start); if (left > 0) await new Promise((r) => setTimeout(r, left + 20)); }
     dropTemp(t);
     touchChat(data);
     if ((data.body || data.voice_secs != null || data.video_secs != null) && isAiChat(state.chats.get(chatId))) { aiThinking(chatId); aiKick(data.id); }
     else if (botOf(state.chats.get(chatId))) botKickSoon(data.id, chatId);
-    if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else addMsg(data); }
+    if (state.activeId === chatId) { if (state.msgs.some((x) => x.id === data.id)) repaintKeep(); else { quietSwap = data.id; addMsg(data); quietSwap = null; } }
     return true;
   } catch (e) {
     if (t._gid) liveSend("drop", { u: state.me.id, gid: t._gid });
@@ -17470,9 +17476,9 @@ function pushUp(id) {
   if (idx < 0) return;
   const hgt = outer.offsetHeight + 4;
   if (hgt > box.clientHeight) return;
-  const ease = "cubic-bezier(.22,.9,.28,1)";
+  const mine = node.classList.contains("mine"), ease = mine ? "cubic-bezier(.22,1,.36,1)" : "cubic-bezier(.22,.9,.28,1)";
   for (let i = Math.max(0, idx - 14); i < idx; i++) {
-    kids[i].animate([{ transform: "translate3d(0," + hgt + "px,0)" }, { transform: "none" }], { duration: 280, easing: ease });
+    kids[i].animate([{ transform: "translate3d(0," + hgt + "px,0)" }, { transform: "none" }], { duration: mine ? FLY_MS : 280, easing: ease });
   }
   if (!node.classList.contains("mine")) {   // свои летят из поля ввода (flyIn), чужие — выезжают снизу
     node.classList.remove("new");
@@ -19842,7 +19848,7 @@ function flipList(list, paint) {
 }
 // отправленное сообщение «вылетает» из поля ввода на своё место
 let flyFrom = null, flying = null;
-const FLY_MS = 440;
+const FLY_MS = 420;
 function noteFlyFrom() {
   const ta = $("text");
   if (!motionOK() || !ta || !ta.offsetParent) { flyFrom = null; return; }
@@ -19851,19 +19857,22 @@ function noteFlyFrom() {
 }
 function flyIn(node, from, elapsed) {
   node.classList.remove("new");
-  node.style.opacity = "0";
-  requestAnimationFrame(() => {
-    node.style.opacity = "";
-    const r = node.getBoundingClientRect();
-    if (from.dx == null) { from.dx = from.right - r.right; from.dy = from.top + from.h / 2 - (r.top + r.height / 2); }
-    const dx = from.dx, dy = from.dy;
+  node.style.transformOrigin = "100% 100%";
+  // одно мягкое движение из поля ввода на место: без отскока и без пустого кадра посередине
+  const run = () => {
+    if (from.dx == null) {
+      const r = node.getBoundingClientRect();
+      from.dx = from.right - r.right; from.dy = from.top + from.h / 2 - (r.top + r.height / 2);
+    }
     const a = node.animate([
-      { transform: "translate(" + dx + "px," + dy + "px) scale(.86)", opacity: .35 },
-      { transform: "translate(" + dx * .15 + "px," + dy * .1 + "px) scale(1.03)", opacity: 1, offset: .7 },
+      { transform: "translate3d(" + from.dx + "px," + from.dy + "px,0) scale(.92)", opacity: 0.5 },
       { transform: "none", opacity: 1 },
-    ], { duration: FLY_MS, easing: "cubic-bezier(.2,.9,.25,1)" });
-    if (elapsed) a.currentTime = Math.min(elapsed + 16, aMs(FLY_MS));
-  });
+    ], { duration: FLY_MS, easing: "cubic-bezier(.22,1,.36,1)" });
+    if (elapsed) a.currentTime = Math.min(elapsed, aMs(FLY_MS));
+  };
+  if (elapsed && from.dx != null) { run(); return; }   // продолжение полёта после перерисовки — сразу, с того же места
+  node.style.opacity = "0";
+  requestAnimationFrame(() => { node.style.opacity = ""; run(); });
 }
 // удалённое сообщение не исчезает мгновенно, а сжимается и растворяется
 let lastMsgsChat = null;
