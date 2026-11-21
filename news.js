@@ -339,7 +339,7 @@ div.nz-card { cursor: pointer; }
 
   let status = null;   // моя верификация
   function paintHead() {
-    const kids = [h("h2", {}, T("Новости"))];
+    const kids = [h("h2", {}, T("Новости")), h("button", { class: "icon-btn", type: "button", title: T("Поиск по новостям"), "aria-label": T("Поиск по новостям"), onclick: openSearch }, ico("find"))];
     if (status && status.me && status.me.autopost) kids.push(h("button", { class: "icon-btn", type: "button", title: T("Написать в Новости"), "aria-label": T("Написать в Новости"), onclick: () => openCompose() }, ico("plus")));
     if (state.isAdmin) kids.push(h("button", { class: "icon-btn", type: "button", title: T("Верификация"), "aria-label": T("Верификация"), onclick: () => openAdmin() }, ico("shield")));
     kids.push(h("button", { class: "icon-btn", type: "button", title: T("Источники"), "aria-label": T("Источники"), onclick: openSources }, ico("grid")));
@@ -794,6 +794,51 @@ div.nz-card { cursor: pointer; }
     toast(T("Убрано из Новостей"));
     feed = feed.filter((x) => x.id !== it.id);
     back(); loadFeed(true);
+  }
+
+  /* ---------- поиск ---------- */
+  const RK = "mestario.news.recent";
+  const recentGet = () => { try { return JSON.parse(localStorage.getItem(RK) || "[]").slice(0, 8); } catch (e) { return []; } };
+  const recentAdd = (q) => { try { localStorage.setItem(RK, JSON.stringify([q].concat(recentGet().filter((x) => x.toLowerCase() !== q.toLowerCase())).slice(0, 8))); } catch (e) {} };
+  let srchCat = null;
+  function openSearch() {
+    go("search", (v) => {
+      const inp = h("input", { class: "input", type: "search", maxlength: "100", placeholder: T("Заголовок, тема, канал или автор"), autocomplete: "off", enterkeyhint: "search" });
+      const chips = h("div", { class: "nz-cats" });
+      const res = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+      const more = h("button", { class: "btn ghost nz-more", type: "button", hidden: true }, T("Показать ещё"));
+      let rows = [], seq = 0;
+      const paintChips = () => chips.replaceChildren(...[[null, "Все разделы"]].concat(CATS.filter(([k]) => k !== "top")).map(([k, n]) =>
+        h("button", { type: "button", role: "tab", "aria-checked": String(srchCat === k), onclick: () => { srchCat = k; paintChips(); run(true); } }, T(n))));
+      const paintRecent = () => {
+        const rc = recentGet();
+        res.replaceChildren(...(rc.length ? [h("div", { class: "set-label", style: "margin:2px" }, T("Недавние запросы")),
+          h("div", { class: "nz-chips" }, ...rc.map((q) => h("button", { type: "button", onclick: () => { inp.value = q; run(true); } }, q)))]
+          : [h("div", { class: "nz-empty" }, T("Ищите по заголовкам, темам, каналам и авторам — во всех источниках."))]));
+      };
+      async function run(reset) {
+        const q = inp.value.trim();
+        if (q.length < 2) { seq++; more.hidden = true; paintRecent(); return; }
+        const my = ++seq;
+        if (reset) { rows = []; res.replaceChildren(h("div", { class: "nz-skel" }), h("div", { class: "nz-skel" })); more.hidden = true; }
+        await loadSources();
+        const { data, error } = await sb.rpc("news_search", { p_q: q, p_category: srchCat, p_before: !reset && rows.length ? rows[rows.length - 1].published_at : null, p_limit: 30 });
+        if (my !== seq) return;
+        if (error) { res.replaceChildren(h("div", { class: "nz-empty" }, T("Не удалось выполнить поиск. Проверьте интернет."))); return; }
+        const got = Array.isArray(data) ? data : [];
+        rows = rows.concat(got);
+        if (reset) { res.replaceChildren(); if (got.length) recentAdd(q); }
+        if (!rows.length) res.replaceChildren(h("div", { class: "nz-empty" }, T("Ничего не нашли. Попробуйте другое слово или другой раздел.")));
+        res.append(...got.map(itemCard));
+        more.hidden = got.length < 30;
+      }
+      more.onclick = () => run(false);
+      inp.addEventListener("input", debounce(() => run(true), 350));
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); run(true); } });
+      paintChips(); paintRecent();
+      v.replaceChildren(subHead(T("Поиск по новостям")), inp, chips, res, more);
+      setTimeout(() => inp.focus(), 60);
+    });
   }
 
   /* ---------- источники ---------- */
