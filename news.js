@@ -124,6 +124,55 @@ div.nz-card { cursor: pointer; }
 .nz-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .nz-chips button { border: 0; border-radius: 99px; padding: 7px 12px; font-size: 13.5px; font-weight: 600; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
 .nz-chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink, #fff); }
+/* ---------- анимации (только если в системе не выключено движение) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes nz-up { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes nz-pop { 0% { transform: scale(1); } 40% { transform: scale(1.32); } 70% { transform: scale(.92); } 100% { transform: scale(1); } }
+  @keyframes nz-chip { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: none; } }
+  @keyframes nz-fadein { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes nz-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes nz-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: none; } }
+  @keyframes nz-in-left { from { transform: translate3d(-25%, 0, 0); opacity: .55; } to { transform: none; opacity: 1; } }
+  @keyframes nz-shine { from { transform: translateX(-120%); } to { transform: translateX(220%); } }
+  /* переходы между экранами — как в Настройках */
+  #newsPage [data-nv].from-right { animation: nz-in-right .3s cubic-bezier(.22,.9,.28,1) both; }
+  #newsPage [data-nv].from-left { animation: nz-in-left .3s cubic-bezier(.22,.9,.28,1) both; }
+  /* карточки появляются по очереди */
+  #newsPage .nz-in { animation: nz-up .42s cubic-bezier(.2,.8,.3,1) both; animation-delay: var(--d, 0ms); }
+  /* нажатия */
+  #newsPage div.nz-card, #newsPage button.nz-card, #newsPage .nz-tick, #newsPage .nz-rate, #newsPage .btn, #newsPage .icon-btn,
+  #newsPage .nz-opt, #newsPage .nz-pill, #newsPage .nz-chips button, #newsPage .nz-cats button, #newsPage .nz-assets button {
+    transition: transform .18s cubic-bezier(.2,.8,.3,1), background-color .2s, color .2s, box-shadow .2s; }
+  #newsPage div.nz-card:active:not(:has(button:active, input:active, textarea:active, video:active, img.lg:active, img.oi:active)) { transform: scale(.985); }
+  #newsPage .nz-tick:active, #newsPage .nz-rate:active, #newsPage .nz-opt:active { transform: scale(.98); }
+  #newsPage .btn:active, #newsPage .nz-pill:active, #newsPage .nz-chips button:active, #newsPage .nz-cats button:active, #newsPage .nz-assets button:active { transform: scale(.95); }
+  #newsPage .icon-btn:active { transform: scale(.86); }
+  /* выбранный раздел, регион, вкладка */
+  #newsPage .nz-cats button[aria-checked="true"], #newsPage .seg button[aria-checked="true"], #newsPage .nz-chips button[aria-pressed="true"],
+  #newsPage .nz-pill[aria-pressed="true"], #newsPage .nz-assets button[aria-pressed="true"] { animation: nz-chip .32s cubic-bezier(.2,.8,.3,1); }
+  /* реакции */
+  #newsPage .nz-rx button.pop { animation: nz-chip .35s cubic-bezier(.2,.8,.3,1); }
+  #newsPage .nz-rx button.pop svg { animation: nz-pop .5s cubic-bezier(.2,.8,.3,1); }
+  /* фото и видео плавно проявляются */
+  #newsPage .nz-fade { opacity: 0; transition: opacity .45s ease, transform .6s cubic-bezier(.2,.8,.3,1); }
+  #newsPage .nz-fade.ld { opacity: 1; }
+  #newsPage .nz-big-m .nz-fade, #newsPage .nz-gal .nz-fade { transform: scale(1.04); }
+  #newsPage .nz-big-m .nz-fade.ld, #newsPage .nz-gal .nz-fade.ld { transform: none; }
+  /* графики рисуются слева направо, полосы растут */
+  #newsPage svg.nz-spark { animation: nz-reveal .9s cubic-bezier(.4,0,.2,1) both; }
+  #newsPage .nz-opt .fill { transition: width .7s cubic-bezier(.2,.8,.3,1); }
+  #newsPage .nz-stat .bars i { transition: width .8s cubic-bezier(.2,.8,.3,1); }
+  #newsPage .nz-odds .bar span { transition: flex-grow .8s cubic-bezier(.2,.8,.3,1); }
+  /* смена перевода и оригинала */
+  #newsPage .nz-swap { animation: nz-fadein .3s ease both; }
+  /* новые фото, варианты ответа, вкладки при публикации */
+  #newsPage .nz-pick .it, #newsPage .nz-orow { animation: nz-up .3s cubic-bezier(.2,.8,.3,1) both; }
+  #newsPage [data-nv="compose"] .nz-form { animation: nz-fadein .25s ease both; }
+  /* блик на кнопке «Опубликовать» и «Купить» */
+  #newsPage .nz-shine { position: relative; overflow: hidden; }
+  #newsPage .nz-shine::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .28), transparent);
+    transform: translateX(-120%); animation: nz-shine 2.6s 1s ease-in-out infinite; pointer-events: none; }
+}
 .nz-poll { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; cursor: default; }
 .nz-poll .q { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .nz-opt { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; border-radius: 12px; padding: 8px 12px; min-height: 42px;
@@ -254,7 +303,7 @@ div.nz-card { cursor: pointer; }
   const ico = (n) => icon(n);
   function svgEl(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
   function spark(pts, w, hgt, area) {
-    const s = svgEl("svg", { viewBox: "0 0 " + w + " " + hgt, preserveAspectRatio: "none", "aria-hidden": "true" });
+    const s = svgEl("svg", { viewBox: "0 0 " + w + " " + hgt, preserveAspectRatio: "none", "aria-hidden": "true", class: "nz-spark" });
     if (!pts || pts.length < 2) return s;
     const ys = pts.map((p) => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), t0 = pts[0][0], t1 = pts[pts.length - 1][0];
     const X = (t) => ((t - t0) / (t1 - t0 || 1)) * w, Y = (v) => hgt - 4 - ((v - lo) / (hi - lo || 1)) * (hgt - 8);
@@ -270,6 +319,21 @@ div.nz-card { cursor: pointer; }
     return s;
   }
   const tick = () => preTick({ verified: true, id: "-" });
+  // появление по очереди: каждой следующей карточке — небольшая задержка
+  function stag(els, from) {
+    els.forEach((el, i) => { if (!el) return; el.classList.add("nz-in"); el.style.setProperty("--d", Math.min(i + (from || 0), 10) * 45 + "ms"); });
+    return els;
+  }
+  // плавное проявление картинки или видео, когда загрузятся
+  function fadeIn(el) {
+    el.classList.add("nz-fade");
+    const done = () => grow(() => el.classList.add("ld"));
+    if (el.tagName === "VIDEO") el.addEventListener("loadeddata", done, { once: true });
+    else el.addEventListener("load", done, { once: true });
+    return el;
+  }
+  // полосы растут от нуля: ширина ставится после вставки в страницу
+  const grow = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
   function btn(label, cls, onclick, ic) { return h("button", { class: "btn" + (cls ? " " + cls : ""), type: "button", onclick }, ic ? ico(ic) : null, label); }
   function rpcErr(e) {
     const m = String((e && e.message) || "");
@@ -394,7 +458,7 @@ div.nz-card { cursor: pointer; }
       paintPer(); load();
       card.append(h("div", { class: "nz-cta", style: "grid-template-columns:34px minmax(0,1fr) auto" }, h("img", { src: "mst.png", alt: "", style: "width:34px;height:34px;border-radius:50%" }),
         h("div", {}, h("b", {}, "MestCoin (MST)"), h("span", { class: "s" }, T("пул DeDust"))),
-        h("button", { class: "btn", type: "button", style: "padding:7px 14px", onclick: () => MW.open("swap", { from: "TON" }) }, T("Купить"))), box, per);
+        h("button", { class: "btn nz-shine", type: "button", style: "padding:7px 14px", onclick: () => MW.open("swap", { from: "TON" }) }, T("Купить"))), box, per);
       card.append(h("div", { style: "margin-top:6px" }, row("TON", "Toncoin", "TON", h("span", { class: "co" }, "T"))));
       return card;
     }
@@ -437,11 +501,11 @@ div.nz-card { cursor: pointer; }
   }
   function thumb(it) {
     const ms = mediaOf(it), m = ms[0];
-    const img = h("img", { class: "nz-th", alt: "", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } });
+    const img = fadeIn(h("img", { class: "nz-th", alt: "", referrerpolicy: "no-referrer", hidden: true, onerror: (e) => { e.currentTarget.hidden = true; }, onload: (e) => { e.currentTarget.hidden = false; } }));
     if (!m) return img;
     const wrap = h("span", { class: "nz-thw" });
     if (m.kind === "video") {
-      const vid = h("video", { class: "nz-th", muted: true, playsinline: true, preload: "metadata" });
+      const vid = fadeIn(h("video", { class: "nz-th", muted: true, playsinline: true, preload: "metadata" }));
       vid.muted = true;
       mediaUrl(m).then((u) => { if (u) vid.src = u + "#t=0.5"; });
       wrap.append(vid, h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
@@ -458,12 +522,12 @@ div.nz-card { cursor: pointer; }
     const box = h("div", { class: "nz-gal" });
     for (const m of ms) {
       if (m.kind === "video") {
-        const vid = h("video", { controls: true, playsinline: true, preload: "metadata" });
+        const vid = fadeIn(h("video", { controls: true, playsinline: true, preload: "metadata" }));
         mediaUrl(m).then((u) => { if (u) vid.src = u; });
         box.append(vid);
       } else {
-        const img = h("img", { alt: "", referrerpolicy: "no-referrer", loading: "lazy", onerror: (e) => { e.currentTarget.remove(); },
-          onclick: (e) => { if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } });
+        const img = fadeIn(h("img", { alt: "", referrerpolicy: "no-referrer", loading: "lazy", onerror: (e) => { e.currentTarget.remove(); },
+          onclick: (e) => { if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } }));
         mediaUrl(m).then((u) => { if (u) img.src = u; });
         box.append(img);
       }
@@ -481,20 +545,23 @@ div.nz-card { cursor: pointer; }
   }
   function reactBar(it, onComments) {
     const box = h("div", { class: "nz-rx", onclick: (e) => e.stopPropagation() });
-    let busy = false;
+    let busy = false, popK = null;
     const paint = () => {
       const r = it.reactions || { counts: {} }, c = r.counts || {};
-      box.replaceChildren(...RX.map(([k, n]) => h("button", { type: "button", title: T(n), "aria-label": T(n), "aria-pressed": String(r.mine === k), onclick: async () => {
+      box.replaceChildren(...RX.map(([k, n]) => h("button", { type: "button", class: popK === k ? "pop" : null, title: T(n), "aria-label": T(n), "aria-pressed": String(r.mine === k), onclick: async () => {
         if (busy) return;
         busy = true;
         // сразу показываем результат, потом сверяем с сервером
         const old = JSON.parse(JSON.stringify(r)), was = r.mine;
         if (was) c[was] = Math.max(0, (c[was] || 1) - 1);
         if (was === k) r.mine = null; else { r.mine = k; c[k] = (c[k] || 0) + 1; }
-        it.reactions = { counts: c, mine: r.mine }; paint();
+        it.reactions = { counts: c, mine: r.mine }; popK = k; paint(); popK = null;
         const { data, error } = await sb.rpc("news_react", { p_item: it.id, p_kind: k });
         busy = false;
-        it.reactions = error ? old : data; paint();
+        const next = error ? old : data;
+        const same = JSON.stringify({ c: next.counts || {}, m: next.mine || null }) === JSON.stringify({ c: Object.fromEntries(Object.entries(c).filter(([, n]) => n > 0)), m: r.mine || null });
+        it.reactions = next;
+        if (!same) paint();
       } }, rxIco(k), c[k] ? String(c[k]) : null)),
       h("button", { class: "cm", type: "button", title: T("Комментарии"), onclick: () => (onComments ? onComments() : openArticle(it, true)) }, ico("bubble"), it.comments ? String(it.comments) : T("Обсудить")));
     };
@@ -507,12 +574,12 @@ div.nz-card { cursor: pointer; }
     if (!m) return null;
     const box = h("div", { class: "nz-big-m" });
     if (m.kind === "video") {
-      const vid = h("video", { muted: true, playsinline: true, preload: "metadata" });
+      const vid = fadeIn(h("video", { muted: true, playsinline: true, preload: "metadata" }));
       vid.muted = true;
       mediaUrl(m).then((u) => { if (u) vid.src = u + "#t=0.5"; });
       box.append(vid, h("span", { class: "nz-play" }, h("span", {}, ico("play"))));
     } else {
-      const img = h("img", { alt: "", referrerpolicy: "no-referrer", onerror: () => box.remove() });
+      const img = fadeIn(h("img", { alt: "", referrerpolicy: "no-referrer", onerror: () => box.remove() }));
       mediaUrl(m).then((u) => { if (u) img.src = u; });
       box.append(img);
     }
@@ -524,7 +591,7 @@ div.nz-card { cursor: pointer; }
   function teamLogo(t) {
     const nm = (t && t.name) || "?";
     if (t && t.image) {
-      const im = h("img", { class: "lg", alt: "", onclick: (e) => { e.stopPropagation(); if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } });
+      const im = fadeIn(h("img", { class: "lg", alt: "", onclick: (e) => { e.stopPropagation(); if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } } }));
       im.src = sb.storage.from("news").getPublicUrl(t.image).data.publicUrl;
       return im;
     }
@@ -546,15 +613,19 @@ div.nz-card { cursor: pointer; }
     if (rows.length) box.append(h("div", { class: "nz-stat" }, ...rows.map(([k, n]) => {
       const [a, b] = stats[k], tot = Math.max(1, a + b);
       return h("div", { class: "r" }, h("b", {}, k === "possession" ? a + "%" : String(a)),
-        h("div", { class: "mid" }, T(n).replace(/, %$/, ""), h("div", { class: "bars" }, h("span", {}, h("i", { style: "width:" + Math.round((a / tot) * 100) + "%" })), h("span", {}, h("i", { style: "width:" + Math.round((b / tot) * 100) + "%" })))),
+        h("div", { class: "mid" }, T(n).replace(/, %$/, ""), h("div", { class: "bars" }, h("span", {}, h("i", { style: "width:0", "data-w": Math.round((a / tot) * 100) + "%" })), h("span", {}, h("i", { style: "width:0", "data-w": Math.round((b / tot) * 100) + "%" })))),
         h("b", {}, k === "possession" ? b + "%" : String(b)));
     })));
     if (Array.isArray(mt.odds) && mt.odds.some((x) => x > 0)) {
       const tot = Math.max(1, mt.odds[0] + mt.odds[1] + mt.odds[2]);
-      const seg = (v, lab, col) => v > 0 ? h("span", { style: "flex:" + v + ";background:" + col, title: lab }, lab + " " + Math.round((v / tot) * 100) + "%") : null;
+      const seg = (v, lab, col) => v > 0 ? h("span", { style: "flex:1 1 0;background:" + col, "data-g": String(v), title: lab }, lab + " " + Math.round((v / tot) * 100) + "%") : null;
       box.append(h("div", { class: "nz-odds" }, h("div", { class: "lb" }, T("Шансы")),
         h("div", { class: "bar" }, seg(mt.odds[0], T("П1"), "var(--accent)"), seg(mt.odds[1], T("Ничья"), "#7c8a94"), seg(mt.odds[2], T("П2"), "#8a7cf6"))));
     }
+    grow(() => {
+      box.querySelectorAll(".nz-stat .bars i").forEach((x) => { x.style.width = x.dataset.w; });
+      box.querySelectorAll(".nz-odds .bar span").forEach((x) => { x.style.flexGrow = x.dataset.g; });
+    });
     return box;
   }
   /* опрос: голос сразу по нажатию (несколько ответов — галочки и «Голосовать»), после — результаты */
@@ -564,7 +635,7 @@ div.nz-card { cursor: pointer; }
     const zoom = (e) => { e.stopPropagation(); if ($("viewerImg") && $("viewer")) { $("viewerImg").src = e.currentTarget.src; try { $("viewer").showModal(); } catch (er) {} } };
     const optImg = (o) => {
       if (!o.image) return null;
-      const im = h("img", { class: "oi", alt: "", onclick: zoom });
+      const im = fadeIn(h("img", { class: "oi", alt: "", onclick: zoom }));
       im.src = sb.storage.from("news").getPublicUrl(o.image).data.publicUrl;
       return im;
     };
@@ -585,7 +656,7 @@ div.nz-card { cursor: pointer; }
       for (const o of pl.options || []) {
         const mine = (pl.mine || []).includes(o.id), pc = Math.round((Number(o.votes || 0) / tot) * 100);
         if (show) {
-          kids.push(h("div", { class: "nz-opt" + (mine ? " me" : "") }, h("span", { class: "fill", style: "width:" + pc + "%" }),
+          kids.push(h("div", { class: "nz-opt" + (mine ? " me" : "") }, h("span", { class: "fill", style: "width:0", "data-w": pc + "%" }),
             mine ? h("span", { class: "ck" }, ico("check1")) : null, optImg(o), h("span", { class: "t" }, o.text), h("span", { class: "pc" }, pc + "%")));
         } else {
           const b = h("button", { class: "nz-opt" + (pl.multi ? " multi" : ""), type: "button", "aria-pressed": String(sel.has(o.id)), onclick: () => {
@@ -601,6 +672,7 @@ div.nz-card { cursor: pointer; }
       if (voted && !pl.closed) foot.append(h("button", { type: "button", onclick: () => vote([]) }, T("Отменить голос")));
       kids.push(foot);
       box.replaceChildren(...kids);
+      grow(() => box.querySelectorAll(".fill").forEach((f) => { f.style.width = f.dataset.w; }));
     }
     paint();
     return box;
@@ -666,17 +738,17 @@ div.nz-card { cursor: pointer; }
       feed = feed.concat(rows);
       if (reset) list.replaceChildren();
       if (!feed.length) list.replaceChildren(h("div", { class: "nz-empty" }, T("Здесь пока пусто. Выберите больше источников — кнопка справа вверху.")));
-      list.append(...rows.map(itemCard));
+      list.append(...stag(rows.map(itemCard), reset ? 0 : 0));
       moreBtn.hidden = rows.length < 30;
     } finally { if (seq === feedSeq) feedBusy = false; }
   }
   async function paintTop() {
     const kids = [];
     if (prefs.cat === "top" || prefs.cat === "business") { const c = marketCard(prefs.cat === "business"); if (c) kids.push(c); }
-    topBox.replaceChildren(...kids);
+    topBox.replaceChildren(...stag(kids));
     if (prefs.cat === "top") {
       const seq = feedSeq, c = await whatsNewCard().catch(() => null);
-      if (c && seq === feedSeq) topBox.append(c);
+      if (c && seq === feedSeq) topBox.append(...stag([c], 1));
     }
   }
   async function paintCta() {
@@ -706,7 +778,7 @@ div.nz-card { cursor: pointer; }
         const tb = h("button", { type: "button" });
         const lab = h("span", {});
         const pt = () => { lab.replaceChildren(ico("globe"), ru ? T("Переведено с английского") : T("Оригинал на английском")); tb.textContent = ru ? T("Оригинал") : T("Перевод"); };
-        tb.onclick = () => { ru = !ru; paint(); pt(); };
+        tb.onclick = () => { ru = !ru; paint(); pt(); flash(ttl, 320, "nz-swap"); flash(sum, 320, "nz-swap"); };
         pt();
         kids.push(h("div", { class: "nz-trbox" }, lab, tb));
       }
@@ -761,7 +833,7 @@ div.nz-card { cursor: pointer; }
         if (error) { toast(/limit/.test(error.message || "") ? T("Слишком часто — попробуйте позже") : T("Не удалось отправить")); return; }
         cmInput.value = ""; cmInput.style.height = "";
         cmBox.querySelector(".nz-empty")?.remove();
-        cmBox.append(cmtEl(data));
+        const ne = cmtEl(data); ne.classList.add("nz-in"); cmBox.append(ne);
         it.comments = (it.comments || 0) + 1;
       };
       cmInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && window.matchMedia && matchMedia("(pointer:fine)").matches) { e.preventDefault(); send.onclick(); } });
@@ -770,7 +842,7 @@ div.nz-card { cursor: pointer; }
       v.replaceChildren(h("div", { class: "nz-art", style: "display:flex;flex-direction:column;gap:12px" }, ...kids));
       sb.rpc("news_comments_list", { p_item: it.id }).then(({ data }) => {
         const rows = Array.isArray(data) ? data : [];
-        cmBox.replaceChildren(...(rows.length ? rows.map(cmtEl) : [h("div", { class: "nz-empty", style: "padding:10px" }, T("Комментариев пока нет — будьте первым."))]));
+        cmBox.replaceChildren(...(rows.length ? stag(rows.map(cmtEl)) : [h("div", { class: "nz-empty", style: "padding:10px" }, T("Комментариев пока нет — будьте первым."))]));
         if (toComments) setTimeout(() => { cmHead.scrollIntoView({ block: "start", behavior: motionOK() ? "smooth" : "auto" }); }, 80);
       });
     });
@@ -829,7 +901,7 @@ div.nz-card { cursor: pointer; }
         rows = rows.concat(got);
         if (reset) { res.replaceChildren(); if (got.length) recentAdd(q); }
         if (!rows.length) res.replaceChildren(h("div", { class: "nz-empty" }, T("Ничего не нашли. Попробуйте другое слово или другой раздел.")));
-        res.append(...got.map(itemCard));
+        res.append(...stag(got.map(itemCard)));
         more.hidden = got.length < 30;
       }
       more.onclick = () => run(false);
@@ -861,7 +933,7 @@ div.nz-card { cursor: pointer; }
       count();
       v.replaceChildren(subHead(T("Мои источники")),
         h("div", { class: "hint" }, T("Выберите, откуда показывать новости. Зарубежные переводим на русский.")),
-        h("div", { class: "nz-tbl" }, h("div", { class: "r h" }, h("span", {}, T("Категория")), h("span", {}, T("Россия")), h("span", {}, T("Мир"))), ...rows,
+        h("div", { class: "nz-tbl" }, h("div", { class: "r h" }, h("span", {}, T("Категория")), h("span", {}, T("Россия")), h("span", {}, T("Мир"))), ...stag(rows),
           h("div", { class: "r" }, h("span", { class: "c" }, "Mestario"), h("div", { class: "cl", style: "grid-column:span 2" }, pubs))),
         h("div", { class: "hint" }, cnt),
         h("div", { class: "nz-card nz-status" }, h("b", { style: "color:var(--ink)" }, T("Как это работает")), h("br"),
@@ -899,6 +971,7 @@ div.nz-card { cursor: pointer; }
         chans.length ? null : h("div", { class: "hint" }, T("Чтобы подать заявку за канал, он должен быть публичным (с @юзернеймом), а вы — его администратором."))));
       else kids.push(h("div", { class: "hint" }, T("Новых заявок подать пока не за кого: всё уже в Новостях или на проверке.")));
       v.replaceChildren(...kids);
+      stag([...v.querySelectorAll(".nz-card")]);
     });
   }
 
@@ -1100,7 +1173,7 @@ div.nz-card { cursor: pointer; }
         return;
       }
 
-      const pub = btn(T("Опубликовать"), "", async () => {
+      const pub = btn(T("Опубликовать"), "nz-shine", async () => {
         if (composeKind === "match" && (!mHome.name.value.trim() || !mAway.name.value.trim())) { toast(T("Укажите обе команды")); return; }
         if (t.value.trim().length < 3 && !(composeKind === "match" && !t.value.trim())) { toast(composeKind === "poll" ? T("Вопрос — от 3 до 160 символов") : T("Заголовок — от 3 до 160 символов")); return; }
         let poll = null;
@@ -1157,6 +1230,7 @@ div.nz-card { cursor: pointer; }
       const rows = Array.isArray(data) ? data : [];
       found.replaceChildren(...(rows.length ? rows.map((o) => h("button", { class: "nz-card nz-req", type: "button", onclick: () => openGrant(o) }, admRow(o),
         o.news ? h("div", { class: "meta" }, h("span", { class: "nz-ok" }, T("В Новостях · ") + catsLabel(o.news))) : null)) : [h("div", { class: "hint" }, T("Никого не нашли. Канал должен быть публичным."))]));
+      stag([...found.children]);
     }, 300));
     const box = h("div", { style: "display:flex;flex-direction:column;gap:10px" }, h("div", { class: "nz-skel" }));
     v.replaceChildren(subHead(T("Верификация")), tabs, q, found, box);
@@ -1175,6 +1249,7 @@ div.nz-card { cursor: pointer; }
             if (e) toast(T("Не удалось")); else { toast(T("Заявка отклонена")); paintAdmin(v); }
           }), btn(T("Выдать"), "", () => openGrant(o), "check1")));
       }) : [h("div", { class: "nz-empty" }, T("Новых заявок нет."))]));
+      stag([...box.children]);
     } else {
       const { data, error } = await sb.rpc("news_admin_list", { p_revoked: admTab === "off" });
       const rows = error ? [] : data || [];
@@ -1182,6 +1257,7 @@ div.nz-card { cursor: pointer; }
         admRow({ ...o, verified: admTab === "on" }),
         h("div", { class: "meta" }, h("span", {}, catsLabel(o) + " · " + regsLabel(o)), h("span", {}, o.autopost ? T("автопостинг") : T("без автопостинга")),
           h("span", {}, T("публикаций: ") + o.items), h("span", {}, ago(o.at))))) : [h("div", { class: "nz-empty" }, admTab === "on" ? T("Пока никому не выдано.") : T("Отозванных нет."))]));
+      stag([...box.children]);
     }
   }
   const catsLabel = (o) => { const c = o.categories || [o.category]; return c.length >= 9 ? T("все разделы") : c.map((k) => T(CAT[k] || k)).join(", "); };
