@@ -3396,6 +3396,7 @@ dialog.pv-dlg .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   border-color: transparent !important; border-radius: 28px; box-shadow: var(--lg-shadow) !important;
 }
 :root[data-glass="liquid"] dialog::backdrop { background: rgb(0 0 0 / .28); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+:root[data-glass="liquid"] dialog.full::backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* кнопки — капсулы с бликом */
 :root[data-glass="liquid"] .btn { border-radius: 999px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), inset 0 -2px 6px rgb(0 0 0 / .08), 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
 :root[data-glass="liquid"] .btn.ghost { background: var(--lg-shine), var(--lg-tint) !important; -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); box-shadow: var(--lg-shadow); }
@@ -3445,12 +3446,10 @@ dialog.pv-dlg .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   dialog.shut::backdrop { animation: fade-out .17s both !important; }
   dialog.full.shut { animation-name: to-right !important; }
   @media (max-width: 760px) {
-    dialog.full.shut:not(.story-view) { animation: tg-out-right .26s cubic-bezier(.32,.72,0,1) both !important; }
-    dialog.full.shut:not(.story-view)::backdrop { animation: fade-out .26s both !important; }
-    dialog.full:not(.story-view)::backdrop { background: rgb(0 0 0 / .3); }
-    /* под открытым окном экран чуть уезжает влево, при закрытии возвращается — как в разделах настроек */
-    #app { transition: transform .32s cubic-bezier(.22,.9,.28,1); }
-    body:has(dialog.full[open]:not(.shut):not(.story-view):not(#dlgAi)) #app { transform: translate3d(-25%, 0, 0); }
+    dialog.full.shut:not(.story-view) { animation: tg-out-right .3s cubic-bezier(.4,0,.2,1) both !important; }
+    dialog.full.shut:not(.story-view)::backdrop { animation: fade-out .3s ease both !important; }
+    /* под окном на весь экран прошлый экран виден как есть — только лёгкое затемнение, без размытия */
+    dialog.full:not(.story-view)::backdrop { background: rgb(0 0 0 / .25) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   }
   dialog.story-view.shut, #viewer.shut { animation-name: fade-out !important; }
   @keyframes dlg-out { to { opacity: 0; transform: translateY(10px) scale(.95); } }
@@ -19801,7 +19800,7 @@ function motionOK() { return !(window.matchMedia && matchMedia("(prefers-reduced
     }
     this.classList.add("shut");
     const slow = this.classList.contains("full") && !this.classList.contains("story-view") && innerWidth <= 760;   // окно на весь экран уезжает вправо целиком
-    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, aMs(slow ? 250 : 170));
+    this._shut = setTimeout(() => { this._shut = 0; this.classList.remove("shut"); close.call(this, v); }, aMs(slow ? 300 : 170));
   };
   window.__dlgCloseNow = (d) => { if (d._shut) { clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); } close.call(d); };
   const revive = (d) => { if (!d._shut) return false; clearTimeout(d._shut); d._shut = 0; d.classList.remove("shut"); return true; };
@@ -20038,10 +20037,23 @@ async function appUpdates() {
     const prev = JSON.parse(localStorage.getItem("mestario.live") || "null");
     if (prev && prev.hash === hash) return;
     localStorage.setItem("mestario.live", JSON.stringify({ base, hash, html }));
-    toast(T("Загружено обновление Mestario — оно включится при следующем открытии приложения"));
+    appUpdReady = true;
+    if (document.hidden) appApplyUpdate();
   } catch (e) {}
 }
-setTimeout(appUpdates, 4000);
+// новая версия уже скачана — включаем её, как только приложение свернули: вернёшься — уже свежая, без перезагрузки на глазах
+let appUpdReady = false, appUpdAt = 0;
+function appApplyUpdate() {
+  if (!appUpdReady || typeof siteBusy === "function" && siteBusy()) return;
+  try { cacheActive(); } catch (e) {}
+  location.reload();
+}
+document.addEventListener("visibilitychange", () => {
+  if (!IN_APP) return;
+  if (document.hidden) { appApplyUpdate(); return; }
+  if (Date.now() - appUpdAt > 60000) { appUpdAt = Date.now(); appUpdates(); }   // вернулись в приложение — проверяем обновление
+});
+setTimeout(() => { appUpdAt = Date.now(); appUpdates(); }, 4000);
 // кнопки над историями: скачать Mestario для Android, Windows и iPhone (в самих приложениях не показываем)
 const DL_KINDS = [
   { id: "apk", label: "Android", ext: "APK", prefix: "android-", file: "Mestario.apk" },
