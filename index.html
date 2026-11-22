@@ -3641,7 +3641,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=57da07d4fd"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6a3e266c08"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -4554,7 +4554,7 @@ void main() {
       <div class="set-label">Что даёт премиум</div>
       <div class="feats">
         <div class="feat"><span class="pico violet" data-i="crown" aria-hidden="true"></span><b>Значок премиума</b><span>Кристальная корона рядом с именем в чатах, поиске и профиле.</span></div>
-        <div class="feat"><span class="pico gold" data-i="ai" aria-hidden="true"></span><b>Mestario AI 3.0 и Photos 2</b><span>Самая умная модель ИИ и рисовалка с лучшим качеством.</span></div>
+        <div class="feat"><span class="pico gold" data-i="ai" aria-hidden="true"></span><b>Mestario AI 3.5, 3.0 и Photos 2</b><span>Самая умная модель ИИ и рисовалка с лучшим качеством.</span></div>
         <div class="feat"><span class="pico blue" data-i="file" aria-hidden="true"></span><b>Файлы до 100 МБ</b><span>Отправляйте фото, видео и файлы до 100 МБ вместо 20.</span></div>
         <div class="feat"><span class="pico pink" data-i="palette" aria-hidden="true"></span><b>Свой цвет имени</b><span>Выберите цвет, которым ваше имя видят все.</span></div>
         <div class="feat"><span class="pico teal" data-i="gem" aria-hidden="true"></span><b>NFT на профиле</b><span>Наденьте коллекционный подарок: его фон украсит профиль, а значок встанет у имени.</span></div>
@@ -14698,7 +14698,7 @@ const PREMIUM_TON = {
   payMest: () => sb.rpc("buy_premium"),
   title: () => T("Mestario Premium на 30 дней"), sub: () => T("Значок, свой цвет имени, баннер профиля и другое"),
   kick: () => T("Больше возможностей"),
-  feats: () => [T("Значок премиума у имени"), T("Mestario AI 3.0 и Photos 2"), T("Файлы до 100 МБ"), T("Свой цвет имени"),
+  feats: () => [T("Значок премиума у имени"), T("Mestario AI 3.5, 3.0 и Photos 2"), T("Файлы до 100 МБ"), T("Свой цвет имени"),
     T("50 Mest и подарок каждый месяц"), T("Баннер профиля: фото, GIF или видео"), T("Показ экрана в HD и особые фоны")],
   hint: () => T("Премиум включится сам, обычно через 10–30 секунд после того, как сеть подтвердит перевод. Окно можно закрыть."),
   create: () => sb.rpc("ton_order_premium"),
@@ -16364,10 +16364,12 @@ const AI = { chats: [], id: null, msgs: [], busy: false, max: 5, effort: 0, mode
 // усилие: сколько модель думает перед ответом (дольше думает — больше кредитов, кредит = секунда)
 // mul — во сколько раз дороже секунда работы (сервер считает так же)
 const AI_EFF = [{ k: "low", t: T("Лёгкое"), mul: 1 }, { k: "medium", t: T("Среднее"), mul: 1 }, { k: "high", t: T("Высокое"), mul: 1.5 }, { k: "xhigh", t: T("Очень высокое"), mul: 2 }, { k: "ultra", t: "Ultra", mul: 3 }];
-const aiEffWarn = (i) => AI_EFF[i].mul === 1 ? T("1 кредит — секунда работы") : T("Думает дольше — кредиты ×") + String(AI_EFF[i].mul).replace(".", ",");
+const aiEffWarn = (i) => { const mm = (AI_MODELS.find((m) => m.k === AI.model) || {}).mul || 1, x = AI_EFF[i].mul * mm;
+  return x === 1 ? T("1 кредит — секунда работы") : (AI_EFF[i].mul === 1 ? T("Кредиты ×") : T("Думает дольше — кредиты ×")) + String(x).replace(".", ","); };
 // свои модели: на сервере каждая — своя модель Gemini/Gemma; если она недоступна, отвечает ближайшая ниже
 const AI_MODELS = [
-  { k: "m30", t: "Mestario AI 3.0", s: "AI 3.0", d: T("Самая умная — для сложных задач"), prem: true, alt: "m25" },
+  { k: "m35", t: "Mestario AI 3.5", s: "AI 3.5", d: T("Новая и самая умная · кредиты ×1,5"), prem: true, alt: "m25", mul: 1.5 },
+  { k: "m30", t: "Mestario AI 3.0", s: "AI 3.0", d: T("Умная — для сложных задач"), prem: true, alt: "m25" },
   { k: "m25", t: "Mestario AI 2.5", s: "AI 2.5", d: T("Умная и быстрая — на каждый день") },
   { k: "m20", t: "Mestario AI 2.0", s: "AI 2.0", d: T("Быстрая") },
   { k: "m15", t: "Mestario AI 1.5", s: "AI 1.5", d: T("Лёгкая") },

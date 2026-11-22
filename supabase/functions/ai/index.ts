@@ -81,7 +81,7 @@ async function listAll(k: string) {
 // Mestario AI 3.0 — самая умная (Gemini Pro), 2.5 — Gemini Flash, 2.0 — Flash-Lite, 1.5 — большая Gemma, 1.0 — лёгкая Gemma.
 // Если модель уровня недоступна (нет в ключе, лимит), берём следующую ниже — никогда не выше.
 const TIERS: string[] = ["m30", "m25", "m20", "m15", "m10"];
-const TIER_NAME: Record<string, string> = { m30: "Mestario AI 3.0", m25: "Mestario AI 2.5", m20: "Mestario AI 2.0", m15: "Mestario AI 1.5", m10: "Mestario AI 1.0", photos: "Mestario Photos 1", photos2: "Mestario Photos 2" };
+const TIER_NAME: Record<string, string> = { m35: "Mestario AI 3.5", m30: "Mestario AI 3.0", m25: "Mestario AI 2.5", m20: "Mestario AI 2.0", m15: "Mestario AI 1.5", m10: "Mestario AI 1.0", photos: "Mestario Photos 1", photos2: "Mestario Photos 2" };
 function tierGroups(all: string[]) {
   const ver = (n: string) => Number((/(?:gemini|gemma)-(\d+(?:\.\d+)?)/.exec(n) || [])[1] || 0);
   const pick = (re: RegExp, latest?: string) => {
@@ -183,10 +183,11 @@ const thinkRejected = (status: number, err: string) => status === 400 && /think/
 
 // «диспетчер» поиска: быстрая лёгкая модель решает, нужен ли интернет для ответа, и составляет поисковый запрос
 // (с учётом переписки: «а у него?» → «рост Месси»). Не ответила за 4 с — решаем по словам.
-async function planSearch(question: string, context: string): Promise<string | null> {
+type Plan = { query: string; city?: string };
+async function planSearch(question: string, context: string): Promise<Plan | null> {
   if (skipSearch(question)) return null;
   const k = await key();
-  const fallback = looksFresh(question) ? question.slice(0, 200) : null;
+  const fallback: Plan | null = looksFresh(question) ? { query: question.slice(0, 200) } : null;
   if (!k) return fallback;
   try {
     const all = await listAll(k);
@@ -198,20 +199,22 @@ async function planSearch(question: string, context: string): Promise<string | n
 Поиск НУЖЕН для всего, что могло измениться после 2024 года или требует точных свежих данных: новости, события, цены, курсы валют,
 погода, спорт и счёт матчей, версии программ и устройств, кто сейчас занимает должность, факты о компаниях, людях, фильмах, играх, законы.
 Поиск НЕ нужен для: разговора, советов, объяснения понятий, математики, кода, переводов, сочинений, шуток.
-Если нужен — составь короткий поисковый запрос (3–8 слов) на языке, на котором лучше искать, с учётом переписки.
-Верни только JSON: {"search": true или false, "query": "запрос"}.
+Если нужен — составь короткий поисковый запрос (2–6 ключевых слов, без «сегодня», «какой», «последний») на языке, на котором лучше искать, с учётом переписки.
+Если вопрос о погоде — в "city" укажи город по-английски (если город не назван — "Baku"), иначе "city" пустой.
+Верни только JSON: {"search": true или false, "query": "запрос", "city": ""}.
 ${context ? "Переписка (последние сообщения):\n" + context.slice(-1500) + "\n" : ""}Последнее сообщение: ${question.slice(0, 1000)}`;
     const r = await tfetch(`${GL}/models/${lite}:generateContent`, { method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": k },
       body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: genCfg(lite, { maxOutputTokens: 120, temperature: 0, responseMimeType: "application/json" }) }) }, 4000);
+        generationConfig: genCfg(lite, { maxOutputTokens: 160, temperature: 0, responseMimeType: "application/json" }) }) }, 4000);
     if (r.status === 429) { blocked.set(lite, Date.now() + 10 * 60_000); return fallback; }
     if (!r.ok) return fallback;
     const j = await r.json();
     const raw = ((j.candidates || [])[0]?.content?.parts || []).map((p: any) => p.text || "").join("");
     const plan = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
     if (!plan || !plan.search) return null;
-    return String(plan.query || question).trim().slice(0, 200) || null;
+    const query = String(plan.query || question).trim().slice(0, 200);
+    return query ? { query, city: String(plan.city || "").trim().slice(0, 80) || undefined } : null;
   } catch (_) { return fallback; }
 }
 // потоковый ответ: текст приходит кусками, onText получает всё накопленное
@@ -666,13 +669,14 @@ async function botReply(messageId: number) {
   if (wantsImage(question)) imagePrompt = question.replace(/^\s*\/(img|image)\s*/i, "");
   else {
     // свежие данные из интернета: если вопрос о том, что могло измениться, сначала ищем и кладём найденное в вопрос
-    const q = await planSearch(question, turns.slice(0, -1).map((t) => (t.role === "user" ? "Пользователь: " : "ИИ: ") + t.text.slice(0, 400)).join("\n"));
-    if (q) {
+    const plan = await planSearch(question, turns.slice(0, -1).map((t) => (t.role === "user" ? "Пользователь: " : "ИИ: ") + t.text.slice(0, 400)).join("\n"));
+    if (plan) {
+      const q = plan.query;
       chain = chain.then(async () => {
         const { data } = await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: "🔎 Ищу в интернете: «" + q + "»…" }).select("id").single();
         live = data ? data.id : null;
       }).catch(() => {});
-      const ws = await webSearch(q);
+      const ws = await webSearch(q, plan.city);
       if (ws.context) {
         const lastT = turns[turns.length - 1];
         lastT.text += "\n\n" + ws.context;
@@ -980,17 +984,64 @@ async function streamContents(k: string, model: string, contents: Content[], eff
   } finally { clearTimeout(tm); }
   return { ok: !!got.trim(), status: 200, text: got, err: got ? "" : "empty" };
 }
+// Mestario AI 3.5 — DeepSeek V4.1 Flash (на API — модель deepseek-flash). Ключ — только в секретах функции (DEEPSEEK_API_KEY).
+// Не ответила — отвечают модели уровня 3.0 (Gemini), как и раньше.
+const DS_URL = "https://api.deepseek.com/chat/completions";
+const dsModel = () => Deno.env.get("DEEPSEEK_MODEL") || "deepseek-flash";
+async function streamDeepSeek(contents: Content[], effort: string, onText: (piece: string) => void): Promise<Try> {
+  const dk = Deno.env.get("DEEPSEEK_API_KEY") || "";
+  if (!dk) return { ok: false, status: 503, err: "no key" };
+  const messages: any[] = [{ role: "system", content: withNow(AI_SYS) }];
+  for (const c of contents) {
+    const txt = c.parts.map((p) => p.text || "").filter(Boolean).join("\n\n");
+    const imgs = c.parts.filter((p) => p.inlineData);
+    if (c.role === "user" && imgs.length) messages.push({ role: "user", content: [...imgs.map((p) => ({ type: "image_url", image_url: { url: `data:${p.inlineData!.mimeType};base64,${p.inlineData!.data}` } })), { type: "text", text: txt || "(картинка без подписи — опиши её)" }] });
+    else if (txt) messages.push({ role: c.role === "model" ? "assistant" : "user", content: txt });
+  }
+  const c = new AbortController();
+  const first = [20000, 30000, 45000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];
+  let tm = setTimeout(() => c.abort(), first);
+  const alive = (ms: number) => { clearTimeout(tm); tm = setTimeout(() => c.abort(), ms); };
+  let got = "";
+  try {
+    const r = await fetch(DS_URL, { method: "POST", signal: c.signal, headers: { "content-type": "application/json", authorization: "Bearer " + dk },
+      body: JSON.stringify({ model: dsModel(), messages, stream: true, temperature: 0.7, max_tokens: effort === "ultra" || effort === "xhigh" ? 16384 : 8192 }) });
+    if (!r.ok) return { ok: false, status: r.status, err: (await r.text().catch(() => "")).slice(0, 300) };
+    const rd = r.body!.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const d = (JSON.parse(data).choices || [])[0]?.delta || {};
+          if (d.reasoning_content) alive(90000);            // модель думает — ждём, рассуждение не показываем
+          if (d.content) { alive(90000); got += d.content; onText(d.content); }
+        } catch (_) { /* неполная строка */ }
+      }
+    }
+  } catch (e) {
+    if (!got) return { ok: false, status: 504, err: "timeout " + String(e).slice(0, 100) };
+  } finally { clearTimeout(tm); }
+  return { ok: !!got.trim(), status: 200, text: got, err: got ? "" : "empty" };
+}
 async function aiChat(req: Request, input: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const effort = input.effort === "max" ? "high" : EFFORTS.includes(input.effort) ? input.effort : "medium";
-  let tier = input.model === "photos" || input.model === "photos2" || TIERS.includes(input.model) ? String(input.model) : "m25";
+  let tier = input.model === "photos" || input.model === "photos2" || input.model === "m35" || TIERS.includes(input.model) ? String(input.model) : "m25";
   const photoTier = (t: string) => t === "photos" || t === "photos2";
   // всё, что не зависит друг от друга, — параллельно: каждая очередь к базе — это задержка перед ответом
   const [{ data: au }, k] = await Promise.all([sb.auth.getUser(jwt), key()]);
   const uid = au?.user?.id;
   if (!uid) return reply({ error: "auth" }, 401);
   if (!k) return reply({ error: "not configured" }, 503);
-  let listP = tierModels(k, photoTier(tier) ? "m25" : tier).catch(() => [] as { model: string; tier: string }[]);
+  let listP = tierModels(k, photoTier(tier) ? "m25" : tier === "m35" ? "m30" : tier).catch(() => [] as { model: string; tier: string }[]);
   const [{ data: p }, { data: chat }, bal] = await Promise.all([
     sb.from("profiles").select("banned_at,deleted_at,is_admin,premium_until").eq("id", uid).maybeSingle(),
     sb.from("ai_chats").select("id,user_id,title").eq("id", String(input.ai_chat)).maybeSingle(),
@@ -1001,7 +1052,7 @@ async function aiChat(req: Request, input: any) {
   const prem = isPrem(p);
   if (tier === "photos2" && !prem) tier = "photos";
   // Mestario AI 3.0 — тоже только с премиумом; без него отвечает 2.5
-  if (tier === "m30" && !prem) { tier = "m25"; listP = tierModels(k, "m25").catch(() => [] as { model: string; tier: string }[]); }
+  if ((tier === "m30" || tier === "m35") && !prem) { tier = "m25"; listP = tierModels(k, "m25").catch(() => [] as { model: string; tier: string }[]); }
   const text = String(input.text ?? "").trim().slice(0, 8000);
   const imgs: string[] = (Array.isArray(input.images) ? input.images : []).map(String)
     .filter((x: string) => x.startsWith(uid + "/") && !x.includes("..") && x.length < 200).slice(0, 6);
@@ -1067,10 +1118,10 @@ async function aiChat(req: Request, input: any) {
           let sources: string[] = [];
           if (text) {
             const ctxText = rows.slice(0, -1).slice(-6).map((r: any) => (r.role === "model" ? "ИИ: " : "Пользователь: ") + String(r.body || "").slice(0, 400)).join("\n");
-            const q = await planSearch(text, ctxText);
-            if (q) {
-              out({ searching: q });
-              const ws = await webSearch(q);
+            const plan = await planSearch(text, ctxText);
+            if (plan) {
+              out({ searching: plan.query });
+              const ws = await webSearch(plan.query, plan.city);
               const lastC = contents[contents.length - 1];
               if (ws.context && lastC && lastC.role === "user") { lastC.parts.push({ text: ws.context }); sources = ws.sources; }
             }
@@ -1084,10 +1135,14 @@ async function aiChat(req: Request, input: any) {
           const gemmaTier = tier === "m15" || tier === "m10";
           const runOn = (xs: { model: string; tier: string }[], d: number) => race(xs.slice(0, 6).map((x) => x.model), d,
             (m, sig, mine) => streamContents(k, m, contents, effort, (piece) => { if (mine()) onPiece(piece); }, sig), blockFor);
-          let won = own.length ? await runOn(own, gemmaTier ? Math.max(delay, 20000) : delay) : { res: { ok: false, status: 503 } as Try, model: "" };
+          // Mestario AI 3.5 — сначала DeepSeek; если не ответил, дальше — модели 3.0 и ниже
+          const ds = tier === "m35" ? await streamDeepSeek(contents, effort, onPiece) : null;
+          if (ds && !ds.ok) console.error("deepseek", ds.status, ds.err);
+          let won = ds && (ds.ok || sent) ? { res: ds, model: "deepseek" }
+            : own.length ? await runOn(own, gemmaTier ? Math.max(delay, 20000) : delay) : { res: { ok: false, status: 503 } as Try, model: "" };
           if (!won.res.ok && !sent) { const r2 = free(rest); if (r2.length) won = await runOn(r2, delay); }
           res = won.res;
-          used = (all.find((x) => x.model === won.model) || { tier }).tier;
+          used = won.model === "deepseek" ? "m35" : (all.find((x) => x.model === won.model) || { tier }).tier;
           if ((!res || !res.ok) && !sent && !imgs.length) {
             used = "m10";
             // запасной ИИ без картинок
@@ -1119,7 +1174,8 @@ async function aiChat(req: Request, input: any) {
         }
         const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
         // дольше думает — дороже: Лёгкое и Среднее ×1, Высокое ×1.5, Очень высокое ×2, Ultra ×3 (картинки — по секундам)
-        const mul = imagePrompt ? 1 : [1, 1, 1.5, 2, 3][Math.max(0, EFFORTS.indexOf(effort))];
+        // Mestario AI 3.5 (DeepSeek) — ещё ×1.5
+        const mul = imagePrompt ? 1 : [1, 1, 1.5, 2, 3][Math.max(0, EFFORTS.indexOf(effort))] * (used === "m35" ? 1.5 : 1);
         const cost = Math.max(1, Math.ceil(secs * mul));
         let charged: number | null = null, credits: number | null = null;
         const [cq, { data: mm }] = await Promise.all([
@@ -1242,8 +1298,14 @@ Deno.serve(async (req) => {
         const q = String(input.search), t = Date.now();
         const plan = await planSearch(q, "");
         const t1 = Date.now();
-        const ws = await webSearch(plan || q);
-        return reply({ plan, planMs: t1 - t, searchMs: Date.now() - t1, sources: ws.sources, context: ws.context.slice(0, 1500) });
+        const ws = await webSearch(plan ? plan.query : q, plan?.city || input.city);
+        return reply({ plan, planMs: t1 - t, searchMs: Date.now() - t1, sources: ws.sources, diag: ws.diag, context: ws.context.slice(0, 1500) });
+      }
+      // проверка Mestario AI 3.5: ответ DeepSeek и время
+      if (input.deepseek) {
+        const t = Date.now(); let first = 0;
+        const r = await streamDeepSeek([{ role: "user", parts: [{ text: String(input.deepseek) }] }], String(input.effort || "low"), () => { if (!first) first = Date.now() - t; });
+        return reply({ model: dsModel(), ok: r.ok, status: r.status, first, ms: Date.now() - t, text: String(r.text || "").slice(0, 600), err: r.err });
       }
       if (input.image) { const im = await makeImage(String(input.image), false, !!input.v2); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");
