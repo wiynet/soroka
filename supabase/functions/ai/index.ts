@@ -4,6 +4,7 @@
 // Отвечает Google Gemini (бесплатная модель Flash). Ключ хранится только в базе (private.ai_config),
 // функция получает его через ai_server_config() с правами service_role; в репозитории ключа нет.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { webSearch, looksFresh, skipSearch } from "./search.ts";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -21,6 +22,16 @@ const SYSTEM = `Ты — ИИ-помощник мессенджера Mestario. 
 поэтому отвечай сразу по существу, полно, но без лишнего. Не выдумывай фактов; если не уверен —
 так и скажи. Не помогай с опасными, незаконными или вредными просьбами. Ответ — не длиннее 2500 символов.`;
 
+// сегодняшняя дата (по Баку) — к инструкции помощника при каждом вопросе: собственные знания модели заканчиваются
+// годом-двумя раньше. Свежие данные приходят из поиска в интернете (search.ts) вместе с вопросом
+function withNow(sys: string) {
+  if (sys !== SYSTEM && sys !== AI_SYS) return sys;
+  const now = new Date().toLocaleString("ru-RU", { timeZone: "Asia/Baku", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return sys + `\nСейчас ${now} (время Баку). Твои собственные знания устарели и заканчиваются раньше этой даты.
+Если вместе с вопросом пришли «Результаты поиска в интернете» — отвечай по ним (это свежие данные), называй даты;
+не выдавай свои старые знания за текущие. Если поиска нет, а вопрос о том, что могло измениться (новости, цены, курсы,
+версии, кто на какой должности) — честно скажи, что данные могут быть устаревшими. Список источников не пиши — его добавит приложение.`;
+}
 const GL = "https://generativelanguage.googleapis.com/v1beta";
 const FALLBACK = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
 let apiKey = "", models: string[] | null = null, useVertex = false;
@@ -169,10 +180,45 @@ function genCfg(model: string, extra: Record<string, unknown> = {}) {
   return tc ? { ...extra, thinkingConfig: tc } : extra;
 }
 const thinkRejected = (status: number, err: string) => status === 400 && /think/i.test(err);
+
+// «диспетчер» поиска: быстрая лёгкая модель решает, нужен ли интернет для ответа, и составляет поисковый запрос
+// (с учётом переписки: «а у него?» → «рост Месси»). Не ответила за 4 с — решаем по словам.
+async function planSearch(question: string, context: string): Promise<string | null> {
+  if (skipSearch(question)) return null;
+  const k = await key();
+  const fallback = looksFresh(question) ? question.slice(0, 200) : null;
+  if (!k) return fallback;
+  try {
+    const all = await listAll(k);
+    const lite = [...all.filter((n) => /^gemini-[\d.]+-flash-lite(-preview)?$|^gemini-flash-lite-latest$/.test(n)), "gemini-flash-lite-latest"]
+      .find((n) => (blocked.get(n) || 0) < Date.now());
+    if (!lite) return fallback;
+    const now = new Date().toLocaleDateString("ru-RU", { timeZone: "Asia/Baku", day: "numeric", month: "long", year: "numeric" });
+    const prompt = `Сегодня ${now}. Ты решаешь, нужен ли поиск в интернете, чтобы ответить на последнее сообщение пользователя.
+Поиск НУЖЕН для всего, что могло измениться после 2024 года или требует точных свежих данных: новости, события, цены, курсы валют,
+погода, спорт и счёт матчей, версии программ и устройств, кто сейчас занимает должность, факты о компаниях, людях, фильмах, играх, законы.
+Поиск НЕ нужен для: разговора, советов, объяснения понятий, математики, кода, переводов, сочинений, шуток.
+Если нужен — составь короткий поисковый запрос (3–8 слов) на языке, на котором лучше искать, с учётом переписки.
+Верни только JSON: {"search": true или false, "query": "запрос"}.
+${context ? "Переписка (последние сообщения):\n" + context.slice(-1500) + "\n" : ""}Последнее сообщение: ${question.slice(0, 1000)}`;
+    const r = await tfetch(`${GL}/models/${lite}:generateContent`, { method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": k },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: genCfg(lite, { maxOutputTokens: 120, temperature: 0, responseMimeType: "application/json" }) }) }, 4000);
+    if (r.status === 429) { blocked.set(lite, Date.now() + 10 * 60_000); return fallback; }
+    if (!r.ok) return fallback;
+    const j = await r.json();
+    const raw = ((j.candidates || [])[0]?.content?.parts || []).map((p: any) => p.text || "").join("");
+    const plan = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    if (!plan || !plan.search) return null;
+    return String(plan.query || question).trim().slice(0, 200) || null;
+  } catch (_) { return fallback; }
+}
 // потоковый ответ: текст приходит кусками, onText получает всё накопленное
 async function streamModel(k: string, model: string, turns: Turn[], onText: (t: string) => void, sys = SYSTEM, ext?: AbortSignal) {
+  const sysText = withNow(sys);
   const body = (gc: any) => JSON.stringify({
-    systemInstruction: { parts: [{ text: sys }] },
+    systemInstruction: { parts: [{ text: sysText }] },
     contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
     generationConfig: gc,
   });
@@ -226,7 +272,7 @@ async function callModel(k: string, model: string, text: string | Turn[], vertex
     method: "POST",
     headers: vertex ? { "content-type": "application/json" } : { "content-type": "application/json", "x-goog-api-key": k },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: sys }] },
+      systemInstruction: { parts: [{ text: withNow(sys) }] },
       contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
       generationConfig: gc,
     }),
@@ -290,7 +336,7 @@ async function pollinationsText(text: string | Turn[], sys = SYSTEM) {
     const r = await fetch("https://text.pollinations.ai/openai", {
       method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys },
+      body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: withNow(sys) },
         ...turns.map((t) => ({ role: t.role === "model" ? "assistant" : "user", content: t.text }))] }),
     });
     clearTimeout(tm);
@@ -616,10 +662,26 @@ async function botReply(messageId: number) {
       } else await sb.from("messages").update({ body: text }).eq("id", live);
     }).catch(() => {});
   };
+  let sources: string[] = [];
   if (wantsImage(question)) imagePrompt = question.replace(/^\s*\/(img|image)\s*/i, "");
   else {
+    // свежие данные из интернета: если вопрос о том, что могло измениться, сначала ищем и кладём найденное в вопрос
+    const q = await planSearch(question, turns.slice(0, -1).map((t) => (t.role === "user" ? "Пользователь: " : "ИИ: ") + t.text.slice(0, 400)).join("\n"));
+    if (q) {
+      chain = chain.then(async () => {
+        const { data } = await sb.from("messages").insert({ chat_id: m.chat_id, sender_id: bot, body: "🔎 Ищу в интернете: «" + q + "»…" }).select("id").single();
+        live = data ? data.id : null;
+      }).catch(() => {});
+      const ws = await webSearch(q);
+      if (ws.context) {
+        const lastT = turns[turns.length - 1];
+        lastT.text += "\n\n" + ws.context;
+        sources = ws.sources;
+      }
+    }
     r = await ask(turns.map((t, i) => i === 0 ? { ...t, text: CHAT_NOTE + "\n\n" + t.text } : t), onText);
     await chain;
+    if (r && r.ok && sources.length && !/\[\[\s*IMAGE/i.test(r.text)) r.text = r.text.trimEnd() + "\n\nИсточники: " + sources.join(", ");
     const mk = r && r.ok ? /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(r.text) : null;
     if (mk) { imagePrompt = mk[1].trim(); english = true; }
   }
@@ -872,10 +934,11 @@ function effortCfg(model: string, effort: string, extra: Record<string, unknown>
 async function streamContents(k: string, model: string, contents: Content[], effort: string, onText: (piece: string) => void, ext?: AbortSignal) {
   // у Gemma нет системной инструкции — кладём её в начало первого сообщения
   const gemma = model.startsWith("gemma");
-  const cs = gemma && contents.length ? [{ ...contents[0], parts: [{ text: AI_SYS + "\n\n" }, ...contents[0].parts] }, ...contents.slice(1)] : contents;
+  const sysText = withNow(AI_SYS);
+  const cs = gemma && contents.length ? [{ ...contents[0], parts: [{ text: sysText + "\n\n" }, ...contents[0].parts] }, ...contents.slice(1)] : contents;
   const send = (gc: any, signal: AbortSignal) => fetch(`${GL}/models/${model}:streamGenerateContent?alt=sse`, { method: "POST", signal,
     headers: { "content-type": "application/json", "x-goog-api-key": k },
-    body: JSON.stringify(gemma ? { contents: cs, generationConfig: gc } : { systemInstruction: { parts: [{ text: AI_SYS }] }, contents: cs, generationConfig: gc }) });
+    body: JSON.stringify(gemma ? { contents: cs, generationConfig: gc } : { systemInstruction: { parts: [{ text: sysText }] }, contents: cs, generationConfig: gc }) });
   const c = new AbortController();
   if (ext) { if (ext.aborted) c.abort(); else ext.addEventListener("abort", () => c.abort()); }
   const first0 = [12000, 20000, 40000, 60000, 80000][Math.max(0, EFFORTS.indexOf(effort))];   // до первых слов: думать дольше — ждём дольше
@@ -1000,6 +1063,18 @@ async function aiChat(req: Request, input: any) {
             if (sent.trim().length < 2) { held += piece; return; }
             out({ d: held + piece }); held = "";
           };
+          // свежие данные из интернета: ищем и добавляем найденное к последнему вопросу
+          let sources: string[] = [];
+          if (text) {
+            const ctxText = rows.slice(0, -1).slice(-6).map((r: any) => (r.role === "model" ? "ИИ: " : "Пользователь: ") + String(r.body || "").slice(0, 400)).join("\n");
+            const q = await planSearch(text, ctxText);
+            if (q) {
+              out({ searching: q });
+              const ws = await webSearch(q);
+              const lastC = contents[contents.length - 1];
+              if (ws.context && lastC && lastC.role === "user") { lastC.parts.push({ text: ws.context }); sources = ws.sources; }
+            }
+          }
           const all = await listP;
           const free = (xs: { model: string; tier: string }[]) => xs.filter((x) => (blocked.get(x.model) || 0) < Date.now());
           // сначала — только модели выбранного уровня (иначе отвечала «чужая» модель); остальные — лишь если свои все молчат
@@ -1021,6 +1096,7 @@ async function aiChat(req: Request, input: any) {
           }
           if (!res || (!res.ok && !sent)) return await fail(res?.status === 429 ? "busy" : "ai");
           if (held && !hidden) out({ d: held });
+          if (sources.length && !hidden && sent.trim()) { const src = "\n\nИсточники: " + sources.join(", "); sent += src; out({ d: src }); }
           answer = sent.trim();
           const mk = /\[\[\s*IMAGE\s*:\s*([\s\S]+?)\]\]/i.exec(answer);
           if (mk) { imagePrompt = mk[1].trim(); english = true; answer = ""; }
@@ -1160,6 +1236,14 @@ Deno.serve(async (req) => {
           res.push({ tier: t, eff, model: won.model, ok: !!won.res.ok, first, ms: Date.now() - t0, text: String(won.res.text || "").slice(0, 40), tried });
         }
         return reply(res);
+      }
+      // проверка поиска: что решил «диспетчер» и что нашлось
+      if (input.search) {
+        const q = String(input.search), t = Date.now();
+        const plan = await planSearch(q, "");
+        const t1 = Date.now();
+        const ws = await webSearch(plan || q);
+        return reply({ plan, planMs: t1 - t, searchMs: Date.now() - t1, sources: ws.sources, context: ws.context.slice(0, 1500) });
       }
       if (input.image) { const im = await makeImage(String(input.image), false, !!input.v2); return reply({ ok: im.ok, model: im.model, status: im.status, mime: im.mime, size: im.bytes?.length, err: im.err, text: im.text }); }
       const r = await ask("Ответь одним словом: работает");

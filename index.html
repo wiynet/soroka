@@ -3641,7 +3641,7 @@ if (location.protocol === "http:" && location.hostname !== "localhost" && locati
    строка, которой в словаре нет, показывается по-русски. */
 window.SOROKA_EN = window.SOROKA_EN || {};
 /* английский словарь (около 110 КБ) нужен только при английском интерфейсе: русским он не скачивается */
-if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=6d6a10b299"><\/script>');
+if (window.SOROKA_LANG === "en") document.write('<script src="en.js?v=57da07d4fd"><\/script>');
 window.T = function (text) {
   if (window.SOROKA_LANG !== "en") return text;
   var v = window.SOROKA_EN[text];
@@ -16496,7 +16496,9 @@ function aiMsgEl(m) {
 }
 function aiFillModel(body, m) {
   const kids = [];
-  if (m.streaming && !m.body) kids.push(m.drawing ? h("span", { class: "small muted ai-drawing" }, T("Mestario Photos рисует…")) : h("span", { class: "ai-dots", "aria-label": T("ИИ думает") }, h("i"), h("i"), h("i")));
+  if (m.streaming && !m.body) kids.push(m.drawing ? h("span", { class: "small muted ai-drawing" }, T("Mestario Photos рисует…"))
+    : m.searching ? h("span", { class: "small muted ai-drawing" }, T("Ищу в интернете: «") + m.searching + "»…")
+    : h("span", { class: "ai-dots", "aria-label": T("ИИ думает") }, h("i"), h("i"), h("i")));
   else kids.push(...aiMd(m.body || ""));
   if (m.streaming && m.body) { const last = kids[kids.length - 1]; const cur = h("span", { class: "cur", "aria-hidden": "true" }); if (last && last.tagName === "P") last.append(" ", cur); else kids.push(cur); }
   const im = aiImgs(m.images); if (im) kids.push(im);
@@ -16875,6 +16877,7 @@ async function aiStream(id, text, paths, um, mm) {
       let j; try { j = JSON.parse(line); } catch (e) { continue; }
       if (j.d) { mm.body += j.d; aiUpdLive(mm); }
       else if (j.drawing) { mm.drawing = true; mm.body = ""; aiUpdLive(mm); }
+      else if (j.searching) { mm.searching = String(j.searching); aiUpdLive(mm); }
       else if (j.error) return aiFail(um, mm, text, j.error);
       else if (j.done) done = j;
     }

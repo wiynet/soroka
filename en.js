@@ -554,4 +554,5 @@ window.SOROKA_EN = {
 "Покупка прошла. Mest зачислятся автоматически, как только будет связь.":"Purchase complete. Mest will be credited automatically once you are online.",
 "Покупка ждёт подтверждения (например, родителя). Mest придут сами, когда её одобрят.":"The purchase is awaiting approval (for example, by a parent). Mest will arrive once it is approved.",
 "Не удалось купить. Попробуйте ещё раз.":"Could not complete the purchase. Please try again.",
+"Ищу в интернете: «":"Searching the web: “",
 };
