@@ -3,16 +3,16 @@
 //  • Bing Новости (RSS) — свежие новости с датами и кратким текстом; главный источник;
 //  • Википедия — вступления статей (люди, компании, события, турниры);
 //  • точные данные по теме вопроса: официальный курс ЦБ Азербайджана и кросс-курсы, криптовалюты, погода;
-//  • Google Новости и DuckDuckGo — если доступны с сервера (часто блокируют — тогда пропускаются на 20 минут).
+// Google Новости и DuckDuckGo с серверов Supabase не отвечают (зависают или просят «докажите, что не робот») — их не используем.
 // Результат — короткий текстовый блок, который кладётся в вопрос модели, и список источников.
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 
 type Diag = { src: string; status: number; ms: number; len: number; n: number; err?: string; skip?: boolean };
 // источник, который не отвечает или блокирует сервер, на время пропускаем — чтобы не ждать его в каждом ответе:
-// известные «блокировщики» (Google Новости, DuckDuckGo) — на 20 минут, остальные — на 2 минуты (случайный сбой)
+// CoinGecko (лимит запросов) — на 20 минут, остальные — на 2 минуты (случайный сбой)
 const bad = new Map<string, number>();
-const ban = (src: string) => bad.set(src, Date.now() + (/^(gnews|ddg|coingecko)$/.test(src) ? 20 : 2) * 60_000);
+const ban = (src: string) => bad.set(src, Date.now() + (/^(coingecko)$/.test(src) ? 20 : 2) * 60_000);
 async function get(src: string, url: string, diag: Diag[], ms = 4500) {
   const d: Diag = { src, status: 0, ms: 0, len: 0, n: 0 };
   diag.push(d);
@@ -76,30 +76,6 @@ async function bnews(q: string, diag: Diag[]): Promise<News[]> {
     setN(diag, "bnews2", more.length);
     out = [...out, ...more];
   }
-  return out;
-}
-async function gnews(q: string, diag: Diag[]): Promise<News[]> {
-  const out = rssNews(await get("gnews", "https://news.google.com/rss/search?hl=ru&gl=AZ&ceid=AZ:ru&q=" + encodeURIComponent(q), diag, 3500));
-  setN(diag, "gnews", out.length);
-  return out;
-}
-async function ddg(q: string, diag: Diag[]): Promise<Site[]> {
-  const html = await get("ddg", "https://html.duckduckgo.com/html/?kl=ru-ru&q=" + encodeURIComponent(q), diag, 3500);
-  const out: Site[] = [];
-  const re = /class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && out.length < 5) {
-    let url = unescape(m[1]);
-    if (/duckduckgo\.com\/y\.js/.test(url)) continue;   // реклама
-    const u = /[?&]uddg=([^&]+)/.exec(url);
-    if (u) url = decodeURIComponent(u[1]);
-    if (url.startsWith("//")) url = "https:" + url;
-    const h = host(url);
-    if (!h) continue;
-    out.push({ title: unescape(m[2]).slice(0, 160), url, snippet: unescape(m[3]).slice(0, 300), host: h });
-  }
-  if (html && !out.length) ban("ddg");   // страница-проверка «вы не робот?»
-  setN(diag, "ddg", out.length);
   return out;
 }
 // Википедия: вступления трёх подходящих статей
@@ -179,18 +155,18 @@ export async function webSearch(q: string, city?: string): Promise<{ context: st
   const diag: Diag[] = [];
   if (!query) return { context: "", sources: [], diag };
   const none = () => [] as any[];
-  const [bn, gn, dd, wk, rt, cr, wt] = await Promise.all([
-    bnews(query, diag).catch(none), gnews(query, diag).catch(none), ddg(query, diag).catch(none), wiki(query, diag).catch(none),
+  const [bn, wk, rt, cr, wt] = await Promise.all([
+    bnews(query, diag).catch(none), wiki(query, diag).catch(none),
     RATES.test(query) ? rates(diag).catch(none) : [], CRYPTO.test(query) ? crypto(diag).catch(none) : [],
     city ? weather(city, diag).catch(none) : []]);
   const facts: Fact[] = [...wt, ...rt, ...cr];
   // новости: без повторов, свежие сначала, старше года — не нужны
   const seenT = new Set<string>();
-  const news: News[] = [...bn, ...gn].filter((n) => Date.now() - n.date.getTime() < 366 * 86400_000)
+  const news: News[] = bn.filter((n) => Date.now() - n.date.getTime() < 366 * 86400_000)
     .filter((n) => { const k = n.title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "").slice(0, 50); if (seenT.has(k)) return false; seenT.add(k); return true; })
     .sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 7);
   const seenU = new Set<string>();
-  const sites: Site[] = [...dd, ...wk].filter((s) => { const k = s.url.replace(/[#?].*$/, ""); if (seenU.has(k)) return false; seenU.add(k); return true; }).slice(0, 5);
+  const sites: Site[] = wk.filter((s) => { const k = s.url.replace(/[#?].*$/, ""); if (seenU.has(k)) return false; seenU.add(k); return true; }).slice(0, 5);
   if (!facts.length && !news.length && !sites.length) return { context: "", sources: [], diag };
   const lines = [`Результаты поиска в интернете (поиск выполнен ${day(new Date())}, запрос: «${query}»):`];
   if (facts.length) { lines.push("Точные данные:"); facts.forEach((f) => lines.push("• " + f.text)); }
